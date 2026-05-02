@@ -2,7 +2,7 @@
 
 基于彩虹外链云盘二开 + 美化
 
-![项目预览](https://mpimg.cn/view.php/67923fcd7cf07d761fa5329e292fda1a.png)
+![项目预览](https://mpimg.cn/view.php/2841008ec06283dcd8378d7045992dcf.png))
 
 ## 项目介绍
 
