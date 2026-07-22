@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>赞助支持 - 惜染外链网盘</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        /* 基础样式重置 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #f8fafc 0%, #e8f0fe 100%);
+            color: #333;
+            line-height: 1.5;
+            padding: 15px;
+            min-height: 100vh;
+        }
+        
+        /* 主容器 */
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        /* 页面标题 */
+        .page-header {
+            text-align: center;
+            margin-bottom: 25px;
+            padding: 15px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        }
+        
+        .page-header h1 {
+            font-size: 1.8rem;
+            color: #3a7bd5;
+            margin-bottom: 8px;
+        }
+        
+        .page-header p {
+            color: #666;
+            font-size: 0.95rem;
+        }
+        
+        /* 超紧凑赞助卡片 */
+        .mini-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            margin-bottom: 25px;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .mini-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+        }
+        
+        .mini-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .mini-icon {
+            font-size: 1.2rem;
+            color: #3a7bd5;
+            background: rgba(58, 123, 213, 0.1);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+        }
+        
+        .mini-title {
+            font-size: 1.3rem;
+            color: #3a7bd5;
+            font-weight: 600;
+        }
+        
+        /* 紧凑列表 */
+        .mini-list {
+            list-style: none;
+        }
+        
+        .mini-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+            font-size: 0.9rem;
+            padding: 10px 12px;
+            border-radius: 8px;
+            background: rgba(250, 250, 250, 0.8);
+            transition: background 0.3s ease;
+        }
+        
+        .mini-item:hover {
+            background: rgba(58, 123, 213, 0.05);
+        }
+        
+        .mini-item i {
+            color: #3a7bd5;
+            margin-right: 10px;
+            font-size: 1rem;
+            min-width: 20px;
+            text-align: center;
+        }
+        
+        /* 支付方式 */
+        .payment-methods {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 25px 0;
+            flex-wrap: wrap;
+        }
+        
+        .payment-card {
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+        
+        .payment-card:hover {
+            transform: scale(1.05);
+        }
+        
+        .payment-card img {
+            width: 130px;
+            height: 130px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            transition: box-shadow 0.3s ease;
+        }
+        
+        .payment-card img:hover {
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+        }
+        
+        .payment-card p {
+            margin-top: 10px;
+            font-size: 0.9rem;
+            color: #555;
+            font-weight: 500;
+        }
+        
+        /* 赞助名单 */
+        .sponsor-list {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            margin-bottom: 25px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .sponsor-list:hover {
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+        }
+        
+        .list-header {
+            background: linear-gradient(135deg, #3a7bd5 0%, #2a5ba0 100%);
+            color: white;
+            padding: 12px 15px;
+            text-align: center;
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+        
+        .column-titles {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            background: rgba(58, 123, 213, 0.1);
+            padding: 10px 15px;
+            font-size: 0.9rem;
+            color: #3a7bd5;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            text-align: center;
+            font-weight: 500;
+        }
+        
+        .scrolling-list {
+            height: auto;
+            max-height: 280px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .scrolling-list ul {
+            list-style: none;
+        }
+        
+        .scrolling-list li {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            padding: 10px 15px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            font-size: 0.9rem;
+            text-align: center;
+            transition: background 0.3s ease;
+        }
+        
+        .scrolling-list li:hover {
+            background: rgba(58, 123, 213, 0.05);
+        }
+        
+        .amount {
+            color: #09b83e;
+            font-weight: 500;
+        }
+        
+        .time {
+            color: #666;
+        }
+        
+        .no-data {
+            text-align: center;
+            padding: 30px;
+            color: #888;
+            font-style: italic;
+        }
+        
+        /* 页脚 */
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 20px;
+        }
+        
+        .footer a {
+            color: #3a7bd5;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        
+        .footer a:hover {
+            color: #2a5ba0;
+            text-decoration: underline;
+        }
+        
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            .payment-card img {
+                width: 110px;
+                height: 110px;
+            }
+            
+            .column-titles, .scrolling-list li {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .container {
+                padding: 0 10px;
+            }
+            
+            .page-header h1 {
+                font-size: 1.5rem;
+            }
+            
+            .payment-card img {
+                width: 90px;
+                height: 90px;
+            }
+            
+            .column-titles, .scrolling-list li {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .time {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 页面标题 -->
+        <div class="page-header">
+            <h1>赞助支持惜染外链网盘</h1>
+            <p>您的支持是我维持下去的动力！服务器每月续费需要41美元</p>
+        </div>
+        
+        <!-- 超紧凑赞助卡片 -->
+        <div class="mini-card">
+            <div class="mini-header">
+                <i class="bi bi-heart-fill mini-icon"></i>
+                <h3 class="mini-title">零钱赞助</h3>
+            </div>
+            
+            <ul class="mini-list">
+                <li class="mini-item">
+                    <i class="bi bi-coin"></i>
+                    <span>1元不嫌少，10元不嫌多</span>
+                </li>
+                <li class="mini-item">
+                    <i class="bi bi-server"></i>
+                    <span>用于服务器维护与升级</span>
+                </li>
+                <li class="mini-item">
+                    <i class="bi bi-lightning-charge"></i>
+                    <span>确保服务稳定</span>
+                </li>
+            </ul>
+        </div>
+        
+        <!-- 支付方式 -->
+        <div class="payment-methods">
+            <div class="payment-card">
+                <img src="images/weixin.png" alt="微信赞助" title="微信赞助">
+                <p>微信赞助</p>
+            </div>
+            <div class="payment-card">
+                <img src="images/qq.png" alt="QQ钱包赞助" title="QQ钱包赞助">
+                <p>QQ钱包赞助</p>
+            </div>
+            <div class="payment-card">
+                <img src="images/zhifubao.png" alt="支付宝赞助" title="支付宝赞助">
+                <p>支付宝赞助</p>
+            </div>
+        </div>
+        
+        <!-- 赞助名单 -->
+        <div class="sponsor-list">
+            <div class="list-header">
+                <i class="bi bi-trophy-fill"></i> 赞助名单
+            </div>
+            
+            <div class="column-titles">
+                <div>昵称</div>
+                <div>赞助金额</div>
+                <div>赞助时间</div>
+            </div>
+            
+            <div class="scrolling-list" id="sponsorList">
+                <ul id="sponsorItems"></ul>
+            </div>
+        </div>
+
+        <!-- 赞助数据JSON -->
+        <script id="sponsorData" type="application/json">
+            {
+                "sponsors": [
+                    {"name":"*陈","amount":"微信赞助10元","time":"2025/10/29"},
+                    {"name":"*顶","amount":"支付宝赞助10元","time":"2025/10/30"},
+                    {"name":"*)","amount":"微信赞助1元","time":"2025/10/30"},
+                    {"name":"*生","amount":"微信赞助10元","time":"2025/11/05"},
+                    {"name":"*夫","amount":"微信赞助15元","time":"2025/11/05"},
+                    {"name":"q*5","amount":"微信赞助10元","time":"2025/11/09"},
+                    {"name":"*晨","amount":"微信赞助1元","time":"2025/11/18"},
+                    {"name":"*孔","amount":"微信赞助10元","time":"2025/11/18"},
+                    {"name":"*健","amount":"支付宝赞助0.01元","time":"2025/11/29"},
+                    {"name":"**哲","amount":"支付宝赞助1元","time":"2025/12/10"},
+                    {"name":"*孔","amount":"微信赞助2元","time":"2026/01/10"},
+                    {"name":"*》","amount":"微信赞助0.1元","time":"2026/01/12"},
+                    {"name":"*服","amount":"微信赞助1元","time":"2026/01/14"},
+                    {"name":"*彤","amount":"微信赞助0.01元","time":"2026/01/26"},
+                    {"name":"*.","amount":"微信赞助0.01元","time":"2026/02/26"},
+                    {"name":"~*~","amount":"微信赞助3元","time":"2026/03/02"}
+                ]
+            }
+        </script>
+        
+        <!-- 页脚 -->
+        <div class="footer">
+            <p>&copy; 2025 惜染外链网盘 | <a href="" target="_blank">mpimg.cn</a></p>
+        </div>
+    </div>
+    
+    <script>
+        // 禁止右键菜单
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            alert('感谢您支持惜染外链网盘！\n官方网站: mpimg.cn');
+        });
+        
+        // 加载赞助数据
+        function loadSponsorData() {
+            const data = JSON.parse(document.getElementById('sponsorData').textContent);
+            const sponsorItems = document.getElementById('sponsorItems');
+            const sponsorList = document.getElementById('sponsorList');
+            
+            // 清空现有内容
+            sponsorItems.innerHTML = '';
+            
+            // 检查是否有数据
+            if (data.sponsors.length === 0) {
+                const noData = document.createElement('div');
+                noData.className = 'no-data';
+                noData.textContent = '暂无赞助记录，成为第一个赞助者吧！';
+                sponsorList.appendChild(noData);
+                return;
+            }
+            
+            // 添加数据项
+            data.sponsors.forEach(sponsor => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <div>${sponsor.name}</div>
+                    <div class="amount">${sponsor.amount}</div>
+                    <div class="time">${sponsor.time}</div>
+                `;
+                sponsorItems.appendChild(li);
+            });
+            
+            // 只有当数据足够多时才启用滚动效果
+            if (data.sponsors.length > 5) {
+                // 克隆项目实现无缝滚动
+                const items = sponsorItems.querySelectorAll('li');
+                items.forEach(item => {
+                    const clone = item.cloneNode(true);
+                    sponsorItems.appendChild(clone);
+                });
+                
+                // 设置滚动动画
+                let position = 0;
+                let scrollSpeed = 0.3;
+                const scrollHeight = sponsorItems.scrollHeight / 2;
+                
+                function scroll() {
+                    position += scrollSpeed;
+                    if (position >= scrollHeight) {
+                        position = 0;
+                    }
+                    sponsorItems.style.transform = `translateY(-${position}px)`;
+                    requestAnimationFrame(scroll);
+                }
+                
+                scroll();
+            }
+        }
+        
+        // 页面加载完成后执行
+        window.addEventListener('load', loadSponsorData);
+    </script>
+</body>
+</html>

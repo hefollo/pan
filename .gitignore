@@ -1,0 +1,52 @@
+# 环境变量文件（可能包含账号、密码、密钥）
+.env
+.env.*
+!.env.example
+
+# Composer 安装的依赖（在 includes 目录执行 composer install 可恢复）
+/includes/vendor/
+
+# 用户上传文件和运行时数据
+/uploads/
+/upload/
+/storage/
+/data/
+/runtime/
+/cache/
+/tmp/
+/temp/
+/logs/
+*.log
+*.pid
+
+# 本地数据库、备份及导出文件
+*.db
+*.sqlite
+*.sqlite3
+*.bak
+*.backup
+*.dump
+*.sql.gz
+
+# PHP / 测试工具缓存
+.phpunit.result.cache
+.php-cs-fixer.cache
+.phpstan.cache/
+.phpunit.cache/
+coverage/
+
+# 编辑器和 IDE 的本地配置
+.idea/
+.vscode/
+*.code-workspace
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*~
+
+# 操作系统生成的文件
+.DS_Store
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
