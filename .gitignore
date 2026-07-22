@@ -34,6 +34,7 @@
 .phpstan.cache/
 .phpunit.cache/
 coverage/
+/tests/
 
 # 编辑器和 IDE 的本地配置
 .idea/
