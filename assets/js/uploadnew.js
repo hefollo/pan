@@ -331,11 +331,14 @@ new Vue({
                 this.updateQueueItem(file, {
                     status: 'success',
                     progress: 100,
-                    msg: result.exists == 1 ? '本站已存在' : '',
+                    msg: result.exists == 1 ? '秒传成功' : '',
                     url: existsLinks.viewUrl,
                     downloadUrl: existsLinks.downloadUrl,
                     viewUrl: existsLinks.viewUrl
                 });
+                if(this.uploadCountLimit > 0){
+                    this.uploadCountRemaining = Math.max(0, this.uploadCountRemaining - 1);
+                }
                 return result;
             }
             this.updateQueueItem(file, {
@@ -383,7 +386,7 @@ new Vue({
                 viewUrl: successLinks.viewUrl
             });
             this.logUploadTiming(result, file);
-            if(this.uploadCountLimit > 0 && result.exists != 1){
+            if(this.uploadCountLimit > 0){
                 this.uploadCountRemaining = Math.max(0, this.uploadCountRemaining - 1);
             }
             if(total === 1) this.totalProgress = 100;
@@ -455,13 +458,13 @@ new Vue({
             return window.location.origin + dir;
         },
         buildFileLinks(result){
-            var hash = result && result.hash ? result.hash : '';
+            var token = result && (result.token || result.hash) ? (result.token || result.hash) : '';
             var type = result && result.type ? result.type : 'file';
             var pwd = this.input.ispwd && this.input.pwd ? this.input.pwd : '';
             var base = this.getSiteBaseUrl();
             return {
-                downloadUrl: base + 'down.php/' + encodeURIComponent(hash) + '.' + encodeURIComponent(type) + (pwd ? '&' + encodeURIComponent(pwd) : ''),
-                viewUrl: base + 'file.php?hash=' + encodeURIComponent(hash) + (pwd ? '&pwd=' + encodeURIComponent(pwd) : '')
+                downloadUrl: base + 'down.php/' + encodeURIComponent(token) + '.' + encodeURIComponent(type) + (pwd ? '&' + encodeURIComponent(pwd) : ''),
+                viewUrl: base + 'file.php?hash=' + encodeURIComponent(token) + (pwd ? '&pwd=' + encodeURIComponent(pwd) : '')
             };
         },
         successfulQueueItems(){

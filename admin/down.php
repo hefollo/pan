@@ -15,19 +15,19 @@ $url = $extension[0];
 }
 
 if(strpos($url,".")){
-    $hash=substr($url,0,strpos($url,"."));
+    $token=substr($url,0,strpos($url,"."));
 }else{
-    $hash=$url;
+    $token=$url;
 }
 
-$row = $DB->getRow("SELECT * FROM `pre_file` WHERE `hash`=:hash limit 1", [':hash'=>$hash]);
+$row = $DB->getRow("SELECT * FROM `pre_file` WHERE `token`=:token limit 1", [':token'=>$token]);
 if(!$row)exit('404 Not Found');
 
-if($stor->exists($hash))
+if($stor->exists($row['hash']))
 {
     $DB->exec("UPDATE `pre_file` SET `lasttime`=NOW(),`count`=`count`+1 WHERE `id`='{$row['id']}'");
-    
-    file_output($hash, $row['type'], $row['size'], $row['name'], false, true);
+
+    file_output($row['hash'], $row['type'], $row['size'], $row['name'], false, true);
 }
 else{
     exit('File Not Found');

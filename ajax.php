@@ -108,12 +108,21 @@ case 'pre_upload':
 			}
 		}
 	}
+	//覆盖上传：把已有记录的内容换成新文件，对外链接（token）保持不变
+	$replace_id = isset($_POST['replace_id']) ? intval($_POST['replace_id']) : 0;
+	$replace_row = null;
+	if($replace_id > 0){
+		$replace_row = $DB->getRow("SELECT * FROM pre_file WHERE id=:id LIMIT 1", [':id'=>$replace_id]);
+		if(!$replace_row)exit('{"code":-1,"msg":"要覆盖的文件不存在"}');
+		if(!can_manage_file($replace_row))exit('{"code":-1,"msg":"无权覆盖该文件"}');
+		if($replace_row['block']==1)exit('{"code":-1,"msg":"文件已被冻结，无法覆盖"}');
+	}
 	$limit_size = get_effective_upload_size_limit();
 	if($limit_size > 0 && $size > $limit_size * 1024 * 1024){
 		exit('{"code":-1,"msg":"上传文件大小限制'.$limit_size.'MB"}');
 	}
 	$upload_limit = get_effective_upload_count_limit();
-	if($upload_limit>0){
+	if(!$replace_row && $upload_limit>0){
 		$thisday = date("Y-m-d 00:00:00");
 		if($islogin2){
 			$ipcount=$DB->getColumn("SELECT count(*) from pre_file WHERE uid='$uid' AND addtime>='".$thisday."'");
@@ -125,8 +134,19 @@ case 'pre_upload':
 		}
 	}
 	$row = $DB->getRow("SELECT * FROM pre_file WHERE hash=:hash", [':hash'=>$hash]);
+	if($row && $replace_row){
+		//覆盖的新内容站内已经有了，物理文件不用再传，直接把记录的内容换掉
+		if(!replace_file_record($replace_row, $name, $hash, $size, $ext, $uid, $clientip))exit('{"code":-1,"msg":"替换失败'.$DB->error().'","error":"database"}');
+		$result = ['code'=>1, 'msg'=>'替换成功，链接保持不变', 'exists'=>1, 'hash'=>$hash, 'token'=>$replace_row['token'], 'name'=>$name, 'size'=>$size, 'type'=>$ext, 'id'=>$replace_row['id']];
+		set_upload_csrf_token($result);
+		exit(json_encode($result));
+	}
 	if($row){
-		$result = ['code'=>1, 'msg'=>'本站已存在该文件', 'exists'=>1, 'hash'=>$hash, 'name'=>$name, 'size'=>$size, 'type'=>$ext, 'id'=>$row['id']];
+		//秒传：跳过物理上传，但要为这次上传建独立记录，上传者才能在“我的文件”里看到并拥有自己的链接
+		$record = create_file_record_from_existing($row, $name, $size, $ext, $hide, $pwd, $uid, $clientip);
+		if(!$record)exit('{"code":-1,"msg":"上传失败'.$DB->error().'","error":"database"}');
+		$_SESSION['fileids'][] = $record['id'];
+		$result = ['code'=>1, 'msg'=>'本站已存在该文件', 'exists'=>1, 'hash'=>$hash, 'token'=>$record['token'], 'name'=>$name, 'size'=>$size, 'type'=>$ext, 'id'=>$record['id']];
 		set_upload_csrf_token($result);
 		exit(json_encode($result));
 	}
@@ -141,7 +161,8 @@ case 'pre_upload':
 			'size' => $size,
 			'ext' => $ext,
 			'hide' => $hide,
-			'pwd' => $pwd
+			'pwd' => $pwd,
+			'replace_id' => $replace_id
 		]);
 		$result = ['code'=>0, 'third'=>true, 'hash'=>$hash, 'url'=>$param['url'], 'post'=>$param['post']];
 		exit(json_encode($result));
@@ -155,7 +176,8 @@ case 'pre_upload':
 			'size' => $size,
 			'ext' => $ext,
 			'hide' => $hide,
-			'pwd' => $pwd
+			'pwd' => $pwd,
+			'replace_id' => $replace_id
 		]);
 		$result = ['code'=>0, 'third'=>false, 'hash'=>$hash, 'chunksize'=>$chunksize, 'chunks'=>$chunks];
 		exit(json_encode($result));
@@ -237,37 +259,44 @@ case 'upload_part':
 	$hide = $upload_state['hide'];
 	$pwd = $upload_state['pwd'];
 
+	//覆盖上传：新内容已经写进存储，把原记录指过去即可，token（对外链接）保持不变
+	$replace_id = isset($upload_state['replace_id']) ? intval($upload_state['replace_id']) : 0;
+	if($replace_id > 0){
+		$replace_row = $DB->getRow("SELECT * FROM pre_file WHERE id=:id LIMIT 1", [':id'=>$replace_id]);
+		if(!$replace_row)exit('{"code":-1,"msg":"要覆盖的文件不存在"}');
+		if(!can_manage_file($replace_row))exit('{"code":-1,"msg":"无权覆盖该文件"}');
+		if($replace_row['block']==1)exit('{"code":-1,"msg":"文件已被冻结，无法覆盖"}');
+		clear_upload_state($hash);
+		if(!replace_file_record($replace_row, $name, $hash, $size, $ext, $uid, $clientip))exit('{"code":-1,"msg":"替换失败'.$DB->error().'","error":"database"}');
+		$result = ['code'=>1, 'msg'=>'替换成功，链接保持不变', 'exists'=>0, 'hash'=>$hash, 'token'=>$replace_row['token'], 'name'=>$name, 'size'=>$size, 'type'=>$ext, 'id'=>$replace_row['id']];
+		$result['debug_timing'] = upload_debug_finish($debug);
+		set_upload_csrf_token($result);
+		exit(json_encode($result));
+	}
 	$row = $DB->getRow("SELECT * FROM pre_file WHERE hash=:hash", [':hash'=>$hash]);
 	upload_debug_step($debug, 'duplicate_query_ms');
 	if($row){
 		clear_upload_state($hash);
-		$result = ['code'=>1, 'msg'=>'本站已存在该文件', 'exists'=>1, 'hash'=>$hash, 'name'=>$name, 'size'=>$size, 'type'=>$ext, 'id'=>$row['id']];
+		//秒传：跳过物理上传，但要为这次上传建独立记录，上传者才能在“我的文件”里看到并拥有自己的链接
+		$record = create_file_record_from_existing($row, $name, $size, $ext, $hide, $pwd, $uid, $clientip);
+		if(!$record)exit('{"code":-1,"msg":"上传失败'.$DB->error().'","error":"database"}');
+		$_SESSION['fileids'][] = $record['id'];
+		$result = ['code'=>1, 'msg'=>'本站已存在该文件', 'exists'=>1, 'hash'=>$hash, 'token'=>$record['token'], 'name'=>$name, 'size'=>$size, 'type'=>$ext, 'id'=>$record['id']];
 		$result['debug_timing'] = upload_debug_finish($debug);
 		set_upload_csrf_token($result);
 		exit(json_encode($result));
 	}
 
-	$sds = $DB->exec("INSERT INTO `pre_file` (`name`,`type`,`size`,`hash`,`addtime`,`ip`,`hide`,`pwd`,`uid`) values (:name,:type,:size,:hash,NOW(),:ip,:hide,:pwd,:uid)", [':name'=>$name, ':type'=>$ext, ':size'=>$size, ':hash'=>$hash, ':ip'=>$clientip, ':hide'=>$hide, ':pwd'=>$pwd, ':uid'=>($uid?$uid:0)]);
-	if(!$sds)exit('{"code":-1,"msg":"上传失败'.$DB->error().'","error":"database"}');
-	$id = $DB->lastInsertId();
+	//统一走 create_file_record，它负责生成访问用的 token，并顺带做图片检测和违规留档
+	$record = create_file_record($name, $hash, $size, $ext, $hide, $pwd, $uid, $clientip);
+	if(!$record)exit('{"code":-1,"msg":"上传失败'.$DB->error().'","error":"database"}');
+	$id = $record['id'];
+	//图片检测/视频审核已并入 create_file_record，这一步的耗时含建记录和审核
 	upload_debug_step($debug, 'db_insert_ms');
 
-	$type_image = explode('|',$conf['type_image']);
-	$type_video = explode('|',$conf['type_video']);
-	if($conf['green_check']>0 && in_array($ext,$type_image)){
-		if(checkImage($hash, $ext)){
-			$DB->exec("UPDATE `pre_file` SET `block`=1 WHERE `id`='{$id}' LIMIT 1");
-		}
-	}
-	upload_debug_step($debug, 'image_review_ms');
-	if($conf['videoreview']==1 && in_array($ext,$type_video)){
-		$DB->exec("UPDATE `pre_file` SET `block`=2 WHERE `id`='{$id}' LIMIT 1");
-	}
-	upload_debug_step($debug, 'video_review_ms');
-	
 	$_SESSION['fileids'][] = $id;
 	clear_upload_state($hash);
-	$result = ['code'=>1, 'msg'=>'文件上传成功！', 'exists'=>0, 'hash'=>$hash, 'name'=>$name, 'size'=>$size, 'type'=>$ext, 'id'=>$id];
+	$result = ['code'=>1, 'msg'=>'文件上传成功！', 'exists'=>0, 'hash'=>$hash, 'token'=>$record['token'], 'name'=>$name, 'size'=>$size, 'type'=>$ext, 'id'=>$id];
 	$result['debug_timing'] = upload_debug_finish($debug);
 	set_upload_csrf_token($result);
 	exit(json_encode($result));
@@ -295,52 +324,61 @@ case 'complete_upload':
 	$hide = $upload_state['hide'];
 	$pwd = $upload_state['pwd'];
 
+	//覆盖上传：新内容已经写进存储，把原记录指过去即可，token（对外链接）保持不变
+	$replace_id = isset($upload_state['replace_id']) ? intval($upload_state['replace_id']) : 0;
+	if($replace_id > 0){
+		$replace_row = $DB->getRow("SELECT * FROM pre_file WHERE id=:id LIMIT 1", [':id'=>$replace_id]);
+		if(!$replace_row)exit('{"code":-1,"msg":"要覆盖的文件不存在"}');
+		if(!can_manage_file($replace_row))exit('{"code":-1,"msg":"无权覆盖该文件"}');
+		if($replace_row['block']==1)exit('{"code":-1,"msg":"文件已被冻结，无法覆盖"}');
+		clear_upload_state($hash);
+		if(!replace_file_record($replace_row, $name, $hash, $size, $ext, $uid, $clientip))exit('{"code":-1,"msg":"替换失败'.$DB->error().'","error":"database"}');
+		$result = ['code'=>1, 'msg'=>'替换成功，链接保持不变', 'exists'=>0, 'hash'=>$hash, 'token'=>$replace_row['token'], 'name'=>$name, 'size'=>$size, 'type'=>$ext, 'id'=>$replace_row['id']];
+		$result['debug_timing'] = upload_debug_finish($debug);
+		set_upload_csrf_token($result);
+		exit(json_encode($result));
+	}
 	$row = $DB->getRow("SELECT * FROM pre_file WHERE hash=:hash", [':hash'=>$hash]);
 	upload_debug_step($debug, 'duplicate_query_ms');
 	if($row){
 		clear_upload_state($hash);
-		$result = ['code'=>1, 'msg'=>'本站已存在该文件', 'exists'=>1, 'hash'=>$hash, 'name'=>$name, 'size'=>$size, 'type'=>$ext, 'id'=>$row['id']];
+		//秒传：跳过物理上传，但要为这次上传建独立记录，上传者才能在“我的文件”里看到并拥有自己的链接
+		$record = create_file_record_from_existing($row, $name, $size, $ext, $hide, $pwd, $uid, $clientip);
+		if(!$record)exit('{"code":-1,"msg":"上传失败'.$DB->error().'","error":"database"}');
+		$_SESSION['fileids'][] = $record['id'];
+		$result = ['code'=>1, 'msg'=>'本站已存在该文件', 'exists'=>1, 'hash'=>$hash, 'token'=>$record['token'], 'name'=>$name, 'size'=>$size, 'type'=>$ext, 'id'=>$record['id']];
 		$result['debug_timing'] = upload_debug_finish($debug);
 		set_upload_csrf_token($result);
 		exit(json_encode($result));
 	}
 
-	$sds = $DB->exec("INSERT INTO `pre_file` (`name`,`type`,`size`,`hash`,`addtime`,`ip`,`hide`,`pwd`,`uid`) values (:name,:type,:size,:hash,NOW(),:ip,:hide,:pwd,:uid)", [':name'=>$name, ':type'=>$ext, ':size'=>$size, ':hash'=>$hash, ':ip'=>$clientip, ':hide'=>$hide, ':pwd'=>$pwd, ':uid'=>($uid?$uid:0)]);
-	if(!$sds)exit('{"code":-1,"msg":"上传失败'.$DB->error().'","error":"database"}');
-	$id = $DB->lastInsertId();
+	//统一走 create_file_record，它负责生成访问用的 token，并顺带做图片检测和违规留档
+	$record = create_file_record($name, $hash, $size, $ext, $hide, $pwd, $uid, $clientip);
+	if(!$record)exit('{"code":-1,"msg":"上传失败'.$DB->error().'","error":"database"}');
+	$id = $record['id'];
+	//图片检测/视频审核已并入 create_file_record，这一步的耗时含建记录和审核
 	upload_debug_step($debug, 'db_insert_ms');
 
-	$type_image = explode('|',$conf['type_image']);
-	$type_video = explode('|',$conf['type_video']);
-	if($conf['green_check']>0 && in_array($ext,$type_image)){
-		if(checkImage($hash, $ext)){
-			$DB->exec("UPDATE `pre_file` SET `block`=1 WHERE `id`='{$id}' LIMIT 1");
-		}
-	}
-	upload_debug_step($debug, 'image_review_ms');
-	if($conf['videoreview']==1 && in_array($ext,$type_video)){
-		$DB->exec("UPDATE `pre_file` SET `block`=2 WHERE `id`='{$id}' LIMIT 1");
-	}
-	upload_debug_step($debug, 'video_review_ms');
-	
 	$_SESSION['fileids'][] = $id;
 	clear_upload_state($hash);
-	$result = ['code'=>1, 'msg'=>'文件上传成功！', 'exists'=>0, 'hash'=>$hash, 'name'=>$name, 'size'=>$size, 'type'=>$ext, 'id'=>$id];
+	$result = ['code'=>1, 'msg'=>'文件上传成功！', 'exists'=>0, 'hash'=>$hash, 'token'=>$record['token'], 'name'=>$name, 'size'=>$size, 'type'=>$ext, 'id'=>$id];
 	$result['debug_timing'] = upload_debug_finish($debug);
 	set_upload_csrf_token($result);
 	exit(json_encode($result));
 break;
 
 case 'deleteFile':
-	$hash = isset($_POST['hash'])?trim($_POST['hash']):exit('{"code":-1,"msg":"no hash"}');
+	//前台传过来的是文件链接上的 token，不是内容哈希，两者都是32位十六进制，用错字段查不到记录
+	$token = isset($_POST['hash'])?trim($_POST['hash']):exit('{"code":-1,"msg":"no hash"}');
 	if(!$_POST['csrf_token'] || $_POST['csrf_token']!=$_SESSION['csrf_token'])exit('{"code":-1,"msg":"CSRF TOKEN ERROR"}');
-	if(!preg_match('/^[0-9a-z]{32}$/i', $hash))exit('{"code":-1,"msg":"hash error"}');
-	$row = $DB->getRow("SELECT * FROM `pre_file` WHERE `hash`=:hash", [':hash'=>$hash]);
+	if(!preg_match('/^[0-9a-z]{32}$/i', $token))exit('{"code":-1,"msg":"hash error"}');
+	$row = $DB->getRow("SELECT * FROM `pre_file` WHERE `token`=:token", [':token'=>$token]);
 	if(!$row)exit('{"code":-1,"msg":"文件不存在"}');
 	if($islogin2 && $row['uid']!=$uid || !$islogin2 && (!isset($_SESSION['fileids']) || !in_array($row['id'], $_SESSION['fileids'])))exit('{"code":-1,"msg":"无权限"}');
 	if($row['block']==1)exit('{"code":-1,"msg":"文件已被冻结，无法删除"}');
 	if(!$islogin2 && strtotime($row['addtime'])<strtotime("-7 days"))exit('{"code":-1,"msg":"无法删除7天前的文件"}');
-	$result = $stor->delete($row['hash']);
+	//同一份内容可能被多条记录共享，只有最后一条引用被删掉时才清理物理文件
+	delete_file_blob_if_orphaned($row['hash'], $row['id']);
 	$sql = "DELETE FROM pre_file WHERE id=:id";
 	if($DB->exec($sql, [':id'=>$row['id']]))exit('{"code":0,"msg":"删除文件成功！"}');
 	else exit('{"code":-1,"msg":"删除文件失败['.$DB->error().']"}');
@@ -365,15 +403,20 @@ case 'saveFileContent':
 	}
 	if(!is_utf8_editable_content($content))exit('{"code":-1,"msg":"仅支持编辑 UTF-8 文本文件"}');
 
-	$hash = $row['hash'];
+	//内容按新哈希另存：同一份内容可能被多条记录共享（秒传），就地覆盖旧哈希会把别人的文件一起改掉
+	$old_hash = $row['hash'];
+	$hash = md5($content);
 	if(!save_storage_content($hash, $content, $row['type'])){
 		exit(json_encode(['code'=>-1, 'msg'=>'保存文件内容失败', 'errmsg'=>$stor->errmsg()], JSON_UNESCAPED_UNICODE));
 	}
 
-	$sql = "UPDATE `pre_file` SET `size`=:size,`lasttime`=NOW() WHERE `id`=:id";
-	if(!$DB->exec($sql, [':size'=>$size, ':id'=>$row['id']])){
+	$sql = "UPDATE `pre_file` SET `size`=:size,`hash`=:hash,`lasttime`=NOW() WHERE `id`=:id";
+	if(!$DB->exec($sql, [':size'=>$size, ':hash'=>$hash, ':id'=>$row['id']])){
 		exit('{"code":-1,"msg":"保存数据库失败['.$DB->error().']"}');
 	}
+	if($old_hash !== $hash)delete_file_blob_if_orphaned($old_hash, $row['id']);
+	//在线编辑同样是内容替换，一并纳入后台“覆盖记录”审计
+	add_replace_log($row, ['name'=>$row['name'], 'type'=>$row['type'], 'size'=>$size, 'hash'=>$hash], $uid, $clientip, 'edit');
 
 	exit(json_encode(['code'=>0, 'msg'=>'保存成功', 'hash'=>$hash, 'size'=>size_format($size)], JSON_UNESCAPED_UNICODE));
 break;

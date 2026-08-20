@@ -42,6 +42,12 @@ if($islogin==1){}else exit("<script language='javascript'>window.location.href='
 						</div>
 					</div>
 					<div class="form-group">
+						<label class="col-sm-2 control-label no-padding-right">所属用户ID</label>
+						<div class="col-sm-10">
+							<input type="text" class="form-control" name="uid" id="uid" placeholder="0 表示游客上传，填具体UID可指定给该用户">
+						</div>
+					</div>
+					<div class="form-group">
 						<label class="col-sm-2 control-label no-padding-right">是否隐藏</label>
 						<div class="col-sm-10">
 							<select id="hide" name="hide" class="form-control"><option value="0">0_否</option><option value="1">1_是</option></select>
@@ -100,6 +106,7 @@ if($islogin==1){}else exit("<script language='javascript'>window.location.href='
 	  	</table>
     </div>
   </div>
+<link rel="stylesheet" href="https://s4.zstatic.net/ajax/libs/layer/3.1.1/theme/default/layer.min.css">
 <script src="https://s4.zstatic.net/ajax/libs/layer/3.1.1/layer.min.js"></script>
 <script src="https://s4.zstatic.net/ajax/libs/bootstrap-table/1.21.4/bootstrap-table.min.js"></script>
 <script src="https://s4.zstatic.net/ajax/libs/bootstrap-table/1.21.4/extensions/page-jump-to/bootstrap-table-page-jump-to.min.js"></script>
@@ -264,6 +271,7 @@ function editframe(id){
 				$("#form-store #type").val(data.type);
 				$("#form-store #size").val(data.size2+" ("+data.size+" 字节)");
 				$("#form-store #hash").val(data.hash);
+				$("#form-store #uid").val(data.uid);
 				$("#form-store #hide").val(data.hide);
 				if(data.pwd==null||data.pwd==""){
 					$("#form-store #ispwd").val(0);
@@ -286,6 +294,9 @@ function editframe(id){
 function save(){
 	if($("#name").val()==''){
 		layer.alert('请确保各项不能为空！');return false;
+	}
+	if($("#uid").val()!=='' && (!/^\d+$/.test($("#uid").val()))){
+		layer.alert('用户ID只能填写非负整数，0表示游客上传');return false;
 	}
 	var ii = layer.load(2, {shade:[0.1,'#fff']});
 	$.ajax({

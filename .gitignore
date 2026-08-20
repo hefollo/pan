@@ -51,3 +51,9 @@ coverage/
 Thumbs.db
 Desktop.ini
 $RECYCLE.BIN/
+
+# 打包产物（上传替换包等）
+*.zip
+
+# 赞助页收款码，属于本地私有素材，不入库
+/includes/sponsor/images/

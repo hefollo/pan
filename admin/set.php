@@ -45,6 +45,14 @@ if($mod=='site'){
 	  <div class="col-sm-10"><textarea class="form-control" name="gg_file" rows="3" placeholder="不填写则不显示"><?php echo htmlspecialchars($conf['gg_file'])?></textarea></div>
 	</div><br/>
 	<div class="form-group">
+	  <label class="col-sm-2 control-label">违规文件公示</label>
+	  <div class="col-sm-10"><select class="form-control" name="violation_open" default="<?php echo isset($conf['violation_open'])?$conf['violation_open']:1?>"><option value="0">关闭</option><option value="1">开启</option></select><span class="help-block">开启后前台显示“违规公示”页，公示内容在<a href="./set_violation.php">违规公示管理</a>里维护</span></div>
+	</div><br/>
+	<div class="form-group">
+	  <label class="col-sm-2 control-label">公示页说明</label>
+	  <div class="col-sm-10"><textarea class="form-control" name="violation_notice" rows="3" placeholder="显示在违规公示页顶部的说明文字"><?php echo htmlspecialchars(isset($conf['violation_notice'])?$conf['violation_notice']:'')?></textarea></div>
+	</div><br/>
+	<div class="form-group">
 	  <label class="col-sm-2 control-label">统计代码</label>
 	  <div class="col-sm-10"><textarea class="form-control" name="tongji" rows="3" placeholder="不填写则不显示统计代码"><?php echo htmlspecialchars($conf['tongji'])?></textarea></div>
 	</div><br/>
@@ -62,7 +70,7 @@ if($mod=='site'){
 <?php
 }elseif($mod=='appearance'){
 $site_theme = isset($conf['site_theme']) ? $conf['site_theme'] : 'cloud';
-if(!in_array($site_theme, ['cloud', 'night', 'neon', 'aurora', 'onefour'], true)){
+if(!in_array($site_theme, ['cloud', 'night', 'neon', 'aurora', 'onefour', 'celadon', 'lilac', 'paper', 'blush', 'sky', 'mint', 'sunset', 'abyss', 'emerald', 'sakura'], true)){
 	$site_theme = 'cloud';
 }
 ?>
@@ -125,6 +133,116 @@ if(!in_array($site_theme, ['cloud', 'night', 'neon', 'aurora', 'onefour'], true)
 	    </span>
 	    <strong>暗黑科技后台风</strong>
 	    <small>深色点阵背景、半透明暗色面板、圆角按钮与标签，整体偏科技感、数据管理感，适合文件列表、管理后台、资源站页面。</small>
+	  </label>
+	  <label class="appearance-card <?php echo $site_theme === 'celadon' ? 'active' : null;?>">
+	    <input type="radio" name="site_theme" value="celadon" <?php echo $site_theme === 'celadon' ? 'checked' : null;?>>
+	    <span class="appearance-preview appearance-preview-celadon">
+	      <span class="appearance-nav"></span>
+	      <span class="appearance-panel">
+	        <span></span><span></span><span></span>
+	      </span>
+	    </span>
+	    <strong>青瓷微澜</strong>
+	    <small>青瓷色同心波纹、留白通透，冷静耐看，适合作品集、图床和长时间浏览的列表页。</small>
+	  </label>
+	  <label class="appearance-card <?php echo $site_theme === 'lilac' ? 'active' : null;?>">
+	    <input type="radio" name="site_theme" value="lilac" <?php echo $site_theme === 'lilac' ? 'checked' : null;?>>
+	    <span class="appearance-preview appearance-preview-lilac">
+	      <span class="appearance-nav"></span>
+	      <span class="appearance-panel">
+	        <span></span><span></span><span></span>
+	      </span>
+	    </span>
+	    <strong>淡紫点阵</strong>
+	    <small>薰衣草底色配细密点阵，柔和不刺眼，适合内容站、文档站和图片分享。</small>
+	  </label>
+	  <label class="appearance-card <?php echo $site_theme === 'paper' ? 'active' : null;?>">
+	    <input type="radio" name="site_theme" value="paper" <?php echo $site_theme === 'paper' ? 'checked' : null;?>>
+	    <span class="appearance-preview appearance-preview-paper">
+	      <span class="appearance-nav"></span>
+	      <span class="appearance-panel">
+	        <span></span><span></span><span></span>
+	      </span>
+	    </span>
+	    <strong>米白纸张</strong>
+	    <small>极简纸张质感，横线纸纹配墨黑标题，几乎无色相干扰，适合以文件名和文字为主的列表。</small>
+	  </label>
+	  <label class="appearance-card <?php echo $site_theme === 'blush' ? 'active' : null;?>">
+	    <input type="radio" name="site_theme" value="blush" <?php echo $site_theme === 'blush' ? 'checked' : null;?>>
+	    <span class="appearance-preview appearance-preview-blush">
+	      <span class="appearance-nav"></span>
+	      <span class="appearance-panel">
+	        <span></span><span></span><span></span>
+	      </span>
+	    </span>
+	    <strong>淡粉暖调</strong>
+	    <small>浅粉底色配玫瑰色高亮，温和轻盈，适合相册、素材站和面向大众的分享页。</small>
+	  </label>
+	  <label class="appearance-card <?php echo $site_theme === 'sky' ? 'active' : null;?>">
+	    <input type="radio" name="site_theme" value="sky" <?php echo $site_theme === 'sky' ? 'checked' : null;?>>
+	    <span class="appearance-preview appearance-preview-sky">
+	      <span class="appearance-nav"></span>
+	      <span class="appearance-panel">
+	        <span></span><span></span><span></span>
+	      </span>
+	    </span>
+	    <strong>天蓝细纹</strong>
+	    <small>青蓝色调配斜向细纹，比默认的蓝白更冷更透，适合工具站和资源下载页。</small>
+	  </label>
+	  <label class="appearance-card <?php echo $site_theme === 'mint' ? 'active' : null;?>">
+	    <input type="radio" name="site_theme" value="mint" <?php echo $site_theme === 'mint' ? 'checked' : null;?>>
+	    <span class="appearance-preview appearance-preview-mint">
+	      <span class="appearance-nav"></span>
+	      <span class="appearance-panel">
+	        <span></span><span></span><span></span>
+	      </span>
+	    </span>
+	    <strong>薄荷蜂巢</strong>
+	    <small>薄荷绿蜂巢暗纹，清爽有生气，适合图床首页和面向年轻用户的站点。</small>
+	  </label>
+	  <label class="appearance-card <?php echo $site_theme === 'sunset' ? 'active' : null;?>">
+	    <input type="radio" name="site_theme" value="sunset" <?php echo $site_theme === 'sunset' ? 'checked' : null;?>>
+	    <span class="appearance-preview appearance-preview-sunset">
+	      <span class="appearance-nav"></span>
+	      <span class="appearance-panel">
+	        <span></span><span></span><span></span>
+	      </span>
+	    </span>
+	    <strong>落日熔金</strong>
+	    <small>珊瑚橙到品红的落日渐变，叠磨砂玻璃卡片与暖色辉光，浓烈张扬，适合首页和活动页。</small>
+	  </label>
+	  <label class="appearance-card <?php echo $site_theme === 'abyss' ? 'active' : null;?>">
+	    <input type="radio" name="site_theme" value="abyss" <?php echo $site_theme === 'abyss' ? 'checked' : null;?>>
+	    <span class="appearance-preview appearance-preview-abyss">
+	      <span class="appearance-nav"></span>
+	      <span class="appearance-panel">
+	        <span></span><span></span><span></span>
+	      </span>
+	    </span>
+	    <strong>深海玻璃</strong>
+	    <small>深海蓝绿渐变配青色辉光，通透安静的磨砂玻璃，适合长时间浏览的资源站。</small>
+	  </label>
+	  <label class="appearance-card <?php echo $site_theme === 'emerald' ? 'active' : null;?>">
+	    <input type="radio" name="site_theme" value="emerald" <?php echo $site_theme === 'emerald' ? 'checked' : null;?>>
+	    <span class="appearance-preview appearance-preview-emerald">
+	      <span class="appearance-nav"></span>
+	      <span class="appearance-panel">
+	        <span></span><span></span><span></span>
+	      </span>
+	    </span>
+	    <strong>翡翠流光</strong>
+	    <small>翡翠绿到松石色的流光渐变，磨砂玻璃配柔亮描边，清透有质感，适合作品集和图床。</small>
+	  </label>
+	  <label class="appearance-card <?php echo $site_theme === 'sakura' ? 'active' : null;?>">
+	    <input type="radio" name="site_theme" value="sakura" <?php echo $site_theme === 'sakura' ? 'checked' : null;?>>
+	    <span class="appearance-preview appearance-preview-sakura">
+	      <span class="appearance-nav"></span>
+	      <span class="appearance-panel">
+	        <span></span><span></span><span></span>
+	      </span>
+	    </span>
+	    <strong>樱雾玻璃</strong>
+	    <small>粉紫到天青的浅色雾面渐变，白色磨砂卡片，轻盈明亮，适合相册和展示型页面。</small>
 	  </label>
 	</div>
 	<div class="form-group appearance-submit">
@@ -521,6 +639,7 @@ $("select[name='green_check_terrorism']").change(function(){
 ?>
     </div>
   </div>
+<link rel="stylesheet" href="https://s4.zstatic.net/ajax/libs/layer/2.3/skin/layer.css">
 <script src="https://s4.zstatic.net/ajax/libs/layer/2.3/layer.js"></script>
 <script>
 var items = $("select[default]");

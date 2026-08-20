@@ -288,6 +288,7 @@ if($islogin==1){}else exit("<script language='javascript'>window.location.href='
 </div>
     </div>
   </div>
+<link rel="stylesheet" href="https://s4.zstatic.net/ajax/libs/layer/2.3/skin/layer.css">
 <script src="https://s4.zstatic.net/ajax/libs/layer/2.3/layer.js"></script>
 <script>
 var items = $("select[default]");

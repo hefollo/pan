@@ -51,10 +51,10 @@ case 'fileList':
 		if(!empty($row['pwd'])){
 			$pwd_ext2='&pwd='.$row['pwd'];
 		}
-		$row['fileurl'] = './down.php/'.$row['hash'].'.'.($row['type']?$row['type']:'file');
-		$row['viewurl'] = './view.php/'.$row['hash'].'.'.($row['type']?$row['type']:'file');
+		$row['fileurl'] = './down.php/'.$row['token'].'.'.($row['type']?$row['type']:'file');
+		$row['viewurl'] = './view.php/'.$row['token'].'.'.($row['type']?$row['type']:'file');
 		$row['thumburl'] = $row['viewurl'].'?thumb=1';
-		$row['pageurl'] = '../file.php?hash='.$row['hash'].$pwd_ext2;
+		$row['pageurl'] = '../file.php?hash='.$row['token'].$pwd_ext2;
 
 		$list2[] = $row;
 	}
@@ -64,8 +64,15 @@ break;
 case 'setBlock':
 	$id=intval($_GET['id']);
 	$status=intval($_GET['status']);
+	$row=$DB->getRow("select * from pre_file where id='$id' limit 1");
 	$sql = "UPDATE pre_file SET `block`='$status' WHERE id='$id'";
-	if($DB->exec($sql)!==false)exit('{"code":0,"msg":"修改成功！"}');
+	if($DB->exec($sql)!==false){
+		if($row){
+			if($status == 1)add_violation_log($row);
+			elseif($status == 0)revoke_violation_log($id);
+		}
+		exit('{"code":0,"msg":"修改成功！"}');
+	}
 	else exit('{"code":-1,"msg":"修改失败['.$DB->error().']"}');
 break;
 case 'delFile':
@@ -73,7 +80,9 @@ case 'delFile':
 	$row=$DB->getRow("select * from pre_file where id='$id' limit 1");
 	if(!$row)
 		exit('{"code":-1,"msg":"当前文件不存在！"}');
-	$result = $stor->delete($row['hash']);
+	//只有已封禁的文件才留公示，正常文件的日常清理不该被公示出去
+	if($row['block'] == 1)add_violation_log($row);
+	delete_file_blob_if_orphaned($row['hash'], $row['id']);
 	$sql = "DELETE FROM pre_file WHERE id='$id'";
 	if($DB->exec($sql))exit('{"code":0,"msg":"删除文件成功！"}');
 	else exit('{"code":-1,"msg":"删除文件失败['.$DB->error().']"}');
@@ -88,13 +97,20 @@ case 'operation':
 	else $opname = '删除';
 	foreach($checkbox as $id){
 		if($status == 0){
-			$hash=$DB->getColumn("select hash from pre_file where id='$id' limit 1");
-			$stor->delete($hash);
+			$row=$DB->getRow("select * from pre_file where id='$id' limit 1");
+			if($row){
+				//只有已封禁的文件才留公示，正常文件的日常清理不该被公示出去
+				if($row['block'] == 1)add_violation_log($row);
+				delete_file_blob_if_orphaned($row['hash'], intval($id));
+			}
 			$DB->exec("DELETE FROM pre_file WHERE id='$id'");
 		}elseif($status == 1){
+			$row=$DB->getRow("select * from pre_file where id='$id' limit 1");
 			$DB->exec("UPDATE pre_file SET `block`=1 WHERE id='$id'");
+			if($row)add_violation_log($row);
 		}elseif($status == 2){
 			$DB->exec("UPDATE pre_file SET `block`=0 WHERE id='$id'");
+			revoke_violation_log($id);
 		}
 		$i++;
 	}
@@ -123,7 +139,17 @@ case 'saveFileInfo':
         }
 	}
 	$data = [':id'=>$id, ':name'=>$name, ':type'=>$type, ':hide'=>$hide, ':pwd'=>$pwd];
-	$sql = "UPDATE `pre_file` SET `name`=:name,`type`=:type,`hide`=:hide,`pwd`=:pwd WHERE `id`=:id";
+	$sql = "UPDATE `pre_file` SET `name`=:name,`type`=:type,`hide`=:hide,`pwd`=:pwd";
+	if(isset($_POST['uid']) && $_POST['uid']!==''){
+		if(!preg_match('/^\d+$/', $_POST['uid']))exit('{"code":-1,"msg":"用户ID只能填写非负整数"}');
+		$uid = intval($_POST['uid']);
+		if($uid > 0 && !$DB->getColumn("SELECT uid FROM pre_user WHERE uid=:uid", [':uid'=>$uid])){
+			exit('{"code":-1,"msg":"指定的用户ID不存在"}');
+		}
+		$sql .= ",`uid`=:uid";
+		$data[':uid'] = $uid;
+	}
+	$sql .= " WHERE `id`=:id";
 	if($DB->exec($sql, $data)!==false)exit('{"code":0,"msg":"修改文件信息成功！"}');
 	else exit('{"code":-1,"msg":"修改文件信息失败['.$DB->error().']"}');
 break;

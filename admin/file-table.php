@@ -72,8 +72,8 @@ while($res = $rs->fetch())
 		$pwd_ext1='&'.$res['pwd'];
 		$pwd_ext2='&pwd='.$res['pwd'];
 	}
-	$fileurl = './down.php/'.$res['hash'].'.'.($res['type']?$res['type']:'file').$pwd_ext1;
-	$viewurl = '../file.php?hash='.$res['hash'].$pwd_ext2;
+	$fileurl = './down.php/'.$res['token'].'.'.($res['type']?$res['type']:'file').$pwd_ext1;
+	$viewurl = '../file.php?hash='.$res['token'].$pwd_ext2;
 echo '<tr><td><input type="checkbox" name="checkbox[]" id="list1" value="'.$res['id'].'" onClick="unselectall1()"><b>'.$res['id'].'</b></td><td><a href="'.$fileurl.'" title="点击下载"><i class="fa '.type_to_icon($res['type']).' fa-fw"></i>'.$res['name'].'</a>'.(is_view($res['type'])?' [<a href="javascript:showfile('.$res['id'].')">预览</a>]':null).'</td><td>'.size_format($res['size']).'</td><td><font color="blue">'.($res['type']?$res['type']:'未知').'</font></td><td>'.$res['addtime'].'<br/>'.$res['lasttime'].'</td><td><a href="https://m.ip138.com/iplookup.asp?ip='.$res['ip'].'" target="_blank" rel="noreferrer">'.$res['ip'].'</a><br/><b>'.$res['count'].'</b></td><td>'.display_status($res['block'], $res['id']).'</td><td><a href="javascript:editframe('.$res['id'].')" class="btn btn-xs btn-info">编辑</a>&nbsp;<a href="'.$viewurl.'" class="btn btn-xs btn-warning" target="_blank">查看</a>&nbsp;<a href="javascript:delFile('.$res['id'].')" class="btn btn-xs btn-danger">删除</a></td></tr>';
 }
 ?>

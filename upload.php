@@ -202,6 +202,7 @@ body.theme-aurora .upload-link-btn:hover{border-color:#fff;background:rgba(255,2
 </div>
 <?php include SYSTEM_ROOT.'footer.php';?>
 <script src="https://s4.zstatic.net/ajax/libs/vue/2.6.14/vue.min.js"></script>
+<link rel="stylesheet" href="https://s4.zstatic.net/ajax/libs/layer/3.1.1/theme/default/layer.css">
 <script src="https://s4.zstatic.net/ajax/libs/layer/3.1.1/layer.js"></script>
 <script src="https://s4.zstatic.net/ajax/libs/spark-md5/3.0.2/spark-md5.min.js"></script>
 <script>

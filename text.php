@@ -10,7 +10,7 @@ if(!preg_match('/^[0-9a-z]{32}$/i', $hash)){
 	exit('404 Not Found');
 }
 
-$row = $DB->getRow("SELECT * FROM `pre_file` WHERE `hash`=:hash limit 1", [':hash'=>$hash]);
+$row = $DB->getRow("SELECT * FROM `pre_file` WHERE `token`=:token limit 1", [':token'=>$hash]);
 if(!$row)exit('404 Not Found');
 if($row['block']>=1)exit('File is blocked!');
 if(!is_editable_file_type($row['type']))exit('This file type cannot be viewed as text.');

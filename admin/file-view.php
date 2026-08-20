@@ -10,7 +10,7 @@ $row = $DB->getRow("SELECT * FROM pre_file WHERE id=:id", [':id'=>$id]);
 if(!$row)exit();
 $name = $row['name'];
 $type = $row['type'];
-$viewurl_all = $siteurl.'view.php/'.$row['hash'].'.'.$type;
+$viewurl_all = $siteurl.'view.php/'.$row['token'].'.'.$type;
 
 $view_type = get_view_type($type);
 

@@ -1,7 +1,7 @@
 <?php
 @header('Content-Type: text/html; charset=UTF-8');
 $site_theme = isset($conf['site_theme']) ? $conf['site_theme'] : 'cloud';
-if(!in_array($site_theme, ['cloud', 'night', 'neon', 'aurora', 'onefour'], true)){
+if(!in_array($site_theme, ['cloud', 'night', 'neon', 'aurora', 'onefour', 'celadon', 'lilac', 'paper', 'blush', 'sky', 'mint', 'sunset', 'abyss', 'emerald', 'sakura'], true)){
   $site_theme = 'cloud';
 }
 $admin_body_class = !empty($islogin) ? 'admin-body' : 'admin-login-body';
@@ -46,10 +46,13 @@ $admin_body_class .= ' admin-theme-' . $site_theme;
 		      <li class="<?php echo checkIfActive('file')?>">
             <a href="./file.php"><i class="fa fa-folder-open"></i> 文件管理</a>
           </li>
+          <li class="<?php echo checkIfActive('replace')?>">
+            <a href="./replace.php"><i class="fa fa-refresh"></i> 覆盖记录</a>
+          </li>
           <li class="<?php echo checkIfActive('user')?>">
             <a href="./user.php"><i class="fa fa-users"></i> 用户管理</a>
           </li>
-		      <li class="<?php echo checkIfActive('set,set_stor,set_script')?>">
+		      <li class="<?php echo checkIfActive('set,set_stor,set_script,set_sponsor,set_violation')?>">
             <a href="#" class="dropdown-toggle" data-toggle="dropdown"><i class="fa fa-cog"></i> 系统设置<b class="caret"></b></a>
             <ul class="dropdown-menu">
               <li><a href="./set.php?mod=site">网站信息设置</a></li>
@@ -62,6 +65,8 @@ $admin_body_class .= ' admin-theme-' . $site_theme;
               <li><a href="./set.php?mod=api">上传API设置</a></li>
               <li><a href="./set.php?mod=iptype">用户IP地址设置</a></li>
               <li><a href="./set.php?mod=account">管理账号设置</a></li>
+              <li><a href="./set_violation.php">违规公示管理</a></li>
+              <li><a href="./set_sponsor.php">赞助名单管理</a></li>
             </ul>
           </li>
           <li><a href="./login.php?logout=1" onclick="return confirm('是否确定退出登录？')"><i class="fa fa-sign-out"></i> 退出登录</a></li>

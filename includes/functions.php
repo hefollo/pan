@@ -720,6 +720,188 @@ function writeLog($text) {
 	file_put_contents ( SYSTEM_ROOT."log.txt", date ( "Y-m-d H:i:s" ) . "  " . $text . "\r\n", FILE_APPEND );
 }
 
+function generate_file_token(){
+	global $DB;
+	do{
+		$token = bin2hex(random_bytes(16));
+	}while($DB->getColumn("SELECT id FROM pre_file WHERE token=:token", [':token'=>$token]));
+	return $token;
+}
+
+//仅当没有其它记录仍引用该hash对应的物理文件时才删除，避免误删被去重共享的存储文件
+function delete_file_blob_if_orphaned($hash, $exclude_id = null){
+	global $DB, $stor;
+	$params = [':hash'=>$hash];
+	$sql = "SELECT id FROM pre_file WHERE hash=:hash";
+	if($exclude_id){
+		$sql .= " AND id!=:id";
+		$params[':id'] = $exclude_id;
+	}
+	if($DB->getColumn($sql." LIMIT 1", $params)){
+		return;
+	}
+	$stor->delete($hash);
+}
+
+//覆盖上传审计：记下这次覆盖的前后内容，管理员在后台“覆盖记录”里复查有没有换成违规内容
+function add_replace_log($old, $new, $uid, $ip, $source = 'replace'){
+	global $DB;
+	if(!is_array($old) || empty($old['id']))return false;
+	$data = [
+		':file_id' => intval($old['id']),
+		':token' => isset($old['token']) ? $old['token'] : '',
+		':old_name' => isset($old['name']) ? $old['name'] : '',
+		':old_type' => isset($old['type']) ? $old['type'] : '',
+		':old_size' => isset($old['size']) ? intval($old['size']) : 0,
+		':old_hash' => isset($old['hash']) ? $old['hash'] : '',
+		':new_name' => isset($new['name']) ? $new['name'] : '',
+		':new_type' => isset($new['type']) ? $new['type'] : '',
+		':new_size' => isset($new['size']) ? intval($new['size']) : 0,
+		':new_hash' => isset($new['hash']) ? $new['hash'] : '',
+		':uid' => intval($uid),
+		':ip' => $ip,
+		':source' => $source,
+	];
+	return $DB->exec("INSERT INTO `pre_replace_log` (`file_id`,`token`,`old_name`,`old_type`,`old_size`,`old_hash`,`new_name`,`new_type`,`new_size`,`new_hash`,`uid`,`ip`,`source`,`checked`,`addtime`) VALUES (:file_id,:token,:old_name,:old_type,:old_size,:old_hash,:new_name,:new_type,:new_size,:new_hash,:uid,:ip,:source,0,NOW())", $data) !== false;
+}
+
+//覆盖上传：把已有记录的内容换成新文件，token（也就是对外链接）保持不变。
+//换了内容必须重新过审并留审计记录，否则可以先传一个正常文件、事后覆盖成违规内容绕过检测。
+function replace_file_record($old, $name, $hash, $size, $ext, $uid, $ip, $source = 'replace'){
+	global $DB, $conf;
+	if(!is_array($old) || empty($old['id']))return false;
+	$id = intval($old['id']);
+	$old_hash = isset($old['hash']) ? $old['hash'] : '';
+	$ok = $DB->exec("UPDATE `pre_file` SET `name`=:name,`type`=:type,`size`=:size,`hash`=:hash,`block`=0,`lasttime`=NOW() WHERE `id`=:id LIMIT 1", [':name'=>$name, ':type'=>$ext, ':size'=>$size, ':hash'=>$hash, ':id'=>$id]);
+	if($ok === false)return false;
+
+	//旧内容如果没有别的记录再引用，把物理文件清掉，别留垃圾
+	if($old_hash !== '' && $old_hash !== $hash)delete_file_blob_if_orphaned($old_hash, $id);
+
+	$type_image = explode('|',$conf['type_image']);
+	$type_video = explode('|',$conf['type_video']);
+	if($conf['green_check']>0 && in_array($ext,$type_image)){
+		if(checkImage($hash, $ext)){
+			$DB->exec("UPDATE `pre_file` SET `block`=1 WHERE `id`=:id LIMIT 1", [':id'=>$id]);
+			add_violation_log(['id'=>$id, 'name'=>$name, 'type'=>$ext, 'size'=>$size, 'hash'=>$hash, 'ip'=>$ip, 'uid'=>$uid], 'green', '覆盖上传后图片自动检测命中', 0);
+		}
+	}
+	if($conf['videoreview']==1 && in_array($ext,$type_video)){
+		$DB->exec("UPDATE `pre_file` SET `block`=2 WHERE `id`=:id LIMIT 1", [':id'=>$id]);
+	}
+
+	add_replace_log($old, ['name'=>$name, 'type'=>$ext, 'size'=>$size, 'hash'=>$hash], $uid, $ip, $source);
+	return true;
+}
+
+//秒传：内容已经在存储里了，物理文件不用再传，但仍要为这次上传建一条独立记录，
+//否则上传者在“我的文件”里看不到，文件只挂在最早那个上传者名下。
+//另外已被封禁的内容要继承封禁状态，不然换个人重传一遍就能绕过封禁。
+function create_file_record_from_existing($existing, $name, $size, $ext, $hide, $pwd, $uid, $ip){
+	global $DB;
+	$record = create_file_record($name, $existing['hash'], $size, $ext, $hide, $pwd, $uid, $ip, false);
+	if(!$record)return false;
+	$block = isset($existing['block']) ? intval($existing['block']) : 0;
+	if($block >= 1){
+		$DB->exec("UPDATE `pre_file` SET `block`=:block WHERE `id`=:id LIMIT 1", [':block'=>$block, ':id'=>$record['id']]);
+	}
+	return $record;
+}
+
+//违规公示留档：文件被封禁时记一份快照，原文件记录被删掉后公示仍然保留
+function add_violation_log($file, $source = 'admin', $remark = null, $is_show = 1){
+	global $DB;
+	if(!is_array($file) || empty($file['id']))return false;
+	$data = [
+		':file_id' => intval($file['id']),
+		':name' => isset($file['name']) ? $file['name'] : '',
+		':type' => isset($file['type']) ? $file['type'] : '',
+		':size' => isset($file['size']) ? intval($file['size']) : 0,
+		':hash' => isset($file['hash']) ? $file['hash'] : '',
+		':ip' => isset($file['ip']) ? $file['ip'] : '',
+		':uid' => isset($file['uid']) ? intval($file['uid']) : 0,
+		':source' => $source,
+		':remark' => $remark,
+		':is_show' => intval($is_show) == 1 ? 1 : 0,
+	];
+	//同一个文件重复封禁时只更新原记录，公示页不会出现重复条目
+	$exists = $DB->getColumn("SELECT `id` FROM pre_violation WHERE `file_id`=:file_id LIMIT 1", [':file_id'=>$data[':file_id']]);
+	if($exists){
+		unset($data[':file_id']);
+		$data[':id'] = $exists;
+		return $DB->exec("UPDATE `pre_violation` SET `name`=:name,`type`=:type,`size`=:size,`hash`=:hash,`ip`=:ip,`uid`=:uid,`source`=:source,`remark`=:remark,`is_show`=:is_show WHERE `id`=:id", $data) !== false;
+	}
+	return $DB->exec("INSERT INTO `pre_violation` (`file_id`,`name`,`type`,`size`,`hash`,`ip`,`uid`,`source`,`remark`,`is_show`,`addtime`) VALUES (:file_id,:name,:type,:size,:hash,:ip,:uid,:source,:remark,:is_show,NOW())", $data) !== false;
+}
+
+//文件解封说明是误判，撤下公示但保留记录，方便后台复查
+function revoke_violation_log($file_id){
+	global $DB;
+	$file_id = intval($file_id);
+	if(!$file_id)return false;
+	return $DB->exec("UPDATE `pre_violation` SET `is_show`=0 WHERE `file_id`=:file_id", [':file_id'=>$file_id]) !== false;
+}
+
+//公示页脱敏：文件名只保留首尾若干字符和扩展名
+function violation_mask_name($name){
+	$name = (string)$name;
+	if($name === '')return '未命名文件';
+	$ext = '';
+	$pos = strrpos($name, '.');
+	if($pos !== false && $pos > 0){
+		$ext = substr($name, $pos);
+		$name = substr($name, 0, $pos);
+	}
+	$len = mb_strlen($name, 'UTF-8');
+	if($len <= 1){
+		$base = '*';
+	}elseif($len <= 4){
+		$base = mb_substr($name, 0, 1, 'UTF-8').'***';
+	}else{
+		$base = mb_substr($name, 0, 2, 'UTF-8').'***'.mb_substr($name, -2, 2, 'UTF-8');
+	}
+	return $base.$ext;
+}
+
+//公示页脱敏：IP只保留前两段
+function violation_mask_ip($ip){
+	$ip = (string)$ip;
+	if($ip === '')return '未知';
+	if(strpos($ip, ':') !== false){
+		$parts = explode(':', $ip);
+		return $parts[0].':'.(isset($parts[1]) ? $parts[1] : '').':*:*';
+	}
+	$parts = explode('.', $ip);
+	if(count($parts) == 4)return $parts[0].'.'.$parts[1].'.*.*';
+	return '***';
+}
+
+//插入一条新的文件记录（每次上传都会生成独立的记录和链接，即使内容与已有文件相同也不会互相覆盖）
+//$review 传 false 用于秒传：内容此前已经审核过，审核状态由调用方继承，不必再花一次云端检测的钱和时间
+function create_file_record($name, $hash, $size, $ext, $hide, $pwd, $uid, $ip, $review = true){
+	global $DB, $conf;
+	$token = generate_file_token();
+	$sds = $DB->exec("INSERT INTO `pre_file` (`name`,`type`,`size`,`hash`,`token`,`addtime`,`ip`,`hide`,`pwd`,`uid`) values (:name,:type,:size,:hash,:token,NOW(),:ip,:hide,:pwd,:uid)", [':name'=>$name, ':type'=>$ext, ':size'=>$size, ':hash'=>$hash, ':token'=>$token, ':ip'=>$ip, ':hide'=>$hide, ':pwd'=>$pwd, ':uid'=>($uid?$uid:0)]);
+	if(!$sds)return false;
+	$id = $DB->lastInsertId();
+	if(!$review)return ['id'=>$id, 'token'=>$token];
+
+	$type_image = explode('|',$conf['type_image']);
+	$type_video = explode('|',$conf['type_video']);
+	if($conf['green_check']>0 && in_array($ext,$type_image)){
+		if(checkImage($hash, $ext)){
+			$DB->exec("UPDATE `pre_file` SET `block`=1 WHERE `id`='{$id}' LIMIT 1");
+			//机器判定可能误伤，先留档但不公示，等后台在违规公示管理里确认后再放出
+			add_violation_log(['id'=>$id, 'name'=>$name, 'type'=>$ext, 'size'=>$size, 'hash'=>$hash, 'ip'=>$ip, 'uid'=>($uid?$uid:0)], 'green', '图片自动检测命中', 0);
+		}
+	}
+	if($conf['videoreview']==1 && in_array($ext,$type_video)){
+		$DB->exec("UPDATE `pre_file` SET `block`=2 WHERE `id`='{$id}' LIMIT 1");
+	}
+
+	return ['id'=>$id, 'token'=>$token];
+}
+
 function get_file_ext($name){
 	$extension=explode('.',$name);
 	if (($length = count($extension)) > 1) {
@@ -778,11 +960,16 @@ function file_output($hash, $type, $size, $name, $is_view = false, $is_admin = f
 		header("Pragma: no-cache");
     	header("Cache-Control: no-store, no-cache, must-revalidate");
 	}else{
-		$seconds_to_cache = 3600*24*30;
-		$ts = gmdate("D, d M Y H:i:s", time() + $seconds_to_cache) . " GMT";
-		header("Expires: $ts");
-		header("Pragma: cache");
-		header("Cache-Control: max-age=$seconds_to_cache");
+		//链接可能通过“替换文件”指向新内容，不能无条件长期缓存，改为用hash做校验的强制revalidate，
+		//这样同一个文件重复访问依然能省流量（304），但替换后能立刻拿到新内容
+		$etag = '"'.$hash.'"';
+		header("ETag: $etag");
+		header("Cache-Control: no-cache");
+		$client_etag = isset($_SERVER['HTTP_IF_NONE_MATCH']) ? trim($_SERVER['HTTP_IF_NONE_MATCH']) : '';
+		if($client_etag !== '' && $client_etag === $etag){
+			header("HTTP/1.1 304 Not Modified");
+			exit;
+		}
 	}
 
 	$filename = '"'.$name.'"; filename*=utf-8\'\''.rawurlencode($name);
@@ -809,6 +996,11 @@ function file_output($hash, $type, $size, $name, $is_view = false, $is_admin = f
 		if(\lib\StorHelper::is_range()){
 			header("Accept-Ranges: bytes");
 			$range = get_file_range($size);
+			//视频等媒体常用Range分段拖动播放；若客户端带着旧版本的If-Range校验值，
+			//说明它手里缓存的是替换前的分段，必须忽略Range改发完整最新内容，否则会把新旧文件的片段拼在一起播放
+			if($range && !$is_admin && isset($_SERVER['HTTP_IF_RANGE']) && trim($_SERVER['HTTP_IF_RANGE']) !== $etag){
+				$range = false;
+			}
 		}
 
 		if($range){

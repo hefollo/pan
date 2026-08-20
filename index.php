@@ -4,6 +4,9 @@ if (version_compare(PHP_VERSION, '7.1.0', '<')) {
 }
 include("./includes/common.php");
 
+$csrf_token = md5(mt_rand(0,999).time());
+$_SESSION['csrf_token'] = $csrf_token;
+
 if(isset($_GET['m']) && $_GET['m']=='mine'){
     $title = '我的文件 - ' . $conf['title'];
     $htext = '我上传的文件';
@@ -54,6 +57,9 @@ include SYSTEM_ROOT.'header.php';
 				<button class="btn btn-default btn-raised btn-sm" type="submit"><i class="fa fa-search" aria-hidden="true"></i> 搜索</button>
 			</form>
         </span><?php }?></h2>
+        <?php if(isset($_GET['m']) && $_GET['m']=='mine'){?>
+        <input type="file" id="replaceFileInput" style="display:none">
+        <?php }?>
         <div class="table-responsive">
        <table class="table table-striped table-hover filelist">
             <thead>
@@ -79,15 +85,18 @@ $rs=$DB->query("SELECT * FROM pre_file WHERE{$sql} ORDER BY id DESC LIMIT $offse
 $i=1;
 while($res = $rs->fetch())
 {
-	$fileurl = './down.php/'.$res['hash'].'.'.($res['type']?$res['type']:'file');
-	$viewurl = './file.php?hash='.$res['hash'];
-	$actions = '<div class="file-actions"><a class="file-action file-action-down" href="'.$fileurl.'"><i class="fa fa-download" aria-hidden="true"></i> 下载</a><a class="file-action file-action-view" href="'.$viewurl.'"><i class="fa fa-eye" aria-hidden="true"></i> 查看</a>';
+	$fileurl = './down.php/'.$res['token'].'.'.($res['type']?$res['type']:'file');
+	$viewurl = './file.php?hash='.$res['token'];
+	$actions = '<div class="file-actions"><a class="file-action file-action-down" href="'.$fileurl.'" title="下载"><i class="fa fa-download" aria-hidden="true"></i> <span class="file-action-label">下载</span></a><a class="file-action file-action-view" href="'.$viewurl.'" title="查看"><i class="fa fa-eye" aria-hidden="true"></i> <span class="file-action-label">查看</span></a>';
 	if(isset($_GET['m']) && $_GET['m']=='mine' && can_edit_file_online($res)){
-		$actions .= '<a class="file-action file-action-edit" href="./edit.php?id='.$res['id'].'"><i class="fa fa-pencil" aria-hidden="true"></i> 编辑</a>';
+		$actions .= '<a class="file-action file-action-edit" href="./edit.php?id='.$res['id'].'" title="编辑"><i class="fa fa-pencil" aria-hidden="true"></i> <span class="file-action-label">编辑</span></a>';
+	}
+	if(isset($_GET['m']) && $_GET['m']=='mine' && can_manage_file($res)){
+		$actions .= '<a class="file-action file-action-replace" href="javascript:void(0)" onclick="replace_upload_click('.intval($res['id']).')" title="覆盖"><i class="fa fa-refresh" aria-hidden="true"></i> <span class="file-action-label">覆盖</span></a>';
 	}
 	$actions .= '</div>';
 	$type_text = $res['type']?$res['type']:'未知';
-echo '<tr><td><b>'.$i++.'</b></td><td>'.$actions.'</td><td><i class="fa '.type_to_icon($res['type']).' fa-fw"></i>'.$res['name'].'</td><td>'.size_format($res['size']).'</td><td><span class="file-type-badge">'.htmlspecialchars($type_text).'</span></td><td>'.$res['addtime'].'</td><td>'.preg_replace('/\d+$/','*',$res['ip']).'</b></td></tr>';
+echo '<tr><td><b>'.$i++.'</b></td><td class="filelist-actions-cell">'.$actions.'</td><td><i class="fa '.type_to_icon($res['type']).' fa-fw"></i>'.$res['name'].'</td><td>'.size_format($res['size']).'</td><td><span class="file-type-badge">'.htmlspecialchars($type_text).'</span></td><td>'.$res['addtime'].'</td><td>'.preg_replace('/\d+$/','*',$res['ip']).'</b></td></tr>';
 }
 if($numrows == 0) echo '<tr><td colspan="7" align="center">还没上传过任何文件</td></tr>';
 ?>
@@ -136,6 +145,156 @@ echo '<li class="disabled"><a>尾页</a></li>';
 </div>
     </div>
 <?php include SYSTEM_ROOT.'footer.php';?>
+<?php if(isset($_GET['m']) && $_GET['m']=='mine'){?>
+<link rel="stylesheet" href="https://s4.zstatic.net/ajax/libs/layer/3.1.1/theme/default/layer.css">
+<script src="https://s4.zstatic.net/ajax/libs/layer/3.1.1/layer.js"></script>
+<script src="https://s4.zstatic.net/ajax/libs/spark-md5/3.0.2/spark-md5.min.js"></script>
+<script>
+var replace_csrf_token = '<?php echo $csrf_token?>';
+var replace_target_id = 0;
+function replace_upload_click(id){
+  replace_target_id = id;
+  $("#replaceFileInput").val('');
+  $("#replaceFileInput").trigger('click');
+}
+$("#replaceFileInput").on('change', function(){
+  var file = this.files && this.files[0];
+  if(!file || !replace_target_id) return;
+  var fileId = replace_target_id;
+  var ii = layer.load(2, {shade:[0.2,'#fff']});
+
+  //本页面可能已经打开一段时间，会话里的csrf_token可能已被同一浏览器其它页面刷新过，先取一次最新值再提交
+  $.getJSON('ajax.php?act=csrf_token', function(tokenData){
+    if(tokenData && tokenData.csrf_token) replace_csrf_token = tokenData.csrf_token;
+    replace_startUpload(file, fileId, ii);
+  }).fail(function(){
+    replace_startUpload(file, fileId, ii);
+  });
+});
+function replace_startUpload(file, fileId, ii){
+  replace_getFileHash(file).then(function(hash){
+    $.ajax({
+      type: 'POST',
+      url: 'ajax.php?act=pre_upload',
+      data: {
+        csrf_token: replace_csrf_token,
+        name: file.name,
+        hash: hash,
+        size: file.size,
+        show: '1',
+        ispwd: '0',
+        pwd: '',
+        replace_id: fileId
+      },
+      dataType: 'json',
+      success: function(data){
+        if(data.csrf_token) replace_csrf_token = data.csrf_token;
+        if(data.code == 1){
+          layer.close(ii);
+          layer.alert(data.msg || '替换成功，链接保持不变', {icon:1}, function(){ window.location.reload(); });
+        }else if(data.code == 0){
+          replace_uploadBody(data, file, ii);
+        }else{
+          layer.close(ii);
+          layer.alert(data.msg || '替换失败', {icon:2});
+        }
+      },
+      error: function(){
+        layer.close(ii);
+        layer.msg('服务器错误');
+      }
+    });
+  });
+}
+function replace_getFileHash(file){
+  return new Promise(function(resolve){
+    var fileReader = new FileReader(),
+        blobSlice = File.prototype.mozSlice || File.prototype.webkitSlice || File.prototype.slice,
+        chunkSize = 2097152,
+        chunks = Math.ceil(file.size / chunkSize),
+        currentChunk = 0,
+        spark = new SparkMD5();
+    if(chunks === 0){
+      resolve(SparkMD5.hashBinary(''));
+      return;
+    }
+    loadNext();
+    fileReader.onload = function(e){
+      spark.appendBinary(e.target.result);
+      currentChunk++;
+      if(currentChunk < chunks){
+        loadNext();
+      }else{
+        resolve(spark.end());
+      }
+    };
+    function loadNext(){
+      var start = currentChunk * chunkSize,
+          end = start + chunkSize >= file.size ? file.size : start + chunkSize;
+      fileReader.readAsBinaryString(blobSlice.call(file, start, end));
+    }
+  });
+}
+function replace_uploadBody(preResult, file, ii){
+  if(preResult.third){
+    var data = new FormData();
+    for(var key in preResult.post){ data.append(key, preResult.post[key]); }
+    data.append('file', file);
+    $.ajax({
+      type: 'POST', url: preResult.url, data: data, processData: false, contentType: false, dataType: 'html',
+      success: function(){ replace_completeUpload(preResult.hash, ii); },
+      error: function(){ layer.close(ii); layer.msg('上传失败，请稍后再试'); }
+    });
+    return;
+  }
+  var chunks = preResult.chunks, chunkSize = preResult.chunksize;
+  var blobSlice = File.prototype.mozSlice || File.prototype.webkitSlice || File.prototype.slice;
+  function uploadChunk(chunk){
+    var start = (chunk - 1) * chunkSize;
+    var end = start + chunkSize > file.size ? file.size : start + chunkSize;
+    var blob = blobSlice.call(file, start, end);
+    var data = new FormData();
+    data.append('file', blob);
+    data.append('hash', preResult.hash);
+    data.append('chunk', chunk);
+    data.append('csrf_token', replace_csrf_token);
+    $.ajax({
+      type: 'POST', url: 'ajax.php?act=upload_part', data: data, processData: false, contentType: false, dataType: 'json',
+      success: function(res){
+        if(res.csrf_token) replace_csrf_token = res.csrf_token;
+        if(res.code == -1){
+          layer.close(ii);
+          layer.alert(res.msg || '替换失败', {icon:2});
+          return;
+        }
+        if(chunk < chunks){
+          uploadChunk(chunk + 1);
+        }else if(res.code == 1){
+          layer.close(ii);
+          layer.alert(res.msg || '替换成功，链接保持不变', {icon:1}, function(){ window.location.reload(); });
+        }
+      },
+      error: function(){ layer.close(ii); layer.msg('上传失败，请稍后再试'); }
+    });
+  }
+  uploadChunk(1);
+}
+function replace_completeUpload(hash, ii){
+  $.ajax({
+    type: 'POST', url: 'ajax.php?act=complete_upload', data: {hash: hash, csrf_token: replace_csrf_token}, dataType: 'json',
+    success: function(res){
+      layer.close(ii);
+      if(res.code == 1){
+        layer.alert(res.msg || '替换成功，链接保持不变', {icon:1}, function(){ window.location.reload(); });
+      }else{
+        layer.alert(res.msg || '替换失败', {icon:2});
+      }
+    },
+    error: function(){ layer.close(ii); layer.msg('服务器错误'); }
+  });
+}
+</script>
+<?php }?>
 <?php if(!empty($conf['gonggao'])){?>
 <link href="https://s4.zstatic.net/ajax/libs/snackbarjs/1.1.0/snackbar.min.css" rel="stylesheet">
 <script src="https://s4.zstatic.net/ajax/libs/snackbarjs/1.1.0/snackbar.min.js"></script>

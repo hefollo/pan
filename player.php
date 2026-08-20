@@ -2,12 +2,12 @@
 include("./includes/common.php");
 
 $hash = isset($_GET['hash'])?trim($_GET['hash']):exit();
-$row = $DB->getRow("SELECT * FROM pre_file WHERE hash=:hash", [':hash'=>$hash]);
+$row = $DB->getRow("SELECT * FROM pre_file WHERE token=:token", [':token'=>$hash]);
 if(!$row)exit('404 Not Found');
 if($row['block']!=0)exit('File is blocked!');
 $name = $row['name'];
 $type = $row['type'];
-$viewurl_all = $siteurl.'view.php/'.$row['hash'].'.'.$type;
+$viewurl_all = $siteurl.'view.php/'.$row['token'].'.'.$type;
 
 $view_type = get_view_type($type);
 

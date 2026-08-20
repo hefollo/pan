@@ -14,12 +14,12 @@ $url = $extension[0];
 }
 
 if(strpos($url,".")){
-    $hash=substr($url,0,strpos($url,"."));
+    $token=substr($url,0,strpos($url,"."));
 }else{
-    $hash=$url;
+    $token=$url;
 }
 
-$row = $DB->getRow("SELECT * FROM `pre_file` WHERE `hash`=:hash limit 1", [':hash'=>$hash]);
+$row = $DB->getRow("SELECT * FROM `pre_file` WHERE `token`=:token limit 1", [':token'=>$token]);
 if(!$row)exit('404 Not Found');
 if($row['block']>=1)exit('File is blocked!');
 
@@ -30,7 +30,7 @@ if($row['pwd']!=null && $row['pwd']!=$pwd){ ?>
     var pwd=prompt("请输入密码","")
     if (pwd!=null && pwd!="")
     {
-        window.location.href='<?php echo $siteurl.'down.php/'.$hash?>&'+pwd
+        window.location.href='<?php echo $siteurl.'down.php/'.$token?>&'+pwd
     }
     </script>
     请刷新页面，或[ <a href="javascript:history.back();">返回上一页</a> ]
@@ -38,11 +38,11 @@ if($row['pwd']!=null && $row['pwd']!=$pwd){ ?>
     exit;
 }
 
-if($stor->exists($hash))
+if($stor->exists($row['hash']))
 {
     $DB->exec("UPDATE `pre_file` SET `lasttime`=NOW(),`count`=`count`+1 WHERE `id`='{$row['id']}'");
 
-    file_output($hash, $row['type'], $row['size'], $row['name']);
+    file_output($row['hash'], $row['type'], $row['size'], $row['name']);
 }
 else{
     exit('File Not Found');

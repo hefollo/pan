@@ -5,7 +5,7 @@ create table `pre_config` (
   PRIMARY KEY  (`k`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-INSERT INTO `pre_config` VALUES ('version', '1003');
+INSERT INTO `pre_config` VALUES ('version', '1009');
 INSERT INTO `pre_config` VALUES ('admin_user', 'admin');
 INSERT INTO `pre_config` VALUES ('admin_pwd', '123456');
 INSERT INTO `pre_config` VALUES ('blackip', '');
@@ -38,6 +38,8 @@ INSERT INTO `pre_config` VALUES ('green_check_terrorism', '0');
 INSERT INTO `pre_config` VALUES ('green_label_porn', 'sexy,porn');
 INSERT INTO `pre_config` VALUES ('green_label_terrorism', 'bloody,explosion,outfit,logo,weapon,politics');
 INSERT INTO `pre_config` VALUES ('gg_file', '网站所有文件内容均由用户自行上传分享，本站严格遵守国家相关法律法规，尊重著作权、版权等第三方权利，如果当前文件侵犯了您的相关权利，请邮件反馈至@qq.com，我们将及时处理。');
+INSERT INTO `pre_config` VALUES ('violation_open', '1');
+INSERT INTO `pre_config` VALUES ('violation_notice', '本站严格遵守国家法律法规，对用户举报及系统检测发现的违规文件一律予以封禁，并在此公示。文件名、上传IP等信息已做脱敏处理。');
 
 DROP TABLE IF EXISTS `pre_file`;
 CREATE TABLE `pre_file` (
@@ -46,6 +48,7 @@ CREATE TABLE `pre_file` (
   `type` varchar(50) DEFAULT NULL,
   `size` int(11) unsigned NOT NULL,
   `hash` varchar(32) NOT NULL,
+  `token` varchar(32) NOT NULL,
   `addtime` datetime NOT NULL,
   `lasttime` datetime DEFAULT NULL,
   `ip` varchar(15) NOT NULL,
@@ -55,8 +58,62 @@ CREATE TABLE `pre_file` (
   `count` int(11) unsigned NOT NULL DEFAULT '0',
   `uid` int(11) unsigned NOT NULL DEFAULT '0',
    PRIMARY KEY (`id`),
+   UNIQUE KEY `token` (`token`),
    KEY `hash` (`hash`),
    KEY `uid` (`uid`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+DROP TABLE IF EXISTS `pre_sponsor`;
+CREATE TABLE `pre_sponsor` (
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(50) NOT NULL,
+  `platform` varchar(20) NOT NULL DEFAULT '微信',
+  `amount` varchar(100) NOT NULL,
+  `sponsor_time` varchar(20) NOT NULL,
+  `addtime` datetime NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+DROP TABLE IF EXISTS `pre_violation`;
+CREATE TABLE `pre_violation` (
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `file_id` int(11) unsigned NOT NULL DEFAULT '0',
+  `name` varchar(255) NOT NULL,
+  `type` varchar(50) DEFAULT NULL,
+  `size` int(11) unsigned NOT NULL DEFAULT '0',
+  `hash` varchar(32) DEFAULT NULL,
+  `ip` varchar(45) DEFAULT NULL,
+  `uid` int(11) unsigned NOT NULL DEFAULT '0',
+  `source` varchar(20) NOT NULL DEFAULT 'admin',
+  `remark` varchar(255) DEFAULT NULL,
+  `is_show` tinyint(1) NOT NULL DEFAULT '1',
+  `addtime` datetime NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `file_id` (`file_id`),
+  KEY `is_show` (`is_show`,`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+DROP TABLE IF EXISTS `pre_replace_log`;
+CREATE TABLE `pre_replace_log` (
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `file_id` int(11) unsigned NOT NULL DEFAULT '0',
+  `token` varchar(32) DEFAULT NULL,
+  `old_name` varchar(255) NOT NULL,
+  `old_type` varchar(50) DEFAULT NULL,
+  `old_size` int(11) unsigned NOT NULL DEFAULT '0',
+  `old_hash` varchar(32) DEFAULT NULL,
+  `new_name` varchar(255) NOT NULL,
+  `new_type` varchar(50) DEFAULT NULL,
+  `new_size` int(11) unsigned NOT NULL DEFAULT '0',
+  `new_hash` varchar(32) DEFAULT NULL,
+  `uid` int(11) unsigned NOT NULL DEFAULT '0',
+  `ip` varchar(45) DEFAULT NULL,
+  `source` varchar(20) NOT NULL DEFAULT 'replace',
+  `checked` tinyint(1) NOT NULL DEFAULT '0',
+  `addtime` datetime NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `file_id` (`file_id`),
+  KEY `checked` (`checked`,`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 DROP TABLE IF EXISTS `pre_user`;

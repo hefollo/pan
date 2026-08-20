@@ -13,7 +13,7 @@ $hash = isset($_GET['hash']) ? trim($_GET['hash']) : null;
 if($id > 0){
 	$row = $DB->getRow("SELECT * FROM pre_file WHERE id=:id", [':id'=>$id]);
 }elseif($hash && preg_match('/^[0-9a-z]{32}$/i', $hash)){
-	$row = $DB->getRow("SELECT * FROM pre_file WHERE hash=:hash", [':hash'=>$hash]);
+	$row = $DB->getRow("SELECT * FROM pre_file WHERE token=:token", [':token'=>$hash]);
 }else{
 	sysmsg('参数错误');
 }
@@ -39,7 +39,7 @@ $content = $decoded['content'];
 $file_name = htmlspecialchars($row['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 $file_content = htmlspecialchars($content, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 $file_encoding = htmlspecialchars($decoded['encoding'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-$view_url = 'file.php?hash='.$row['hash'];
+$view_url = 'file.php?hash='.$row['token'];
 
 include SYSTEM_ROOT.'header.php';
 ?>
@@ -105,6 +105,7 @@ include SYSTEM_ROOT.'header.php';
 	</div>
 </div>
 <?php include SYSTEM_ROOT.'footer.php';?>
+<link rel="stylesheet" href="https://s4.zstatic.net/ajax/libs/layer/2.3/skin/layer.css">
 <script src="https://s4.zstatic.net/ajax/libs/layer/2.3/layer.js"></script>
 <script>
 function getEditorBytes(text) {

@@ -31,10 +31,10 @@ if($rs = $db->query("SELECT v FROM pre_config WHERE k='version'")){
 	$version = $rs->fetchColumn();
 }
 
-if($version<1003){
+if($version<1009){
 	$sqls = file_get_contents('update.sql');
 	$sqls=explode(';', $sqls);
-	$sqls[]="REPLACE INTO `pre_config` VALUES ('version', '1003')";
+	$sqls[]="REPLACE INTO `pre_config` VALUES ('version', '1009')";
 	if(!$db->query("SELECT v FROM pre_config WHERE k='syskey'")->fetchColumn()){
 		$sqls[]="REPLACE INTO `pre_config` VALUES ('syskey', '".random(32)."')";
 	}

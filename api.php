@@ -78,31 +78,26 @@ $hash = md5_file($_FILES['file']['tmp_name']);
 $row = $DB->getRow("SELECT * FROM pre_file WHERE hash=:hash", [':hash'=>$hash]);
 if($row){
 	unset($_SESSION['csrf_token']);
-	$downurl = $siteurl.'down.php/'.$row['hash'].'.'.$row['type'];
-	if(!empty($row['pwd']))$downurl .= '&'.$row['pwd'];
-	$result = ['code'=>0, 'msg'=>'本站已存在该文件', 'exists'=>1, 'hash'=>$hash, 'name'=>$name, 'size'=>$size, 'type'=>$ext, 'id'=>$row['id'], 'downurl'=>$downurl];
-	if(is_view($row['type']))$result['viewurl'] = $siteurl.'view.php/'.$hash.'.'.$row['type'];
+	//秒传：跳过物理上传，但仍建独立记录，这次上传有自己的链接和文件名，不会挂到别人名下
+	$record = create_file_record_from_existing($row, $name, $size, $ext, $hide, $pwd, 0, $clientip);
+	if(!$record)showresult(['code'=>-1, 'msg'=>'上传失败'.$DB->error(), 'error'=>'database']);
+	//下载和预览地址都按 token 解析，不能再用内容哈希拼链接
+	$downurl = $siteurl.'down.php/'.$record['token'].'.'.$ext;
+	if(!empty($pwd))$downurl .= '&'.$pwd;
+	$result = ['code'=>0, 'msg'=>'本站已存在该文件', 'exists'=>1, 'hash'=>$hash, 'token'=>$record['token'], 'name'=>$name, 'size'=>$size, 'type'=>$ext, 'id'=>$record['id'], 'downurl'=>$downurl];
+	if(is_view($ext))$result['viewurl'] = $siteurl.'view.php/'.$record['token'].'.'.$ext;
 	showresult($result);
 }
 $result = $stor->upload($hash, $_FILES['file']['tmp_name'], minetype($ext));
 if(!$result)showresult(['code'=>-1, 'msg'=>'文件上传失败', 'error'=>'stor']);
-$sds = $DB->exec("INSERT INTO `pre_file` (`name`,`type`,`size`,`hash`,`addtime`,`ip`,`hide`,`pwd`) values (:name,:type,:size,:hash,NOW(),:ip,:hide,:pwd)", [':name'=>$name, ':type'=>$ext, ':size'=>$size, ':hash'=>$hash, ':ip'=>$clientip, ':hide'=>$hide, ':pwd'=>$pwd]);
-if(!$sds)showresult(['code'=>-1, 'msg'=>'上传失败'.$DB->error(), 'error'=>'database']);
-$id = $DB->lastInsertId();
+//统一走 create_file_record，它负责生成访问用的 token，并顺带做图片检测和违规留档
+$record = create_file_record($name, $hash, $size, $ext, $hide, $pwd, 0, $clientip);
+if(!$record)showresult(['code'=>-1, 'msg'=>'上传失败'.$DB->error(), 'error'=>'database']);
+$id = $record['id'];
+$token = $record['token'];
 
-$type_image = explode('|',$conf['type_image']);
-$type_video = explode('|',$conf['type_video']);
-if($conf['green_check']>0 && in_array($ext,$type_image)){
-	if(checkImage($hash, $ext)){
-		$DB->exec("UPDATE `pre_file` SET `block`=1 WHERE `id`='{$id}' LIMIT 1");
-	}
-}
-if($conf['videoreview']==1 && in_array($ext,$type_video)){
-	$DB->exec("UPDATE `pre_file` SET `block`=2 WHERE `id`='{$id}' LIMIT 1");
-}
-
-$downurl = $siteurl.'down.php/'.$hash.'.'.$ext;
+$downurl = $siteurl.'down.php/'.$token.'.'.$ext;
 if(!empty($pwd))$downurl .= '&'.$pwd;
-$result = ['code'=>0, 'msg'=>'文件上传成功！', 'exists'=>0, 'hash'=>$hash, 'name'=>$name, 'size'=>$size, 'type'=>$ext, 'id'=>$id, 'downurl'=>$downurl];
-if(is_view($ext))$result['viewurl'] = $siteurl.'view.php/'.$hash.'.'.$ext;
+$result = ['code'=>0, 'msg'=>'文件上传成功！', 'exists'=>0, 'hash'=>$hash, 'token'=>$token, 'name'=>$name, 'size'=>$size, 'type'=>$ext, 'id'=>$id, 'downurl'=>$downurl];
+if(is_view($ext))$result['viewurl'] = $siteurl.'view.php/'.$token.'.'.$ext;
 showresult($result);
