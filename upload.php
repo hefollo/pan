@@ -6,6 +6,10 @@ include SYSTEM_ROOT.'header.php';
 
 $csrf_token = md5(mt_rand(0,999).time());
 $_SESSION['csrf_token'] = $csrf_token;
+//打赏码跟 file.php 用同一套后台配置，后台关掉或改图这里同步生效
+$file_reward_enable = isset($conf['file_reward_enable']) ? ((int)$conf['file_reward_enable'] === 1) : true;
+$file_reward_title = isset($conf['file_reward_title']) && $conf['file_reward_title'] !== '' ? $conf['file_reward_title'] : '&#25195;&#30721;&#39046;&#32418;&#21253;';
+$file_reward_image = isset($conf['file_reward_image']) && $conf['file_reward_image'] !== '' ? $conf['file_reward_image'] : 'includes/sponsor/images/zhifubaohb.jpg';
 $effective_upload_size = get_effective_upload_size_limit();
 $effective_upload_limit = get_effective_upload_count_limit();
 $effective_upload_used = 0;
@@ -183,15 +187,16 @@ body.theme-aurora .upload-link-btn:hover{border-color:#fff;background:rgba(255,2
 </div>
 
 
+<?php if($file_reward_enable && !empty($file_reward_image)){ ?>
 <div class="panel panel-default hidden-xs">
 <div class="panel-heading" style="background-color:#009688">
-<h3 class="panel-title"><i class="fa fa-qrcode"></i> 扫码领红包</h3>
+<h3 class="panel-title"><i class="fa fa-qrcode"></i> <?php echo $file_reward_title?></h3>
 </div>
 <div class="panel-body text-center">
-<!--<img alt="二维码" src="//api.qrserver.com/v1/create-qr-code/?size=180x180&margin=10&data=<?php echo urlencode($thisurl);?>">-->
-<img alt="二维码" src="https://mpimg.cn/includes/sponsor/images/zhifubaohb.jpg" style="width: 200px; height: 325px; max-width: 100%; object-fit: contain; border-radius: 8px;">
+<img alt="<?php echo htmlspecialchars(strip_tags($file_reward_title), ENT_QUOTES, 'UTF-8');?>" src="<?php echo htmlspecialchars($file_reward_image, ENT_QUOTES, 'UTF-8');?>" style="width: 200px; height: 325px; max-width: 100%; object-fit: contain; border-radius: 8px;">
 </div>
 </div>
+<?php } ?>
 
 
       </div>

@@ -9,13 +9,20 @@ function showresult($arr, $format='json'){
 		@header('Content-Type: application/json; charset=UTF-8');
 		exit(json_encode($arr));
 	}elseif($format == 'jsonp'){
-		$callback = isset($_POST['callback'])?$_POST['callback']:'callback';
+		//回调函数名会被原样拼进JS里，只允许合法的标识符，否则退回默认名
+		$callback = (isset($_POST['callback']) && is_string($_POST['callback']))?$_POST['callback']:'callback';
+		if(!preg_match('/^[A-Za-z_$][A-Za-z0-9_$.]{0,63}$/', $callback))$callback = 'callback';
 		@header('Content-Type: application/javascript; charset=UTF-8');
 		exit($callback.'('.json_encode($arr).')');
 	}else{
 		@header('Content-Type: text/html; charset=UTF-8');
 		if($arr['code']==0){
-			$backurl = isset($_POST['backurl'])?$_POST['backurl']:$_SERVER['HTTP_REFERER'];
+			//backurl 完全由调用方控制，会被写进 form action，必须限定为http(s)并做HTML转义
+			$backurl = (isset($_POST['backurl']) && is_string($_POST['backurl']))?trim($_POST['backurl']):(isset($_SERVER['HTTP_REFERER'])?$_SERVER['HTTP_REFERER']:'');
+			if(!preg_match('#^https?://#i', $backurl))$backurl = '';
+			$backurl = htmlspecialchars($backurl, ENT_QUOTES, 'UTF-8');
+			$safe_downurl = htmlspecialchars((string)$arr['downurl'], ENT_QUOTES, 'UTF-8');
+			$safe_type = htmlspecialchars((string)$arr['type'], ENT_QUOTES, 'UTF-8');
 echo '<html>
 <head>
 <meta http-equiv="content-type" content="text/html;charset=utf-8"/>
@@ -24,8 +31,8 @@ echo '<html>
 </head>
 <body>
 <form action="'.$backurl.'" method="post">
-<input name="file" type="hidden" value="'.$arr['downurl'].'" />
-<input name="type" type="hidden" value="'.$arr['type'].'" />
+<input name="file" type="hidden" value="'.$safe_downurl.'" />
+<input name="type" type="hidden" value="'.$safe_type.'" />
 <input name="name" type="hidden" value="'.$arr['name'].'" />
 <input name="submit" type="submit" value="下一步" />
 </form>
@@ -40,13 +47,21 @@ exit;
 if(!$conf['api_open'])showresult(['code'=>-4, 'msg'=>'当前站点未开启上传API']);
 
 if(!empty($conf['api_referer'])){
-	$referers = explode('|',$conf['api_referer']);
-	$url_arr = parse_url($_SERVER['HTTP_REFERER']);
-	if(!in_array($url_arr['host'], $url_arr))showresult(['code'=>-4, 'msg'=>'来源地址不正确']);
+	//配置了白名单就必须能取到合法的来源域名，取不到一律拒绝，不能放行
+	$referers = array_filter(array_map('trim', explode('|',$conf['api_referer'])));
+	$referer = isset($_SERVER['HTTP_REFERER'])?$_SERVER['HTTP_REFERER']:'';
+	$url_arr = $referer?parse_url($referer):false;
+	$referer_host = (is_array($url_arr) && !empty($url_arr['host']))?strtolower($url_arr['host']):'';
+	if(!$referer_host || !in_array($referer_host, array_map('strtolower', $referers), true))showresult(['code'=>-4, 'msg'=>'来源地址不正确']);
 }
 
 
+//上传API和ajax.php走的是同一套配额，强制登录/大小/每日数量三道限制都要照样执行
+if($conf['forcelogin']==1 && !$islogin2)showresult(['code'=>-1, 'msg'=>'请先登录']);
+
 if(!isset($_FILES['file']))showresult(['code'=>-1, 'msg'=>'请选择文件']);
+if($_FILES['file']['error'] !== UPLOAD_ERR_OK)showresult(['code'=>-1, 'msg'=>'文件上传失败，可能超出服务器限制', 'error'=>'upload']);
+if(!is_uploaded_file($_FILES['file']['tmp_name']))showresult(['code'=>-1, 'msg'=>'非法的上传请求']);
 $name=trim(htmlspecialchars($_FILES['file']['name']));
 $size=intval($_FILES['file']['size']);
 $hide = $_POST['show']==1?0:1;
@@ -74,6 +89,20 @@ if($conf['name_block']){
 		}
 	}
 }
+$limit_size = get_effective_upload_size_limit();
+if($limit_size > 0 && $size > $limit_size * 1024 * 1024){
+	showresult(['code'=>-1, 'msg'=>'上传文件大小限制'.$limit_size.'MB']);
+}
+$upload_limit = get_effective_upload_count_limit();
+if($upload_limit > 0){
+	//本接口建的记录 uid 恒为0，只能按IP统计当天数量
+	$thisday = date("Y-m-d 00:00:00");
+	$ipcount = $DB->getColumn("SELECT count(*) from pre_file WHERE ip=:ip AND addtime>=:day", [':ip'=>$clientip, ':day'=>$thisday]);
+	if($ipcount >= $upload_limit){
+		showresult(['code'=>-1, 'msg'=>'你今天上传文件的数量已超过限制']);
+	}
+}
+
 $hash = md5_file($_FILES['file']['tmp_name']);
 $row = $DB->getRow("SELECT * FROM pre_file WHERE hash=:hash", [':hash'=>$hash]);
 if($row){

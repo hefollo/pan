@@ -29,7 +29,7 @@ $thisurl = $siteurl.'file.php?hash='.$row['token'];
 if(!empty($pwd))$thisurl .= '&pwd='.$pwd;
 $file_reward_enable = isset($conf['file_reward_enable']) ? ((int)$conf['file_reward_enable'] === 1) : true;
 $file_reward_title = isset($conf['file_reward_title']) && $conf['file_reward_title'] !== '' ? $conf['file_reward_title'] : '&#25195;&#30721;&#39046;&#32418;&#21253;';
-$file_reward_image = isset($conf['file_reward_image']) && $conf['file_reward_image'] !== '' ? $conf['file_reward_image'] : 'https://mpimg.cn/includes/sponsor/images/zhifubaohb.jpg';
+$file_reward_image = isset($conf['file_reward_image']) && $conf['file_reward_image'] !== '' ? $conf['file_reward_image'] : 'includes/sponsor/images/zhifubaohb.jpg';
 
 $is_mine = can_manage_file($row);
 $is_editable = can_edit_file_online($row);

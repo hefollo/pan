@@ -99,6 +99,9 @@ if($step==3){
             $sqls=explode(';', $sqls);
             $sqls[]="INSERT INTO `pre_config` VALUES ('syskey', '".random(32)."')";
             $sqls[]="INSERT INTO `pre_config` VALUES ('build', '".date("Y-m-d")."')";
+            //install.sql 里的默认密码是 123456，装完就是公开的弱口令，这里改成随机密码并在完成页展示一次
+            $admin_pwd = bin2hex(random_bytes(6));
+            $sqls[]="REPLACE INTO `pre_config` VALUES ('admin_pwd', '".$admin_pwd."')";
             $success=0;$error=0;$errorMsg=null;
             foreach ($sqls as $value) {
                 $value=trim($value);
@@ -226,8 +229,12 @@ if(!empty($errorMsg)){
                     <?php if($success>0){?><div class="alert alert-success" role="alert">成功执行SQL语句<?php echo $success;?>条，失败<?php echo $error;?>条！</div><?php }?>
                     <ul class="list-group">
                         <li class="list-group-item">1、系统已成功安装完毕！</li>
-                        <li class="list-group-item">2、后台地址：<a href="../admin/" target="_blank">/admin/</a> 密码:123456</li>
-                        <li class="list-group-item">3、请及时修改后台管理员密码！</li>
+                        <li class="list-group-item">2、后台地址：<a href="../admin/" target="_blank">/admin/</a> 用户名：admin</li>
+                        <?php if(!empty($admin_pwd)){?>
+                        <li class="list-group-item">3、管理员初始密码：<code style="font-size:16px"><?php echo htmlspecialchars($admin_pwd, ENT_QUOTES, 'UTF-8');?></code> <font color="#FF0033">（此密码随机生成，只显示这一次，请立即保存）</font></li>
+                        <?php }else{?>
+                        <li class="list-group-item">3、<font color="#FF0033">请立即登录后台修改管理员密码！</font></li>
+                        <?php }?>
                         <?php if(!$lock_status){?><li class="list-group-item">4、<font color="#FF0033">你的空间不支持本地文件读写，请自行在 /install/ 目录建立 install.lock 文件！</font></li><?php }?>
                         <li class="list-group-item"><a href="../" class="btn btn-block btn-default">进入网站首页</a></li>
                     </ul>

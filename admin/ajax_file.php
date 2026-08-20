@@ -89,27 +89,30 @@ case 'delFile':
 break;
 case 'operation':
 	$status=intval($_POST['status']);
-	$checkbox=$_POST['checkbox'];
-	if(!$checkbox)exit('{"code":-1,"msg":"未选中文件"}');
+	$checkbox=isset($_POST['checkbox'])?$_POST['checkbox']:null;
+	if(!$checkbox || !is_array($checkbox))exit('{"code":-1,"msg":"未选中文件"}');
 	$i=0;
 	if($status == 2)$opname = '解封';
 	elseif($status == 1)$opname = '封禁';
 	else $opname = '删除';
 	foreach($checkbox as $id){
+		//选中的id直接来自表单，必须转成整数再进SQL
+		$id = intval($id);
+		if($id <= 0)continue;
 		if($status == 0){
-			$row=$DB->getRow("select * from pre_file where id='$id' limit 1");
+			$row=$DB->getRow("select * from pre_file where id=:id limit 1", [':id'=>$id]);
 			if($row){
 				//只有已封禁的文件才留公示，正常文件的日常清理不该被公示出去
 				if($row['block'] == 1)add_violation_log($row);
-				delete_file_blob_if_orphaned($row['hash'], intval($id));
+				delete_file_blob_if_orphaned($row['hash'], $id);
 			}
-			$DB->exec("DELETE FROM pre_file WHERE id='$id'");
+			$DB->exec("DELETE FROM pre_file WHERE id=:id", [':id'=>$id]);
 		}elseif($status == 1){
-			$row=$DB->getRow("select * from pre_file where id='$id' limit 1");
-			$DB->exec("UPDATE pre_file SET `block`=1 WHERE id='$id'");
+			$row=$DB->getRow("select * from pre_file where id=:id limit 1", [':id'=>$id]);
+			$DB->exec("UPDATE pre_file SET `block`=1 WHERE id=:id", [':id'=>$id]);
 			if($row)add_violation_log($row);
 		}elseif($status == 2){
-			$DB->exec("UPDATE pre_file SET `block`=0 WHERE id='$id'");
+			$DB->exec("UPDATE pre_file SET `block`=0 WHERE id=:id", [':id'=>$id]);
 			revoke_violation_log($id);
 		}
 		$i++;

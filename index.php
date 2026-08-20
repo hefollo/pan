@@ -36,10 +36,12 @@ if(isset($_GET['m']) && $_GET['m']=='mine'){
     $sql = " hide=0";
     $link = '';
 }
-$kw = isset($_GET['kw'])?daddslashes(trim(strip_tags($_GET['kw']))):null;
+//搜索词要分三种用途保存：入SQL的转义版、进URL的编码版、进HTML的实体版，混用会出漏洞
+$kw = (isset($_GET['kw']) && is_string($_GET['kw']))?trim(strip_tags($_GET['kw'])):null;
 if($conf['filesearch']==1 && $kw){
-    $sql.=" AND name LIKE '%{$kw}%'";
-    $link .= '&kw='.$kw;
+    $kw_sql = daddslashes($kw);
+    $sql.=" AND name LIKE '%{$kw_sql}%'";
+    $link .= '&kw='.urlencode($kw);
 }
 
 include_once SYSTEM_ROOT.'script_manager.php';
@@ -52,8 +54,8 @@ include SYSTEM_ROOT.'header.php';
         <h2><?php echo $htext?>
         <?php if($conf['filesearch']==1){?><span class="searchbox">
             <form class="form-inline" action="./" method="GET">
-                <?php if(isset($_GET['m'])){?><input name="m" type="hidden" value="<?php echo htmlspecialchars($_GET['m'])?>"><?php }?>
-				<input name="kw" class="form-control" type="search" placeholder="请输入搜索关键字" value="<?php echo $kw?>" required="">
+                <?php if(isset($_GET['m']) && is_string($_GET['m'])){?><input name="m" type="hidden" value="<?php echo htmlspecialchars($_GET['m'], ENT_QUOTES, 'UTF-8')?>"><?php }?>
+				<input name="kw" class="form-control" type="search" placeholder="请输入搜索关键字" value="<?php echo htmlspecialchars((string)$kw, ENT_QUOTES, 'UTF-8')?>" required="">
 				<button class="btn btn-default btn-raised btn-sm" type="submit"><i class="fa fa-search" aria-hidden="true"></i> 搜索</button>
 			</form>
         </span><?php }?></h2>

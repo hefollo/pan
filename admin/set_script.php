@@ -55,7 +55,7 @@ $ads_notice_text = mpimg_conf_value_any($conf, ['ads_notice_text', 'gg_js_text']
 $ads = mpimg_get_ads($conf);
 $file_reward_enable = isset($conf['file_reward_enable']) ? ((int)$conf['file_reward_enable'] === 1) : true;
 $file_reward_title = isset($conf['file_reward_title']) && $conf['file_reward_title'] !== '' ? $conf['file_reward_title'] : '&#25195;&#30721;&#39046;&#32418;&#21253;';
-$file_reward_image = isset($conf['file_reward_image']) && $conf['file_reward_image'] !== '' ? $conf['file_reward_image'] : 'https://mpimg.cn/includes/sponsor/images/zhifubaohb.jpg';
+$file_reward_image = isset($conf['file_reward_image']) && $conf['file_reward_image'] !== '' ? $conf['file_reward_image'] : 'includes/sponsor/images/zhifubaohb.jpg';
 ?>
 <style>
 .script-settings-page{padding-top:70px}

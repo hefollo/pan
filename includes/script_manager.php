@@ -2,7 +2,7 @@
 if(!defined('IN_CRONLITE'))exit();
 
 function mpimg_default_add_text(){
-	return '&#32593;&#31449;&#24050;&#24320;&#21551;&#27599;&#26085;&#25968;&#25454;&#22791;&#20221;&#65292;&#25903;&#25345;&#31449;&#28857;&#21487;&#21069;&#24448;<a href="https://mpimg.cn/includes/sponsor" target="_blank">&#36190;&#21161;&#39029;</a>&#12290;&#31449;&#28857;&#38382;&#39064;&#21487;&#32852;&#31995;QQ&#65306;<a href="https://wpa.qq.com/msgrd?v=3&uin=7619897&site=qq&menu=yes&jumpflag=1" target="_blank">7619897</a>&#65292;QQ&#20132;&#27969;&#32676;&#65306;<a href="https://qm.qq.com/q/Wddyy2mcGS" target="_blank">251912122</a>&#12290;';
+	return '&#32593;&#31449;&#24050;&#24320;&#21551;&#27599;&#26085;&#25968;&#25454;&#22791;&#20221;&#65292;&#25903;&#25345;&#31449;&#28857;&#21487;&#21069;&#24448;<a href="/includes/sponsor" target="_blank">&#36190;&#21161;&#39029;</a>&#12290;&#31449;&#28857;&#38382;&#39064;&#21487;&#32852;&#31995;QQ&#65306;<a href="https://wpa.qq.com/msgrd?v=3&uin=7619897&site=qq&menu=yes&jumpflag=1" target="_blank">7619897</a>&#65292;QQ&#20132;&#27969;&#32676;&#65306;<a href="https://qm.qq.com/q/Wddyy2mcGS" target="_blank">251912122</a>&#12290;';
 }
 
 function mpimg_default_gg_text(){

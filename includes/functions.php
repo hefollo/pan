@@ -720,6 +720,62 @@ function writeLog($text) {
 	file_put_contents ( SYSTEM_ROOT."log.txt", date ( "Y-m-d H:i:s" ) . "  " . $text . "\r\n", FILE_APPEND );
 }
 
+/**
+ * 后台登录限速
+ * 原来只有 $_SESSION['pass_error'] 一个计数器，攻击者不带Cookie请求就能重置，等于没有限制。
+ * 这里把失败次数按IP记在服务端文件里，跟客户端会话无关。
+ */
+function login_throttle_file(){
+	return sys_get_temp_dir().'/pan_loginfail_'.substr(md5(SYS_KEY.'|loginthrottle'), 0, 16).'.json';
+}
+
+function login_throttle_load(){
+	$file = login_throttle_file();
+	if(!is_file($file))return [];
+	$raw = @file_get_contents($file);
+	if($raw === false || $raw === '')return [];
+	$data = json_decode($raw, true);
+	return is_array($data) ? $data : [];
+}
+
+function login_throttle_save($data){
+	@file_put_contents(login_throttle_file(), json_encode($data), LOCK_EX);
+}
+
+//返回还需要锁定的秒数，0表示可以继续尝试
+function login_throttle_locked($ip, $max = 5, $lock = 900){
+	$key = md5((string)$ip);
+	$data = login_throttle_load();
+	if(!isset($data[$key]) || !is_array($data[$key]))return 0;
+	$count = isset($data[$key]['count']) ? intval($data[$key]['count']) : 0;
+	$last = isset($data[$key]['last']) ? intval($data[$key]['last']) : 0;
+	if($count < $max)return 0;
+	$remain = $last + $lock - time();
+	return $remain > 0 ? $remain : 0;
+}
+
+function login_throttle_fail($ip, $lock = 900){
+	$key = md5((string)$ip);
+	$now = time();
+	$data = login_throttle_load();
+	//顺手清掉已过期的记录：文件不会无限增长，锁定期满的IP计数也自然归零
+	foreach($data as $k => $v){
+		if(!is_array($v) || (isset($v['last']) && intval($v['last']) + $lock < $now))unset($data[$k]);
+	}
+	$count = isset($data[$key]['count']) ? intval($data[$key]['count']) : 0;
+	$data[$key] = ['count' => $count + 1, 'last' => $now];
+	login_throttle_save($data);
+}
+
+function login_throttle_reset($ip){
+	$key = md5((string)$ip);
+	$data = login_throttle_load();
+	if(isset($data[$key])){
+		unset($data[$key]);
+		login_throttle_save($data);
+	}
+}
+
 function generate_file_token(){
 	global $DB;
 	do{

@@ -16,7 +16,7 @@ if($mod=='account_n' && $_POST['do']=='submit'){
     if($user==null)showmsg('用户名不能为空！',3);
     saveSetting('admin_user',$user);
     if(!empty($newpwd) && !empty($newpwd2)){
-        if($oldpwd!=$conf['admin_pwd'])showmsg('旧密码不正确！',3);
+        if(!hash_equals((string)$conf['admin_pwd'], (string)$oldpwd))showmsg('旧密码不正确！',3);
         if($newpwd!=$newpwd2)showmsg('两次输入的密码不一致！',3);
         saveSetting('admin_pwd',$newpwd);
     }

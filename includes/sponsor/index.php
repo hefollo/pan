@@ -20,6 +20,8 @@ foreach($pay_methods as $m){
 	if($url === '')continue;
 	$pay_list[] = ['url'=>$url, 'label'=>$m['label']];
 }
+//站名原来写死成作者的站，改为跟随后台“网站信息设置”里的标题
+$sp_title = htmlspecialchars(isset($conf['title']) && $conf['title'] !== '' ? $conf['title'] : '外链网盘', ENT_QUOTES, 'UTF-8');
 //赞助页原来写死蓝白配色，这里跟着站点外观走；未知主题回落到默认蓝白
 $sp_themes = [
 	'cloud'    => ['bg'=>'linear-gradient(135deg,#f8fafc 0%,#e8f0fe 100%)','surface'=>'#ffffff','line'=>'rgba(47,134,255,.10)','text'=>'#333333','soft'=>'#555555','muted'=>'#666666','faint'=>'#888888','primary'=>'#3a7bd5','primary_dark'=>'#2a5ba0','on_primary'=>'#ffffff','amount'=>'#09b83e'],
@@ -47,7 +49,7 @@ $sp = $sp_themes[$sp_key];
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>赞助支持 - 惜染外链网盘</title>
+    <title>赞助支持 - <?php echo $sp_title?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         :root{
@@ -349,7 +351,7 @@ $sp = $sp_themes[$sp_key];
     <div class="container">
         <!-- 页面标题 -->
         <div class="page-header">
-            <h1>赞助支持惜染外链网盘</h1>
+            <h1>赞助支持<?php echo $sp_title?></h1>
             <p>您的支持是我维持下去的动力！服务器每月续费需要41美元</p>
         </div>
 
@@ -410,7 +412,7 @@ $sp = $sp_themes[$sp_key];
 
         <!-- 页脚 -->
         <div class="footer">
-            <p>&copy; 2025 惜染外链网盘 | <a href="" target="_blank">mpimg.cn</a></p>
+            <p>&copy; <?php echo date('Y')?> <?php echo $sp_title?> | <a href="../../">返回首页</a></p>
         </div>
     </div>
 
@@ -418,7 +420,7 @@ $sp = $sp_themes[$sp_key];
         // 禁止右键菜单
         document.addEventListener('contextmenu', function(e) {
             e.preventDefault();
-            alert('感谢您支持惜染外链网盘！\n官方网站: mpimg.cn');
+            alert('感谢您支持<?php echo $sp_title?>！');
         });
 
         // 加载赞助数据
