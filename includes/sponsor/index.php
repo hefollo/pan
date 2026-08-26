@@ -40,6 +40,9 @@ $sp_themes = [
 	'emerald' => ['bg'=>'radial-gradient(circle at 16% 10%,rgba(74,222,128,.26),transparent 36%),linear-gradient(135deg,#07361f 0,#0f6b57 100%)','surface'=>'rgba(255,255,255,.12)','line'=>'rgba(255,255,255,.22)','text'=>'#eafff3','soft'=>'#d6fbe6','muted'=>'#93c9ac','faint'=>'#7aae92','primary'=>'#4ade80','primary_dark'=>'#5eead4','on_primary'=>'#07301f','amount'=>'#86efac'],
 	'sakura'   => ['bg'=>'radial-gradient(circle at 16% 10%,rgba(224,100,138,.18),transparent 36%),linear-gradient(135deg,#ffe4ef 0,#dff1fe 100%)','surface'=>'rgba(255,255,255,.72)','line'=>'rgba(190,120,160,.22)','text'=>'#3d2030','soft'=>'#4a2537','muted'=>'#8a6478','faint'=>'#a98c9c','primary'=>'#e0648a','primary_dark'=>'#8b5cf6','on_primary'=>'#ffffff','amount'=>'#0f9d58'],
 	'dashboard'=> ['bg'=>'#eef1f8','surface'=>'#ffffff','line'=>'#e7eaf1','text'=>'#1f2430','soft'=>'#2c3242','muted'=>'#6b7280','faint'=>'#9aa1b0','primary'=>'#4f6bff','primary_dark'=>'#3450e6','on_primary'=>'#ffffff','amount'=>'#16a34a'],
+	'console'  => ['bg'=>'#f5f7fb','surface'=>'#ffffff','line'=>'#e7eaf0','text'=>'#151c2d','soft'=>'#2a3346','muted'=>'#7b8497','faint'=>'#9aa1b0','primary'=>'#3867f4','primary_dark'=>'#2a4fd0','on_primary'=>'#ffffff','amount'=>'#16a369'],
+	'portal'   => ['bg'=>'#f6f8f5','surface'=>'#ffffff','line'=>'#dfe7e2','text'=>'#17211d','soft'=>'#2b3833','muted'=>'#66716c','faint'=>'#8a948f','primary'=>'#0d7c57','primary_dark'=>'#0a5f42','on_primary'=>'#ffffff','amount'=>'#0d7c57'],
+	'workspace'=> ['bg'=>'#10141b','surface'=>'#171c25','line'=>'#2a313d','text'=>'#edf1f7','soft'=>'#d5dce6','muted'=>'#8993a3','faint'=>'#6f7889','primary'=>'#f4c95d','primary_dark'=>'#d9ad3f','on_primary'=>'#221a05','amount'=>'#5ed6a0'],
 ];
 $sp_key = isset($conf['site_theme']) ? $conf['site_theme'] : 'cloud';
 if(!isset($sp_themes[$sp_key])) $sp_key = 'cloud';

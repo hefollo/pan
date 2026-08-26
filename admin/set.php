@@ -70,7 +70,7 @@ if($mod=='site'){
 <?php
 }elseif($mod=='appearance'){
 $site_theme = isset($conf['site_theme']) ? $conf['site_theme'] : 'cloud';
-if(!in_array($site_theme, ['cloud', 'night', 'neon', 'aurora', 'onefour', 'celadon', 'lilac', 'paper', 'blush', 'sky', 'mint', 'sunset', 'abyss', 'emerald', 'sakura', 'dashboard'], true)){
+if(!in_array($site_theme, ['cloud', 'night', 'neon', 'aurora', 'onefour', 'celadon', 'lilac', 'paper', 'blush', 'sky', 'mint', 'sunset', 'abyss', 'emerald', 'sakura', 'dashboard', 'console', 'portal', 'workspace'], true)){
 	$site_theme = 'cloud';
 }
 ?>
@@ -94,6 +94,39 @@ if(!in_array($site_theme, ['cloud', 'night', 'neon', 'aurora', 'onefour', 'celad
 	    </span>
 	    <strong>控制台侧栏风</strong>
 	    <small>顶部导航变为左侧固定侧栏，内容区改为圆角卡片布局，更接近后台管理系统的观感。</small>
+	  </label>
+	  <label class="appearance-card <?php echo $site_theme === 'console' ? 'active' : null;?>">
+	    <input type="radio" name="site_theme" value="console" <?php echo $site_theme === 'console' ? 'checked' : null;?>>
+	    <span class="appearance-preview appearance-preview-console">
+	      <span class="appearance-nav"></span>
+	      <span class="appearance-panel">
+	        <span></span><span></span><span></span>
+	      </span>
+	    </span>
+	    <strong>数据控制台风</strong>
+	    <small>更紧凑的左侧侧栏，标题与搜索独立成顶栏，列表改为白色卡片，信息密度最高。</small>
+	  </label>
+	  <label class="appearance-card <?php echo $site_theme === 'portal' ? 'active' : null;?>">
+	    <input type="radio" name="site_theme" value="portal" <?php echo $site_theme === 'portal' ? 'checked' : null;?>>
+	    <span class="appearance-preview appearance-preview-portal">
+	      <span class="appearance-nav"></span>
+	      <span class="appearance-panel">
+	        <span></span><span></span><span></span>
+	      </span>
+	    </span>
+	    <strong>上传门户风</strong>
+	    <small>居中的门户式顶部导航，首页多一块大号上传引导区，绿色配色，适合面向访客的公开分享站。</small>
+	  </label>
+	  <label class="appearance-card <?php echo $site_theme === 'workspace' ? 'active' : null;?>">
+	    <input type="radio" name="site_theme" value="workspace" <?php echo $site_theme === 'workspace' ? 'checked' : null;?>>
+	    <span class="appearance-preview appearance-preview-workspace">
+	      <span class="appearance-nav"></span>
+	      <span class="appearance-panel">
+	        <span></span><span></span><span></span>
+	      </span>
+	    </span>
+	    <strong>深色工作台风</strong>
+	    <small>深色底 + 左侧图标导航条（鼠标移上去展开文字），内容为深色圆角面板，适合长时间浏览管理。</small>
 	  </label>
 	</div>
 	</div>
@@ -277,7 +310,7 @@ if(!in_array($site_theme, ['cloud', 'night', 'neon', 'aurora', 'onefour', 'celad
 </div>
 <div class="panel-footer">
 <span class="glyphicon glyphicon-info-sign"></span>
-保存后前台页面会立即使用选中的外观。其中“控制台侧栏风”会同时改变后台布局（顶部导航变为左侧侧栏），其余外观不影响后台布局。
+保存后前台页面会立即使用选中的外观。布局型外观会同时改变后台：“控制台侧栏风”“数据控制台风”“深色工作台风”把后台顶部导航变成左侧侧栏，“上传门户风”只换后台配色、保留顶部导航；配色型外观不影响后台布局。
 </div>
 </div>
 <?php

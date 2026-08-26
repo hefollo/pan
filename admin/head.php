@@ -1,7 +1,7 @@
 <?php
 @header('Content-Type: text/html; charset=UTF-8');
 $site_theme = isset($conf['site_theme']) ? $conf['site_theme'] : 'cloud';
-if(!in_array($site_theme, ['cloud', 'night', 'neon', 'aurora', 'onefour', 'celadon', 'lilac', 'paper', 'blush', 'sky', 'mint', 'sunset', 'abyss', 'emerald', 'sakura', 'dashboard'], true)){
+if(!in_array($site_theme, ['cloud', 'night', 'neon', 'aurora', 'onefour', 'celadon', 'lilac', 'paper', 'blush', 'sky', 'mint', 'sunset', 'abyss', 'emerald', 'sakura', 'dashboard', 'console', 'portal', 'workspace'], true)){
   $site_theme = 'cloud';
 }
 $admin_body_class = !empty($islogin) ? 'admin-body' : 'admin-login-body';

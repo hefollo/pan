@@ -57,16 +57,19 @@ new Vue({
             elemetnNode=e.originalEvent.target;
             that.uploadTitle = '释放鼠标立即上传';
             that.background = '#ccc';
+            fileInput.addClass('is-dragover');
         });
         fileInput.on("dragleave",function(e){
             if(elemetnNode===e.originalEvent.target){
                 that.uploadTitle = '选择文件/Ctrl+V粘贴/拖拽到此上传';
                 that.background = '#fff';
+                fileInput.removeClass('is-dragover');
             }
         });
         fileInput.on('dragover', false).on("drop",function(e){
             that.uploadTitle = '选择文件/Ctrl+V粘贴/拖拽到此上传';
             that.background = '#fff';
+            fileInput.removeClass('is-dragover');
             var fs = e.originalEvent.dataTransfer.files;
             if(fs.length>0){
                 that.uploadFiles(fs);

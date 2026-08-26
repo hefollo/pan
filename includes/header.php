@@ -28,11 +28,18 @@
 </head>
 <?php
 $site_theme = isset($conf['site_theme']) ? $conf['site_theme'] : 'cloud';
-if(!in_array($site_theme, ['cloud', 'night', 'neon', 'aurora', 'onefour', 'celadon', 'lilac', 'paper', 'blush', 'sky', 'mint', 'sunset', 'abyss', 'emerald', 'sakura', 'dashboard'], true)){
+if(!in_array($site_theme, ['cloud', 'night', 'neon', 'aurora', 'onefour', 'celadon', 'lilac', 'paper', 'blush', 'sky', 'mint', 'sunset', 'abyss', 'emerald', 'sakura', 'dashboard', 'console', 'portal', 'workspace'], true)){
   $site_theme = 'cloud';
 }
+//布局型外观（侧栏/门户/工作台）共用一套结构样式，统一挂 layout-theme
+$layout_themes = ['dashboard', 'console', 'portal', 'workspace'];
+$body_class = 'theme-' . $site_theme;
+if(in_array($site_theme, $layout_themes, true)){
+  $body_class .= ' layout-theme';
+  include_once SYSTEM_ROOT.'layout_blocks.php';
+}
 ?>
-<body class="theme-<?php echo $site_theme?>">
+<body class="<?php echo $body_class?>">
 
   <div class="navbar navbar-default">
     <div class="container">
@@ -48,8 +55,8 @@ if(!in_array($site_theme, ['cloud', 'night', 'neon', 'aurora', 'onefour', 'celad
         <ul class="nav navbar-nav">
           <li class="<?php echo checkIfActive('index,')?>"><a href="./"><i class="fa fa-list" aria-hidden="true"></i> 文件列表</a></li>
           <li class="<?php echo checkIfActive('upload')?>"><a href="./upload.php"><i class="fa fa-upload" aria-hidden="true"></i> 上传文件</a></li>
-          <?php //控制台侧栏风用站内的赞助页，保持侧栏布局；其它主题仍跳转原来的独立赞助页
-          if($site_theme === 'dashboard'){?>
+          <?php //布局型外观用站内的赞助页，保持自己的导航布局；其它主题仍跳转原来的独立赞助页
+          if(in_array($site_theme, $layout_themes, true)){?>
           <li class="<?php echo checkIfActive('sponsor')?>"><a href="./sponsor.php"><i class="fa fa-money" aria-hidden="true"></i> 赞助名单</a></li>
           <?php }else{?>
           <li><a href="./includes/sponsor/"><i class="fa fa-money" aria-hidden="true"></i> 赞助名单</a></li>
@@ -76,6 +83,20 @@ if(!in_array($site_theme, ['cloud', 'night', 'neon', 'aurora', 'onefour', 'celad
             <?php }?>
           <?php }?>
         </ul>
+        <?php
+        //侧栏型外观（数据控制台风/深色工作台风）在侧栏底部补一张今日上传统计卡，对应原型里的存储条
+        if($site_theme === 'console' || $site_theme === 'workspace'){
+          $side_limit = function_exists('get_effective_upload_count_limit') ? get_effective_upload_count_limit() : 0;
+          //统计走会话缓存，pre_file 上没有 ip/addtime 索引，不能每次打开页面都扫一遍
+          $side_today = function_exists('layout_today_upload_count') ? layout_today_upload_count($DB) : 0;
+          $side_percent = $side_limit > 0 ? min(100, round($side_today / $side_limit * 100)) : min(100, $side_today * 10);
+        ?>
+        <div class="layout-side-card">
+          <div class="layout-side-row"><strong>今日上传</strong><span><?php echo $side_limit > 0 ? $side_today.' / '.$side_limit : $side_today.' 个'?></span></div>
+          <div class="layout-side-bar"><i style="width:<?php echo intval($side_percent)?>%"></i></div>
+          <small><?php echo $side_limit > 0 ? ('今日还可上传 '.max(0, $side_limit - $side_today).' 个文件') : '当前账号不限每日上传数量'?></small>
+        </div>
+        <?php }?>
       </div>
     </div>
   </div>

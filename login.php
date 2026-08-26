@@ -18,14 +18,22 @@ if(isset($_GET['logout'])){
     @header('Content-Type: application/json; charset=UTF-8');
     $type = isset($_POST['type'])?$_POST['type']:exit('{"code":-1,"msg":"no type"}');
     if(!$conf['login_apiurl'] || !$conf['login_appid'] || !$conf['login_appkey'])exit('{"code":-1,"msg":"未配置好快捷登录接口信息"}');
+    //接口连不通时每次点击都要等一次超时，还会占住 PHP 进程；失败后 60 秒内直接返回错误，不再去连
+    $oauth_fail_file = sys_get_temp_dir().'/pan_oauthfail_'.substr(md5(SYS_KEY.'|oauthconnect'), 0, 16);
+    if(is_file($oauth_fail_file) && filemtime($oauth_fail_file) + 60 > time()){
+        exit(json_encode(['code'=>-1, 'msg'=>'快捷登录接口暂时无法访问，请稍后再试']));
+    }
     $Oauth = new \lib\Oauth($conf['login_apiurl'], $conf['login_appid'], $conf['login_appkey']);
     $res = $Oauth->login($type);
     if(isset($res['code']) && $res['code']==0){
+        @unlink($oauth_fail_file);
         $result = ['code'=>0, 'url'=>$res['url']];
     }elseif(isset($res['code'])){
         $result = ['code'=>-1, 'msg'=>$res['msg']];
     }else{
-        $result = ['code'=>-1, 'msg'=>'快捷登录接口请求失败'];
+        //请求没拿到任何结果：接口地址不对、对方挂了或者超时
+        @touch($oauth_fail_file);
+        $result = ['code'=>-1, 'msg'=>'快捷登录接口连接失败或超时，请检查后台“用户登录设置”里的接口地址'];
     }
     exit(json_encode($result));
 }elseif($_GET['code'] && $_GET['type'] && $_GET['state']){
@@ -111,21 +119,33 @@ include SYSTEM_ROOT.'header.php';
 <link rel="stylesheet" href="https://s4.zstatic.net/ajax/libs/layer/2.3/skin/layer.css">
 <script src="https://s4.zstatic.net/ajax/libs/layer/2.3/layer.js"></script>
 <script>
+var connecting = false;
 function connect(type){
+    //快捷登录接口要请求上游服务，慢或超时都可能发生；没有超时和失败处理会一直转圈，
+    //用户反复点击还会堆积请求把站点拖慢，这里加锁 + 超时 + 失败提示
+    if(connecting) return;
+    connecting = true;
     var ii = layer.load(2, {shade:[0.1,'#fff']});
 	$.ajax({
 		type : "POST",
 		url : "login.php?act=connect",
 		data : {type:type},
 		dataType : 'json',
+		timeout : 20000,
 		success : function(data) {
 			layer.close(ii);
-			if(data.code == 0){
+			if(data && data.code == 0){
 				window.location.href = data.url;
 			}else{
-				layer.alert(data.msg, {icon: 7});
+				connecting = false;
+				layer.alert((data && data.msg) ? data.msg : '登录接口返回异常，请稍后重试', {icon: 7});
 			}
-		} 
+		},
+		error : function(xhr, status) {
+			layer.close(ii);
+			connecting = false;
+			layer.alert(status === 'timeout' ? '登录接口响应超时，请稍后重试' : '登录接口请求失败，请稍后重试', {icon: 2});
+		}
 	});
 }
 </script>

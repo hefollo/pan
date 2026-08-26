@@ -44,13 +44,65 @@ if($conf['filesearch']==1 && $kw){
     $link .= '&kw='.urlencode($kw);
 }
 
+include_once SYSTEM_ROOT.'layout_blocks.php';
+//类型筛选（数据控制台风/深色工作台风的筛选标签）；$sql_base 不带类型条件，给标签上的计数用
+$sql_base = $sql;
+$ft = (isset($_GET['ft']) && is_string($_GET['ft']) && array_key_exists($_GET['ft'], layout_type_filters())) ? $_GET['ft'] : '';
+if($ft !== ''){
+    $sql .= layout_type_filter_sql($ft);
+    $link .= '&ft='.urlencode($ft);
+}
+
 include_once SYSTEM_ROOT.'script_manager.php';
 include SYSTEM_ROOT.'header.php';
 ?>
 <?php echo mpimg_render_notice_html($conf);?>
 <?php echo mpimg_render_ads_html($conf);?>
+<?php
+//上传门户风的首屏大上传区：只有这套外观会输出，其它外观保持原来的纯列表首页
+if($site_theme === 'portal' && !$kw && (!isset($_GET['m']) || $_GET['m'] !== 'mine')){
+    $hero_size = get_effective_upload_size_limit();
+    $hero_size_text = $hero_size > 0 ? ('单个文件最大 '.$hero_size.' MB，支持任意格式') : '不限制文件大小，支持任意格式';
+?>
+<div class="portal-hero">
+  <div class="portal-hero-inner">
+    <div class="portal-hero-copy">
+      <span class="portal-kicker">快速 · 安全 · 长期可用</span>
+      <h1>把文件放上来，<br>链接带去任何地方。</h1>
+      <p>上传图片、视频、文档或压缩包，即刻生成可分享的外链。无需安装客户端，打开浏览器就能用。</p>
+      <div class="portal-trust">
+        <span><i class="fa fa-check" aria-hidden="true"></i> 支持批量上传</span>
+        <span><i class="fa fa-check" aria-hidden="true"></i> 自动生成外链</span>
+        <span><i class="fa fa-check" aria-hidden="true"></i> 多种存储可选</span>
+      </div>
+    </div>
+    <a class="portal-drop" href="./upload.php">
+      <span class="portal-drop-icon"><i class="fa fa-cloud-upload" aria-hidden="true"></i></span>
+      <strong>把文件拖到这里上传</strong>
+      <small><?php echo htmlspecialchars($hero_size_text, ENT_QUOTES, 'UTF-8')?></small>
+      <span class="portal-drop-btn"><i class="fa fa-upload" aria-hidden="true"></i> 选择本地文件</span>
+    </a>
+  </div>
+</div>
+<?php }?>
+<?php
+//布局型外观的额外结构：统计卡、类型筛选、右侧预览，只在对应外观下输出
+$layout_key = (isset($layout_themes) && in_array($site_theme, $layout_themes, true)) ? $site_theme : '';
+$layout_is_mine = isset($_GET['m']) && $_GET['m'] === 'mine';
+$layout_counts = null;
+if($layout_key === 'console' || $layout_key === 'workspace'){
+    $layout_counts = layout_type_counts($DB, $sql_base);
+}
+$layout_base_query = '';
+if($layout_is_mine) $layout_base_query .= 'm=mine';
+if($kw) $layout_base_query .= ($layout_base_query === '' ? '' : '&').'kw='.urlencode($kw);
+?>
 <div class="container">
+<?php if($layout_key === 'workspace'){?><div class="layout-shell"><?php }?>
     <div class="well bs-component">
+<?php if($layout_key === 'workspace'){?>
+        <div class="layout-crumb"><i class="fa fa-folder-o" aria-hidden="true"></i> <span>工作空间</span> <i class="fa fa-angle-right" aria-hidden="true"></i> <strong><?php echo $layout_is_mine ? '我的文件' : '全部文件'?></strong></div>
+<?php }?>
         <h2><?php echo $htext?>
         <?php if($conf['filesearch']==1){?><span class="searchbox">
             <form class="form-inline" action="./" method="GET">
@@ -58,12 +110,21 @@ include SYSTEM_ROOT.'header.php';
 				<input name="kw" class="form-control" type="search" placeholder="请输入搜索关键字" value="<?php echo htmlspecialchars((string)$kw, ENT_QUOTES, 'UTF-8')?>" required="">
 				<button class="btn btn-default btn-raised btn-sm" type="submit"><i class="fa fa-search" aria-hidden="true"></i> 搜索</button>
 			</form>
-        </span><?php }?></h2>
+        </span><?php }?><?php if($layout_key === 'console' || $layout_key === 'workspace'){?><a class="layout-cta" href="./upload.php"><i class="fa fa-plus" aria-hidden="true"></i> <span>上传新文件</span></a><?php }?></h2>
+<?php if($layout_key === 'console'){?>
+        <p class="layout-page-sub">管理、预览并分享你上传的所有内容。</p>
+        <?php echo layout_render_stats($layout_counts, layout_today_total($DB, $sql_base));?>
+<?php }elseif($layout_key === 'portal'){?>
+        <p class="layout-page-sub">浏览大家刚刚分享的文件，点文件名即可查看或下载。</p>
+<?php }?>
+<?php if(($layout_key === 'console' || $layout_key === 'workspace') && $layout_counts){?>
+        <?php echo layout_render_filters($layout_counts, $ft, $layout_base_query);?>
+<?php }?>
         <?php if(isset($_GET['m']) && $_GET['m']=='mine'){?>
         <input type="file" id="replaceFileInput" style="display:none">
         <?php }?>
         <div class="table-responsive">
-       <table class="table table-striped table-hover filelist">
+       <table class="table table-striped table-hover filelist filelist-main">
             <thead>
                 <tr>
                     <th>#</th>
@@ -98,7 +159,18 @@ while($res = $rs->fetch())
 	}
 	$actions .= '</div>';
 	$type_text = $res['type']?$res['type']:'未知';
-echo '<tr><td><b>'.$i++.'</b></td><td class="filelist-actions-cell">'.$actions.'</td><td><i class="fa '.type_to_icon($res['type']).' fa-fw"></i>'.$res['name'].'</td><td>'.size_format($res['size']).'</td><td><span class="file-type-badge">'.htmlspecialchars($type_text).'</span></td><td>'.$res['addtime'].'</td><td>'.preg_replace('/\d+$/','*',$res['ip']).'</b></td></tr>';
+	$row_ip = preg_replace('/\d+$/','*',$res['ip']);
+	//data-* 给布局型外观用：深色工作台风的右侧预览面板直接读这几个值
+	$row_attr = ' data-group="'.layout_type_group($res['type']).'"'
+		.' data-name="'.htmlspecialchars($res['name'], ENT_QUOTES, 'UTF-8').'"'
+		.' data-size="'.htmlspecialchars(size_format($res['size']), ENT_QUOTES, 'UTF-8').'"'
+		.' data-type="'.htmlspecialchars($type_text, ENT_QUOTES, 'UTF-8').'"'
+		.' data-time="'.htmlspecialchars($res['addtime'], ENT_QUOTES, 'UTF-8').'"'
+		.' data-ip="'.htmlspecialchars($row_ip, ENT_QUOTES, 'UTF-8').'"'
+		.' data-down="'.htmlspecialchars($fileurl, ENT_QUOTES, 'UTF-8').'"'
+		.' data-view="'.htmlspecialchars($viewurl, ENT_QUOTES, 'UTF-8').'"'
+		.' data-icon="'.type_to_icon($res['type']).'"';
+echo '<tr'.$row_attr.'><td><b>'.$i++.'</b></td><td class="filelist-actions-cell">'.$actions.'</td><td><i class="fa '.type_to_icon($res['type']).' fa-fw"></i>'.$res['name'].'</td><td>'.size_format($res['size']).'</td><td><span class="file-type-badge">'.htmlspecialchars($type_text).'</span></td><td>'.$res['addtime'].'</td><td>'.$row_ip.'</td></tr>';
 }
 if($numrows == 0) echo '<tr><td colspan="7" align="center">还没上传过任何文件</td></tr>';
 ?>
@@ -146,7 +218,11 @@ echo '<li class="disabled"><a>尾页</a></li>';
 </nav>
 </div>
     </div>
+<?php if($layout_key === 'workspace'){echo layout_render_preview();?></div><?php }?>
 <?php include SYSTEM_ROOT.'footer.php';?>
+<?php if($layout_key === 'workspace'){?>
+<script src="./assets/js/layout-workspace.js?v=<?php echo VERSION?>"></script>
+<?php }?>
 <?php if(isset($_GET['m']) && $_GET['m']=='mine'){?>
 <link rel="stylesheet" href="https://s4.zstatic.net/ajax/libs/layer/3.1.1/theme/default/layer.css">
 <script src="https://s4.zstatic.net/ajax/libs/layer/3.1.1/layer.js"></script>

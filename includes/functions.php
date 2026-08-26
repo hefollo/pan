@@ -1,8 +1,15 @@
 <?php
-function get_curl($url, $post=0, $referer=0, $cookie=0, $header=0, $ua=0, $nobaody=0)
+/*
+ * 之前没有设置任何超时：一旦对方接口（快捷登录接口、IP归属地接口）不通或者很慢，
+ * curl 会一直挂着占住 PHP 进程，用户多点几次就把进程池占满，整站跟着卡死。
+ * 这几个调用都是取一小段 JSON，给一个默认上限足够用；确实需要更久的调用可以自己传 $timeout。
+ */
+function get_curl($url, $post=0, $referer=0, $cookie=0, $header=0, $ua=0, $nobaody=0, $timeout=15)
 {
 	$ch = curl_init();
 	curl_setopt($ch, CURLOPT_URL, $url);
+	curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+	curl_setopt($ch, CURLOPT_TIMEOUT, max(5, intval($timeout)));
 	curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 	curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
 	$httpheader[] = "Accept: */*";
