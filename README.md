@@ -2,7 +2,8 @@
 
 基于彩虹外链云盘二开 + 美化
 
-开源地址：<https://github.com/hefollo/pan>
+- 本项目开源地址：<https://github.com/hefollo/pan>
+- 原开源项目地址：<https://github.com/netcccyun/pan>
 
 ![项目预览](https://mpimg.cn/view.php/2841008ec06283dcd8378d7045992dcf.png)
 ![项目预览](https://mpimg.cn/view.php/b551758ecaff4aae424f0b4b22fdcabb.png)
@@ -235,4 +236,4 @@ http(s)://你的域名/install/update.php
 
 ## 致谢
 
-感谢原开源项目作者提供基础程序支持。
+感谢原开源项目 [netcccyun/pan](https://github.com/netcccyun/pan) 的作者提供基础程序支持。
