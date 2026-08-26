@@ -14,6 +14,9 @@ body.admin-body a:hover,body.admin-body a:focus{color:var(--admin-primary-dark);
 .navbar-toggle{margin-top:15px;border:0}
 .dropdown-menu{border:0;border-radius:8px;box-shadow:var(--admin-shadow)}
 .dropdown-menu>li>a{padding:9px 16px;color:#334155}
+/* Bootstrap 给选中项写死了 #337ab7。这里不用实心底色——有的主题 --admin-primary 是白色（如暗黑科技风），
+   实心底会变成白底白字；改成左侧强调条+强调色文字，16 套主题都读得清 */
+.dropdown-menu>.active>a,.dropdown-menu>.active>a:hover,.dropdown-menu>.active>a:focus{background-color:transparent;color:var(--admin-primary);font-weight:700;box-shadow:inset 3px 0 0 var(--admin-primary)}
 .container{max-width:1220px}
 body.admin-body>.container,body.admin-body>.container-fluid{max-width:none;width:100%;padding-left:28px;padding-right:28px}
 body.admin-body>.container>.center-block,body.admin-body>.container-fluid>.center-block{max-width:none;width:100%!important;padding-left:0;padding-right:0}
@@ -230,7 +233,13 @@ body.admin-body>.container,body.admin-body>.container-fluid{padding-left:32px;pa
 .appearance-settings-panel>.panel-heading .panel-title{font-size:18px;color:#0f172a}
 .appearance-settings-body{padding:0 16px 14px!important}
 .appearance-settings-form{padding:14px 0 0}
+/* 外观分组标题：颜色用 inherit + 各主题都定义了的 --admin-primary，不用为 16 套主题各写一遍 */
+.appearance-group{margin-bottom:28px}
+.appearance-group-head{margin:0 0 14px;padding-left:11px;border-left:3px solid var(--admin-primary)}
+.appearance-group-head strong{display:block;color:inherit;font-size:15px;font-weight:800;line-height:1.4}
+.appearance-group-head small{display:block;margin-top:3px;color:inherit;opacity:.7;font-size:13px;line-height:1.6}
 .appearance-options{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px;margin-bottom:22px}
+.appearance-group .appearance-options{margin-bottom:0}
 @media (max-width:1199px){.appearance-options{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media (max-width:991px){.appearance-options{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .appearance-card{position:relative;display:block;margin:0;padding:16px 16px 14px;border:1px solid #d8e6f8;border-radius:16px;background:#fff;cursor:pointer;transition:border-color .2s,box-shadow .2s,transform .2s;box-shadow:none}
@@ -348,6 +357,13 @@ body.admin-body>.container,body.admin-body>.container-fluid{padding-left:32px;pa
 .appearance-preview-onefour .appearance-panel span:first-child{width:48%;background:#ffffff}
 .appearance-preview-onefour .appearance-panel span:nth-child(2){width:84%}
 .appearance-preview-onefour .appearance-panel span:nth-child(3){width:68%}
+.appearance-preview-dashboard{display:flex;background:#eef1f8}
+.appearance-preview-dashboard .appearance-nav{display:block;height:auto;flex:0 0 32%;background:#ffffff;border-bottom:0;border-right:1px solid #e3e7f0}
+.appearance-preview-dashboard .appearance-panel{flex:1;margin:14px;padding:12px;border-radius:10px;background:#ffffff;border:1px solid #e3e7f0;box-shadow:0 10px 22px rgba(31,41,55,.08)}
+.appearance-preview-dashboard .appearance-panel span{background:#e7eaf1}
+.appearance-preview-dashboard .appearance-panel span:first-child{width:50%;background:linear-gradient(90deg,#4f6bff,#3450e6)}
+.appearance-preview-dashboard .appearance-panel span:nth-child(2){width:84%}
+.appearance-preview-dashboard .appearance-panel span:nth-child(3){width:68%}
 .appearance-submit{max-width:220px;margin:4px 0 0}
 .appearance-submit .btn{height:38px;border-radius:12px;background:#fff!important;color:#1e3a5f!important;border:1px solid #cfe0f7!important;font-weight:700}
 .appearance-submit .btn:hover,.appearance-submit .btn:focus{background:#f4f9ff!important;color:#0f172a!important;border-color:#3b82f6!important}
@@ -398,6 +414,22 @@ body.admin-theme-cloud.admin-body .appearance-submit .btn:hover,
 body.admin-theme-cloud.admin-body .appearance-submit .btn:focus{background:#f4f9ff!important;color:#0f172a!important;border-color:#3b82f6!important}
 body.admin-theme-cloud.admin-body .appearance-settings-footer{color:#334155!important;border-top-color:#d9e8fb!important}
 body.admin-theme-cloud.admin-body .appearance-settings-footer .glyphicon{color:#334155!important}
+body.admin-theme-dashboard.admin-body .appearance-settings-panel{background:linear-gradient(180deg,#f7f8fc 0,#eef1f8 100%)!important;border-color:#e3e6f0!important}
+body.admin-theme-dashboard.admin-body .appearance-settings-panel>.panel-heading,
+body.admin-theme-dashboard.admin-body .appearance-settings-panel>.panel-heading .panel-title{color:#1f2430!important}
+body.admin-theme-dashboard.admin-body .appearance-settings-body{color:#4b5261}
+body.admin-theme-dashboard.admin-body .appearance-card{background:rgba(255,255,255,.98);border-color:#e3e6f0;box-shadow:0 12px 28px rgba(31,41,55,.06)}
+body.admin-theme-dashboard.admin-body .appearance-card strong{color:#1f2430}
+body.admin-theme-dashboard.admin-body .appearance-card small{color:#6b7280}
+body.admin-theme-dashboard.admin-body .appearance-preview{border-color:#e3e6f0;background:#fff}
+body.admin-theme-dashboard.admin-body .appearance-card.active,
+body.admin-theme-dashboard.admin-body .appearance-card:hover{border-color:#4f6bff;box-shadow:0 0 0 2px rgba(79,107,255,.12)}
+body.admin-theme-dashboard.admin-body .appearance-card.active:after{background:#4f6bff;box-shadow:0 8px 18px rgba(79,107,255,.32)}
+body.admin-theme-dashboard.admin-body .appearance-submit .btn{background:#fff!important;color:#1f2430!important;border-color:#dde1ec!important}
+body.admin-theme-dashboard.admin-body .appearance-submit .btn:hover,
+body.admin-theme-dashboard.admin-body .appearance-submit .btn:focus{background:#f5f7fb!important;color:#0f172a!important;border-color:#4f6bff!important}
+body.admin-theme-dashboard.admin-body .appearance-settings-footer{color:#3f4656!important;border-top-color:#e3e6f0!important}
+body.admin-theme-dashboard.admin-body .appearance-settings-footer .glyphicon{color:#3f4656!important}
 body.admin-theme-night.admin-body .appearance-settings-panel{background:linear-gradient(180deg,rgba(16,25,38,.98),rgba(12,21,34,.98))!important}
 body.admin-theme-night.admin-body .appearance-settings-body{color:#d7e3f4}
 body.admin-theme-night.admin-body .appearance-card{background:rgba(13,21,34,.96);border-color:#26354f;box-shadow:0 18px 36px rgba(0,0,0,.24)}
@@ -468,6 +500,7 @@ body.admin-login-body{min-height:100vh;margin:0;font-family:-apple-system,BlinkM
 .admin-login-form .btn:hover:after,.admin-login-form .btn:hover:before{height:100%;width:50%;opacity:0}
 
 body.admin-theme-cloud.admin-login-body{background:linear-gradient(135deg,#ebf5ff 0,#f8fcff 45%,#deefff 100%) fixed}
+body.admin-theme-dashboard.admin-login-body{background:linear-gradient(135deg,#eef1f8 0,#f7f8fc 45%,#e7ebfa 100%) fixed}
 body.admin-theme-night.admin-login-body{background:radial-gradient(circle at top right,rgba(48,99,255,.18),transparent 35%),linear-gradient(135deg,#07101d,#0e1728 55%,#121f35) fixed}
 body.admin-theme-neon.admin-login-body{background:radial-gradient(circle at top right,rgba(109,92,255,.28),transparent 32%),radial-gradient(circle at bottom left,rgba(36,215,255,.18),transparent 28%),linear-gradient(135deg,#040816,#091327 50%,#050917) fixed}
 body.admin-theme-aurora.admin-login-body{background:radial-gradient(circle at 20% 20%,rgba(103,232,255,.24),transparent 26%),radial-gradient(circle at 85% 75%,rgba(240,183,255,.22),transparent 30%),linear-gradient(135deg,#163c82,#4a1f83) fixed}
@@ -1499,3 +1532,59 @@ body.admin-theme-sakura.admin-body .admin-file-sub{color:#4a2537}
 body.admin-theme-sakura.admin-body .admin-file-thumb{background:rgba(255,255,255,0.46);border-color:rgba(255,255,255,0.92)}
 body.admin-theme-sakura.admin-body .admin-file-icon{background:rgba(255,255,255,0.644);color:#e0648a}
 body.admin-theme-sakura.admin-body #showimg{background:#ffffff}
+
+/* ===== Dashboard theme：后台配色 + 左侧固定侧栏，与前台保持一致 ===== */
+body.admin-theme-dashboard.admin-body,
+body.admin-theme-dashboard.admin-login-body{--admin-bg:#eef1f8;--admin-surface:#ffffff;--admin-soft:#f5f7fb;--admin-text:#1f2430;--admin-muted:#6b7280;--admin-line:#e7eaf1;--admin-primary:#4f6bff;--admin-primary-dark:#3450e6;--admin-green:#22c55e;--admin-yellow:#f59e0b;--admin-red:#ef4444;--admin-shadow:0 10px 28px rgba(31,41,55,.08)}
+body.admin-theme-dashboard.admin-body{background:var(--admin-bg);color:var(--admin-text)}
+/* 通用块里有个 body.admin-body:before 蓝色渐变遮罩，各主题都要自己关掉，否则背景还是蓝的 */
+body.admin-theme-dashboard.admin-body:before{content:none;display:none}
+body.admin-theme-dashboard.admin-body a{color:var(--admin-primary)}
+body.admin-theme-dashboard.admin-body a:hover,body.admin-theme-dashboard.admin-body a:focus{color:var(--admin-primary-dark)}
+body.admin-theme-dashboard.admin-body .panel,body.admin-theme-dashboard.admin-body .well{border:1px solid var(--admin-line);border-radius:16px;background:var(--admin-surface);box-shadow:0 6px 20px rgba(31,41,55,.05)}
+body.admin-theme-dashboard.admin-body .panel-heading{background:var(--admin-surface)!important;border-bottom:1px solid var(--admin-line)!important;color:var(--admin-text)!important}
+body.admin-theme-dashboard.admin-body .panel-title,body.admin-theme-dashboard.admin-body .panel-title i{color:var(--admin-text)}
+body.admin-theme-dashboard.admin-body .panel-footer{background:var(--admin-soft);border-top:1px solid var(--admin-line);color:var(--admin-muted)}
+body.admin-theme-dashboard.admin-body .table{background:transparent}
+body.admin-theme-dashboard.admin-body .table>thead>tr>th{background:var(--admin-soft)!important;border-bottom:1px solid var(--admin-line)!important;color:#4b5261}
+body.admin-theme-dashboard.admin-body .table>tbody>tr>td{border-top:1px solid var(--admin-line)!important;color:#333a48}
+body.admin-theme-dashboard.admin-body .table-striped>tbody>tr:nth-of-type(odd){background:#fafbfd}
+body.admin-theme-dashboard.admin-body .table-hover>tbody>tr:hover{background:#f3f5fc}
+body.admin-theme-dashboard.admin-body .form-control{background:#fff;border:1px solid var(--admin-line);border-radius:10px;color:var(--admin-text)}
+body.admin-theme-dashboard.admin-body .form-control:focus{border-color:#a9b7ff;box-shadow:0 0 0 4px rgba(79,107,255,.13)}
+body.admin-theme-dashboard.admin-body .btn{border-radius:10px}
+body.admin-theme-dashboard.admin-body .btn-primary{background:var(--admin-primary);border-color:var(--admin-primary);color:#fff}
+body.admin-theme-dashboard.admin-body .btn-primary:hover,body.admin-theme-dashboard.admin-body .btn-primary:focus{background:var(--admin-primary-dark);border-color:var(--admin-primary-dark)}
+body.admin-theme-dashboard.admin-body .btn-default{background:var(--admin-soft);border:1px solid var(--admin-line);color:#4b5261}
+body.admin-theme-dashboard.admin-body{--admin-sidebar-w:236px}
+@media (min-width:768px){
+body.admin-theme-dashboard.admin-body .navbar.navbar-default{position:fixed;top:0;left:0;bottom:0;right:auto;z-index:1200;margin:0;width:var(--admin-sidebar-w);min-height:0;display:flex;background:#fff;border:0;border-top:0;border-right:1px solid #e3e6f0;box-shadow:2px 0 24px rgba(31,41,55,.05);overflow-y:auto;overflow-x:hidden}
+body.admin-theme-dashboard.admin-body .navbar .container{width:100%;max-width:none;padding:0;margin:0;display:flex;flex-direction:column;height:100%;min-height:100%}
+body.admin-theme-dashboard.admin-body .navbar-header{float:none;width:100%;padding:18px 16px;border-bottom:1px solid #e3e6f0}
+body.admin-theme-dashboard.admin-body .navbar-brand{float:none;display:flex;align-items:center;height:auto;padding:0;margin:0!important;font-size:15px;font-weight:800;color:#161a23!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Bootstrap3 给 .navbar-fixed-top .navbar-collapse 加了 max-height:340px（不分屏宽），侧栏必须解掉否则菜单被截断 */
+body.admin-theme-dashboard.admin-body .navbar-collapse{float:none;width:100%;flex:1;max-height:none!important;display:flex!important;flex-direction:column;padding:12px 10px;border:0;box-shadow:none;overflow:visible!important}
+body.admin-theme-dashboard.admin-body .navbar-nav{float:none!important;width:100%;margin:0!important;display:flex;flex-direction:column;gap:2px}
+body.admin-theme-dashboard.admin-body .navbar-nav>li{width:100%;float:none}
+body.admin-theme-dashboard.admin-body .navbar-nav.navbar-right{float:none!important;margin:0!important}
+body.admin-theme-dashboard.admin-body .navbar-default .navbar-nav>li>a{display:flex;align-items:center;gap:10px;margin:0;padding:10px 12px;border-radius:10px;color:#4b5261!important;font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.admin-theme-dashboard.admin-body .navbar-default .navbar-nav>li>a i{flex:0 0 16px;width:16px;margin:0;text-align:center;color:#8890a0}
+body.admin-theme-dashboard.admin-body .navbar-default .navbar-nav>li.active>a,body.admin-theme-dashboard.admin-body .navbar-default .navbar-nav>li>a:hover,body.admin-theme-dashboard.admin-body .navbar-default .navbar-nav>li>a:focus{background:#eef1ff!important;color:#4f6bff!important}
+body.admin-theme-dashboard.admin-body .navbar-default .navbar-nav>li.active>a i,body.admin-theme-dashboard.admin-body .navbar-default .navbar-nav>li>a:hover i{color:#4f6bff}
+/* 侧栏里“系统设置”子菜单常驻展开：绝对定位的下拉在可滚动侧栏里会被裁掉，
+   而且侧栏本来就该一眼看全所有入口，不用点一下才展开 */
+body.admin-theme-dashboard.admin-body .navbar-nav>li>.dropdown-menu{display:block!important;position:static!important;float:none;width:100%;min-width:0;margin:2px 0 0;padding:4px;background:#f5f7fb;border:1px solid #e3e6f0;border-radius:10px;box-shadow:none}
+/* 子菜单不再需要点击展开，父级当作分组标题，去掉小箭头和点击跳顶 */
+body.admin-theme-dashboard.admin-body .navbar-nav>li>a.dropdown-toggle{pointer-events:none;cursor:default}
+body.admin-theme-dashboard.admin-body .navbar-nav>li>a.dropdown-toggle .caret{display:none}
+/* 子项配色跟主菜单一致（深灰），选择器要跟着上面的常驻展开走，不能再挂在 .open 上 */
+body.admin-theme-dashboard.admin-body .navbar-nav>li>.dropdown-menu>li>a{padding:8px 12px;border-radius:8px;color:#4b5261!important;font-size:13px;white-space:normal}
+body.admin-theme-dashboard.admin-body .navbar-nav>li>.dropdown-menu>li>a:hover,body.admin-theme-dashboard.admin-body .navbar-nav>li>.dropdown-menu>li>a:focus{background:#eef1ff!important;color:#4f6bff!important}
+/* 当前所在的子项：跟父级选中态用同一套淡蓝底+蓝字，而不是实心蓝 */
+body.admin-theme-dashboard.admin-body .navbar-nav>li>.dropdown-menu>li.active>a,body.admin-theme-dashboard.admin-body .navbar-nav>li>.dropdown-menu>li.active>a:hover,body.admin-theme-dashboard.admin-body .navbar-nav>li>.dropdown-menu>li.active>a:focus{background:#e2e7ff!important;color:#3450e6!important;font-weight:700}
+/* 内容区让开侧栏；这些容器带内联 padding-top:70px，用 !important 覆盖 */
+body.admin-theme-dashboard.admin-body>.container,body.admin-theme-dashboard.admin-body>.container-fluid{width:auto!important;max-width:none!important;margin:0!important;padding-top:26px!important;padding-right:28px!important;padding-bottom:8px!important;padding-left:calc(var(--admin-sidebar-w) + 28px)!important}
+}
+@media (max-width:767px){
+body.admin-theme-dashboard.admin-body .navbar-default .navbar-nav>li>a{margin:2px 0;border-radius:8px}
+}

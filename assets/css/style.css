@@ -1466,3 +1466,115 @@ body.theme-sakura .filelist-footer{border-radius:18px;backdrop-filter:blur(16px)
 body.theme-sakura .table>thead>tr>th{letter-spacing:.03em;font-weight:700}
 body.theme-sakura .pagination>li>a{border-radius:12px;margin:0 3px;backdrop-filter:blur(8px)}
 body.theme-sakura #fileInput.infobox{border-radius:22px;backdrop-filter:blur(20px) saturate(1.2)}
+
+/* ===== Dashboard theme：结构级改版，不只是换色。顶部导航变为左侧固定侧栏，内容区改为圆角卡片布局 ===== */
+body.theme-dashboard{--page-bg:#eef1f8;--surface:#ffffff;--surface-soft:#f5f7fb;--text:#1f2430;--muted:#6b7280;--line:#e7eaf1;--primary:#4f6bff;--primary-dark:#3450e6;--accent:#22c55e;--danger:#ef4444;--shadow:0 10px 28px rgba(31,41,55,.08);--sidebar-w:248px;background:var(--page-bg);color:var(--text)}
+body.theme-dashboard a{color:var(--primary)}
+body.theme-dashboard a:hover,body.theme-dashboard a:focus{color:var(--primary-dark)}
+body.theme-dashboard .navbar-brand:before{content:"\f0e4";margin-right:8px;color:var(--primary);font-size:18px}
+body.theme-dashboard .navbar-default .navbar-toggle{background:var(--surface-soft)!important;background-image:none!important;border:1px solid var(--line)!important;border-radius:8px}
+body.theme-dashboard .navbar-default .navbar-toggle .icon-bar{background:var(--primary)!important}
+body.theme-dashboard .navbar-default .navbar-nav>li>a{display:flex;align-items:center;gap:10px;color:#4b5261!important;font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.theme-dashboard .navbar-default .navbar-nav>li>a i{flex:0 0 16px;width:16px;text-align:center;color:#8890a0}
+body.theme-dashboard .navbar-default .navbar-nav>li.active>a,body.theme-dashboard .navbar-default .navbar-nav>li>a:hover,body.theme-dashboard .navbar-default .navbar-nav>li>a:focus{background:#eef1ff!important;color:var(--primary)!important}
+body.theme-dashboard .navbar-default .navbar-nav>li.active>a i,body.theme-dashboard .navbar-default .navbar-nav>li>a:hover i{color:var(--primary)}
+.sponsor-pay-list{display:flex;flex-wrap:wrap;justify-content:center;gap:24px;margin:0 0 26px}
+.sponsor-pay-item{text-align:center}
+.sponsor-pay-item img{width:150px;height:150px;object-fit:contain;border:1px solid var(--line);border-radius:12px;background:#fff}
+.sponsor-pay-item p{margin:10px 0 0;color:var(--muted);font-weight:600}
+@media (max-width:767px){.sponsor-pay-item img{width:120px;height:120px}}
+body.theme-dashboard .dropdown-menu{background:#fff;border:1px solid var(--line);box-shadow:var(--shadow)}
+body.theme-dashboard .dropdown-menu>li>a{color:#3f4656!important}
+body.theme-dashboard .dropdown-menu>li>a:hover,body.theme-dashboard .dropdown-menu>li>a:focus{background:#eef1ff!important;color:var(--primary)!important}
+body.theme-dashboard .footer,body.theme-dashboard .footer .text-muted{color:#8890a0}
+/* 侧栏结构只在桌面宽度生效，移动端保留原生汉堡菜单折叠行为，避免破坏 .collapse 的展开/收起 */
+@media (min-width:768px){
+/* flex-direction:column：万一有脚本往导航栏里追加元素（公告条以前就是这么插的），也不会把侧栏内容挤窄 */
+body.theme-dashboard .navbar.navbar-default{position:fixed;top:0;left:0;bottom:0;z-index:1200;margin:0;width:var(--sidebar-w);display:flex;flex-direction:column;background:#fff;border:0;border-right:1px solid var(--line);box-shadow:2px 0 24px rgba(31,41,55,.05);overflow-y:auto;overflow-x:hidden}
+body.theme-dashboard .navbar .container{width:100%;max-width:none;padding:0;margin:0;display:flex;flex-direction:column;height:100%;min-height:100%}
+body.theme-dashboard .navbar-header{float:none;width:100%;padding:18px 16px;border-bottom:1px solid var(--line)}
+body.theme-dashboard .navbar-brand{float:none;display:flex;align-items:center;height:auto;padding:0;margin:0!important;font-size:16px;font-weight:800;color:#161a23!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.theme-dashboard .navbar-collapse{float:none;width:100%;flex:1;display:flex!important;flex-direction:column;padding:12px 10px;border:0;box-shadow:none;overflow-y:auto;overflow-x:hidden}
+body.theme-dashboard .navbar-nav{float:none!important;width:100%;margin:0!important;display:flex;flex-direction:column;gap:2px}
+body.theme-dashboard .navbar-nav>li{width:100%;float:none}
+body.theme-dashboard .navbar-nav.navbar-right{float:none!important;margin:auto 0 0!important;padding-top:10px;border-top:1px solid var(--line)}
+/* 这份样式表里靠后的通用块给导航链接加了 margin:16px 4px，不覆盖掉侧栏条目会被撑到 76px 高 */
+body.theme-dashboard .navbar-default .navbar-nav>li>a{margin:0;padding:10px 12px;border-radius:10px}
+body.theme-dashboard .navbar-default .navbar-nav>li>a i{margin:0}
+/* 侧栏是可滚动容器，绝对定位的下拉菜单会被裁掉（用户菜单又正好在最底部），改成静态展开 */
+body.theme-dashboard .navbar-nav .open>.dropdown-menu{position:static;float:none;width:100%;margin:2px 0 0;padding:4px;background:var(--surface-soft);border:1px solid var(--line);border-radius:10px;box-shadow:none}
+body.theme-dashboard .navbar-nav .open>.dropdown-menu>li>a{padding:9px 12px;border-radius:8px;white-space:normal}
+body.theme-dashboard>.container{margin:0!important;max-width:none!important;width:auto!important;padding:26px 28px 8px calc(var(--sidebar-w) + 28px)}
+body.theme-dashboard>footer.footer{margin:0!important;padding-left:calc(var(--sidebar-w) + 28px)}
+body.theme-dashboard .theme-announcement-bar{margin:0 0 20px var(--sidebar-w)!important;width:calc(100% - var(--sidebar-w))!important;border-radius:0 0 14px 14px!important}
+body.theme-dashboard .mpimg-link-band{margin-left:var(--sidebar-w)!important;width:calc(100% - var(--sidebar-w))!important}
+}
+@media (max-width:767px){
+body.theme-dashboard .navbar-default .navbar-nav>li>a{margin:2px 0;padding:11px 15px;border-radius:8px}
+body.theme-dashboard .navbar-default .navbar-nav>li>a i{margin:0}
+}
+body.theme-dashboard .well,body.theme-dashboard .panel{border:1px solid var(--line);border-radius:16px;background:#fff;box-shadow:0 6px 20px rgba(31,41,55,.05)}
+body.theme-dashboard .well.bs-component{padding:24px}
+body.theme-dashboard .well.bs-component h2{color:#161a23}
+body.theme-dashboard .panel{overflow:hidden}
+body.theme-dashboard .panel-heading{background:#fff!important;border-bottom:1px solid var(--line)!important;color:#161a23!important;font-weight:700}
+body.theme-dashboard .panel-footer,body.theme-dashboard .tab-content,body.theme-dashboard .list-group-item{background:#fff;border-color:var(--line);color:#3f4656}
+body.theme-dashboard .panel-title,body.theme-dashboard .panel-title i{color:#161a23}
+body.theme-dashboard .table{background:transparent}
+body.theme-dashboard .table>thead>tr>th{background:var(--surface-soft)!important;border-bottom:1px solid var(--line)!important;color:#4b5261;font-weight:700}
+body.theme-dashboard .table>tbody>tr>td{border-top:1px solid var(--line)!important;color:#333a48}
+body.theme-dashboard .table-striped>tbody>tr:nth-of-type(odd){background:#fafbfd}
+body.theme-dashboard .table-hover>tbody>tr:hover{background:#f3f5fc}
+body.theme-dashboard .table-bordered,body.theme-dashboard .table-bordered>tbody>tr>td,body.theme-dashboard .table-bordered>thead>tr>th{border-color:var(--line)!important}
+body.theme-dashboard .filelist td a{color:var(--primary);font-weight:700}
+body.theme-dashboard .filelist .fa-fw{color:#8890a0}
+body.theme-dashboard .file-action{display:inline-flex!important;align-items:center;gap:4px;padding:4px 10px;border-radius:999px;background:#eef1ff;color:var(--primary)!important;font-size:13px;font-weight:700}
+body.theme-dashboard .file-action-view{background:#f2f3f7;color:#6b7280!important}
+body.theme-dashboard .file-action-edit{background:#eaf7ff;color:#2b79d8!important}
+body.theme-dashboard .file-action:hover{background:var(--primary);color:#fff!important}
+body.theme-dashboard .file-type-badge{display:inline-flex;align-items:center;justify-content:center;padding:4px 10px;border-radius:999px;background:#eef1ff;color:var(--primary);font-weight:700;font-size:13px}
+body.theme-dashboard .filelist-summary{color:var(--muted)}
+body.theme-dashboard .pagination>li>a,body.theme-dashboard .pagination>li>span{background:var(--surface-soft);border:0;border-radius:9px!important;color:#4b5261}
+body.theme-dashboard .pagination>li>a:hover,body.theme-dashboard .pagination>.active>a,body.theme-dashboard .pagination>.active>a:hover{background:var(--primary)!important;color:#fff!important;border-color:var(--primary)}
+body.theme-dashboard .pagination>.disabled>a,body.theme-dashboard .pagination>.disabled>a:hover{background:var(--surface-soft);color:#b3b8c4}
+body.theme-dashboard .form-control,body.theme-dashboard .searchbox .form-control{background:#fff;border:1px solid var(--line);border-radius:10px;color:#1f2430}
+body.theme-dashboard .form-control:focus{border-color:#a9b7ff;box-shadow:0 0 0 4px rgba(79,107,255,.13)}
+body.theme-dashboard .input-group-addon{background:var(--surface-soft);border-color:var(--line);color:var(--muted)}
+body.theme-dashboard .searchbox input.form-control[type="search"]{background:#fff!important;border-color:var(--line)!important;color:#1f2430!important}
+body.theme-dashboard .searchbox .btn{background:var(--surface-soft)!important;border:1px solid var(--line)!important;color:#4b5261!important;border-radius:10px!important}
+body.theme-dashboard .searchbox .btn:hover,body.theme-dashboard .searchbox .btn:focus{background:var(--primary)!important;border-color:var(--primary)!important;color:#fff!important}
+body.theme-dashboard #upload_frame .checkbox label{color:#3f4656}
+body.theme-dashboard #upload_frame .checkbox input[type="checkbox"]{accent-color:var(--primary)}
+body.theme-dashboard #upload_frame .checkbox .checkbox-material .check{border-color:var(--primary)!important;background:#fff!important}
+body.theme-dashboard #upload_frame .checkbox input[type="checkbox"]:checked+.checkbox-material .check{background:var(--primary)!important;border-color:var(--primary)!important}
+body.theme-dashboard #fileInput #pwd{background:#fff!important;border-color:var(--line)!important;color:#1f2430!important;-webkit-text-fill-color:#1f2430;border-radius:10px}
+body.theme-dashboard #fileInput #pwd:focus{border-color:#a9b7ff!important;box-shadow:0 0 0 4px rgba(79,107,255,.13)!important}
+body.theme-dashboard #fileInput .help-block{color:var(--muted)!important}
+body.theme-dashboard .btn{border-radius:10px!important}
+body.theme-dashboard .btn-raised.btn-primary,body.theme-dashboard .btn-primary{background:var(--primary)!important;color:#fff!important}
+body.theme-dashboard .btn-raised.btn-primary:hover,body.theme-dashboard .btn-primary:hover{background:var(--primary-dark)!important}
+body.theme-dashboard .btn-raised.btn-info,body.theme-dashboard .btn-info{background:var(--accent)!important;color:#fff!important}
+body.theme-dashboard .btn-raised.btn-danger,body.theme-dashboard .btn-danger{background:var(--danger)!important;color:#fff!important}
+body.theme-dashboard .btn-default{background:var(--surface-soft)!important;color:#4b5261!important;border:1px solid var(--line)!important}
+body.theme-dashboard .nav-tabs{background:#fff;border-bottom:1px solid var(--line)}
+body.theme-dashboard .nav-tabs>li>a,body.theme-dashboard .nav-tabs>li>a:focus,body.theme-dashboard .nav-tabs>li>a:hover{color:#4b5261!important}
+body.theme-dashboard .nav-tabs>li.active{background:#eef1ff;border-bottom:2px solid var(--primary)}
+body.theme-dashboard .nav-tabs>li.active>a{color:var(--primary)!important}
+body.theme-dashboard .view{background:var(--surface-soft);border-radius:16px}
+body.theme-dashboard .tubiao{background:#eef1ff;color:var(--primary)}
+body.theme-dashboard .elsetext,body.theme-dashboard .filename{color:#4b5261}
+body.theme-dashboard .elsetext p:first-child{color:#161a23}
+body.theme-dashboard .image_view,body.theme-dashboard .videoplayer{background:#151928;border-radius:16px}
+body.theme-dashboard .fileinfo-table{background:#fff}
+body.theme-dashboard .fileinfo-table th{background:var(--surface-soft);color:#4b5261}
+body.theme-dashboard .progress{background:#e7eaf1}
+body.theme-dashboard .progress-bar{background:linear-gradient(90deg,var(--primary),var(--accent))}
+body.theme-dashboard #app .infobox{border:1px dashed #c7cef0;background:#fff!important;box-shadow:0 6px 20px rgba(31,41,55,.05)}
+body.theme-dashboard #app .infobox:hover{border-color:var(--primary);box-shadow:0 16px 40px rgba(79,107,255,.14)}
+body.theme-dashboard #uploadTitle{color:#161a23!important}
+body.theme-dashboard .editor-toolbar{background:var(--surface-soft);border-color:var(--line);border-radius:12px}
+body.theme-dashboard #file_content{background:#151928!important;color:#e7eaf1!important;border-color:#2a3040!important}
+@media (max-width:767px){
+body.theme-dashboard .navbar-collapse{border-top:1px solid var(--line);background:#fff}
+body.theme-dashboard .well,body.theme-dashboard .panel{border-radius:12px}
+}

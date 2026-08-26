@@ -321,6 +321,13 @@ function mpimg_render_notice_html($conf){
 			'text' => '#3d2030',
 			'link' => '#e0648a',
 		],
+		'dashboard' => [
+			'bg' => 'rgba(255,255,255,.96)',
+			'border' => '#e7eaf1',
+			'shadow' => '0 10px 28px rgba(31,41,55,.08)',
+			'text' => '#1f2430',
+			'link' => '#4f6bff',
+		],
 	];
 	if(!isset($theme_styles[$site_theme])){
 		$site_theme = 'cloud';
@@ -410,6 +417,10 @@ function ensureStyle() {
     'body.theme-aurora .mpimg-link-grid .dh{border-color:rgba(255,255,255,.28);box-shadow:0 12px 28px rgba(30,20,93,.18)}',
     'body.theme-onefour .mpimg-link-band{--gg-ad-bg:rgba(6,6,9,.92);--gg-ad-border:rgba(255,255,255,.08);--gg-ad-shadow:0 16px 40px rgba(0,0,0,.34)}',
     'body.theme-onefour .mpimg-link-grid .dh{border-color:rgba(255,255,255,.1);box-shadow:none}',
+    'body.theme-dashboard .theme-announcement-bar{--announce-bg:rgba(255,255,255,.96);--announce-border:#e7eaf1;--announce-shadow:0 10px 28px rgba(31,41,55,.08);--announce-text:#1f2430;--announce-link:#4f6bff;--announce-c1:#4f6bff;--announce-c2:#22c55e;--announce-c3:#6b7280;margin:0 0 0 248px!important;width:calc(100% - 248px)!important;border-radius:0 0 14px 14px}',
+    'body.theme-dashboard .mpimg-link-band{--gg-ad-bg:rgba(255,255,255,.98);--gg-ad-border:#e7eaf1;--gg-ad-shadow:0 10px 28px rgba(31,41,55,.08);margin-left:248px!important;width:calc(100% - 248px)!important}',
+    'body.theme-dashboard .mpimg-link-grid .dh{border-radius:12px;border-color:#e7eaf1;box-shadow:0 8px 18px rgba(31,41,55,.1)}',
+    '@media (max-width:767px){body.theme-dashboard .theme-announcement-bar,body.theme-dashboard .mpimg-link-band{margin-left:0!important;width:100%!important}}',
     'body.theme-celadon .theme-announcement-bar{--announce-bg:rgba(255,255,255,.94);--announce-border:rgba(24,120,120,.2);--announce-shadow:0 14px 36px rgba(24,120,120,.12);--announce-text:#17696b;--announce-link:#2b9c9c;--announce-c1:#2b9c9c;--announce-c2:#17696b;--announce-c3:#2b9c9c}',
     'body.theme-celadon .mpimg-link-band{--gg-ad-bg:rgba(255,255,255,.95);--gg-ad-border:rgba(24,120,120,.18);--gg-ad-shadow:0 14px 36px rgba(24,120,120,.12)}',
     'body.theme-celadon .mpimg-link-grid .dh{border-color:rgba(24,120,120,.22);box-shadow:none}',
@@ -558,7 +569,9 @@ function renderAnnouncement() {
   text.className = 'theme-announcement-text';
   appendAnimatedText(text, mpimgPayload.text);
   bar.appendChild(text);
-  insertIntoPage(bar);
+  //首页是服务端渲染的，公告条放在导航栏之后；这里保持一致，不要塞进导航栏内部
+  //（侧栏主题下导航栏是 flex 容器，塞进去会把侧栏内容挤窄）
+  insertAfterNavbar(bar);
 }
 
 function renderAds() {

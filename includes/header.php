@@ -28,7 +28,7 @@
 </head>
 <?php
 $site_theme = isset($conf['site_theme']) ? $conf['site_theme'] : 'cloud';
-if(!in_array($site_theme, ['cloud', 'night', 'neon', 'aurora', 'onefour', 'celadon', 'lilac', 'paper', 'blush', 'sky', 'mint', 'sunset', 'abyss', 'emerald', 'sakura'], true)){
+if(!in_array($site_theme, ['cloud', 'night', 'neon', 'aurora', 'onefour', 'celadon', 'lilac', 'paper', 'blush', 'sky', 'mint', 'sunset', 'abyss', 'emerald', 'sakura', 'dashboard'], true)){
   $site_theme = 'cloud';
 }
 ?>
@@ -48,7 +48,12 @@ if(!in_array($site_theme, ['cloud', 'night', 'neon', 'aurora', 'onefour', 'celad
         <ul class="nav navbar-nav">
           <li class="<?php echo checkIfActive('index,')?>"><a href="./"><i class="fa fa-list" aria-hidden="true"></i> 文件列表</a></li>
           <li class="<?php echo checkIfActive('upload')?>"><a href="./upload.php"><i class="fa fa-upload" aria-hidden="true"></i> 上传文件</a></li>
+          <?php //控制台侧栏风用站内的赞助页，保持侧栏布局；其它主题仍跳转原来的独立赞助页
+          if($site_theme === 'dashboard'){?>
+          <li class="<?php echo checkIfActive('sponsor')?>"><a href="./sponsor.php"><i class="fa fa-money" aria-hidden="true"></i> 赞助名单</a></li>
+          <?php }else{?>
           <li><a href="./includes/sponsor/"><i class="fa fa-money" aria-hidden="true"></i> 赞助名单</a></li>
+          <?php }?>
           <?php if(!isset($conf['violation_open']) || $conf['violation_open'] == 1){?>
           <li class="<?php echo checkIfActive('violation')?>"><a href="./violation.php"><i class="fa fa-gavel" aria-hidden="true"></i> 违规公示</a></li>
           <?php }?>

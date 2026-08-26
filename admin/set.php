@@ -70,7 +70,7 @@ if($mod=='site'){
 <?php
 }elseif($mod=='appearance'){
 $site_theme = isset($conf['site_theme']) ? $conf['site_theme'] : 'cloud';
-if(!in_array($site_theme, ['cloud', 'night', 'neon', 'aurora', 'onefour', 'celadon', 'lilac', 'paper', 'blush', 'sky', 'mint', 'sunset', 'abyss', 'emerald', 'sakura'], true)){
+if(!in_array($site_theme, ['cloud', 'night', 'neon', 'aurora', 'onefour', 'celadon', 'lilac', 'paper', 'blush', 'sky', 'mint', 'sunset', 'abyss', 'emerald', 'sakura', 'dashboard'], true)){
 	$site_theme = 'cloud';
 }
 ?>
@@ -78,6 +78,30 @@ if(!in_array($site_theme, ['cloud', 'night', 'neon', 'aurora', 'onefour', 'celad
 <div class="panel-heading"><h3 class="panel-title">外观设置</h3></div>
 <div class="panel-body">
   <form onsubmit="return saveSetting(this)" method="post" role="form">
+	<div class="appearance-group">
+	  <div class="appearance-group-head">
+	    <strong>布局型外观</strong>
+	    <small>会改变页面结构：导航位置、内容排版都不一样，前台和后台同时生效。</small>
+	  </div>
+	<div class="appearance-options">
+	  <label class="appearance-card <?php echo $site_theme === 'dashboard' ? 'active' : null;?>">
+	    <input type="radio" name="site_theme" value="dashboard" <?php echo $site_theme === 'dashboard' ? 'checked' : null;?>>
+	    <span class="appearance-preview appearance-preview-dashboard">
+	      <span class="appearance-nav"></span>
+	      <span class="appearance-panel">
+	        <span></span><span></span><span></span>
+	      </span>
+	    </span>
+	    <strong>控制台侧栏风</strong>
+	    <small>顶部导航变为左侧固定侧栏，内容区改为圆角卡片布局，更接近后台管理系统的观感。</small>
+	  </label>
+	</div>
+	</div>
+	<div class="appearance-group">
+	  <div class="appearance-group-head">
+	    <strong>配色型外观</strong>
+	    <small>只改变颜色、背景纹理和质感，页面结构保持默认的顶部导航布局。</small>
+	  </div>
 	<div class="appearance-options">
 	  <label class="appearance-card <?php echo $site_theme === 'cloud' ? 'active' : null;?>">
 	    <input type="radio" name="site_theme" value="cloud" <?php echo $site_theme === 'cloud' ? 'checked' : null;?>>
@@ -245,6 +269,7 @@ if(!in_array($site_theme, ['cloud', 'night', 'neon', 'aurora', 'onefour', 'celad
 	    <small>粉紫到天青的浅色雾面渐变，白色磨砂卡片，轻盈明亮，适合相册和展示型页面。</small>
 	  </label>
 	</div>
+	</div>
 	<div class="form-group appearance-submit">
 	  <input type="submit" name="submit" value="保存外观" class="btn btn-primary form-control"/>
 	</div>
@@ -252,7 +277,7 @@ if(!in_array($site_theme, ['cloud', 'night', 'neon', 'aurora', 'onefour', 'celad
 </div>
 <div class="panel-footer">
 <span class="glyphicon glyphicon-info-sign"></span>
-保存后前台页面会立即使用选中的外观，后台布局和功能不受影响。
+保存后前台页面会立即使用选中的外观。其中“控制台侧栏风”会同时改变后台布局（顶部导航变为左侧侧栏），其余外观不影响后台布局。
 </div>
 </div>
 <?php

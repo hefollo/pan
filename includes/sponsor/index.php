@@ -39,6 +39,7 @@ $sp_themes = [
 	'abyss'     => ['bg'=>'radial-gradient(circle at 16% 10%,rgba(56,224,216,.26),transparent 36%),linear-gradient(135deg,#062a3d 0,#0a5f63 100%)','surface'=>'rgba(255,255,255,.12)','line'=>'rgba(255,255,255,.22)','text'=>'#e8fbff','soft'=>'#d3f4fb','muted'=>'#96c6d2','faint'=>'#7ba9b6','primary'=>'#38e0d8','primary_dark'=>'#7dd3fc','on_primary'=>'#062434','amount'=>'#6ee7b7'],
 	'emerald' => ['bg'=>'radial-gradient(circle at 16% 10%,rgba(74,222,128,.26),transparent 36%),linear-gradient(135deg,#07361f 0,#0f6b57 100%)','surface'=>'rgba(255,255,255,.12)','line'=>'rgba(255,255,255,.22)','text'=>'#eafff3','soft'=>'#d6fbe6','muted'=>'#93c9ac','faint'=>'#7aae92','primary'=>'#4ade80','primary_dark'=>'#5eead4','on_primary'=>'#07301f','amount'=>'#86efac'],
 	'sakura'   => ['bg'=>'radial-gradient(circle at 16% 10%,rgba(224,100,138,.18),transparent 36%),linear-gradient(135deg,#ffe4ef 0,#dff1fe 100%)','surface'=>'rgba(255,255,255,.72)','line'=>'rgba(190,120,160,.22)','text'=>'#3d2030','soft'=>'#4a2537','muted'=>'#8a6478','faint'=>'#a98c9c','primary'=>'#e0648a','primary_dark'=>'#8b5cf6','on_primary'=>'#ffffff','amount'=>'#0f9d58'],
+	'dashboard'=> ['bg'=>'#eef1f8','surface'=>'#ffffff','line'=>'#e7eaf1','text'=>'#1f2430','soft'=>'#2c3242','muted'=>'#6b7280','faint'=>'#9aa1b0','primary'=>'#4f6bff','primary_dark'=>'#3450e6','on_primary'=>'#ffffff','amount'=>'#16a34a'],
 ];
 $sp_key = isset($conf['site_theme']) ? $conf['site_theme'] : 'cloud';
 if(!isset($sp_themes[$sp_key])) $sp_key = 'cloud';

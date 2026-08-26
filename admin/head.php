@@ -1,11 +1,20 @@
 <?php
 @header('Content-Type: text/html; charset=UTF-8');
 $site_theme = isset($conf['site_theme']) ? $conf['site_theme'] : 'cloud';
-if(!in_array($site_theme, ['cloud', 'night', 'neon', 'aurora', 'onefour', 'celadon', 'lilac', 'paper', 'blush', 'sky', 'mint', 'sunset', 'abyss', 'emerald', 'sakura'], true)){
+if(!in_array($site_theme, ['cloud', 'night', 'neon', 'aurora', 'onefour', 'celadon', 'lilac', 'paper', 'blush', 'sky', 'mint', 'sunset', 'abyss', 'emerald', 'sakura', 'dashboard'], true)){
   $site_theme = 'cloud';
 }
 $admin_body_class = !empty($islogin) ? 'admin-body' : 'admin-login-body';
 $admin_body_class .= ' admin-theme-' . $site_theme;
+//子菜单要精确到 set.php 的 mod 参数，checkIfActive 只认文件名区分不了，这里单独判断
+if(!function_exists('admin_sub_active')){
+	function admin_sub_active($file, $mod = null){
+		$self = basename($_SERVER['SCRIPT_NAME']);
+		if($self !== $file) return null;
+		if($mod === null) return 'active';
+		return (isset($_GET['mod']) && $_GET['mod'] === $mod) ? 'active' : null;
+	}
+}
 ?>
 <!DOCTYPE html>
 <html lang="zh-cn">
@@ -55,18 +64,18 @@ $admin_body_class .= ' admin-theme-' . $site_theme;
 		      <li class="<?php echo checkIfActive('set,set_stor,set_script,set_sponsor,set_violation')?>">
             <a href="#" class="dropdown-toggle" data-toggle="dropdown"><i class="fa fa-cog"></i> 系统设置<b class="caret"></b></a>
             <ul class="dropdown-menu">
-              <li><a href="./set.php?mod=site">网站信息设置</a></li>
-              <li><a href="./set.php?mod=appearance">外观设置</a></li>
-              <li><a href="./set_script.php">广告公告位设置</a></li>
-              <li><a href="./set.php?mod=user">用户登录设置</a></li>
-              <li><a href="./set_stor.php">存储类型设置</a></li>
-			        <li><a href="./set.php?mod=file">文件上传设置</a></li>
-			        <li><a href="./set.php?mod=green">图片检测设置</a></li>
-              <li><a href="./set.php?mod=api">上传API设置</a></li>
-              <li><a href="./set.php?mod=iptype">用户IP地址设置</a></li>
-              <li><a href="./set.php?mod=account">管理账号设置</a></li>
-              <li><a href="./set_violation.php">违规公示管理</a></li>
-              <li><a href="./set_sponsor.php">赞助名单管理</a></li>
+              <li class="<?php echo admin_sub_active('set.php','site')?>"><a href="./set.php?mod=site">网站信息设置</a></li>
+              <li class="<?php echo admin_sub_active('set.php','appearance')?>"><a href="./set.php?mod=appearance">外观设置</a></li>
+              <li class="<?php echo admin_sub_active('set_script.php')?>"><a href="./set_script.php">广告公告位设置</a></li>
+              <li class="<?php echo admin_sub_active('set.php','user')?>"><a href="./set.php?mod=user">用户登录设置</a></li>
+              <li class="<?php echo admin_sub_active('set_stor.php')?>"><a href="./set_stor.php">存储类型设置</a></li>
+			        <li class="<?php echo admin_sub_active('set.php','file')?>"><a href="./set.php?mod=file">文件上传设置</a></li>
+			        <li class="<?php echo admin_sub_active('set.php','green')?>"><a href="./set.php?mod=green">图片检测设置</a></li>
+              <li class="<?php echo admin_sub_active('set.php','api')?>"><a href="./set.php?mod=api">上传API设置</a></li>
+              <li class="<?php echo admin_sub_active('set.php','iptype')?>"><a href="./set.php?mod=iptype">用户IP地址设置</a></li>
+              <li class="<?php echo admin_sub_active('set.php','account')?>"><a href="./set.php?mod=account">管理账号设置</a></li>
+              <li class="<?php echo admin_sub_active('set_violation.php')?>"><a href="./set_violation.php">违规公示管理</a></li>
+              <li class="<?php echo admin_sub_active('set_sponsor.php')?>"><a href="./set_sponsor.php">赞助名单管理</a></li>
             </ul>
           </li>
           <li><a href="./login.php?logout=1" onclick="return confirm('是否确定退出登录？')"><i class="fa fa-sign-out"></i> 退出登录</a></li>
