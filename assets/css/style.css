@@ -1658,7 +1658,8 @@ body.theme-console .searchbox .form-inline{display:flex;align-items:center;gap:8
 body.theme-console .searchbox input.form-control[type="search"]{height:40px;min-width:240px;background:#fff!important;border:1px solid var(--line)!important;border-radius:11px!important;color:var(--text)!important;font-size:13px;box-shadow:0 3px 12px rgba(28,39,64,.035)}
 body.theme-console .searchbox .btn{height:40px;background:#fff!important;border:1px solid var(--line)!important;border-radius:11px!important;color:#687185!important;font-size:12px;font-weight:700}
 body.theme-console .searchbox .btn:hover,body.theme-console .searchbox .btn:focus{background:var(--primary)!important;border-color:var(--primary)!important;color:#fff!important}
-body.theme-console .table-responsive{background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);overflow:hidden}
+/* 只能裁纵向：overflow:hidden 会把 Bootstrap 的横向滚动一起关掉，手机端列表就划不动了 */
+body.theme-console .table-responsive{background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}
 body.theme-console .table-responsive:has(+.filelist-footer){border-radius:16px 16px 0 0}
 body.theme-console .filelist-footer{margin:0;padding:13px 17px;background:#fff;border:1px solid var(--line);border-top:0;border-radius:0 0 16px 16px}
 body.theme-console .table{margin:0;background:transparent}
@@ -1883,7 +1884,7 @@ body.theme-workspace .searchbox input.form-control[type="search"]{height:38px;mi
 body.theme-workspace .searchbox input.form-control[type="search"]::placeholder{color:#6f7889;-webkit-text-fill-color:#6f7889}
 body.theme-workspace .searchbox .btn{height:38px;background:var(--surface-soft)!important;border:1px solid var(--line)!important;border-radius:11px!important;color:var(--muted)!important;font-size:12px;font-weight:700}
 body.theme-workspace .searchbox .btn:hover,body.theme-workspace .searchbox .btn:focus{background:var(--primary)!important;border-color:var(--primary)!important;color:#221a05!important}
-body.theme-workspace .table-responsive{border-radius:14px;border:1px solid var(--line);overflow:hidden}
+body.theme-workspace .table-responsive{border-radius:14px;border:1px solid var(--line);overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}
 body.theme-workspace .table{margin:0;background:transparent}
 body.theme-workspace .table>thead>tr>th{padding:11px 14px;background:var(--surface-soft)!important;border-bottom:1px solid var(--line)!important;color:var(--muted);font-size:11px;font-weight:750;letter-spacing:.06em}
 body.theme-workspace .table>tbody>tr>td{padding:13px 14px;border-top:1px solid var(--line)!important;color:#c2cad6;font-size:13px;vertical-align:middle}
