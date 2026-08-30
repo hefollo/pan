@@ -73,6 +73,8 @@ $site_theme = isset($conf['site_theme']) ? $conf['site_theme'] : 'cloud';
 if(!in_array($site_theme, ['cloud', 'night', 'neon', 'aurora', 'onefour', 'celadon', 'lilac', 'paper', 'blush', 'sky', 'mint', 'sunset', 'abyss', 'emerald', 'sakura', 'dashboard', 'console', 'portal', 'workspace'], true)){
 	$site_theme = 'cloud';
 }
+//顺手同步一次静态 404 页的外观：已经设置好外观的站点不用再点一次保存
+sync_404_theme($site_theme);
 ?>
 <div class="panel panel-primary">
 <div class="panel-heading"><h3 class="panel-title">外观设置</h3></div>

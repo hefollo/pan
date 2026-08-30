@@ -2156,3 +2156,32 @@ body.theme-workspace .tab-content .input-group .form-control[readonly]{backgroun
 body.theme-workspace .tab-content .input-group .form-control[readonly]:focus{background:#1d232e!important;border-color:#f4c95d!important;box-shadow:0 0 0 4px rgba(244,201,93,.16)!important}
 /* 同一块区域里的代码调用文本框也一样 */
 body.theme-workspace .tab-content textarea.form-control{background:#1d232e!important;border-color:#2a313d!important;color:#edf1f7!important;-webkit-text-fill-color:#edf1f7}
+
+/* ===== 404 页面（静态 404.html 用，不依赖 Bootstrap，颜色全部取自当前外观的变量） ===== */
+.errorpage-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px}
+.errorpage-card{width:100%;max-width:520px;padding:52px 34px 56px;background:var(--surface);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);text-align:center}
+.errorpage-code{margin:0 0 8px;color:var(--primary);font-size:104px;font-weight:900;line-height:1;letter-spacing:-.06em}
+.errorpage-title{margin:0 0 12px;color:var(--text);font-size:24px;font-weight:800;line-height:1.4}
+.errorpage-text{margin:0 auto 28px;max-width:400px;color:var(--muted);font-size:14px;line-height:1.9}
+.errorpage-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:12px}
+.errorpage-btn{display:inline-flex;align-items:center;justify-content:center;min-width:132px;padding:12px 22px;border:1px solid var(--line);border-radius:11px;background:var(--surface-soft);color:var(--text)!important;font-size:15px;font-weight:700;text-decoration:none;transition:border-color .18s ease,background .18s ease,transform .18s ease}
+.errorpage-btn:hover,.errorpage-btn:focus{border-color:var(--primary);color:var(--primary)!important;text-decoration:none;transform:translateY(-1px)}
+.errorpage-btn-primary{background:var(--primary);border-color:var(--primary);color:#fff!important}
+.errorpage-btn-primary:hover,.errorpage-btn-primary:focus{background:var(--primary-dark);border-color:var(--primary-dark);color:#fff!important}
+/* 深色工作台风的强调色是浅琥珀，主按钮上要用深色字 */
+body.theme-workspace .errorpage-btn-primary,body.theme-workspace .errorpage-btn-primary:hover{color:#221a05!important}
+body.theme-neon .errorpage-btn-primary,body.theme-neon .errorpage-btn-primary:hover{color:#06101f!important}
+body.theme-onefour .errorpage-btn-primary,body.theme-onefour .errorpage-btn-primary:hover{color:#050505!important}
+body.theme-aurora .errorpage-btn-primary,body.theme-aurora .errorpage-btn-primary:hover{color:#10204a!important}
+body.theme-abyss .errorpage-btn-primary,body.theme-abyss .errorpage-btn-primary:hover{color:#062434!important}
+body.theme-emerald .errorpage-btn-primary,body.theme-emerald .errorpage-btn-primary:hover{color:#07301f!important}
+body.theme-sunset .errorpage-btn-primary,body.theme-sunset .errorpage-btn-primary:hover{color:#3d0f2e!important}
+/* 玻璃拟态外观的卡片是半透明的，错误页要加一层模糊才看得清 */
+body.theme-aurora .errorpage-card,body.theme-sunset .errorpage-card,body.theme-abyss .errorpage-card,
+body.theme-emerald .errorpage-card,body.theme-sakura .errorpage-card{backdrop-filter:blur(18px)}
+@media (max-width:767px){
+.errorpage-card{padding:40px 20px 44px;border-radius:16px}
+.errorpage-code{font-size:76px}
+.errorpage-title{font-size:20px}
+.errorpage-btn{width:100%;min-width:0}
+}

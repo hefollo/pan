@@ -7,7 +7,12 @@ if($islogin==1){}else exit("<script language='javascript'>window.location.href='
 ?>
 <?php
 $mysqlversion=$DB->getColumn("select VERSION()");
-$checkupdate = '//auth.cccyun.cc/app/pan.php?ver='.VERSION;
+/*
+ * 这里原来是 JSONP 加载 //auth.cccyun.cc/app/pan.php 做版本检查。
+ * JSONP 响应本身就是 JavaScript，会在后台域下执行，等于把后台的完全控制权
+ * 交给第三方域名（及其服务器、DNS、传输链路）；返回值还被 .html() 直接插进 DOM。
+ * 本项目是二开分支，版本号和上游不是一套，检查结果也没有参考意义，直接去掉。
+ */
 ?>
 <div class="container" style="padding-top:70px;">
 <div class="col-md-12 col-lg-10 center-block" style="float: none;">
@@ -138,7 +143,10 @@ $checkupdate = '//auth.cccyun.cc/app/pan.php?ver='.VERSION;
                     <div class="panel-heading">
                         <h3 class="panel-title">版本信息</h3>
                     </div>
-                    <ul class="list-group text-dark" id="checkupdate"></ul>
+                    <ul class="list-group text-dark" id="checkupdate">
+                        <li class="list-group-item">程序版本：<?php echo htmlspecialchars(VERSION, ENT_QUOTES, 'UTF-8')?>（数据库版本 <?php echo htmlspecialchars(DB_VERSION, ENT_QUOTES, 'UTF-8')?>）</li>
+                        <li class="list-group-item">惜染美化：<a href="https://wpa.qq.com/msgrd?v=3&amp;uin=1322445750&amp;site=qq&amp;menu=yes&amp;jumpflag=1" target="_blank" rel="noopener noreferrer">1322445750</a></li>
+                    </ul>
                 </div>
             </div>
         </div>
@@ -152,19 +160,11 @@ $(document).ready(function(){
         dataType : 'json',
         async: true,
         success : function(data) {
-            $('#count1').html(data.count1);
-            $('#count2').html(data.count2);
-            $('#count3').html(data.count3);
-            $('#count4').html(data.count4);
-            $.ajax({
-                url: '<?php echo $checkupdate?>',
-                type: 'get',
-                dataType: 'jsonp',
-                jsonpCallback: 'callback'
-            }).done(function(data){
-                $("#checkupdate").html(data.msg);
-                $("#checkupdate").append('<li class="list-group-item">惜染美化：<a href="https://wpa.qq.com/msgrd?v=3&uin=1322445750&site=qq&menu=yes&jumpflag=1" target="_blank">1322445750</a></li>');
-            })
+            //统计数字全部走 text()，避免接口返回的内容被当成 HTML 解析
+            $('#count1').text(data.count1);
+            $('#count2').text(data.count2);
+            $('#count3').text(data.count3);
+            $('#count4').text(data.count4);
         }
     })
 })

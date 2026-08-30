@@ -27,10 +27,18 @@ case 'set':
 	if(isset($_POST['green_label_terrorism'])){
 		$_POST['green_label_terrorism'] = implode(',',$_POST['green_label_terrorism']);
 	}
+	//只写白名单里的配置键，其余一律丢弃（admin_user/admin_pwd 走账号页自己的表单）
+	$skipped = [];
 	foreach($_POST as $k=>$v){
+		if(!is_admin_setting_key($k)){
+			$skipped[] = $k;
+			continue;
+		}
 		saveSetting($k, $v);
 	}
-	exit('{"code":0,"msg":"succ"}');
+	//静态的 404.html 读不到数据库配置，外观一改就把主题类名写进去
+	if(isset($_POST['site_theme']))sync_404_theme($_POST['site_theme']);
+	exit(json_encode(['code'=>0, 'msg'=>'succ', 'skipped'=>$skipped]));
 break;
 case 'iptype':
 	$result = [

@@ -14,7 +14,12 @@ function set_upload_csrf_token(&$result){
 
 function get_upload_state($hash){
 	if(isset($_SESSION['uploads'][$hash]) && is_array($_SESSION['uploads'][$hash])){
-		return $_SESSION['uploads'][$hash];
+		$state = $_SESSION['uploads'][$hash];
+		if(isset($state['time']) && $state['time'] + UPLOAD_STATE_TTL < time()){
+			clear_upload_state($hash);
+			return null;
+		}
+		return $state;
 	}
 	if(isset($_SESSION['upload']) && is_array($_SESSION['upload']) && isset($_SESSION['upload']['hash']) && $_SESSION['upload']['hash'] === $hash){
 		return $_SESSION['upload'];
@@ -22,11 +27,26 @@ function get_upload_state($hash){
 	return null;
 }
 
+//同时保留的上传状态上限；超过就丢掉最旧的，避免会话被刷爆
+define('UPLOAD_STATE_MAX', 20);
+//上传状态的有效期，超时的直接当作不存在
+define('UPLOAD_STATE_TTL', 6 * 3600);
+
 function set_upload_state($hash, $state){
 	if(!isset($_SESSION['uploads']) || !is_array($_SESSION['uploads'])){
 		$_SESSION['uploads'] = [];
 	}
+	$state['time'] = time();
 	$_SESSION['uploads'][$hash] = $state;
+	//先清掉过期的，再按先进先出砍掉超出上限的部分
+	foreach($_SESSION['uploads'] as $k=>$v){
+		if(!is_array($v) || !isset($v['time']) || $v['time'] + UPLOAD_STATE_TTL < time()){
+			unset($_SESSION['uploads'][$k]);
+		}
+	}
+	while(count($_SESSION['uploads']) > UPLOAD_STATE_MAX){
+		array_shift($_SESSION['uploads']);
+	}
 	$_SESSION['upload'] = $state;
 }
 
@@ -37,6 +57,17 @@ function clear_upload_state($hash){
 	if(isset($_SESSION['upload']) && is_array($_SESSION['upload']) && isset($_SESSION['upload']['hash']) && $_SESSION['upload']['hash'] === $hash){
 		unset($_SESSION['upload']);
 	}
+}
+
+/*
+ * 内容已经写进存储、但没能建成数据库记录时，存储里会留下一个没人引用的对象。
+ * 只有确认没有任何记录引用这个 hash 才删，避免误删别人秒传共用的同一份内容。
+ */
+function cleanup_orphan_object($hash){
+	global $DB, $stor;
+	$used = intval($DB->getColumn("SELECT count(*) FROM pre_file WHERE hash=:hash", [':hash'=>$hash]));
+	if($used > 0)return false;
+	return $stor->delete($hash);
 }
 
 function upload_all_parts_exist($hash, $chunks){
@@ -170,6 +201,7 @@ case 'pre_upload':
 		$chunksize = 32 * 1024 * 1024; //分块上传，每块大小
 		$chunks = ceil($size / $chunksize);
 		set_upload_state($hash, [
+			'chunksize' => $chunksize,
 			'chunks' => $chunks,
 			'name' => $name,
 			'hash' => $hash,
@@ -196,7 +228,15 @@ case 'upload_part':
 	}
 	if(!preg_match('/^[0-9a-z]{32}$/i', $hash))exit('{"code":-1,"msg":"hash error"}');
 	$chunks = intval($upload_state['chunks']);
+	//分块序号必须落在本次上传声明的范围内，否则可以往临时目录里随意写文件
+	if($chunk < 1 || $chunk > $chunks)exit('{"code":-1,"msg":"分块序号不合法"}');
+	//单个分块不能超过约定的分块大小，否则声明一个小文件也能塞进大量数据
+	$chunksize = isset($upload_state['chunksize']) ? intval($upload_state['chunksize']) : 0;
+	if($chunksize > 0 && intval($_FILES['file']['size']) > $chunksize){
+		exit('{"code":-1,"msg":"分块大小超出限制"}');
+	}
 	$ext = $upload_state['ext'];
+	$declared_size = intval($upload_state['size']);
 	$debug = upload_debug_start();
 	if($chunks > 1){
 		$tempFile = sys_get_temp_dir() . '/' . $hash. '.part'.$chunk;
@@ -224,8 +264,21 @@ case 'upload_part':
 			upload_debug_step($debug, 'md5_check_ms');
 			$real_size = filesize($savePathTemp);
 			upload_debug_step($debug, 'filesize_ms');
+			//必须先校验再写入存储：写完再校验的话，校验不通过就会在存储里留下删不掉的孤儿对象
+			if($real_size != $declared_size || $real_hash != $hash){
+				@unlink($savePathTemp);
+				clear_upload_state($hash);
+				if($mergeLock){
+					flock($mergeLock, LOCK_UN);
+					fclose($mergeLock);
+					@unlink($mergeLockFile);
+				}
+				exit($real_size != $declared_size ? '{"code":-1,"msg":"文件大小校验失败"}' : '{"code":-1,"msg":"文件MD5校验失败"}');
+			}
 			$result = $stor->savefile($hash, $savePathTemp, minetype($ext));
 			upload_debug_step($debug, 'storage_save_ms');
+			//合并出来的临时文件用完就删，之前无论成功失败都会留在临时目录里
+			@unlink($savePathTemp);
 			if($mergeLock){
 				flock($mergeLock, LOCK_UN);
 				fclose($mergeLock);
@@ -241,18 +294,18 @@ case 'upload_part':
 		upload_debug_step($debug, 'md5_check_ms');
 		$real_size = filesize($_FILES['file']['tmp_name']);
 		upload_debug_step($debug, 'filesize_ms');
+		//同样先校验再落盘；PHP 会自己清掉没被 move 走的上传临时文件
+		if($real_size != $declared_size || $real_hash != $hash){
+			clear_upload_state($hash);
+			exit($real_size != $declared_size ? '{"code":-1,"msg":"文件大小校验失败"}' : '{"code":-1,"msg":"文件MD5校验失败"}');
+		}
 		$result = $stor->upload($hash, $_FILES['file']['tmp_name'], minetype($ext));
 		upload_debug_step($debug, 'storage_upload_ms');
 		if(!$result)exit('{"code":-1,"msg":"文件上传失败","error":"stor","errmsg":"'.$stor->errmsg().'"}');
 	}
 
-	$size = $upload_state['size'];
-	if($real_size != $size){
-		exit('{"code":-1,"msg":"文件大小校验失败"}');
-	}
-	if($real_hash != $hash){
-		exit('{"code":-1,"msg":"文件MD5校验失败"}');
-	}
+	//大小和 MD5 在写入存储之前已经校验过了
+	$size = $declared_size;
 	upload_debug_step($debug, 'validate_ms');
 
 	$name = $upload_state['name'];
@@ -263,11 +316,15 @@ case 'upload_part':
 	$replace_id = isset($upload_state['replace_id']) ? intval($upload_state['replace_id']) : 0;
 	if($replace_id > 0){
 		$replace_row = $DB->getRow("SELECT * FROM pre_file WHERE id=:id LIMIT 1", [':id'=>$replace_id]);
-		if(!$replace_row)exit('{"code":-1,"msg":"要覆盖的文件不存在"}');
-		if(!can_manage_file($replace_row))exit('{"code":-1,"msg":"无权覆盖该文件"}');
-		if($replace_row['block']==1)exit('{"code":-1,"msg":"文件已被冻结，无法覆盖"}');
+		//下面几种情况内容已经写进存储但不会建立引用，要把孤儿对象清掉
+		if(!$replace_row){cleanup_orphan_object($hash);exit('{"code":-1,"msg":"要覆盖的文件不存在"}');}
+		if(!can_manage_file($replace_row)){cleanup_orphan_object($hash);exit('{"code":-1,"msg":"无权覆盖该文件"}');}
+		if($replace_row['block']==1){cleanup_orphan_object($hash);exit('{"code":-1,"msg":"文件已被冻结，无法覆盖"}');}
 		clear_upload_state($hash);
-		if(!replace_file_record($replace_row, $name, $hash, $size, $ext, $uid, $clientip))exit('{"code":-1,"msg":"替换失败'.$DB->error().'","error":"database"}');
+		if(!replace_file_record($replace_row, $name, $hash, $size, $ext, $uid, $clientip)){
+			cleanup_orphan_object($hash);
+			exit('{"code":-1,"msg":"替换失败'.$DB->error().'","error":"database"}');
+		}
 		$result = ['code'=>1, 'msg'=>'替换成功，链接保持不变', 'exists'=>0, 'hash'=>$hash, 'token'=>$replace_row['token'], 'name'=>$name, 'size'=>$size, 'type'=>$ext, 'id'=>$replace_row['id']];
 		$result['debug_timing'] = upload_debug_finish($debug);
 		set_upload_csrf_token($result);
@@ -289,7 +346,10 @@ case 'upload_part':
 
 	//统一走 create_file_record，它负责生成访问用的 token，并顺带做图片检测和违规留档
 	$record = create_file_record($name, $hash, $size, $ext, $hide, $pwd, $uid, $clientip);
-	if(!$record)exit('{"code":-1,"msg":"上传失败'.$DB->error().'","error":"database"}');
+	if(!$record){
+		cleanup_orphan_object($hash);
+		exit('{"code":-1,"msg":"上传失败'.$DB->error().'","error":"database"}');
+	}
 	$id = $record['id'];
 	//图片检测/视频审核已并入 create_file_record，这一步的耗时含建记录和审核
 	upload_debug_step($debug, 'db_insert_ms');
@@ -328,11 +388,15 @@ case 'complete_upload':
 	$replace_id = isset($upload_state['replace_id']) ? intval($upload_state['replace_id']) : 0;
 	if($replace_id > 0){
 		$replace_row = $DB->getRow("SELECT * FROM pre_file WHERE id=:id LIMIT 1", [':id'=>$replace_id]);
-		if(!$replace_row)exit('{"code":-1,"msg":"要覆盖的文件不存在"}');
-		if(!can_manage_file($replace_row))exit('{"code":-1,"msg":"无权覆盖该文件"}');
-		if($replace_row['block']==1)exit('{"code":-1,"msg":"文件已被冻结，无法覆盖"}');
+		//下面几种情况内容已经写进存储但不会建立引用，要把孤儿对象清掉
+		if(!$replace_row){cleanup_orphan_object($hash);exit('{"code":-1,"msg":"要覆盖的文件不存在"}');}
+		if(!can_manage_file($replace_row)){cleanup_orphan_object($hash);exit('{"code":-1,"msg":"无权覆盖该文件"}');}
+		if($replace_row['block']==1){cleanup_orphan_object($hash);exit('{"code":-1,"msg":"文件已被冻结，无法覆盖"}');}
 		clear_upload_state($hash);
-		if(!replace_file_record($replace_row, $name, $hash, $size, $ext, $uid, $clientip))exit('{"code":-1,"msg":"替换失败'.$DB->error().'","error":"database"}');
+		if(!replace_file_record($replace_row, $name, $hash, $size, $ext, $uid, $clientip)){
+			cleanup_orphan_object($hash);
+			exit('{"code":-1,"msg":"替换失败'.$DB->error().'","error":"database"}');
+		}
 		$result = ['code'=>1, 'msg'=>'替换成功，链接保持不变', 'exists'=>0, 'hash'=>$hash, 'token'=>$replace_row['token'], 'name'=>$name, 'size'=>$size, 'type'=>$ext, 'id'=>$replace_row['id']];
 		$result['debug_timing'] = upload_debug_finish($debug);
 		set_upload_csrf_token($result);
@@ -354,7 +418,10 @@ case 'complete_upload':
 
 	//统一走 create_file_record，它负责生成访问用的 token，并顺带做图片检测和违规留档
 	$record = create_file_record($name, $hash, $size, $ext, $hide, $pwd, $uid, $clientip);
-	if(!$record)exit('{"code":-1,"msg":"上传失败'.$DB->error().'","error":"database"}');
+	if(!$record){
+		cleanup_orphan_object($hash);
+		exit('{"code":-1,"msg":"上传失败'.$DB->error().'","error":"database"}');
+	}
 	$id = $record['id'];
 	//图片检测/视频审核已并入 create_file_record，这一步的耗时含建记录和审核
 	upload_debug_step($debug, 'db_insert_ms');

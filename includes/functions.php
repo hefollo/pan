@@ -272,6 +272,79 @@ function getSetting($k){
 	global $DB;
 	return $DB->getColumn("SELECT v FROM pre_config WHERE k=:k LIMIT 1", [':k'=>$k]);
 }
+/*
+ * 站点外观的全部可选值。header.php / admin/head.php 等处各自还有一份同样的列表，
+ * 新增外观时记得一起改。
+ */
+function site_theme_keys(){
+	return ['cloud', 'night', 'neon', 'aurora', 'onefour', 'celadon', 'lilac', 'paper',
+		'blush', 'sky', 'mint', 'sunset', 'abyss', 'emerald', 'sakura',
+		'dashboard', 'console', 'portal', 'workspace'];
+}
+
+/*
+ * 结构型（布局型）外观，body 上要额外挂 layout-theme
+ */
+function layout_theme_keys(){
+	return ['dashboard', 'console', 'portal', 'workspace'];
+}
+
+/*
+ * 把当前外观写进静态的 404.html。
+ * 404.html 是纯静态文件，读不到数据库里的外观配置，所以在后台保存外观时
+ * 直接改掉它的 <body class="...">，错误页就能跟着当前外观走。
+ * 文件不存在或没有写权限时静默跳过，页面仍会用它自带的默认配色显示。
+ */
+function sync_404_theme($theme){
+	if(!in_array($theme, site_theme_keys(), true))return false;
+	$file = ROOT.'404.html';
+	if(!is_file($file) || !is_writable($file))return false;
+	$html = @file_get_contents($file);
+	//确认是本程序的 404 页再改，避免误伤用户自己换上去的页面
+	if($html === false || strpos($html, 'errorpage-card') === false)return false;
+	$class = 'theme-'.$theme.(in_array($theme, layout_theme_keys(), true) ? ' layout-theme' : '');
+	$count = 0;
+	//打上 data-theme-synced 标记：页面里的兜底脚本看到它就不再用浏览器里存的旧外观覆盖
+	$new = preg_replace('/<body class="[^"]*"[^>]*>/', '<body class="'.$class.'" data-theme-synced="1">', $html, 1, $count);
+	if(!$count || $new === null)return false;
+	if($new === $html)return true;
+	return @file_put_contents($file, $new, LOCK_EX) !== false;
+}
+
+/*
+ * 后台 ajax.php?act=set 允许写入的配置键白名单。
+ * 这个接口原来是 foreach($_POST) 全部落库，任何能在后台页面里发请求的脚本
+ * （比如以前那个第三方 JSONP）都能顺手改掉 admin_pwd、存储密钥等敏感项。
+ * 管理员账号和密码走 set_account.php 自己的表单（要验旧密码），不从这里改。
+ */
+function admin_setting_keys(){
+	return [
+		'aliyun_ak', 'aliyun_sk', 'api_open', 'api_referer',
+		'apiurl', 'blackip', 'description', 'downfile_domain',
+		'downfile_protocol', 'downfile_type', 'filepath', 'filesearch',
+		'forcelogin', 'gg_file', 'gonggao', 'green_check',
+		'green_check_porn', 'green_check_region', 'green_check_terrorism', 'green_label_porn',
+		'green_label_terrorism', 'ip_type', 'keywords', 'login_apiurl',
+		'login_appid', 'login_appkey', 'login_qq', 'login_wx',
+		'name_block', 'obs_ak', 'obs_bucket', 'obs_endpoint',
+		'obs_sk', 'online_edit_mode', 'online_edit_uids', 'oss_ak',
+		'oss_bucket', 'oss_endpoint', 'oss_sk', 'qcloud_bucket',
+		'qcloud_green_id', 'qcloud_green_key', 'qcloud_id', 'qcloud_key',
+		'qcloud_region', 'qiniu_ak', 'qiniu_bucket', 'qiniu_domain',
+		'qiniu_sk', 's3_ak', 's3_bucket', 's3_endpoint',
+		's3_path_style', 's3_prefix', 's3_region', 's3_sk',
+		'site_theme', 'storage', 'storagename', 'title',
+		'tongji', 'type_audio', 'type_block', 'type_image',
+		'type_video', 'upload_limit', 'upload_size', 'uploadfile_type',
+		'upyun_name', 'upyun_pwd', 'upyun_user', 'userlogin',
+		'videoreview', 'violation_notice', 'violation_open',
+	];
+}
+
+function is_admin_setting_key($k){
+	return in_array($k, admin_setting_keys(), true);
+}
+
 function saveSetting($k, $v){
 	global $DB;
 	return $DB->exec("REPLACE INTO pre_config SET v=:v,k=:k", [':v'=>$v, ':k'=>$k]);

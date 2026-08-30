@@ -1,156 +1,168 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>404 - 页面未找到</title>
+    <title>404 - 页面不存在</title>
+    <!-- 引站点样式表只为了拿到当前外观的配色变量和页面背景；
+         错误页本身的样式全部内联在下面，样式表没更新或者加载失败也不会变成裸页 -->
+    <link href="/assets/css/style.css" rel="stylesheet">
     <style>
-        /* 基础样式 */
+        html { min-height: 100%; }
         body {
             margin: 0;
-            font-family: 'Microsoft Jhenghei', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea, #764ba2);
             min-height: 100vh;
+            background: var(--page-bg, #f5f7fb);
+            color: var(--text, #1f2937);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
+        }
+        .errorpage-wrap {
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
-            color: #fff;
-            overflow: hidden;
+            min-height: 100vh;
+            padding: 24px;
+            box-sizing: border-box;
         }
-
-        /* 容器样式 */
-        .container {
-            text-align: center;
-            padding: 2rem;
-            max-width: 800px;
-            margin: 0 auto;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 15px;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        /* 标题样式 */
-        h1 {
-            font-size: 6rem;
-            font-weight: bold;
-            color: #fff;
-            margin-bottom: 2rem;
-            text-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-            animation: float 3s ease-in-out infinite;
-        }
-
-        /* 内容样式 */
-        .content {
-            margin-bottom: 2rem;
-            font-size: 1.5rem;
-            line-height: 1.8;
-            color: #e0e0e0;
-        }
-
-        /* 错误信息样式 */
-        .error-info {
-            background: rgba(255, 255, 255, 0.2);
-            padding: 2rem;
-            border-radius: 15px;
-            margin-bottom: 2rem;
-        }
-
-        /* 按钮样式 */
-        .button {
-            display: inline-block;
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            text-decoration: none;
-            padding: 1.2rem 2rem;
-            border-radius: 0.5rem;
-            font-size: 1.2rem;
-            transition: all 0.3s ease;
-        }
-
-        .button:hover {
-            background: rgba(255, 255, 255, 0.3);
-            transform: translateY(-2px);
-        }
-
-        /* 动画样式 */
-        .animation {
-            margin-top: 2rem;
-            animation: spin 2s linear infinite;
-        }
-
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-
-        @keyframes float {
-            0%, 100% {
-                transform: translateY(0);
-            }
-            50% {
-                transform: translateY(-10px);
-            }
-        }
-
-        /* 背景动画 */
-        .bg-animation {
-            position: absolute;
-            top: 0;
-            left: 0;
+        .errorpage-card {
             width: 100%;
-            height: 100%;
-            z-index: -1;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            animation: gradient 10s ease infinite;
+            max-width: 520px;
+            padding: 52px 34px 56px;
+            background: var(--surface, #fff);
+            border: 1px solid var(--line, #e5e7eb);
+            border-radius: 18px;
+            box-shadow: var(--shadow, 0 18px 45px rgba(15, 23, 42, .08));
+            box-sizing: border-box;
+            text-align: center;
         }
-
-        @keyframes gradient {
-            0% {
-                background-position: 0% 50%;
-            }
-            50% {
-                background-position: 100% 50%;
-            }
-            100% {
-                background-position: 0% 50%;
-            }
+        .errorpage-code {
+            margin: 0 0 8px;
+            color: var(--primary, #2563eb);
+            font-size: 104px;
+            font-weight: 900;
+            line-height: 1;
+            letter-spacing: -.06em;
         }
-
-        /* 页脚样式 */
-        .text-muted {
-            color: rgba(255, 255, 255, 0.7);
-            font-size: 0.9rem;
-            margin-top: 2rem;
+        .errorpage-title {
+            margin: 0 0 12px;
+            color: var(--text, #1f2937);
+            font-size: 24px;
+            font-weight: 800;
+            line-height: 1.4;
+        }
+        .errorpage-text {
+            margin: 0 auto 28px;
+            max-width: 400px;
+            color: var(--muted, #6b7280);
+            font-size: 14px;
+            line-height: 1.9;
+        }
+        .errorpage-actions {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 12px;
+        }
+        html body .errorpage-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 132px;
+            padding: 12px 22px;
+            border: 1px solid var(--line, #e5e7eb);
+            border-radius: 11px;
+            background: var(--surface-soft, #f8fafc) !important;
+            color: var(--text, #1f2937) !important;
+            font-size: 15px;
+            font-weight: 700;
+            text-decoration: none;
+            transition: border-color .18s ease, background .18s ease, transform .18s ease;
+        }
+        html body .errorpage-btn:hover,
+        html body .errorpage-btn:focus {
+            border-color: var(--primary, #2563eb) !important;
+            color: var(--primary, #2563eb) !important;
+            text-decoration: none;
+            transform: translateY(-1px);
+        }
+        /* 底色和字色一律加 !important 成对锁死：
+           外部样式表（尤其是旧版本或以后改动）里任何带 !important 的 a / .errorpage-btn 规则
+           都可能只盖掉其中一个，导致按钮变成同色、文字看不见 */
+        html body .errorpage-btn-primary {
+            background: var(--primary, #2563eb) !important;
+            border-color: var(--primary, #2563eb) !important;
+            color: #fff !important;
+        }
+        html body .errorpage-btn-primary:hover,
+        html body .errorpage-btn-primary:focus {
+            background: var(--primary-dark, #1d4ed8) !important;
+            border-color: var(--primary-dark, #1d4ed8) !important;
+            color: #fff !important;
+        }
+        /* 强调色偏浅的外观，主按钮要用深色字才看得清。
+           底色一并写死，不走 --primary：万一站点样式表是旧版本或者没加载出来，
+           变量会回落成默认的蓝色，配深色字就看不清了 */
+        html body.theme-workspace .errorpage-btn-primary { background: #f4c95d !important; border-color: #f4c95d !important; color: #221a05 !important; }
+        html body.theme-workspace .errorpage-btn-primary:hover { background: #d9ad3f !important; border-color: #d9ad3f !important; color: #221a05 !important; }
+        html body.theme-neon .errorpage-btn-primary { background: #73c7ff !important; border-color: #73c7ff !important; color: #06101f !important; }
+        html body.theme-neon .errorpage-btn-primary:hover { background: #4fb3f5 !important; border-color: #4fb3f5 !important; color: #06101f !important; }
+        html body.theme-onefour .errorpage-btn-primary { background: #ffffff !important; border-color: #ffffff !important; color: #050505 !important; }
+        html body.theme-onefour .errorpage-btn-primary:hover { background: #d8dae4 !important; border-color: #d8dae4 !important; color: #050505 !important; }
+        html body.theme-aurora .errorpage-btn-primary { background: #67e8ff !important; border-color: #67e8ff !important; color: #10204a !important; }
+        html body.theme-aurora .errorpage-btn-primary:hover { background: #3fd6f2 !important; border-color: #3fd6f2 !important; color: #10204a !important; }
+        html body.theme-abyss .errorpage-btn-primary { background: #38e0d8 !important; border-color: #38e0d8 !important; color: #062434 !important; }
+        html body.theme-abyss .errorpage-btn-primary:hover { background: #22c7bf !important; border-color: #22c7bf !important; color: #062434 !important; }
+        html body.theme-emerald .errorpage-btn-primary { background: #4ade80 !important; border-color: #4ade80 !important; color: #07301f !important; }
+        html body.theme-emerald .errorpage-btn-primary:hover { background: #2ec469 !important; border-color: #2ec469 !important; color: #07301f !important; }
+        html body.theme-sunset .errorpage-btn-primary { background: #ffb057 !important; border-color: #ffb057 !important; color: #3d0f2e !important; }
+        html body.theme-sunset .errorpage-btn-primary:hover { background: #f59a3a !important; border-color: #f59a3a !important; color: #3d0f2e !important; }
+        /* 玻璃拟态外观的卡片是半透明的，加一层模糊才看得清 */
+        body.theme-aurora .errorpage-card,
+        body.theme-sunset .errorpage-card,
+        body.theme-abyss .errorpage-card,
+        body.theme-emerald .errorpage-card,
+        body.theme-sakura .errorpage-card { backdrop-filter: blur(18px); }
+        @media (max-width: 767px) {
+            .errorpage-card { padding: 40px 20px 44px; border-radius: 16px; }
+            .errorpage-code { font-size: 76px; }
+            .errorpage-title { font-size: 20px; }
+            html body .errorpage-btn { width: 100%; min-width: 0; }
         }
     </style>
+    <script>
+    /*
+     * 外观优先由后台写死在下面的 <body class> 上（保存外观设置时由 sync_404_theme 写入，
+     * 写入后会带上 data-theme-synced 标记）。只有在标记不存在时——比如 404.html 没有写
+     * 权限、或者还没保存过一次外观——才退回用 localStorage 里站点页面存的那份外观名。
+     * 两者都没有就用页面自带的默认蓝白配色，任何情况下都能正常显示。
+     */
+    (function () {
+        document.addEventListener('DOMContentLoaded', function () {
+            if (document.body.hasAttribute('data-theme-synced')) return;
+            var layout = ['dashboard', 'console', 'portal', 'workspace'];
+            var allow = ['cloud', 'night', 'neon', 'aurora', 'onefour', 'celadon', 'lilac', 'paper',
+                'blush', 'sky', 'mint', 'sunset', 'abyss', 'emerald', 'sakura'].concat(layout);
+            var theme = '';
+            try {
+                var saved = window.localStorage.getItem('site_theme');
+                if (saved && allow.indexOf(saved) >= 0) theme = saved;
+            } catch (e) {}
+            if (!theme) return;
+            document.body.className = 'theme-' + theme + (layout.indexOf(theme) >= 0 ? ' layout-theme' : '');
+        });
+    })();
+    </script>
 </head>
-<body>
-    <!-- 背景动画 -->
-    <div class="bg-animation"></div>
-
-    <!-- 主要内容 -->
-    <div class="container">
-        <h1>404</h1>
-        <div class="content">
-            <p>抱歉，您访问的页面不存在</p>
-            <p>请检查您的链接是否正确，或点击下方按钮返回主页。</p>
-        </div>
-
-        <div class="error-info">
-            <div class="animation">
-                <span>&#128530;</span>
+<body class="theme-cloud">
+    <div class="errorpage-wrap">
+        <div class="errorpage-card">
+            <div class="errorpage-code">404</div>
+            <h1 class="errorpage-title">这个页面不存在</h1>
+            <p class="errorpage-text">你访问的地址可能已经失效、文件已被删除，或者链接输入有误。</p>
+            <div class="errorpage-actions">
+                <a class="errorpage-btn errorpage-btn-primary" href="/">返回首页</a>
+                <a class="errorpage-btn" href="/upload.php">上传文件</a>
             </div>
-            <h3>错误代码</h3>
-            <p>未找到页面</p>
-        </div>
-
-        <a href="/" class="button">返回首页</a>
-
-        <div class="text-muted">
-            <p>Powered by <strong>nginx</strong></p>
         </div>
     </div>
 </body>
