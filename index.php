@@ -160,8 +160,30 @@ while($res = $rs->fetch())
 	$actions .= '</div>';
 	$type_text = $res['type']?$res['type']:'未知';
 	$row_ip = preg_replace('/\d+$/','*',$res['ip']);
+	//深色工作台风的预览面板要直接显示图片/视频/文本：没有设密码、没被封禁、且是可在线预览的
+	//类型时才给出预览地址，其余情况面板里还是显示文件类型图标
+	$layout_text_max = defined('LAYOUT_TEXT_PREVIEW_MAX') ? LAYOUT_TEXT_PREVIEW_MAX : 256 * 1024;
+	$preview_url = '';
+	$preview_kind = '';
+	if(empty($res['pwd']) && intval($res['block']) === 0){
+		if(is_view($res['type'])){
+			$preview_kind = get_view_type($res['type']);
+			if($preview_kind === 'image' || $preview_kind === 'video' || $preview_kind === 'audio'){
+				$preview_url = './view.php/'.$res['token'].'.'.$res['type'].'?preview=1';
+			}else{
+				$preview_kind = '';
+			}
+		//常量定义在 layout_blocks.php 里，万一只传了部分文件也要能正常降级，不能静默失效
+		}elseif(is_editable_file_type($res['type']) && intval($res['size']) <= $layout_text_max){
+			//txt/json/js 这类文本文件走 text.php 取内容；太大的不自动拉，免得点一下列表就下几 MB
+			$preview_kind = 'text';
+			$preview_url = './text.php?hash='.$res['token'].'&preview=1';
+		}
+	}
 	//data-* 给布局型外观用：深色工作台风的右侧预览面板直接读这几个值
 	$row_attr = ' data-group="'.layout_type_group($res['type']).'"'
+		.' data-preview="'.htmlspecialchars($preview_url, ENT_QUOTES, 'UTF-8').'"'
+		.' data-preview-kind="'.htmlspecialchars($preview_kind, ENT_QUOTES, 'UTF-8').'"'
 		.' data-name="'.htmlspecialchars($res['name'], ENT_QUOTES, 'UTF-8').'"'
 		.' data-size="'.htmlspecialchars(size_format($res['size']), ENT_QUOTES, 'UTF-8').'"'
 		.' data-type="'.htmlspecialchars($type_text, ENT_QUOTES, 'UTF-8').'"'

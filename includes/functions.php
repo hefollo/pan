@@ -4,14 +4,19 @@
  * curl 会一直挂着占住 PHP 进程，用户多点几次就把进程池占满，整站跟着卡死。
  * 这几个调用都是取一小段 JSON，给一个默认上限足够用；确实需要更久的调用可以自己传 $timeout。
  */
-function get_curl($url, $post=0, $referer=0, $cookie=0, $header=0, $ua=0, $nobaody=0, $timeout=15)
+function get_curl($url, $post=0, $referer=0, $cookie=0, $header=0, $ua=0, $nobaody=0, $timeout=15, $ssl_verify=false)
 {
 	$ch = curl_init();
 	curl_setopt($ch, CURLOPT_URL, $url);
 	curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
 	curl_setopt($ch, CURLOPT_TIMEOUT, max(5, intval($timeout)));
-	curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-	curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+	/*
+	 * 默认不校验证书是这套程序一直以来的行为（有些存储/登录接口用的是自签证书），
+	 * 但支付相关的请求必须校验：不校验的话，能插到中间的人可以冒充支付宝，
+	 * 把一份真实的“已支付”响应重放给我们，签名是真的，验签照样过。
+	 */
+	curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, $ssl_verify ? true : false);
+	curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, $ssl_verify ? 2 : false);
 	$httpheader[] = "Accept: */*";
 	$httpheader[] = "Accept-Encoding: gzip,deflate,sdch";
 	$httpheader[] = "Accept-Language: zh-CN,zh;q=0.8";
@@ -272,6 +277,493 @@ function getSetting($k){
 	global $DB;
 	return $DB->getColumn("SELECT v FROM pre_config WHERE k=:k LIMIT 1", [':k'=>$k]);
 }
+/* ===== 购买套餐 / 支付宝当面付 ===== */
+
+/*
+ * 购买功能是否可用：开关打开 + 支付参数配置完整 + 至少有一个上架套餐
+ */
+/*
+ * 当前可用的支付方式。两种可以只开一个，也可以同时开着让用户自己选：
+ *   alipay 支付宝当面付：本站直接生成二维码，用户扫码付
+ *   epay   易支付：跳到易支付站点的收银台，回来后靠查单确认
+ */
+function pay_methods(){
+	global $conf;
+	$list = [];
+	if(!empty($conf['alipay_open']) && !empty($conf['alipay_appid']) && !empty($conf['alipay_private_key']) && !empty($conf['alipay_public_key'])){
+		$list['alipay'] = ['name'=>'支付宝当面付', 'desc'=>'页面内扫码支付'];
+	}
+	if(!empty($conf['epay_open']) && !empty($conf['epay_apiurl']) && !empty($conf['epay_pid']) && !empty($conf['epay_key'])){
+		$list['epay'] = ['name'=>'易支付', 'desc'=>'跳转到收银台支付'];
+	}
+	return $list;
+}
+
+function is_pay_method($method){
+	$list = pay_methods();
+	return isset($list[$method]);
+}
+
+function is_buy_open(){
+	global $conf, $DB;
+	if(empty($conf['userlogin']))return false;
+	if(!pay_methods())return false;
+	return intval($DB->getColumn("SELECT count(*) FROM pre_plan WHERE enable=1")) > 0;
+}
+
+function alipay_client(){
+	global $conf;
+	return new \lib\Alipay($conf['alipay_appid'], $conf['alipay_private_key'], $conf['alipay_public_key']);
+}
+
+/*
+ * 易支付开放的支付通道。后台勾选哪几个就返回哪几个，一个都没勾时按三个全开处理，
+ * 免得因为漏勾导致前台没有任何可选项。
+ */
+function epay_channels(){
+	global $conf;
+	$all = ['alipay'=>'支付宝', 'wxpay'=>'微信支付', 'qqpay'=>'QQ钱包'];
+	$raw = isset($conf['epay_type']) ? trim($conf['epay_type']) : '';
+	$list = [];
+	foreach(explode(',', $raw) as $k){
+		$k = trim($k);
+		if(isset($all[$k]))$list[$k] = $all[$k];
+	}
+	return $list ? $list : $all;
+}
+
+function epay_client(){
+	global $conf;
+	return new \lib\Epay($conf['epay_apiurl'], $conf['epay_pid'], $conf['epay_key']);
+}
+
+/*
+ * 付款时显示给用户、也发给支付渠道的商品名称。
+ * 默认用“赞助”这种中性名字：站点标题里带「网盘」「外链」之类的词，
+ * 有些易支付站点会按违禁商品直接拦下来。
+ */
+function pay_subject(){
+	global $conf;
+	$subject = isset($conf['pay_subject']) ? trim($conf['pay_subject']) : '';
+	return $subject === '' ? '赞助' : $subject;
+}
+
+/*
+ * 订单列表里显示的支付方式名字
+ */
+function pay_method_name($method){
+	if($method === 'epay')return '易支付';
+	if($method === 'alipay')return '支付宝当面付';
+	return $method === '' ? '-' : $method;
+}
+
+/*
+ * 内置的推荐套餐。后台「一键导入推荐套餐」用的就是这份，价格和额度都可以导入后再改。
+ * 覆盖了三种典型玩法：按时长的包月卡、在现有额度上叠加的加量包、一次买断的永久会员。
+ */
+function default_plans(){
+	return [
+		['name'=>'体验周卡', 'category'=>'包月套餐', 'price'=>'1.00', 'upload_limit'=>50, 'limit_mode'=>'set', 'upload_size'=>100, 'days'=>7, 'remark'=>'先试试水，随时可续', 'sort'=>10],
+		['name'=>'入门月卡', 'category'=>'包月套餐', 'price'=>'4.90', 'upload_limit'=>100, 'limit_mode'=>'set', 'upload_size'=>300, 'days'=>30, 'remark'=>'轻度使用，一个月够了', 'sort'=>11],
+		['name'=>'标准月卡', 'category'=>'包月套餐', 'price'=>'9.90', 'upload_limit'=>200, 'limit_mode'=>'set', 'upload_size'=>500, 'days'=>30, 'remark'=>'日常够用，最受欢迎', 'sort'=>12],
+		['name'=>'超值季卡', 'category'=>'包月套餐', 'price'=>'25.00', 'upload_limit'=>500, 'limit_mode'=>'set', 'upload_size'=>1024, 'days'=>90, 'remark'=>'三个月，折合每月更便宜', 'sort'=>13],
+		['name'=>'半年卡', 'category'=>'包月套餐', 'price'=>'48.00', 'upload_limit'=>800, 'limit_mode'=>'set', 'upload_size'=>1536, 'days'=>180, 'remark'=>'半年长期，额度翻倍', 'sort'=>14],
+		['name'=>'至尊年卡', 'category'=>'包月套餐', 'price'=>'88.00', 'upload_limit'=>0, 'limit_mode'=>'set', 'upload_size'=>2048, 'days'=>365, 'remark'=>'整年不限数量，省心', 'sort'=>15],
+		['name'=>'加量包 +50', 'category'=>'加量包', 'price'=>'3.00', 'upload_limit'=>50, 'limit_mode'=>'add', 'upload_size'=>-1, 'days'=>30, 'remark'=>'30 天内每天多传 50 个', 'sort'=>20],
+		['name'=>'加量包 +100', 'category'=>'加量包', 'price'=>'5.00', 'upload_limit'=>100, 'limit_mode'=>'add', 'upload_size'=>-1, 'days'=>30, 'remark'=>'30 天内每天多传 100 个', 'sort'=>21],
+		['name'=>'加量包 +200', 'category'=>'加量包', 'price'=>'8.00', 'upload_limit'=>200, 'limit_mode'=>'add', 'upload_size'=>-1, 'days'=>30, 'remark'=>'30 天内每天多传 200 个', 'sort'=>22],
+		['name'=>'加量包 +500', 'category'=>'加量包', 'price'=>'18.00', 'upload_limit'=>500, 'limit_mode'=>'add', 'upload_size'=>-1, 'days'=>30, 'remark'=>'30 天内每天多传 500 个', 'sort'=>23],
+		['name'=>'加量包 +1000', 'category'=>'加量包', 'price'=>'30.00', 'upload_limit'=>1000, 'limit_mode'=>'add', 'upload_size'=>-1, 'days'=>30, 'remark'=>'30 天内每天多传 1000 个', 'sort'=>24],
+		['name'=>'加量包 +2000', 'category'=>'加量包', 'price'=>'50.00', 'upload_limit'=>2000, 'limit_mode'=>'add', 'upload_size'=>-1, 'days'=>30, 'remark'=>'30 天内每天多传 2000 个，量大更划算', 'sort'=>25],
+		['name'=>'大文件包 512MB', 'category'=>'单文件加强', 'price'=>'2.00', 'upload_limit'=>-1, 'limit_mode'=>'set', 'upload_size'=>512, 'days'=>30, 'remark'=>'单文件上限提到 512MB，不动每日数量', 'sort'=>30],
+		['name'=>'大文件包 1GB', 'category'=>'单文件加强', 'price'=>'3.00', 'upload_limit'=>-1, 'limit_mode'=>'set', 'upload_size'=>1024, 'days'=>30, 'remark'=>'单文件上限提到 1GB，不动每日数量', 'sort'=>31],
+		['name'=>'大文件包 2GB', 'category'=>'单文件加强', 'price'=>'5.00', 'upload_limit'=>-1, 'limit_mode'=>'set', 'upload_size'=>2048, 'days'=>30, 'remark'=>'单文件上限提到 2GB，不动每日数量', 'sort'=>32],
+		['name'=>'大文件包 5GB', 'category'=>'单文件加强', 'price'=>'12.00', 'upload_limit'=>-1, 'limit_mode'=>'set', 'upload_size'=>5120, 'days'=>30, 'remark'=>'单文件上限提到 5GB，不动每日数量', 'sort'=>33],
+		['name'=>'大文件包 10GB', 'category'=>'单文件加强', 'price'=>'20.00', 'upload_limit'=>-1, 'limit_mode'=>'set', 'upload_size'=>10240, 'days'=>30, 'remark'=>'单文件上限提到 10GB，不动每日数量', 'sort'=>34],
+		['name'=>'大文件包 20GB', 'category'=>'单文件加强', 'price'=>'35.00', 'upload_limit'=>-1, 'limit_mode'=>'set', 'upload_size'=>20480, 'days'=>30, 'remark'=>'单文件上限提到 20GB，适合视频素材', 'sort'=>35],
+		['name'=>'永久入门版', 'category'=>'永久会员', 'price'=>'68.00', 'upload_limit'=>100, 'limit_mode'=>'set', 'upload_size'=>1024, 'days'=>0, 'remark'=>'一次买断，每天 100 个', 'sort'=>40],
+		['name'=>'永久基础版', 'category'=>'永久会员', 'price'=>'98.00', 'upload_limit'=>300, 'limit_mode'=>'set', 'upload_size'=>2048, 'days'=>0, 'remark'=>'一次买断，每天 300 个', 'sort'=>41],
+		['name'=>'永久标准版', 'category'=>'永久会员', 'price'=>'138.00', 'upload_limit'=>600, 'limit_mode'=>'set', 'upload_size'=>3072, 'days'=>0, 'remark'=>'一次买断，每天 600 个', 'sort'=>42],
+		['name'=>'永久会员', 'category'=>'永久会员', 'price'=>'198.00', 'upload_limit'=>0, 'limit_mode'=>'set', 'upload_size'=>5120, 'days'=>0, 'remark'=>'一次买断，不限每日数量', 'sort'=>43],
+		['name'=>'永久尊享版', 'category'=>'永久会员', 'price'=>'298.00', 'upload_limit'=>0, 'limit_mode'=>'set', 'upload_size'=>10240, 'days'=>0, 'remark'=>'不限数量，单文件 10GB', 'sort'=>44],
+		['name'=>'永久旗舰版', 'category'=>'永久会员', 'price'=>'498.00', 'upload_limit'=>0, 'limit_mode'=>'set', 'upload_size'=>0, 'days'=>0, 'remark'=>'数量和大小都不限，一步到位', 'sort'=>45],
+	];
+}
+
+/*
+ * 上架套餐列表，按 sort 再按价格排
+ */
+function plan_list($only_enabled = true){
+	global $DB;
+	$where = $only_enabled ? ' WHERE enable=1' : '';
+	$rows = $DB->getAll("SELECT * FROM pre_plan{$where} ORDER BY sort ASC, price ASC, id ASC");
+	return is_array($rows) ? $rows : [];
+}
+
+function plan_get($id){
+	global $DB;
+	$id = intval($id);
+	if($id <= 0)return false;
+	return $DB->getRow("SELECT * FROM pre_plan WHERE id=:id LIMIT 1", [':id'=>$id]);
+}
+
+/*
+ * 把 -1 / 0 / N 这三种取值翻译成人话，套餐卡片和后台列表共用
+ */
+function plan_limit_text($value, $unit){
+	$value = intval($value);
+	if($value < 0)return '跟随全站设置';
+	if($value === 0)return '不限制';
+	return $value.' '.$unit;
+}
+
+/*
+ * 购买页上的文案一律显示具体数字，不显示“跟随全站设置”这种只有后台才看得懂的说法
+ */
+function limit_number_text($value, $unit){
+	$value = intval($value);
+	return $value === 0 ? '不限制' : $value.' '.$unit;
+}
+
+/*
+ * 买完之后每天能传多少：
+ *   套餐填 -1（跟随全站） -> 换成全站设置的数量
+ *   增加型套餐           -> 用户当前生效的数量再加上套餐的数量
+ * 未登录时按全站设置估算，登录后卡片上就是这个用户真实会得到的数字
+ */
+function plan_result_limit_text($plan){
+	global $conf, $islogin2, $userrow;
+	$mode = isset($plan['limit_mode']) ? $plan['limit_mode'] : 'set';
+	$value = intval($plan['upload_limit']);
+	$site = isset($conf['upload_limit']) ? intval($conf['upload_limit']) : 0;
+
+	if($mode === 'add'){
+		$text = '+'.max(0, $value).' 个/天';
+		$base = $islogin2 ? get_effective_upload_count_limit() : $site;
+		//基础额度本身就是不限的话，加多少都没意义，这里不写“买后多少”，
+		//卡片下面的提示会直接说“已经覆盖，买了不会有提升”
+		if($base > 0)$text .= '（买后 '.($base + max(0, $value)).' 个/天）';
+		return $text;
+	}
+
+	//套餐不改动每日数量，就写“不变”，不能把用户自己现有的额度写成套餐的卖点
+	if($value < 0)return '不变';
+
+	$result = $value;
+	if($result > 0 && $islogin2 && is_user_permission_active() && !empty($userrow['bonus_limit'])){
+		//买时长套餐时，已经买到手的加量额度会继续保留
+		$result += max(0, intval($userrow['bonus_limit']));
+	}
+	return limit_number_text($result, '个/天');
+}
+
+/*
+ * 买完之后单文件能传多大，-1 同样换算成全站设置的值
+ */
+function plan_result_size_text($plan){
+	$value = intval($plan['upload_size']);
+	//同样：套餐不动这一项就写“不变”
+	if($value < 0)return '不变';
+	return limit_number_text($value, 'MB');
+}
+
+/*
+ * 购买页按分类把套餐分组，分类的先后顺序按套餐排序里第一次出现的顺序来，
+ * 没填分类的归到最后一组，这样老站点不填分类也能照常显示（全都没填时购买页不显示分组标题）
+ */
+function plan_group_list($plans, $default_name = '其他套餐'){
+	$groups = [];
+	$rest = [];
+	foreach($plans as $plan){
+		$cat = isset($plan['category']) ? trim($plan['category']) : '';
+		if($cat === ''){
+			$rest[] = $plan;
+			continue;
+		}
+		if(!isset($groups[$cat]))$groups[$cat] = [];
+		$groups[$cat][] = $plan;
+	}
+	if($rest)$groups[$default_name] = $rest;
+	return $groups;
+}
+
+function plan_days_text($days){
+	$days = intval($days);
+	return $days > 0 ? ('有效期 '.$days.' 天') : '永久有效';
+}
+
+/*
+ * 发放套餐权限。
+ * 规则（后台可见的说明也是这套）：
+ *   - 权限数值按新买的套餐设置；
+ *   - 有效期叠加：现有权限还没到期就从到期时间往后加，否则从当前时间算起；
+ *   - 买到永久套餐直接变永久；
+ *   - 已经是永久付费权限的用户再买限时套餐，只换权限数值，不会被改成有期限（不降级）。
+ */
+function grant_plan_to_user($uid, $order){
+	global $DB, $conf;
+	$uid = intval($uid);
+	$user = $DB->getRow("SELECT * FROM pre_user WHERE uid=:uid LIMIT 1", [':uid'=>$uid]);
+	if(!$user)return false;
+
+	$days = intval($order['days']);
+	//没有到期时间、但已经有付费权限的，算永久权限
+	$has_forever = empty($user['expiretime']) && (intval($user['upload_limit']) >= 0 || intval($user['upload_size']) >= 0 || intval($user['level']) > 0);
+
+	if($days <= 0 || $has_forever){
+		$expiretime = null;
+	}else{
+		$base = time();
+		if(!empty($user['expiretime'])){
+			$current = strtotime($user['expiretime']);
+			if($current > $base)$base = $current;
+		}
+		$expiretime = date('Y-m-d H:i:s', $base + $days * 86400);
+	}
+
+	$data = [
+		'upload_limit' => resolve_plan_upload_limit($user, $order),
+		'bonus_limit' => resolve_plan_bonus_limit($user, $order),
+		'upload_size' => resolve_plan_upload_size($user, $order),
+	];
+	/*
+	 * 已经是永久权限的用户再买时长套餐，时间上没什么可加的（还是永久），
+	 * 这时候要是按套餐值覆盖，等于花钱把自己降级了，而且降完还是永久的，很难挽回。
+	 * 所以对永久用户一律取更优值。
+	 */
+	if($has_forever){
+		$data['upload_limit'] = better_permission($user['upload_limit'], $data['upload_limit'], isset($conf['upload_limit']) ? $conf['upload_limit'] : 0);
+		$data['upload_size'] = better_permission($user['upload_size'], $data['upload_size'], isset($conf['upload_size']) ? $conf['upload_size'] : 0);
+	}
+	//DB->update 会把空字符串写成 NULL，正好用来表示永久
+	$data['expiretime'] = $expiretime === null ? '' : $expiretime;
+	//侧栏“我的权限”卡有 120 秒会话缓存，这里清掉，买完刷新就能看到新的权限
+	unset($_SESSION['layout_plan']);
+	$ok = $DB->update('user', $data, ['uid'=>$uid]);
+	if($ok === false && isset($data['bonus_limit'])){
+		//站点还没执行 install/update.php 的话没有 bonus_limit 这一列，
+		//这时候宁可少发加量额度，也不能因为一个字段就把整笔权限卡住不发
+		unset($data['bonus_limit']);
+		$ok = $DB->update('user', $data, ['uid'=>$uid]);
+	}
+	return $ok !== false;
+}
+
+/*
+ * 算出这一单发放后的“每日上传数量”。
+ *
+ * 套餐有两种发放方式：
+ *   set 设为   —— 直接把每日数量设成套餐里的值（老套餐没有这个字段，默认就是它）
+ *   add 增加   —— 在用户当前生效的数量上加，买两次就是加两次
+ *
+ * add 的基数取“当前真正生效的数量”：
+ *   - 权限还有效且用户自己有具体数值   -> 用用户的数值
+ *   - 权限已过期，或用户是 -1 跟随全站 -> 用全站设置的数量，避免把过期的旧数字继续往上加
+ *   - 基数是 0（不限）时保持不限，加多少都没意义
+ */
+function resolve_plan_upload_limit($user, $order){
+	$mode = isset($order['limit_mode']) ? $order['limit_mode'] : 'set';
+	$value = intval($order['upload_limit']);
+	$active = empty($user['expiretime']) || strtotime($user['expiretime']) > time();
+	//增加型套餐记在 bonus_limit 上（见 resolve_plan_bonus_limit），不动这里的基础数量
+	if($mode === 'add')return $active ? intval($user['upload_limit']) : -1;
+	//填 -1 表示这个套餐不改动每日数量（比如只提升单文件大小的套餐），保持用户现在的值；
+	//权限已经过期的话就没什么好保持的了，回到跟随全站
+	if($value < 0)return ($active && isset($user['upload_limit'])) ? intval($user['upload_limit']) : -1;
+	return $value;
+}
+
+/*
+ * 算出这一单发放后的“加量额度”。
+ *
+ * 加量包买的数量单独记在 bonus_limit 上，实际每日数量 = 基础数量 + 加量额度，
+ * 这样后面再买月卡、年卡也只会换掉基础数量，加量包永远不会被覆盖掉。
+ * 权限过期后加量额度不再计入（见 get_effective_upload_count_limit），
+ * 过期之后重新买套餐时也从 0 重新开始，不会把很久以前的加量翻出来。
+ */
+function resolve_plan_bonus_limit($user, $order){
+	$mode = isset($order['limit_mode']) ? $order['limit_mode'] : 'set';
+	$active = empty($user['expiretime']) || strtotime($user['expiretime']) > time();
+	$current = $active ? intval(isset($user['bonus_limit']) ? $user['bonus_limit'] : 0) : 0;
+	if($mode !== 'add')return $current;
+	return $current + max(0, intval($order['upload_limit']));
+}
+
+/*
+ * 比较两个权限值哪个更强。0 表示不限，最强；-1 表示跟随全站，按全站的值算；其余按数值大小。
+ */
+function permission_weight($value, $site_value){
+	$value = intval($value);
+	if($value === 0)return PHP_INT_MAX;
+	if($value < 0)return intval($site_value);
+	return $value;
+}
+
+/*
+ * 取更优的那个权限值（用于永久用户，避免买了低档套餐反而被降级）
+ */
+function better_permission($current, $new_value, $site_value){
+	return permission_weight($new_value, $site_value) >= permission_weight($current, $site_value) ? $new_value : $current;
+}
+
+/*
+ * 算出这一单发放后的“单文件大小”。
+ * 套餐填 -1 表示这个套餐不改动单文件大小，保持用户现在的设置——
+ * 加量包这种只加数量的套餐就该这样，不然会把月卡给的大额度覆盖回默认值。
+ */
+function resolve_plan_upload_size($user, $order){
+	$value = intval($order['upload_size']);
+	if($value >= 0)return $value;
+	$active = empty($user['expiretime']) || strtotime($user['expiretime']) > time();
+	return ($active && isset($user['upload_size'])) ? intval($user['upload_size']) : -1;
+}
+
+/*
+ * 套餐卡片和后台列表上显示的每日数量文案
+ */
+function plan_limit_display($plan){
+	$mode = isset($plan['limit_mode']) ? $plan['limit_mode'] : 'set';
+	$value = intval($plan['upload_limit']);
+	if($mode === 'add')return '在现有基础上 +'.max(0, $value).' 个/天';
+	return plan_limit_text($value, '个/天');
+}
+
+/*
+ * 这一单买下去会带来哪些变化，购买页用它提示，下单接口用它挡住“买了也没用”的订单。
+ * 返回 ['limit'=>新数量, 'size'=>新大小, 'days'=>是否会延长时间, 'changed'=>是否有任何变化,
+ *       'lower'=>会被降下来的项目]
+ */
+function plan_effect($user, $plan){
+	global $conf;
+	$order = [
+		'upload_limit' => intval($plan['upload_limit']),
+		'limit_mode' => isset($plan['limit_mode']) ? $plan['limit_mode'] : 'set',
+		'upload_size' => intval($plan['upload_size']),
+		'days' => intval($plan['days']),
+	];
+	$site_limit = isset($conf['upload_limit']) ? intval($conf['upload_limit']) : 0;
+	$site_size = isset($conf['upload_size']) ? intval($conf['upload_size']) : 0;
+	$active = empty($user['expiretime']) || strtotime($user['expiretime']) > time();
+	$has_forever = empty($user['expiretime']) && (intval($user['upload_limit']) >= 0 || intval($user['upload_size']) >= 0 || intval($user['level']) > 0);
+
+	//现在实际能用到的额度：-1 要换算成全站的值，加量额度要算进去
+	$now_base = ($active && intval($user['upload_limit']) >= 0) ? intval($user['upload_limit']) : $site_limit;
+	$now_bonus = $active ? max(0, intval(isset($user['bonus_limit']) ? $user['bonus_limit'] : 0)) : 0;
+	$now_limit = $now_base === 0 ? 0 : $now_base + $now_bonus;
+	$now_size = ($active && intval($user['upload_size']) >= 0) ? intval($user['upload_size']) : $site_size;
+
+	//买完之后实际能用到的额度
+	$new_limit = resolve_plan_upload_limit($user, $order);
+	$new_size = resolve_plan_upload_size($user, $order);
+	if($has_forever){
+		$new_limit = better_permission($user['upload_limit'], $new_limit, $site_limit);
+		$new_size = better_permission($user['upload_size'], $new_size, $site_size);
+	}
+	$new_bonus = resolve_plan_bonus_limit($user, $order);
+	$after_base = $new_limit >= 0 ? $new_limit : $site_limit;
+	$after_limit = $after_base === 0 ? 0 : $after_base + max(0, $new_bonus);
+	$after_size = $new_size >= 0 ? $new_size : $site_size;
+
+	$improved = permission_weight($after_limit, $site_limit) > permission_weight($now_limit, $site_limit)
+		|| permission_weight($after_size, $site_size) > permission_weight($now_size, $site_size);
+	/*
+	 * 时长上的收益只对“当前就是限时权限”的用户成立：续期或换成永久都算。
+	 * 本来就没有到期时间的用户（新用户、跟随全站的用户、已经永久的用户），
+	 * 凭空多一个到期时间不是收益，不能靠它把“买了也没用”的单放过去。
+	 */
+	$time_gain = !empty($user['expiretime']);
+
+	$lower = [];
+	if(permission_weight($after_limit, $site_limit) < permission_weight($now_limit, $site_limit))$lower[] = '每日上传数量';
+	if(permission_weight($after_size, $site_size) < permission_weight($now_size, $site_size))$lower[] = '单文件大小';
+
+	return [
+		'limit' => $after_limit,
+		'size' => $after_size,
+		'days' => $time_gain,
+		'changed' => $improved || $time_gain,
+		'lower' => $lower,
+	];
+}
+
+/*
+ * 确认收款并发货。用带条件的更新做幂等，只有真正把状态改过来的那一次才发权限，
+ * 所以前端轮询、异步通知、同步跳转三条路同时到达也不会重复发放。
+ *
+ * 条件是 status<>1 而不是 status=0：订单可能因为用户换了套餐而被关掉（status=2），
+ * 但人家在旧二维码上把钱付了，这种也必须照常发货，不能收了钱不认账。
+ */
+function finish_order($order, $pay_trade_no){
+	global $DB;
+	$stmt = $DB->query("UPDATE pre_order SET status=1, paytime=NOW(), alipay_no=:no WHERE id=:id AND status<>1",
+		[':no'=>$pay_trade_no, ':id'=>intval($order['id'])]);
+	$affected = $stmt ? $stmt->rowCount() : 0;
+	if($affected < 1)return true;      //别人已经处理过了，不重复发
+	return grant_plan_to_user($order['uid'], $order);
+}
+
+/*
+ * 查一笔订单在支付渠道那边是否已经付款，付了就发货
+ */
+function check_order_paid($order){
+	//1013 之前的老订单没有这个字段，一律按当面付处理
+	$pay_type = isset($order['pay_type']) ? $order['pay_type'] : 'alipay';
+	if($pay_type === 'epay'){
+		$res = epay_client()->query($order['trade_no']);
+	}else{
+		$res = alipay_client()->query($order['trade_no']);
+	}
+	if($res['code'] != 0)return ['code'=>-1, 'msg'=>$res['msg']];
+	if(empty($res['paid']))return ['code'=>0, 'paid'=>0];
+
+	/*
+	 * 说“已支付”还不够，必须确认它说的就是这一笔：
+	 *   - 响应里的商户订单号要等于我们问的那个（不绑这一条，别人重放一份真实的已支付
+	 *     响应就能把任意未支付订单变成已支付）
+	 *   - 到账金额不能少于订单金额，渠道没返回金额的一律不自动发货，留给后台人工确认
+	 */
+	$echo_no = isset($res['out_trade_no']) ? trim($res['out_trade_no']) : '';
+	if($echo_no === '' || $echo_no !== trim($order['trade_no'])){
+		return ['code'=>-1, 'msg'=>'支付渠道返回的订单号与本地订单对不上，已停止发放，请联系站长'];
+	}
+	$amount = isset($res['amount']) ? $res['amount'] : (isset($res['money']) ? $res['money'] : '');
+	if($amount === '' || $amount === null){
+		return ['code'=>-1, 'msg'=>'支付渠道没有返回金额，无法核对，请联系站长'];
+	}
+	if(round(floatval($amount), 2) + 0.001 < round(floatval($order['price']), 2)){
+		return ['code'=>-1, 'msg'=>'到账金额与订单金额不一致，已停止发放，请联系站长'];
+	}
+	finish_order($order, isset($res['trade_no']) ? $res['trade_no'] : '');
+	return ['code'=>0, 'paid'=>1];
+}
+
+/*
+ * 兜底：把这个用户最近还没入账的订单拿去支付渠道问一遍，付过的补发。
+ *
+ * 当面付没有异步通知，用户扫码付完直接关掉页面的话就没人轮询了，订单会一直挂在待支付。
+ * 打开购买页和重新下单时各查一次，这种漏单基本就补回来了。
+ */
+function rescue_pending_orders($uid, $max = 2){
+	global $DB;
+	$uid = intval($uid);
+	$rows = $DB->getAll("SELECT * FROM pre_order WHERE uid=".$uid." AND status<>1
+		AND addtime > DATE_SUB(NOW(), INTERVAL 2 HOUR) ORDER BY id DESC LIMIT ".intval($max));
+	if(!is_array($rows) || !$rows)return 0;
+	$paid = 0;
+	foreach($rows as $row){
+		$res = check_order_paid($row);
+		if($res['code'] == 0 && !empty($res['paid']))$paid++;
+	}
+	return $paid;
+}
+
+/*
+ * 商户订单号：日期 + 用户 + 随机，26 位以内，支付宝要求同一 appid 下唯一
+ */
+function build_trade_no($uid){
+	return date('YmdHis').str_pad(intval($uid) % 100000, 5, '0', STR_PAD_LEFT).mt_rand(1000, 9999);
+}
+
 /*
  * 站点外观的全部可选值。header.php / admin/head.php 等处各自还有一份同样的列表，
  * 新增外观时记得一起改。
@@ -338,6 +830,10 @@ function admin_setting_keys(){
 		'type_video', 'upload_limit', 'upload_size', 'uploadfile_type',
 		'upyun_name', 'upyun_pwd', 'upyun_user', 'userlogin',
 		'videoreview', 'violation_notice', 'violation_open',
+		'alipay_open', 'alipay_appid', 'alipay_public_key', 'alipay_private_key',
+		'epay_open', 'epay_apiurl', 'epay_pid', 'epay_key', 'epay_type', 'epay_charset',
+		'pay_subject',
+		'buy_notice',
 	];
 }
 
@@ -391,13 +887,18 @@ function get_effective_upload_size_limit(){
 
 function get_effective_upload_count_limit(){
 	global $conf, $islogin2, $userrow;
-	if(!empty($islogin2) && is_user_permission_active() && isset($userrow['upload_limit']) && $userrow['upload_limit'] !== null && intval($userrow['upload_limit']) >= 0){
-		return intval($userrow['upload_limit']);
+	$active = !empty($islogin2) && is_user_permission_active();
+	//加量包买的额度加在基础数量上；基础是“不限”时加多少都没意义
+	$bonus = ($active && isset($userrow['bonus_limit'])) ? max(0, intval($userrow['bonus_limit'])) : 0;
+	if($active && isset($userrow['upload_limit']) && $userrow['upload_limit'] !== null && intval($userrow['upload_limit']) >= 0){
+		$base = intval($userrow['upload_limit']);
+		return $base === 0 ? 0 : $base + $bonus;
 	}
-	if(!empty($islogin2) && is_user_permission_active() && isset($userrow['level']) && intval($userrow['level']) > 0){
+	if($active && isset($userrow['level']) && intval($userrow['level']) > 0){
 		return 0;
 	}
-	return isset($conf['upload_limit']) ? intval($conf['upload_limit']) : 0;
+	$base = isset($conf['upload_limit']) ? intval($conf['upload_limit']) : 0;
+	return $base === 0 ? 0 : $base + $bonus;
 }
 
 function minetype($type){

@@ -8,7 +8,7 @@
 
   var empty = panel.querySelector('.layout-preview-empty');
   var body = panel.querySelector('.layout-preview-body');
-  var art = panel.querySelector('.layout-preview-art i');
+  var art = panel.querySelector('.layout-preview-art');
   var nameEl = panel.querySelector('.layout-preview-name');
   var subEl = panel.querySelector('.layout-preview-sub');
   var downloadEl = panel.querySelector('.layout-preview-download');
@@ -55,6 +55,105 @@
     done(ok);
   }
 
+  //预览区：没有密码的图片/音视频直接放出来，其余（含加密、已封禁、不可预览的类型）显示类型图标
+  var previewSeq = 0;
+
+  function renderArt(row) {
+    var kind = row.getAttribute('data-preview-kind');
+    var src = row.getAttribute('data-preview');
+    previewSeq++;
+    art.innerHTML = '';
+    art.classList.remove('is-media', 'is-text');
+
+    if (!src || !kind) {
+      showIcon(row);
+      return;
+    }
+    if (kind === 'image') {
+      var img = document.createElement('img');
+      img.className = 'layout-preview-img';
+      img.alt = row.getAttribute('data-name') || '';
+      //文件可能已被删除或替换，加载失败就退回图标，不要留一个破图
+      img.onerror = function () { showIcon(row); };
+      img.src = src;
+      art.appendChild(img);
+      art.classList.add('is-media');
+      return;
+    }
+    if (kind === 'video') {
+      var video = document.createElement('video');
+      video.className = 'layout-preview-video';
+      video.src = src;
+      video.controls = true;
+      video.preload = 'metadata';
+      video.onerror = function () { showIcon(row); };
+      art.appendChild(video);
+      art.classList.add('is-media');
+      return;
+    }
+    if (kind === 'text') {
+      renderText(row, src);
+      return;
+    }
+    if (kind === 'audio') {
+      //音频没有画面，图标照常显示，下面挂一个播放条
+      showIcon(row);
+      var audio = document.createElement('audio');
+      audio.className = 'layout-preview-audio';
+      audio.src = src;
+      audio.controls = true;
+      audio.preload = 'metadata';
+      art.appendChild(audio);
+      return;
+    }
+    showIcon(row);
+  }
+
+  /*
+   * 文本预览：内容一律用 textContent 塞进 <pre>，绝不能当 HTML 解析——
+   * 这些都是用户上传的文件，里面可能有 <script>。
+   * 请求带序号，切换文件时晚回来的响应直接丢弃，不会把别的文件内容显示到当前文件上。
+   */
+  function renderText(row, src) {
+    var seq = ++previewSeq;
+    showIcon(row);
+    var tip = document.createElement('div');
+    tip.className = 'layout-preview-loading';
+    tip.textContent = '正在读取内容…';
+    art.appendChild(tip);
+
+    fetch(src, { credentials: 'same-origin' }).then(function (r) {
+      if (!r.ok) throw new Error('http ' + r.status);
+      return r.text();
+    }).then(function (text) {
+      if (seq !== previewSeq) return;
+      art.innerHTML = '';
+      art.classList.add('is-text');
+      var pre = document.createElement('pre');
+      pre.className = 'layout-preview-text';
+      var limit = 4000;
+      var tail = '\n\n…（内容过长，仅预览前 ' + limit + ' 个字符）';
+      pre.textContent = text.length > limit ? text.slice(0, limit) + tail : text;
+      art.appendChild(pre);
+    }).catch(function () {
+      if (seq !== previewSeq) return;
+      //读取失败时给一句提示，而不是退回图标——否则和"根本没触发预览"看起来一模一样，不好排查
+      showIcon(row);
+      var err = document.createElement('div');
+      err.className = 'layout-preview-loading';
+      err.textContent = '内容读取失败';
+      art.appendChild(err);
+    });
+  }
+
+  function showIcon(row) {
+    art.innerHTML = '';
+    art.classList.remove('is-media', 'is-text');
+    var icon = document.createElement('i');
+    icon.className = 'fa ' + (row.getAttribute('data-icon') || 'fa-file-o');
+    art.appendChild(icon);
+  }
+
   function select(row) {
     Array.prototype.forEach.call(rows, function (r) { r.classList.remove('is-selected'); });
     row.classList.add('is-selected');
@@ -63,7 +162,7 @@
     var view = row.getAttribute('data-view');
     var type = row.getAttribute('data-type') || '';
 
-    art.className = 'fa ' + (row.getAttribute('data-icon') || 'fa-file-o');
+    renderArt(row);
     panel.setAttribute('data-group', row.getAttribute('data-group') || 'other');
     nameEl.textContent = row.getAttribute('data-name') || '';
     subEl.textContent = (type ? type.toUpperCase() + ' · ' : '') + (row.getAttribute('data-size') || '');

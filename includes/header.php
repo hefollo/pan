@@ -61,6 +61,10 @@ if(in_array($site_theme, $layout_themes, true)){
           <?php }else{?>
           <li><a href="./includes/sponsor/"><i class="fa fa-money" aria-hidden="true"></i> 赞助名单</a></li>
           <?php }?>
+          <?php //开启购买功能且配置完整时才显示入口
+          if(function_exists('is_buy_open') && is_buy_open()){?>
+          <li class="<?php echo checkIfActive('buy')?>"><a href="./buy.php"><i class="fa fa-shopping-cart" aria-hidden="true"></i> 购买权限</a></li>
+          <?php }?>
           <?php if(!isset($conf['violation_open']) || $conf['violation_open'] == 1){?>
           <li class="<?php echo checkIfActive('violation')?>"><a href="./violation.php"><i class="fa fa-gavel" aria-hidden="true"></i> 违规公示</a></li>
           <?php }?>
@@ -96,6 +100,39 @@ if(in_array($site_theme, $layout_themes, true)){
           <div class="layout-side-bar"><i style="width:<?php echo intval($side_percent)?>%"></i></div>
           <small><?php echo $side_limit > 0 ? ('今日还可上传 '.max(0, $side_limit - $side_today).' 个文件') : '当前账号不限每日上传数量'?></small>
         </div>
+        <?php
+        //登录用户再补一张权限卡：当前额度、到期时间、买过的套餐，方便随时看还剩多久
+        if(!empty($islogin2)){
+          $side_size = function_exists('get_effective_upload_size_limit') ? get_effective_upload_size_limit() : 0;
+          $side_expire = isset($userrow['expiretime']) ? $userrow['expiretime'] : '';
+          $side_plan = function_exists('layout_user_plan') ? layout_user_plan($DB) : null;
+          if(empty($side_expire)){
+            $side_state = '永久有效'; $side_state_cls = 'ok';
+          }elseif(function_exists('is_user_permission_active') && !is_user_permission_active()){
+            $side_state = '已过期'; $side_state_cls = 'expired';
+          }else{
+            $side_left = max(1, ceil((strtotime($side_expire) - time()) / 86400));
+            $side_state = '剩 '.$side_left.' 天'; $side_state_cls = $side_left <= 7 ? 'warn' : 'ok';
+          }
+        ?>
+        <div class="layout-side-card">
+          <div class="layout-side-row"><strong>我的权限</strong><span class="layout-side-tag layout-side-tag-<?php echo $side_state_cls?>"><?php echo $side_state?></span></div>
+          <div class="layout-side-kv"><span>每日上传</span><b><?php echo $side_limit > 0 ? $side_limit.' 个' : '不限制'?></b></div>
+          <div class="layout-side-kv"><span>单文件</span><b><?php echo $side_size > 0 ? $side_size.' MB' : '不限制'?></b></div>
+          <?php if(!empty($userrow['bonus_limit']) && $side_limit > 0){?>
+          <div class="layout-side-kv"><span>其中加量包</span><b>+<?php echo intval($userrow['bonus_limit'])?> 个/天</b></div>
+          <?php }?>
+          <?php if(!empty($side_expire)){?>
+          <div class="layout-side-kv"><span>到期时间</span><b><?php echo htmlspecialchars(date('Y-m-d', strtotime($side_expire)))?></b></div>
+          <?php }?>
+          <?php if($side_plan && $side_plan['bought']){?>
+          <div class="layout-side-kv"><span>已购套餐</span><b title="<?php echo htmlspecialchars($side_plan['plan_name'], ENT_QUOTES, 'UTF-8')?>"><?php echo htmlspecialchars($side_plan['plan_name'], ENT_QUOTES, 'UTF-8')?></b></div>
+          <?php }?>
+          <?php if(function_exists('is_buy_open') && is_buy_open()){?>
+          <a class="layout-side-buy" href="./buy.php"><?php echo ($side_plan && $side_plan['bought']) ? '续费 / 升级权限' : '购买权限'?> <i class="fa fa-angle-right" aria-hidden="true"></i></a>
+          <?php }?>
+        </div>
+        <?php }?>
         <?php }?>
       </div>
     </div>

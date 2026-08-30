@@ -61,7 +61,10 @@ if(!function_exists('admin_sub_active')){
           <li class="<?php echo checkIfActive('user')?>">
             <a href="./user.php"><i class="fa fa-users"></i> 用户管理</a>
           </li>
-		      <li class="<?php echo checkIfActive('set,set_stor,set_script,set_sponsor,set_violation')?>">
+          <li class="<?php echo checkIfActive('order')?>">
+            <a href="./order.php"><i class="fa fa-shopping-cart"></i> 订单记录</a>
+          </li>
+		      <li class="<?php echo checkIfActive('set,set_stor,set_script,set_sponsor,set_violation,set_pay')?>">
             <a href="#" class="dropdown-toggle" data-toggle="dropdown"><i class="fa fa-cog"></i> 系统设置<b class="caret"></b></a>
             <ul class="dropdown-menu">
               <li class="<?php echo admin_sub_active('set.php','site')?>"><a href="./set.php?mod=site">网站信息设置</a></li>
@@ -76,6 +79,7 @@ if(!function_exists('admin_sub_active')){
               <li class="<?php echo admin_sub_active('set.php','account')?>"><a href="./set.php?mod=account">管理账号设置</a></li>
               <li class="<?php echo admin_sub_active('set_violation.php')?>"><a href="./set_violation.php">违规公示管理</a></li>
               <li class="<?php echo admin_sub_active('set_sponsor.php')?>"><a href="./set_sponsor.php">赞助名单管理</a></li>
+              <li class="<?php echo admin_sub_active('set_pay.php')?>"><a href="./set_pay.php">购买套餐设置</a></li>
             </ul>
           </li>
           <li><a href="./login.php?logout=1" onclick="return confirm('是否确定退出登录？')"><i class="fa fa-sign-out"></i> 退出登录</a></li>

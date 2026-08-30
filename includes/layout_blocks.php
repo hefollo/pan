@@ -6,6 +6,9 @@
  */
 if(!defined('SYSTEM_ROOT'))exit();
 
+//右侧预览面板自动拉取文本内容的体积上限，超过就只显示类型图标
+define('LAYOUT_TEXT_PREVIEW_MAX', 256 * 1024);
+
 /**
  * 布局型外观的统计数字只是装饰，允许有几分钟延迟，统一走文件缓存，
  * 避免每次打开页面都对 pre_file 做一次全表统计（该表只有 id/token/hash/uid 索引）
@@ -53,6 +56,34 @@ function layout_today_upload_count($DB){
 	}
 	$_SESSION['layout_today'] = ['who'=>$who, 'day'=>$day, 'num'=>$num, 'time'=>time()];
 	return $num;
+}
+
+/**
+ * 当前用户最近一笔已支付的订单，给侧栏“我的权限”卡显示套餐名用。
+ * 侧栏每个页面都要渲染，所以同样走会话缓存；老站点还没有 pre_order 表时直接当没买过
+ */
+function layout_user_plan($DB){
+	global $islogin2, $uid;
+	if(empty($islogin2))return null;
+	$who = intval($uid);
+	if(isset($_SESSION['layout_plan']) && is_array($_SESSION['layout_plan'])
+		&& $_SESSION['layout_plan']['uid'] === $who
+		&& $_SESSION['layout_plan']['time'] + 120 > time()){
+		return $_SESSION['layout_plan']['data'];
+	}
+	$row = false;
+	try{
+		$row = $DB->getRow("SELECT plan_name, paytime FROM pre_order WHERE uid=".$who." AND status=1 ORDER BY id DESC LIMIT 1");
+	}catch(Exception $e){
+		$row = false;
+	}
+	$data = [
+		'bought' => $row ? true : false,
+		'plan_name' => $row ? $row['plan_name'] : '',
+		'paytime' => $row ? $row['paytime'] : '',
+	];
+	$_SESSION['layout_plan'] = ['uid'=>$who, 'data'=>$data, 'time'=>time()];
+	return $data;
 }
 
 /**

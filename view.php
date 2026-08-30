@@ -30,7 +30,11 @@ if($row['block']>=1){
 if ($stor->exists($row['hash'])) {
     if(is_view($row['type']))
     {
-        $DB->exec("UPDATE `pre_file` SET `lasttime`=NOW(),`count`=`count`+1 WHERE `id`='{$row['id']}'");
+        //列表页右侧的预览面板会自动加载选中文件，带 preview 参数的请求不计入下载次数，
+        //否则每打开一次列表就会给第一个文件刷一次计数
+        if(!isset($_GET['preview'])){
+            $DB->exec("UPDATE `pre_file` SET `lasttime`=NOW(),`count`=`count`+1 WHERE `id`='{$row['id']}'");
+        }
 
         file_output($row['hash'], $row['type'], $row['size'], $row['name'], true, isset($_GET['greencheck']));
     }

@@ -14,6 +14,8 @@ $row = $DB->getRow("SELECT * FROM `pre_file` WHERE `token`=:token limit 1", [':t
 if(!$row)exit('404 Not Found');
 if($row['block']>=1)exit('File is blocked!');
 if(!is_editable_file_type($row['type']))exit('This file type cannot be viewed as text.');
+//整个文件会读进内存，太大的直接拒绝，避免把内存打满
+if(intval($row['size']) > get_editable_file_max_size())exit('File is too large to view as text.');
 
 if($row['pwd']!=null && $row['pwd']!=$pwd){ ?>
 	<meta http-equiv="content-type" content="text/html;charset=utf-8"/>
@@ -37,7 +39,10 @@ if($content === false)exit('Read file failed.');
 $decoded = decode_editable_content($content);
 if($decoded['code'] != 0)exit($decoded['msg']);
 
-$DB->exec("UPDATE `pre_file` SET `lasttime`=NOW(),`count`=`count`+1 WHERE `id`='{$row['id']}'");
+//列表页预览面板拉取的内容不计入下载次数
+if(!isset($_GET['preview'])){
+	$DB->exec("UPDATE `pre_file` SET `lasttime`=NOW(),`count`=`count`+1 WHERE `id`='{$row['id']}'");
+}
 
 @header('Content-Type: text/plain; charset=UTF-8');
 @header('X-Content-Type-Options: nosniff');

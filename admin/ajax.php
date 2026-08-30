@@ -104,8 +104,9 @@ case 'saveUserInfo':
 	}
 	if($upload_size < -1)$upload_size = -1;
 	if($upload_limit < -1)$upload_limit = -1;
-	$sql = "UPDATE pre_user SET level=:level, upload_size=:upload_size, upload_limit=:upload_limit, expiretime=:expiretime WHERE uid=:uid";
-	if($DB->exec($sql, [':level'=>$level, ':upload_size'=>$upload_size, ':upload_limit'=>$upload_limit, ':expiretime'=>$expiretime, ':uid'=>$uid])!==false)exit('{"code":0,"msg":"修改用户成功！"}');
+	$bonus_limit = isset($_POST['bonus_limit']) ? max(0, intval($_POST['bonus_limit'])) : 0;
+	$sql = "UPDATE pre_user SET level=:level, upload_size=:upload_size, upload_limit=:upload_limit, bonus_limit=:bonus_limit, expiretime=:expiretime WHERE uid=:uid";
+	if($DB->exec($sql, [':level'=>$level, ':upload_size'=>$upload_size, ':upload_limit'=>$upload_limit, ':bonus_limit'=>$bonus_limit, ':expiretime'=>$expiretime, ':uid'=>$uid])!==false)exit('{"code":0,"msg":"修改用户成功！"}');
 	else exit('{"code":-1,"msg":"修改用户失败['.$DB->error().']"}');
 break;
 case 'delUser':

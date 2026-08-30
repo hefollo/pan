@@ -43,6 +43,12 @@ if($islogin==1){}else exit("<script language='javascript'>window.location.href='
 						</div>
 					</div>
 					<div class="form-group">
+						<label class="col-sm-2 control-label no-padding-right">加量额度</label>
+						<div class="col-sm-10">
+							<input type="number" class="form-control" id="bonus_limit" name="bonus_limit" min="0" step="1" placeholder="加量包累计的每日额度，会加在上面的每日数量之上"/>
+						</div>
+					</div>
+					<div class="form-group">
 						<label class="col-sm-2 control-label no-padding-right">有效天数</label>
 						<div class="col-sm-10">
 							<input type="number" class="form-control" id="expire_days" name="expire_days" min="0" step="1" placeholder="填写后按当前时间重新计算到期时间">
@@ -158,7 +164,9 @@ $(document).ready(function(){
 				title: '上传限制',
 				formatter: function(value, row, index) {
 					window.userRows[row.uid] = row;
-					return '大小：'+formatLimitValue(row.upload_size, 'MB')+'<br/>数量：'+formatLimitValue(row.upload_limit, '个/天')+'<br/>到期：'+formatExpireTime(row.expiretime);
+					var bonus = parseInt(row.bonus_limit || 0, 10);
+					return '大小：'+formatLimitValue(row.upload_size, 'MB')+'<br/>数量：'+formatLimitValue(row.upload_limit, '个/天')
+						+ (bonus > 0 ? '（加量 +'+bonus+'）' : '')+'<br/>到期：'+formatExpireTime(row.expiretime);
 				}
 			},
 			{
@@ -234,6 +242,7 @@ function setLevel(uid){
 	$("#form-store #level").val(parseLimitValue(row.level));
 	$("#form-store #upload_size").val(parseLimitValue(row.upload_size));
 	$("#form-store #upload_limit").val(parseLimitValue(row.upload_limit));
+	$("#form-store #bonus_limit").val(row.bonus_limit ? row.bonus_limit : 0);
 	$("#form-store #expire_days").val('');
 	$("#form-store #expiretime").val(toDatetimeLocal(row.expiretime));
 }

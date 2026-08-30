@@ -146,6 +146,8 @@ $mysqlversion=$DB->getColumn("select VERSION()");
                     <ul class="list-group text-dark" id="checkupdate">
                         <li class="list-group-item">程序版本：<?php echo htmlspecialchars(VERSION, ENT_QUOTES, 'UTF-8')?>（数据库版本 <?php echo htmlspecialchars(DB_VERSION, ENT_QUOTES, 'UTF-8')?>）</li>
                         <li class="list-group-item">惜染美化：<a href="https://wpa.qq.com/msgrd?v=3&amp;uin=1322445750&amp;site=qq&amp;menu=yes&amp;jumpflag=1" target="_blank" rel="noopener noreferrer">1322445750</a></li>
+                        <li class="list-group-item">本项目开源地址：<a href="https://github.com/hefollo/pan" target="_blank" rel="noopener noreferrer">github.com/hefollo/pan</a></li>
+                        <li class="list-group-item">原开源项目地址：<a href="https://github.com/netcccyun/pan" target="_blank" rel="noopener noreferrer">github.com/netcccyun/pan</a></li>
                     </ul>
                 </div>
             </div>
