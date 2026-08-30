@@ -5,6 +5,10 @@
 - 本项目开源地址：<https://github.com/hefollo/pan>
 - 原开源项目地址：<https://github.com/netcccyun/pan>
 
+![数据控制台风](img/数据控制台风.png)
+![上传门户风](img/上传门户风.png)
+![深色工作台风](img/深色工作台风.png)
+
 ![项目预览](https://mpimg.cn/view.php/2841008ec06283dcd8378d7045992dcf.png)
 ![项目预览](https://mpimg.cn/view.php/b551758ecaff4aae424f0b4b22fdcabb.png)
 ![项目预览](https://mpimg.cn/view.php/78c063c8cb8da240b32c210fdfc878ad.png)
