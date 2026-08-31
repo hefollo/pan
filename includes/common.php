@@ -4,8 +4,8 @@ if(defined('IN_CRONLITE'))return;
 define('IN_CRONLITE', true);
 define('SYSTEM_ROOT', dirname(__FILE__).'/');
 define('ROOT', dirname(SYSTEM_ROOT).'/');
-define('VERSION', '1592');
-define('DB_VERSION', '1015');
+define('VERSION', '1601');
+define('DB_VERSION', '1016');
 date_default_timezone_set('Asia/Shanghai');
 $date = date("Y-m-d H:i:s");
 
@@ -69,7 +69,9 @@ if(isset($_COOKIE["user_token"]))
 	if($token){
 		list($uid, $sid, $expiretime) = explode("\t", $token);
 		if($userrow = $DB->getRow("SELECT * FROM pre_user WHERE uid='".intval($uid)."' LIMIT 1")){
-			$session=md5($userrow['type'].$userrow['openid'].$password_hash);
+			//邮箱账号的会话串里含密码哈希，改完密码其它设备的登录态会立刻失效；
+			//快捷登录的账号算法不变，老 cookie 不受影响
+			$session=user_session_hash($userrow);
 			if($session===$sid && $expiretime>time()) {
 				if($userrow['enable']==1){
 					$islogin2=1;

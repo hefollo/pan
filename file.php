@@ -289,8 +289,8 @@ var ap = new APlayer({
   var player=new ckplayer(videoObject);
 </script>
 <?php }?>
-<link rel="stylesheet" href="https://s4.zstatic.net/ajax/libs/layer/2.3/skin/layer.css">
-<script src="https://s4.zstatic.net/ajax/libs/layer/2.3/layer.js"></script>
+<link rel="stylesheet" href="https://s4.zstatic.net/ajax/libs/layer/3.1.1/theme/default/layer.css">
+<script src="https://s4.zstatic.net/ajax/libs/layer/3.1.1/layer.js"></script>
 <script src="https://s4.zstatic.net/ajax/libs/clipboard.js/1.7.1/clipboard.min.js"></script>
 <script src="https://s4.zstatic.net/ajax/libs/spark-md5/3.0.2/spark-md5.min.js"></script>
 <script>

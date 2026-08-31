@@ -105,8 +105,8 @@ include SYSTEM_ROOT.'header.php';
 	</div>
 </div>
 <?php include SYSTEM_ROOT.'footer.php';?>
-<link rel="stylesheet" href="https://s4.zstatic.net/ajax/libs/layer/2.3/skin/layer.css">
-<script src="https://s4.zstatic.net/ajax/libs/layer/2.3/layer.js"></script>
+<link rel="stylesheet" href="https://s4.zstatic.net/ajax/libs/layer/3.1.1/theme/default/layer.css">
+<script src="https://s4.zstatic.net/ajax/libs/layer/3.1.1/layer.js"></script>
 <script>
 function getEditorBytes(text) {
 	return new Blob([text]).size;

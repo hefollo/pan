@@ -77,7 +77,7 @@ if(in_array($site_theme, $layout_themes, true)){
           <?php if($conf['userlogin']){?>
             <?php if($islogin2){?>
             <li class="dropdown">
-              <a data-target="#" class="dropdown-toggle" data-toggle="dropdown"><i class="fa fa-<?php echo $userrow['type']=='qq'?'qq':'wechat';?>" aria-hidden="true"></i> <?php echo $userrow['nickname']?><b class="caret"></b></a>
+              <a data-target="#" class="dropdown-toggle" data-toggle="dropdown"><i class="fa fa-<?php echo $userrow['type']=='qq'?'qq':($userrow['type']=='mail'?'envelope':'wechat');?>" aria-hidden="true"></i> <?php echo $userrow['nickname']?><b class="caret"></b></a>
               <ul class="dropdown-menu">
                 <li><a href="./login.php?logout=1" onclick="return confirm('是否确定退出登录？')"><i class="fa fa-sign-out" aria-hidden="true"></i> 退出登录</a></li>
               </ul>

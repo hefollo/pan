@@ -283,6 +283,368 @@ function getSetting($k){
  * 购买功能是否可用：开关打开 + 支付参数配置完整 + 至少有一个上架套餐
  */
 /*
+ * 登录态里的会话校验串。
+ *
+ * 邮箱账号要把密码哈希也算进去：这样改完密码，其它设备上的登录态立刻失效。
+ * 快捷登录的账号没有密码，保持原来的算法不变，老 cookie 不会掉线。
+ */
+function user_session_hash($row){
+	global $password_hash;
+	$pwd = (isset($row['type']) && $row['type'] === 'mail' && !empty($row['password'])) ? $row['password'] : '';
+	return md5($row['type'].$row['openid'].$pwd.$password_hash);
+}
+
+/*
+ * 邮箱归一化：统一小写去空格。
+ * 不做 Gmail 那种去点号/去 +别名 的处理——那会让用户觉得"我明明填的是另一个邮箱"，
+ * 而且对 QQ、163 这些国内邮箱本来就不适用。
+ */
+function normalize_email($email){
+	return strtolower(trim((string)$email));
+}
+
+/*
+ * 邮箱注册是否可用：开关打开 + 至少有一个发信通道配好了
+ */
+function is_mail_reg_open(){
+	global $conf;
+	if(empty($conf['mail_reg_open']))return false;
+	if(empty($conf['userlogin']))return false;
+	return is_mail_ready();
+}
+
+/*
+ * 邮箱域名是否在黑名单里（后台按行或逗号填一次性邮箱域名）
+ */
+function mail_domain_denied($email){
+	global $conf;
+	$deny = isset($conf['mail_domain_deny']) ? trim($conf['mail_domain_deny']) : '';
+	if($deny === '')return false;
+	$at = strrpos($email, '@');
+	if($at === false)return true;
+	$domain = substr($email, $at + 1);
+	foreach(preg_split('/[\s,，;；]+/', $deny) as $item){
+		$item = strtolower(trim($item));
+		if($item !== '' && $item === $domain)return true;
+	}
+	return false;
+}
+
+/*
+ * 发一封验证码邮件。
+ *
+ * 频率限制有三道：同邮箱的发送间隔、同邮箱每天上限、同 IP 每天上限。
+ * 不做限制的话，别人可以拿这个接口当免费发信机去骚扰任意邮箱。
+ *
+ * 返回 ['code'=>0|-1, 'msg'=>...]
+ */
+function send_mail_code($email, $purpose, $uid = 0){
+	global $DB, $conf;
+	$email = normalize_email($email);
+	if(!filter_var($email, FILTER_VALIDATE_EMAIL))return ['code'=>-1, 'msg'=>'邮箱格式不正确'];
+
+	//限流用的是伪造不了的来源 IP，不是后台配置的那个展示用 IP
+	$ip = trusted_client_ip();
+	$interval = isset($conf['mail_send_interval']) ? max(0, intval($conf['mail_send_interval'])) : 60;
+	$daily = isset($conf['mail_daily_limit']) ? intval($conf['mail_daily_limit']) : 10;
+	$ip_daily = isset($conf['mail_ip_daily_limit']) ? intval($conf['mail_ip_daily_limit']) : 20;
+	$hour_limit = isset($conf['mail_hour_limit']) ? intval($conf['mail_hour_limit']) : 50;
+	$site_daily = isset($conf['mail_site_daily']) ? intval($conf['mail_site_daily']) : 200;
+
+	if($interval > 0){
+		$last = $DB->getColumn("SELECT addtime FROM pre_mailcode WHERE email=:e ORDER BY id DESC LIMIT 1", [':e'=>$email]);
+		if($last && strtotime($last) + $interval > time()){
+			$wait = strtotime($last) + $interval - time();
+			return ['code'=>-1, 'msg'=>'验证码刚发过，请 '.$wait.' 秒后再试'];
+		}
+	}
+	if($daily > 0){
+		$num = intval($DB->getColumn("SELECT count(*) FROM pre_mailcode WHERE email=:e AND addtime > DATE_SUB(NOW(), INTERVAL 1 DAY)", [':e'=>$email]));
+		if($num >= $daily)return ['code'=>-1, 'msg'=>'该邮箱今天的验证码次数已用完，请明天再试'];
+	}
+	if($ip_daily > 0){
+		$num = intval($DB->getColumn("SELECT count(*) FROM pre_mailcode WHERE ip=:ip AND addtime > DATE_SUB(NOW(), INTERVAL 1 DAY)", [':ip'=>$ip]));
+		if($num >= $ip_daily)return ['code'=>-1, 'msg'=>'当前网络今天的发送次数已用完，请明天再试'];
+	}
+	/*
+	 * 站点级总量上限：就算有人换着邮箱、换着网络来刷，也烧不掉整个发信额度。
+	 * 这是最后一道保险，正常站点根本碰不到这个数。
+	 */
+	if($hour_limit > 0){
+		$num = intval($DB->getColumn("SELECT count(*) FROM pre_mailcode WHERE addtime > DATE_SUB(NOW(), INTERVAL 1 HOUR)"));
+		if($num >= $hour_limit)return ['code'=>-1, 'msg'=>'当前发信量已达上限，请稍后再试'];
+	}
+	if($site_daily > 0){
+		$num = intval($DB->getColumn("SELECT count(*) FROM pre_mailcode WHERE addtime > DATE_SUB(NOW(), INTERVAL 1 DAY)"));
+		if($num >= $site_daily)return ['code'=>-1, 'msg'=>'今天的发信量已达上限，请明天再试'];
+	}
+
+	$expire = isset($conf['mail_code_expire']) ? max(1, intval($conf['mail_code_expire'])) : 10;
+	$code = str_pad(strval(random_int(0, 999999)), 6, '0', STR_PAD_LEFT);
+
+	//同一用途的旧验证码先作废，避免用户拿着上一封的码来用
+	$DB->exec("UPDATE pre_mailcode SET used=1 WHERE email=:e AND purpose=:p AND used=0", [':e'=>$email, ':p'=>$purpose]);
+
+	$titles = ['register'=>'注册账号', 'reset'=>'找回密码', 'changemail'=>'更换邮箱'];
+	$what = isset($titles[$purpose]) ? $titles[$purpose] : '验证邮箱';
+	$site = isset($conf['title']) ? $conf['title'] : '本站';
+	$subject = '【'.$site.'】'.$what.'验证码：'.$code;
+	$html = '<div style="font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Arial,sans-serif;font-size:14px;color:#333;line-height:1.8">'
+		.'<p>你正在'.htmlspecialchars($site, ENT_QUOTES, 'UTF-8').'进行<b>'.$what.'</b>操作，验证码是：</p>'
+		.'<p style="margin:18px 0;font-size:30px;font-weight:700;letter-spacing:6px;color:#2563eb">'.$code.'</p>'
+		.'<p>验证码 '.$expire.' 分钟内有效，请勿转发给他人。</p>'
+		.'<p style="color:#888;font-size:12px;margin-top:20px">如果这不是你本人的操作，忽略这封邮件即可，你的账号不会有任何变化。</p>'
+		.'</div>';
+
+	/*
+	 * 记录必须在发送之前落库：否则发送失败的请求不计入任何限制，
+	 * 同一个邮箱可以无限次重试，每次都真去连一次 SMTP，直接把进程和邮件服务器压死。
+	 */
+	$id = $DB->insert('mailcode', [
+		'email' => $email,
+		'code' => $code,
+		'purpose' => $purpose,
+		'uid' => intval($uid),
+		'ip' => $ip,
+		'used' => 0,
+		'trycount' => 0,
+		'addtime' => 'NOW()',
+		'expiretime' => date('Y-m-d H:i:s', time() + $expire * 60),
+	]);
+
+	$mailer = mailer();
+	$res = $mailer->send($email, $subject, $html);
+	if(empty($res['ok'])){
+		//没发出去的码直接作废，免得它挡住用户下一次重新获取
+		if($id)$DB->exec("UPDATE pre_mailcode SET used=1 WHERE id=:id", [':id'=>$id]);
+		//失败原因只写进日志给站长看，不能原样回给前台：里面可能带着服务器信息
+		log_mail_error($email, $purpose, $res['msg'], $mailer->attempts());
+		return ['code'=>-1, 'msg'=>'验证码发送失败，请稍后重试或联系站长'];
+	}
+	//顺手清掉三天前的记录，这张表只是临时用的，不用留着
+	if(mt_rand(1, 20) === 1){
+		$DB->exec("DELETE FROM pre_mailcode WHERE addtime < DATE_SUB(NOW(), INTERVAL 3 DAY)");
+	}
+	return ['code'=>0, 'msg'=>'验证码已发送到 '.$email.'，'.$expire.' 分钟内有效'];
+}
+
+/*
+ * 校验验证码。校验通过会把它标记成已用，不能重复使用。
+ * 输错累计 5 次直接作废，防止拿 6 位数字硬撞。
+ */
+function verify_mail_code($email, $code, $purpose){
+	global $DB;
+	$email = normalize_email($email);
+	$code = trim((string)$code);
+	if(!preg_match('/^[0-9]{6}$/', $code))return ['code'=>-1, 'msg'=>'验证码格式不正确'];
+
+	$row = $DB->getRow("SELECT * FROM pre_mailcode WHERE email=:e AND purpose=:p AND used=0 ORDER BY id DESC LIMIT 1",
+		[':e'=>$email, ':p'=>$purpose]);
+	if(!$row)return ['code'=>-1, 'msg'=>'请先获取验证码'];
+	if(strtotime($row['expiretime']) < time()){
+		$DB->exec("UPDATE pre_mailcode SET used=1 WHERE id=:id", [':id'=>$row['id']]);
+		return ['code'=>-1, 'msg'=>'验证码已过期，请重新获取'];
+	}
+	if(intval($row['trycount']) >= 5){
+		$DB->exec("UPDATE pre_mailcode SET used=1 WHERE id=:id", [':id'=>$row['id']]);
+		return ['code'=>-1, 'msg'=>'验证码错误次数过多，请重新获取'];
+	}
+	if(!hash_equals($row['code'], $code)){
+		$DB->exec("UPDATE pre_mailcode SET trycount=trycount+1 WHERE id=:id", [':id'=>$row['id']]);
+		return ['code'=>-1, 'msg'=>'验证码不正确'];
+	}
+	//用掉就作废
+	$DB->exec("UPDATE pre_mailcode SET used=1 WHERE id=:id", [':id'=>$row['id']]);
+	return ['code'=>0, 'msg'=>'验证通过', 'row'=>$row];
+}
+
+/*
+ * 发信失败的详情写到临时目录，方便站长排查；前台只看到一句笼统的提示
+ */
+function log_mail_error($email, $purpose, $msg, $attempts){
+	$file = sys_get_temp_dir().'/pan_mail_error.log';
+	$text = date('Y-m-d H:i:s')."\t".$purpose."\t".$email."\t".$msg."\n";
+	foreach((array)$attempts as $a){
+		$text .= "    ".$a['name'].': '.$a['msg']."\n";
+	}
+	@file_put_contents($file, $text, FILE_APPEND | LOCK_EX);
+}
+
+/*
+ * 密码规则：6-32 位，必须同时有字母和数字。
+ * 太松的话撞库一撞一个准，太严又会被用户骂，这个程度比较平衡。
+ */
+function check_password_rule($pwd){
+	$len = strlen($pwd);
+	if($len < 6 || $len > 32)return '密码长度需要 6-32 位';
+	if(!preg_match('/[a-zA-Z]/', $pwd) || !preg_match('/[0-9]/', $pwd))return '密码需要同时包含字母和数字';
+	return '';
+}
+
+/*
+ * 签发登录态：写 cookie，并把这次会话里游客上传的文件归到账号名下。
+ * 快捷登录和邮箱登录都走这里，保证两边行为一致。
+ */
+function user_login_session($uid, $row){
+	global $DB;
+	$uid = intval($uid);
+	if(isset($_SESSION['fileids']) && count($_SESSION['fileids']) > 0){
+		$ids = array_reverse($_SESSION['fileids']);
+		if(count($ids) > 60)$ids = array_splice($ids, 0, 60);
+		$ids = implode(',', array_map('intval', $ids));
+		if($ids !== '')$DB->exec("UPDATE pre_file SET uid='{$uid}' WHERE id IN ({$ids}) AND uid=0");
+	}
+	$expiretime = time() + 2592000;
+	$token = authcode("{$uid}\t".user_session_hash($row)."\t{$expiretime}", 'ENCODE', SYS_KEY);
+	setcookie("user_token", $token, $expiretime, '/');
+	unset($_SESSION['user_block']);
+	return true;
+}
+
+/*
+ * 出一道算术题，答案存在会话里。
+ *
+ * 只用加减乘、结果控制在 0~20，中文界面下一眼就能算出来；
+ * 不画图，所以没有 GD 扩展的服务器也能用。
+ */
+function make_captcha(){
+	$ops = ['+', '-', '×'];
+	$op = $ops[array_rand($ops)];
+	if($op === '+'){
+		$a = random_int(1, 10); $b = random_int(1, 9); $answer = $a + $b;
+	}elseif($op === '-'){
+		//保证不出现负数，免得用户纠结
+		$a = random_int(2, 18); $b = random_int(1, $a - 1); $answer = $a - $b;
+	}else{
+		$a = random_int(2, 6); $b = random_int(2, 5); $answer = $a * $b;
+	}
+	$_SESSION['captcha_answer'] = $answer;
+	$_SESSION['captcha_time'] = time();
+	return $a.' '.$op.' '.$b.' = ?';
+}
+
+/*
+ * 校验算术题。
+ *
+ * 不管对错都换一道新题：答案只有 0~30 这么些可能，
+ * 不换的话拿同一道题挨个试很快就能蒙对。
+ * 连续答错太多次就锁一会儿，防止脚本一边换题一边硬猜。
+ */
+function check_captcha($input){
+	$answer = isset($_SESSION['captcha_answer']) ? $_SESSION['captcha_answer'] : null;
+	$time = isset($_SESSION['captcha_time']) ? intval($_SESSION['captcha_time']) : 0;
+	//先记下错误次数，验证通过再清零
+	$fails = isset($_SESSION['captcha_fail']) ? intval($_SESSION['captcha_fail']) : 0;
+	$fail_time = isset($_SESSION['captcha_fail_time']) ? intval($_SESSION['captcha_fail_time']) : 0;
+	if($fails >= 10 && $fail_time + 600 > time()){
+		return '答错次数过多，请 10 分钟后再试';
+	}
+
+	if($answer === null || $time + 600 < time()){
+		make_captcha();
+		return '计算题已过期，请重新计算';
+	}
+	$input = trim((string)$input);
+	if($input === '' || !preg_match('/^-?[0-9]{1,3}$/', $input)){
+		make_captcha();
+		return '请填写计算题的答案';
+	}
+	if(intval($input) !== intval($answer)){
+		$_SESSION['captcha_fail'] = $fails + 1;
+		$_SESSION['captcha_fail_time'] = time();
+		make_captcha();
+		return '计算题答案不正确';
+	}
+	//用过就作废
+	unset($_SESSION['captcha_answer'], $_SESSION['captcha_time']);
+	$_SESSION['captcha_fail'] = 0;
+	return '';
+}
+
+/*
+ * 算术验证码开关，默认开着
+ */
+function is_captcha_open(){
+	global $conf;
+	return !isset($conf['mail_captcha_open']) || intval($conf['mail_captcha_open']) === 1;
+}
+
+/*
+ * Cloudflare 的官方 IP 段。判断请求是不是真的从 CF 转发过来的，
+ * 段有变化时可以照着 cloudflare.com/ips-v4 和 ips-v6 更新这里。
+ */
+function cloudflare_ranges(){
+	return [
+		'173.245.48.0/20', '103.21.244.0/22', '103.22.200.0/22', '103.31.4.0/22',
+		'141.101.64.0/18', '108.162.192.0/18', '190.93.240.0/20', '188.114.96.0/20',
+		'197.234.240.0/22', '198.41.128.0/17', '162.158.0.0/15', '104.16.0.0/13',
+		'104.24.0.0/14', '172.64.0.0/13', '131.0.72.0/22',
+		'2400:cb00::/32', '2606:4700::/32', '2803:f800::/32', '2405:b500::/32',
+		'2405:8100::/32', '2a06:98c0::/29', '2c0f:f248::/32',
+	];
+}
+
+/*
+ * 判断 IP 是否落在某个网段里，IPv4 和 IPv6 都支持（按二进制比较前缀位）
+ */
+function ip_in_cidr($ip, $cidr){
+	$parts = explode('/', $cidr);
+	if(count($parts) !== 2)return false;
+	$net = @inet_pton($parts[0]);
+	$addr = @inet_pton($ip);
+	//两边协议族要一致，长度不同说明一个是 v4 一个是 v6
+	if($net === false || $addr === false || strlen($net) !== strlen($addr))return false;
+	$bits = intval($parts[1]);
+	$bytes = intdiv($bits, 8);
+	$rest = $bits % 8;
+	if($bytes > 0 && strncmp($net, $addr, $bytes) !== 0)return false;
+	if($rest === 0)return true;
+	$mask = chr(0xff << (8 - $rest) & 0xff);
+	return (isset($addr[$bytes]) && isset($net[$bytes]))
+		&& (($addr[$bytes] & $mask) === ($net[$bytes] & $mask));
+}
+
+/*
+ * 限流专用的"可信 IP"。
+ *
+ * 站点的 $clientip 走的是后台配置的 real_ip()，它会无条件相信 X-Forwarded-For
+ * 这类请求头——展示用没问题，但拿来做限流就等于没做：伪造一个头就是一个新 IP。
+ * 这里只在"请求确实来自 Cloudflare 的 IP 段"时才采信 CF-Connecting-IP，
+ * 其余一律用 REMOTE_ADDR，这个值是 TCP 连接的对端地址，伪造不了。
+ */
+function trusted_client_ip(){
+	$remote = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '';
+	if($remote === '')return '0.0.0.0';
+	if(!empty($_SERVER['HTTP_CF_CONNECTING_IP'])){
+		foreach(cloudflare_ranges() as $cidr){
+			if(ip_in_cidr($remote, $cidr)){
+				$cf = trim($_SERVER['HTTP_CF_CONNECTING_IP']);
+				if(filter_var($cf, FILTER_VALIDATE_IP))return $cf;
+				break;
+			}
+		}
+	}
+	return $remote;
+}
+
+/*
+ * 发信器。后台勾选的通道会按固定顺序依次尝试，前一个失败自动切下一个。
+ */
+function mailer(){
+	return new \lib\Mailer();
+}
+
+/*
+ * 站点有没有配好发信：勾了通道并且参数齐全。
+ * 邮箱注册、找回密码这些功能都要先过这一关，没配好就不该放出入口。
+ */
+function is_mail_ready(){
+	static $ready = null;
+	if($ready === null)$ready = mailer()->isReady();
+	return $ready;
+}
+
+/*
  * 当前可用的支付方式。两种可以只开一个，也可以同时开着让用户自己选：
  *   alipay 支付宝当面付：本站直接生成二维码，用户扫码付
  *   epay   易支付：跳到易支付站点的收银台，回来后靠查单确认
@@ -834,6 +1196,16 @@ function admin_setting_keys(){
 		'epay_open', 'epay_apiurl', 'epay_pid', 'epay_key', 'epay_type', 'epay_charset',
 		'pay_subject',
 		'buy_notice',
+		//邮件发信：没有默认通道，勾选哪个用哪个，一个都不勾就是关闭
+		'mail_from', 'mail_from_name',
+		'mail_smtp_open', 'mail_smtp_host', 'mail_smtp_port', 'mail_smtp_secure',
+		'mail_smtp_user', 'mail_smtp_pass',
+		'mail_resend_open', 'mail_resend_key',
+		'mail_brevo_open', 'mail_brevo_key',
+		'mail_sendgrid_open', 'mail_sendgrid_key',
+		'mail_reg_open', 'mail_code_expire', 'mail_send_interval',
+		'mail_daily_limit', 'mail_ip_daily_limit', 'mail_domain_deny',
+		'mail_hour_limit', 'mail_site_daily', 'mail_captcha_open',
 	];
 }
 

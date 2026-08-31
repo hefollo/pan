@@ -34,7 +34,7 @@ if($rs = $db->query("SELECT v FROM pre_config WHERE k='version'")){
 if($version<1009){
 	$sqls = file_get_contents('update.sql');
 	$sqls=explode(';', $sqls);
-	$sqls[]="REPLACE INTO `pre_config` VALUES ('version', '1015')";
+	$sqls[]="REPLACE INTO `pre_config` VALUES ('version', '1016')";
 	if(!$db->query("SELECT v FROM pre_config WHERE k='syskey'")->fetchColumn()){
 		$sqls[]="REPLACE INTO `pre_config` VALUES ('syskey', '".random(32)."')";
 	}
@@ -42,31 +42,36 @@ if($version<1009){
 	//1010：新增购买套餐（pre_plan）与订单（pre_order）两张表和支付宝当面付配置项
 	//update_1010.sql 的建表语句已经带上了后面版本加的字段，不用再执行 ALTER
 	$sqls = explode(';', file_get_contents('update_1010.sql'));
-	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1015')";
+	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1016')";
 }elseif($version<1011){
 	//1011：套餐支持“每日数量在现有基础上增加”，套餐表和订单表各加一个 limit_mode 字段
 	//1012：套餐加分类字段，购买页按分类分区展示
 	$sqls = array_merge(explode(';', file_get_contents('update_1011.sql')), explode(';', file_get_contents('update_1012.sql')), explode(';', file_get_contents('update_1013.sql')));
-	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1015')";
+	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1016')";
 }elseif($version<1012){
 	//1012：套餐加分类字段
 	//1013：订单记下支付方式，新增易支付
 	$sqls = array_merge(explode(';', file_get_contents('update_1012.sql')), explode(';', file_get_contents('update_1013.sql')), explode(';', file_get_contents('update_1014.sql')));
-	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1015')";
+	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1016')";
 }elseif($version<1013){
 	//1013：订单加 pay_type 字段，新增易支付配置
 	//1014：商品名称可自定义、易支付参数编码可选
 	$sqls = array_merge(explode(';', file_get_contents('update_1013.sql')), explode(';', file_get_contents('update_1014.sql')), explode(';', file_get_contents('update_1015.sql')));
-	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1015')";
+	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1016')";
 }elseif($version<1014){
 	//1014：商品名称可自定义、易支付参数编码可选
 	//1015：加量包额度单独记录，不再被时长套餐覆盖
-	$sqls = array_merge(explode(';', file_get_contents('update_1014.sql')), explode(';', file_get_contents('update_1015.sql')));
-	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1015')";
+	$sqls = array_merge(explode(';', file_get_contents('update_1014.sql')), explode(';', file_get_contents('update_1015.sql')), explode(';', file_get_contents('update_1016.sql')));
+	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1016')";
 }elseif($version<1015){
 	//1015：用户表加 bonus_limit
-	$sqls = explode(';', file_get_contents('update_1015.sql'));
-	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1015')";
+	//1016：邮箱注册——用户表加 password、验证码表 pre_mailcode
+	$sqls = array_merge(explode(';', file_get_contents('update_1015.sql')), explode(';', file_get_contents('update_1016.sql')));
+	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1016')";
+}elseif($version<1016){
+	//1016：邮箱注册所需的表和字段
+	$sqls = explode(';', file_get_contents('update_1016.sql'));
+	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1016')";
 }else{
 	exit('你的网站已经升级到最新版本了');
 }

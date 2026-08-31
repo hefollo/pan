@@ -64,13 +64,14 @@ if(!function_exists('admin_sub_active')){
           <li class="<?php echo checkIfActive('order')?>">
             <a href="./order.php"><i class="fa fa-shopping-cart"></i> 订单记录</a>
           </li>
-		      <li class="<?php echo checkIfActive('set,set_stor,set_script,set_sponsor,set_violation,set_pay')?>">
+		      <li class="<?php echo checkIfActive('set,set_stor,set_script,set_sponsor,set_violation,set_pay,set_mail')?>">
             <a href="#" class="dropdown-toggle" data-toggle="dropdown"><i class="fa fa-cog"></i> 系统设置<b class="caret"></b></a>
             <ul class="dropdown-menu">
               <li class="<?php echo admin_sub_active('set.php','site')?>"><a href="./set.php?mod=site">网站信息设置</a></li>
               <li class="<?php echo admin_sub_active('set.php','appearance')?>"><a href="./set.php?mod=appearance">外观设置</a></li>
               <li class="<?php echo admin_sub_active('set_script.php')?>"><a href="./set_script.php">广告公告位设置</a></li>
               <li class="<?php echo admin_sub_active('set.php','user')?>"><a href="./set.php?mod=user">用户登录设置</a></li>
+              <li class="<?php echo admin_sub_active('set_mail.php')?>"><a href="./set_mail.php">邮件发信设置</a></li>
               <li class="<?php echo admin_sub_active('set_stor.php')?>"><a href="./set_stor.php">存储类型设置</a></li>
 			        <li class="<?php echo admin_sub_active('set.php','file')?>"><a href="./set.php?mod=file">文件上传设置</a></li>
 			        <li class="<?php echo admin_sub_active('set.php','green')?>"><a href="./set.php?mod=green">图片检测设置</a></li>

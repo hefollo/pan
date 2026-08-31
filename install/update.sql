@@ -14,11 +14,12 @@ CREATE TABLE IF EXISTS `pre_user` (
   `uid` int(11) NOT NULL AUTO_INCREMENT,
   `type` varchar(20) NOT NULL,
   `openid` varchar(150) NOT NULL,
+  `password` varchar(255) NOT NULL DEFAULT '',
   `nickname` varchar(255) NOT NULL,
   `faceimg` varchar(255) DEFAULT NULL,
   `enable` tinyint(1) NOT NULL DEFAULT '1',
-  `regip` varchar(20) DEFAULT NULL,
-  `loginip` varchar(20) DEFAULT NULL,
+  `regip` varchar(45) DEFAULT NULL,
+  `loginip` varchar(45) DEFAULT NULL,
   `level` tinyint(4) NOT NULL DEFAULT '0',
   `upload_size` int(11) NOT NULL DEFAULT '-1',
   `upload_limit` int(11) NOT NULL DEFAULT '-1',
@@ -27,7 +28,7 @@ CREATE TABLE IF EXISTS `pre_user` (
   `addtime` datetime NOT NULL,
   `lasttime` datetime NOT NULL,
   PRIMARY KEY (`uid`),
-  KEY `openid` (`openid`,`type`)
+  UNIQUE KEY `openid` (`openid`,`type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 AUTO_INCREMENT=1000;
 
 ALTER TABLE `pre_user`
@@ -112,6 +113,23 @@ CREATE TABLE IF NOT EXISTS `pre_replace_log` (
   KEY `checked` (`checked`,`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+DROP TABLE IF EXISTS `pre_mailcode`;
+CREATE TABLE `pre_mailcode` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `email` varchar(120) NOT NULL COMMENT '收件邮箱（已归一化为小写）',
+  `code` varchar(8) NOT NULL COMMENT '6位数字验证码',
+  `purpose` varchar(16) NOT NULL DEFAULT 'register' COMMENT '用途：register注册 reset找回密码 changemail换邮箱',
+  `uid` int(11) NOT NULL DEFAULT '0' COMMENT '找回密码/换邮箱时关联的用户',
+  `ip` varchar(45) DEFAULT NULL,
+  `used` tinyint(1) NOT NULL DEFAULT '0' COMMENT '用过就作废，不能重复使用',
+  `trycount` int(11) NOT NULL DEFAULT '0' COMMENT '输错次数，超过上限直接作废',
+  `addtime` datetime NOT NULL,
+  `expiretime` datetime NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `email_purpose` (`email`,`purpose`),
+  KEY `addtime` (`addtime`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 DROP TABLE IF EXISTS `pre_plan`;
 CREATE TABLE `pre_plan` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -156,6 +174,12 @@ CREATE TABLE `pre_order` (
 
 INSERT INTO `pre_config` VALUES ('alipay_open', '0');
 INSERT INTO `pre_config` VALUES ('epay_open', '0');
+INSERT INTO `pre_config` VALUES ('mail_reg_open', '0');
+INSERT INTO `pre_config` VALUES ('mail_code_expire', '10');
+INSERT INTO `pre_config` VALUES ('mail_send_interval', '60');
+INSERT INTO `pre_config` VALUES ('mail_daily_limit', '10');
+INSERT INTO `pre_config` VALUES ('mail_ip_daily_limit', '20');
+INSERT INTO `pre_config` VALUES ('mail_domain_deny', '');
 INSERT INTO `pre_config` VALUES ('pay_subject', '赞助');
 INSERT INTO `pre_config` VALUES ('epay_charset', 'UTF-8');
 INSERT INTO `pre_config` VALUES ('alipay_appid', '');
