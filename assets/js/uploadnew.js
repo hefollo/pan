@@ -30,7 +30,6 @@ new Vue({
         input: {
             csrf_token:'',
             show: true,
-            ispwd: false,
             pwd: '',
             hash: '',
             name: '',
@@ -463,7 +462,7 @@ new Vue({
         buildFileLinks(result){
             var token = result && (result.token || result.hash) ? (result.token || result.hash) : '';
             var type = result && result.type ? result.type : 'file';
-            var pwd = this.input.ispwd && this.input.pwd ? this.input.pwd : '';
+            var pwd = this.input.pwd ? this.input.pwd : '';
             var base = this.getSiteBaseUrl();
             return {
                 downloadUrl: base + 'down.php/' + encodeURIComponent(token) + '.' + encodeURIComponent(type) + (pwd ? '&' + encodeURIComponent(pwd) : ''),
@@ -520,7 +519,8 @@ new Vue({
                 hash: ctx ? ctx.hash : this.input.hash,
                 size: ctx ? ctx.size : this.input.size,
                 show: this.input.show?'1':'0',
-                ispwd: this.input.ispwd?'1':'0',
+                //密码框留空就是不设密码，ispwd 由它自己推导出来，接口参数保持不变
+                ispwd: this.input.pwd?'1':'0',
                 pwd: this.input.pwd,
             };
             var that = this;
@@ -764,7 +764,7 @@ new Vue({
         uploadSuccess(hash){
             var lastTime = (new Date().getTime() - this.beginTime) / 1000;
             var jumpurl = "file.php?hash="+hash;
-            if(this.input.ispwd && this.input.pwd!=''){
+            if(this.input.pwd!=''){
                 jumpurl+='&pwd='+encodeURIComponent(this.input.pwd);
             }
             this.show_msg('上传成功！总用时：'+lastTime.toFixed(2)+'秒。正在跳转到文件查看页面...');

@@ -141,16 +141,9 @@ body.theme-aurora .upload-link-btn:hover{border-color:#fff;background:rgba(255,2
 </label>
 </div>
 </div>
-<div class="form-group">
-<div class="checkbox">
-<label>
-<input type="checkbox" id="ispwd" v-model="input.ispwd"> 设定密码
-</label>
-</div>
-</div>
-<div class="form-group" style="max-width:220px;" id="pwd_frame" v-if="input.ispwd">
-<input type="text" class="form-control" id="pwd" placeholder="请输入密码" autocomplete="off" v-model="input.pwd">
-<p class="help-block">密码只能为字母或数字</p>
+<div class="form-group upload-pwd" id="pwd_frame">
+<input type="text" class="form-control" id="pwd" placeholder="请输入密码（留空则不设置）" autocomplete="off" maxlength="32" v-model="input.pwd">
+<p class="help-block" v-if="input.pwd">密码只能为字母或数字</p>
 </div>
          </div>
          

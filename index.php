@@ -159,6 +159,9 @@ while($res = $rs->fetch())
 	}
 	$actions .= '</div>';
 	$type_text = $res['type']?$res['type']:'未知';
+	//设了访问密码的文件，在文件名后面挂个锁，列表里一眼能看出来。
+	//不用 fa-fw，免得被各外观给类型图标定的颜色带跑
+	$lock_icon = !empty($res['pwd']) ? ' <i class="fa fa-lock filelist-lock" title="该文件需要密码才能查看" aria-hidden="true"></i>' : '';
 	$row_ip = preg_replace('/\d+$/','*',$res['ip']);
 	//深色工作台风的预览面板要直接显示图片/视频/文本：没有设密码、没被封禁、且是可在线预览的
 	//类型时才给出预览地址，其余情况面板里还是显示文件类型图标
@@ -191,8 +194,9 @@ while($res = $rs->fetch())
 		.' data-ip="'.htmlspecialchars($row_ip, ENT_QUOTES, 'UTF-8').'"'
 		.' data-down="'.htmlspecialchars($fileurl, ENT_QUOTES, 'UTF-8').'"'
 		.' data-view="'.htmlspecialchars($viewurl, ENT_QUOTES, 'UTF-8').'"'
-		.' data-icon="'.type_to_icon($res['type']).'"';
-echo '<tr'.$row_attr.'><td><b>'.$i++.'</b></td><td class="filelist-actions-cell">'.$actions.'</td><td><i class="fa '.type_to_icon($res['type']).' fa-fw"></i>'.$res['name'].'</td><td>'.size_format($res['size']).'</td><td><span class="file-type-badge">'.htmlspecialchars($type_text).'</span></td><td>'.$res['addtime'].'</td><td>'.$row_ip.'</td></tr>';
+		.' data-icon="'.type_to_icon($res['type']).'"'
+		.' data-lock="'.(!empty($res['pwd']) ? '1' : '').'"';
+echo '<tr'.$row_attr.'><td><b>'.$i++.'</b></td><td class="filelist-actions-cell">'.$actions.'</td><td><i class="fa '.type_to_icon($res['type']).' fa-fw"></i>'.$res['name'].$lock_icon.'</td><td>'.size_format($res['size']).'</td><td><span class="file-type-badge">'.htmlspecialchars($type_text).'</span></td><td>'.$res['addtime'].'</td><td>'.$row_ip.'</td></tr>';
 }
 if($numrows == 0) echo '<tr><td colspan="7" align="center">还没上传过任何文件</td></tr>';
 ?>

@@ -42,6 +42,10 @@ a:hover,a:focus{color:var(--primary-dark);text-decoration:none}
 .filelist>tbody>tr>td{max-width:360px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .filelist td a{display:inline-block;margin:0 2px;font-weight:600}
 .filelist .fa-fw{margin-right:7px;color:#64748b}
+.upload-pwd{width:100%;max-width:300px;margin-left:auto;margin-right:auto}
+.upload-pwd .form-control{width:100%;text-align:center}
+.upload-pwd .help-block{margin:6px 0 0;font-size:12px;text-align:center}
+.filelist-lock{margin-left:6px;color:#d69e2e;font-size:12px;vertical-align:1px}
 .pagination>li>a,.pagination>li>span{border:0;border-radius:6px!important;margin:0 2px;color:#475569;background:#f1f5f9}
 .pagination>.disabled>a,.pagination>.disabled>a:hover{background:#f8fafc;color:#94a3b8}
 .pagination>li>a:hover{background:#dbeafe;color:var(--primary)}

@@ -169,7 +169,9 @@
     renderArt(row);
     panel.setAttribute('data-group', row.getAttribute('data-group') || 'other');
     nameEl.textContent = row.getAttribute('data-name') || '';
-    subEl.textContent = (type ? type.toUpperCase() + ' · ' : '') + (row.getAttribute('data-size') || '');
+    //有密码的文件预览面板里放不出内容，副标题上说明一下，跟列表里的锁图标对应
+    subEl.textContent = (type ? type.toUpperCase() + ' · ' : '') + (row.getAttribute('data-size') || '')
+      + (row.getAttribute('data-lock') === '1' ? ' · 需要密码' : '');
     downloadEl.href = row.getAttribute('data-down');
     openEl.href = view;
     linkEl.textContent = down;
