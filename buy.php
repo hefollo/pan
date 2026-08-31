@@ -324,6 +324,13 @@ include SYSTEM_ROOT.'header.php';
 </div>
 <?php include SYSTEM_ROOT.'footer.php';?>
 <script src="https://s4.zstatic.net/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+//内置浏览器里这个 CDN 经常拉不到，换一个源再试一次；两个都失败也不影响付款，
+//buy.js 会自动退化成「打开支付宝付款」的跳转按钮
+if(typeof QRCode === 'undefined'){
+	document.write('<script src="https:\/\/cdn.jsdelivr.net\/npm\/qrcodejs@1.0.0\/qrcode.min.js"><\/script>');
+}
+</script>
 <script src="./assets/js/buy.js?v=<?php echo VERSION?>"></script>
 </body>
 </html>

@@ -122,7 +122,11 @@
     tip.textContent = '正在读取内容…';
     art.appendChild(tip);
 
-    fetch(src, { credentials: 'same-origin' }).then(function (r) {
+    //Accept 不能用默认的 */*：txprotect.php 会把手机 UA + Accept:*/* 的请求当机器人拦掉
+    fetch(src, {
+      credentials: 'same-origin',
+      headers: { 'Accept': 'text/plain, */*; q=0.01' }
+    }).then(function (r) {
       if (!r.ok) throw new Error('http ' + r.status);
       return r.text();
     }).then(function (text) {

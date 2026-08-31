@@ -20,6 +20,7 @@
   var currentTradeNo = '';
   var busy = false;
 
+  //微信/QQ 等内置浏览器对 fetch 的支持参差不齐，这里统一用 XHR，兼容性最好
   function post(act, data) {
     var body = [];
     for (var k in data) {
@@ -27,12 +28,48 @@
         body.push(encodeURIComponent(k) + '=' + encodeURIComponent(data[k]));
       }
     }
-    return fetch('./buy.php?act=' + act, {
-      method: 'POST',
-      credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: body.join('&')
-    }).then(function (r) { return r.json(); });
+    return new Promise(function (resolve, reject) {
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', './buy.php?act=' + act, true);
+      xhr.withCredentials = true;
+      xhr.timeout = 40000;
+      xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+      //必须显式带 Accept：includes/txprotect.php 会把「手机 UA + Accept 恰好是 */*」
+      //的请求当成机器人拦掉，而 fetch/XHR 默认发的就是 */*，手机上会直接被拒
+      xhr.setRequestHeader('Accept', 'application/json, text/javascript, */*; q=0.01');
+      xhr.onload = function () {
+        var text = xhr.responseText || '';
+        try {
+          resolve(JSON.parse(text));
+        } catch (e) {
+          //服务端没返回 JSON（PHP 报错、被防火墙拦了、登录跳转等），把真实内容带出来一点，
+          //否则只报一句“请求失败”根本没法排查
+          reject(new Error('服务器返回了异常内容（HTTP ' + xhr.status + '）：'
+            + text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').slice(0, 80)));
+        }
+      };
+      xhr.onerror = function () { reject(new Error('网络连接失败，请检查网络后重试')); };
+      xhr.ontimeout = function () { reject(new Error('请求超时，请稍后重试')); };
+      xhr.send(body.join('&'));
+    });
+  }
+
+  //手机上扫不了自己屏幕上的码，当面付要直接跳支付宝
+  function isMobile() {
+    return /Android|iPhone|iPad|iPod|Mobile|MicroMessenger|QQ\//i.test(navigator.userAgent);
+  }
+
+  //二维码库来自 CDN，内置浏览器里可能加载不出来；画不出来就退化成跳转按钮
+  function renderQr(text) {
+    if (typeof QRCode === 'undefined') return false;
+    try {
+      qrBox.innerHTML = '';
+      new QRCode(qrBox, { text: text, width: 200, height: 200, correctLevel: QRCode.CorrectLevel.M });
+      return true;
+    } catch (e) {
+      qrBox.innerHTML = '';
+      return false;
+    }
   }
 
   function stopPolling() {
@@ -113,7 +150,8 @@
       btn.textContent = oldText;
       btn.disabled = false;
       if (res.code !== 0) {
-        alert(res.msg || '下单失败');
+        if (!mask.hidden) setState(res.msg || '下单失败', 'is-error');
+        else alert(res.msg || '下单失败');
         return;
       }
       currentTradeNo = res.trade_no;
@@ -128,6 +166,7 @@
         qrBox.hidden = true;
         jumpBtn.hidden = false;
         jumpBtn.href = res.pay_url;
+        jumpBtn.textContent = '打开支付页面';
         var win = window.open(res.pay_url, '_blank');
         if (win) {
           setState('已打开支付页面，付款完成后本页会自动开通');
@@ -135,19 +174,31 @@
           setState('浏览器拦截了新窗口，请点上面的按钮打开支付页面');
         }
       } else {
-        dialogTitle.textContent = '支付宝扫码支付';
-        qrBox.hidden = false;
-        jumpBtn.hidden = true;
-        new QRCode(qrBox, { text: res.qr_code, width: 200, height: 200, correctLevel: QRCode.CorrectLevel.M });
-        setState('请使用支付宝扫描二维码完成支付');
+        dialogTitle.textContent = '支付宝当面付';
+        var ok = renderQr(res.qr_code);
+        qrBox.hidden = !ok;
+        //手机上给一个直接打开支付宝的按钮；二维码没画出来时它就是唯一的付款入口
+        jumpBtn.hidden = !(isMobile() || !ok);
+        jumpBtn.href = res.qr_code;
+        jumpBtn.textContent = '打开支付宝付款';
+        if (!ok) {
+          setState('点上面的按钮打开支付宝完成付款，付完本页会自动开通');
+        } else if (isMobile()) {
+          setState('用支付宝扫码，或点上面的按钮直接打开支付宝');
+        } else {
+          setState('请使用支付宝扫描二维码完成支付');
+        }
       }
       mask.hidden = false;
       startPolling(res.trade_no);
-    }).catch(function () {
+    }).catch(function (err) {
       busy = false;
       btn.textContent = oldText;
       btn.disabled = false;
-      alert('下单请求失败，请稍后重试');
+      var msg = (err && err.message) ? err.message : '下单请求失败，请稍后重试';
+      //弹窗已经打开的话就写在弹窗里，微信内置浏览器的 alert 很丑而且会盖住页面
+      if (!mask.hidden) setState(msg, 'is-error');
+      else alert(msg);
     });
   }
 
