@@ -42,6 +42,18 @@ a:hover,a:focus{color:var(--primary-dark);text-decoration:none}
 .filelist>tbody>tr>td{max-width:360px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .filelist td a{display:inline-block;margin:0 2px;font-weight:600}
 .filelist .fa-fw{margin-right:7px;color:#64748b}
+.perm-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px;margin:0 0 18px;padding:11px 15px;border:1px solid var(--line);border-radius:12px;background:var(--surface-soft)}
+.perm-item{display:inline-flex;align-items:baseline;gap:6px;font-size:13px;line-height:1.6}
+.perm-item i{color:var(--primary);font-size:13px}
+.perm-item em{color:var(--muted);font-style:normal}
+.perm-item b{color:var(--text);font-weight:750}
+.perm-buy{margin-left:auto;color:var(--primary)!important;font-size:13px;font-weight:750;text-decoration:none!important;white-space:nowrap}
+.perm-buy:hover{opacity:.8}
+.perm-buy-plain{color:var(--muted)!important;font-weight:600}
+@media (max-width:767px){
+.perm-bar{gap:6px 14px;padding:10px 12px}
+.perm-buy{margin-left:0;flex:1 1 100%;padding-top:4px;border-top:1px solid var(--line)}
+}
 .loginpanel{margin-top:8vh}
 .login-title{margin:0 0 18px;color:var(--text);font-size:20px;font-weight:800;text-align:center}
 .login-other{margin-top:22px}
@@ -62,6 +74,11 @@ a:hover,a:focus{color:var(--primary-dark);text-decoration:none}
 .loginform .captcha-row .form-control{flex:1;min-width:0}
 .loginform .captcha-refresh{flex:none;color:var(--muted);font-size:15px;text-decoration:none}
 .loginform .captcha-refresh:hover{color:var(--primary)}
+@media (max-width:400px){
+	/* 很窄的屏上给这两行留出余量：题面和按钮都不换行，输入框自己缩 */
+	.loginform .captcha-q{padding:0 9px;font-size:14px}
+	.loginform .code-row .btn,.loginform .captcha-row .form-control{min-width:0}
+}
 .loginform .code-row{display:flex;gap:10px}
 .loginform .code-row .form-control{flex:1;min-width:0}
 .loginform .code-row .btn{flex:none;height:44px;padding:0 14px;border-radius:10px;white-space:nowrap}
@@ -2145,10 +2162,22 @@ body.theme-console .layout-side-bar{height:6px;margin:10px 0 8px;overflow:hidden
 body.theme-console .layout-side-bar i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--primary),#7b61ff)}
 body.theme-console .layout-side-card small{color:var(--muted);font-size:11px}
 body.theme-console .layout-side-card+.layout-side-card{margin-top:8px}
+/* 基础规则：卡片的布局和文字颜色不依赖任何一套外观，各外观只在这之上改配色。
+   之前只有 body.theme-xxx 下的规则，那条一旦没生效，整行就没有 flex 也没有颜色，
+   标题会和背景撞色变成"透明" */
+.layout-side-card{margin:14px 10px 6px;padding:14px;background:var(--surface-soft);border:1px solid var(--line);border-radius:14px}
+.layout-side-card+.layout-side-card{margin-top:8px}
+.layout-side-card small{color:var(--muted);font-size:11px}
+.layout-side-row{display:flex;align-items:center;justify-content:space-between;gap:10px;color:var(--text);font-size:12px;font-weight:750}
+.layout-side-row strong{color:var(--text)}
+.layout-side-bar{height:6px;margin:10px 0 8px;overflow:hidden;background:var(--line);border-radius:999px}
+.layout-side-bar i{display:block;height:100%;border-radius:inherit;background:var(--primary)}
 .layout-side-kv{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:7px;font-size:12px}
 .layout-side-kv span{color:var(--muted)}
-.layout-side-kv b{max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700}
-.layout-side-tag{padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700}
+.layout-side-kv b{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);font-weight:700}
+.layout-side-kv span{flex:0 0 auto}
+.layout-side-tag{flex:0 0 auto;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700}
+.layout-side-row strong{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .layout-side-tag-ok{color:#1f9254;background:rgba(31,146,84,.12)}
 .layout-side-tag-warn{color:#b8860b;background:rgba(214,158,46,.16)}
 .layout-side-tag-expired{color:var(--danger);background:rgba(220,53,69,.12)}
@@ -2319,4 +2348,15 @@ body.theme-sunset .buy-plan-btn,body.theme-sunset .buy-plan-btn:hover{color:#3d0
 @media (max-width:767px){
 .buy-plans{grid-template-columns:minmax(0,1fr)}
 .buy-plan-price{font-size:30px}
+}
+
+/* ===== 放在最后：布局型外观的搜索框在窄屏要竖排 =====
+   各外观自己写了 body.theme-xxx .searchbox .form-inline{display:flex}，
+   和这里的选择器特异性相同（0,3,0），同分时靠源码顺序决定胜负，所以必须放在它们后面，
+   否则窄屏上搜索框还是横排、被挤到显示不全 */
+@media (max-width:767px){
+body.layout-theme .searchbox,body.layout-theme .searchbox .form-inline{width:100%}
+body.layout-theme .searchbox .form-inline{flex-direction:column;align-items:stretch;gap:8px}
+body.layout-theme .searchbox input.form-control[type="search"]{width:100%;min-width:0}
+body.layout-theme .searchbox .btn{width:100%}
 }

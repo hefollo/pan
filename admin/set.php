@@ -436,7 +436,7 @@ API接口地址：<?php echo $siteurl?>api.php
   <form onsubmit="return saveSetting(this)" method="post" class="form-horizontal" role="form">
     <div class="form-group">
 	  <label class="col-sm-2 control-label">用户IP地址获取方式</label>
-	  <div class="col-sm-10"><select class="form-control" name="ip_type" default="<?php echo $conf['ip_type']?>"><option value="0">0_X_FORWARDED_FOR</option><option value="1">1_X_REAL_IP</option><option value="2">2_REMOTE_ADDR</option></select></div>
+	  <div class="col-sm-10"><select class="form-control" name="ip_type" default="<?php echo $conf['ip_type']?>"><option value="0">0_X_FORWARDED_FOR</option><option value="1">1_X_REAL_IP</option><option value="2">2_REMOTE_ADDR</option><option value="3">3_Cloudflare（自动校验来源）</option></select></div>
 	</div>
 	<div class="form-group">
 	  <div class="col-sm-offset-2 col-sm-10"><input type="submit" name="submit" value="修改" class="btn btn-primary form-control"/><br/>
@@ -500,6 +500,11 @@ $(document).ready(function(){
 	<div class="form-group">
 	  <label class="col-sm-3 control-label">每IP每天限制上传数量</label>
 	  <div class="col-sm-9"><input type="text" name="upload_limit" value="<?php echo $conf['upload_limit']; ?>" class="form-control" placeholder="0或留空为不限制"/></div>
+	</div><br/>
+	<div class="form-group">
+	  <label class="col-sm-3 control-label">每分钟上传次数</label>
+	  <div class="col-sm-9"><input type="text" name="upload_per_minute" value="<?php echo isset($conf['upload_per_minute'])?$conf['upload_per_minute']:10; ?>" class="form-control" placeholder="默认10，0为不限制"/>
+	  <p class="help-block">只有"每天多少个"的话，脚本几秒钟就能刷满额度。这一条按分钟卡，登录用户按账号算，游客按来源地址算（IPv6 归并到 /64 前缀）。</p></div>
 	</div><br/>
 	<div class="form-group">
 	  <label class="col-sm-3 control-label">视频文件需要审核</label>

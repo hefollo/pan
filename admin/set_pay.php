@@ -314,13 +314,13 @@ if(isset($_GET['tab']) && $_GET['tab'] === 'epay')$pay_tab = 'epay';
 	  <div class="col-sm-4 form-group">
 		<label>每日上传数量</label>
 		<div class="row plan-inline">
-		  <div class="col-xs-7">
+		  <div class="col-xs-12 col-sm-7">
 			<select class="form-control" name="limit_mode">
 			  <option value="set" <?php echo (!$edit || (isset($edit['limit_mode']) && $edit['limit_mode']!=='add'))?'selected':''?>>设为</option>
 			  <option value="add" <?php echo ($edit && isset($edit['limit_mode']) && $edit['limit_mode']==='add')?'selected':''?>>在现有数量上增加</option>
 			</select>
 		  </div>
-		  <div class="col-xs-5">
+		  <div class="col-xs-12 col-sm-5">
 			<input type="number" name="upload_limit" value="<?php echo $edit ? intval($edit['upload_limit']) : 0?>" class="form-control" min="-1" step="1"/>
 		  </div>
 		</div>
@@ -395,6 +395,7 @@ if(isset($_GET['tab']) && $_GET['tab'] === 'epay')$pay_tab = 'epay';
 .plan-form .hint{display:block;margin-top:4px;min-height:32px;color:#8a94a6;font-size:12px;line-height:16px}
 .plan-form .plan-inline{margin-left:-5px;margin-right:-5px}
 .plan-form .plan-inline>div{padding-left:5px;padding-right:5px}
+@media (max-width:767px){.plan-form .plan-inline>div+div{margin-top:6px}}
 .plan-form .plan-actions{padding-top:4px;border-top:1px solid #eee;margin-top:6px}
 .plan-form .plan-actions .btn{margin-top:10px}
 .plan-form .plan-editing{margin-left:10px;color:#8a94a6;font-size:13px}

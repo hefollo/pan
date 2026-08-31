@@ -200,19 +200,19 @@ $mail_names = implode('、', $mail_names);
 	</div><br/>
 	<div class="form-group">
 	  <label class="col-sm-3 control-label">验证码有效期</label>
-	  <div class="col-sm-9"><div class="input-group"><input type="number" name="mail_code_expire" value="<?php echo htmlspecialchars(isset($conf['mail_code_expire'])?$conf['mail_code_expire']:'10', ENT_QUOTES, 'UTF-8')?>" class="form-control" min="1" max="60"/><span class="input-group-addon">分钟</span></div>
+	  <div class="col-sm-9"><div class="mail-field"><input type="number" name="mail_code_expire" value="<?php echo htmlspecialchars(isset($conf['mail_code_expire'])?$conf['mail_code_expire']:'10', ENT_QUOTES, 'UTF-8')?>" class="form-control" min="1" max="60"/><span class="mail-unit">分钟</span></div>
 	  <p class="help-block">验证码错 5 次会自动作废，需要重新获取。</p></div>
 	</div><br/>
 	<div class="form-group">
 	  <label class="col-sm-3 control-label">同邮箱发送间隔</label>
-	  <div class="col-sm-9"><div class="input-group"><input type="number" name="mail_send_interval" value="<?php echo htmlspecialchars(isset($conf['mail_send_interval'])?$conf['mail_send_interval']:'60', ENT_QUOTES, 'UTF-8')?>" class="form-control" min="0"/><span class="input-group-addon">秒</span></div></div>
+	  <div class="col-sm-9"><div class="mail-field"><input type="number" name="mail_send_interval" value="<?php echo htmlspecialchars(isset($conf['mail_send_interval'])?$conf['mail_send_interval']:'60', ENT_QUOTES, 'UTF-8')?>" class="form-control" min="0"/><span class="mail-unit">秒</span></div></div>
 	</div><br/>
 	<div class="form-group">
 	  <label class="col-sm-3 control-label">每日发送上限</label>
 	  <div class="col-sm-9">
 		<div class="row">
-		  <div class="col-xs-6"><div class="input-group"><span class="input-group-addon">同邮箱</span><input type="number" name="mail_daily_limit" value="<?php echo htmlspecialchars(isset($conf['mail_daily_limit'])?$conf['mail_daily_limit']:'10', ENT_QUOTES, 'UTF-8')?>" class="form-control" min="0"/></div></div>
-		  <div class="col-xs-6"><div class="input-group"><span class="input-group-addon">同 IP</span><input type="number" name="mail_ip_daily_limit" value="<?php echo htmlspecialchars(isset($conf['mail_ip_daily_limit'])?$conf['mail_ip_daily_limit']:'20', ENT_QUOTES, 'UTF-8')?>" class="form-control" min="0"/></div></div>
+		  <div class="col-xs-12 col-sm-6"><div class="mail-field"><span class="mail-unit mail-unit-pre">同邮箱</span><input type="number" name="mail_daily_limit" value="<?php echo htmlspecialchars(isset($conf['mail_daily_limit'])?$conf['mail_daily_limit']:'10', ENT_QUOTES, 'UTF-8')?>" class="form-control" min="0"/><span class="mail-unit">封/天</span></div></div>
+		  <div class="col-xs-12 col-sm-6"><div class="mail-field"><span class="mail-unit mail-unit-pre">同 IP</span><input type="number" name="mail_ip_daily_limit" value="<?php echo htmlspecialchars(isset($conf['mail_ip_daily_limit'])?$conf['mail_ip_daily_limit']:'20', ENT_QUOTES, 'UTF-8')?>" class="form-control" min="0"/><span class="mail-unit">封/天</span></div></div>
 		</div>
 	  <p class="help-block">填 0 表示不限制。「同 IP」用的是伪造不了的来源地址：只有请求确实来自 Cloudflare 时才采信 CF 的真实 IP 头，否则一律按 TCP 连接的对端地址算。<br/><b>建议把「同 IP」调到 5 左右</b>：正常人注册一次最多试两三回，调小能明显压制脚本刷接口。</p></div>
 	</div><br/>
@@ -220,8 +220,8 @@ $mail_names = implode('、', $mail_names);
 	  <label class="col-sm-3 control-label">全站发信上限</label>
 	  <div class="col-sm-9">
 		<div class="row">
-		  <div class="col-xs-6"><div class="input-group"><span class="input-group-addon">每小时</span><input type="number" name="mail_hour_limit" value="<?php echo htmlspecialchars(isset($conf['mail_hour_limit'])?$conf['mail_hour_limit']:'50', ENT_QUOTES, 'UTF-8')?>" class="form-control" min="0"/></div></div>
-		  <div class="col-xs-6"><div class="input-group"><span class="input-group-addon">每天</span><input type="number" name="mail_site_daily" value="<?php echo htmlspecialchars(isset($conf['mail_site_daily'])?$conf['mail_site_daily']:'200', ENT_QUOTES, 'UTF-8')?>" class="form-control" min="0"/></div></div>
+		  <div class="col-xs-12 col-sm-6"><div class="mail-field"><span class="mail-unit mail-unit-pre">每小时</span><input type="number" name="mail_hour_limit" value="<?php echo htmlspecialchars(isset($conf['mail_hour_limit'])?$conf['mail_hour_limit']:'50', ENT_QUOTES, 'UTF-8')?>" class="form-control" min="0"/><span class="mail-unit">封</span></div></div>
+		  <div class="col-xs-12 col-sm-6"><div class="mail-field"><span class="mail-unit mail-unit-pre">每天</span><input type="number" name="mail_site_daily" value="<?php echo htmlspecialchars(isset($conf['mail_site_daily'])?$conf['mail_site_daily']:'200', ENT_QUOTES, 'UTF-8')?>" class="form-control" min="0"/><span class="mail-unit">封</span></div></div>
 		</div>
 	  <p class="help-block">最后一道保险：就算有人换着邮箱和网络来刷，也烧不掉整个发信额度。正常站点碰不到这个数，按自己的邮箱额度设置即可（QQ 邮箱个人账号一天大约几十封）。</p></div>
 	</div><br/>
@@ -258,6 +258,12 @@ $mail_names = implode('、', $mail_names);
 </div>
 
 <style>
+/* 单位不用 Bootstrap 的 input-group：后台几套皮肤各自改了 .form-control 的高度和圆角，
+   input-group 的表格布局会被打乱，单位跑到输入框外面。这里用 flex + 纯文字，谁都影响不到 */
+.mail-field{display:flex;align-items:center;gap:8px}
+.mail-field .form-control{flex:1;min-width:0}
+.mail-unit{flex:none;color:#8a94a6;font-size:13px;white-space:nowrap}
+.mail-unit-pre{min-width:48px}
 .mail-tabs{margin-bottom:18px}
 .mail-tabs>li>a{color:#5b6478;font-weight:700}
 .mail-tabs>li>a .label{margin-left:6px;font-weight:600;vertical-align:1px}

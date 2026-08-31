@@ -52,10 +52,61 @@ function layout_today_upload_count($DB){
 	if(!empty($islogin2)){
 		$num = intval($DB->getColumn("SELECT count(*) from pre_file WHERE uid='".intval($uid)."' AND addtime>='".$since."'"));
 	}else{
-		$num = intval($DB->getColumn("SELECT count(*) from pre_file WHERE ip='".daddslashes($clientip)."' AND addtime>='".$since."'"));
+		//和上传接口用同一个维度统计，否则卡片上显示的数字和实际能不能传对不上
+		$num = intval($DB->getColumn("SELECT count(*) from pre_file WHERE ipkey=:k AND addtime>=:t", [':k'=>client_ip_key(), ':t'=>$since]));
 	}
 	$_SESSION['layout_today'] = ['who'=>$who, 'day'=>$day, 'num'=>$num, 'time'=>time()];
 	return $num;
+}
+
+/**
+ * 紧凑的权限条，给没有侧栏的外观用（上传门户风 + 15 套配色型）。
+ * 内容和侧栏那两张卡一致：今日上传、单文件大小、到期时间、购买入口。
+ *
+ * $where 传 'list' 或 'upload'，只影响文案，不影响数据。
+ */
+function render_permission_bar($DB, $where = 'list'){
+	global $conf, $islogin2, $userrow, $site_theme;
+	//有侧栏卡的外观就不用再显示一遍了
+	if(in_array($site_theme, ['console', 'workspace', 'dashboard'], true))return '';
+
+	$limit = function_exists('get_effective_upload_count_limit') ? get_effective_upload_count_limit() : 0;
+	$today = function_exists('layout_today_upload_count') ? layout_today_upload_count($DB) : 0;
+	$size = function_exists('get_effective_upload_size_limit') ? get_effective_upload_size_limit() : 0;
+
+	$items = [];
+	$items[] = ['fa-cloud-upload', '今日上传', $limit > 0 ? ($today.' / '.$limit) : ($today.' 个（不限）')];
+	$items[] = ['fa-file-o', '单文件', $size > 0 ? ($size.' MB') : '不限制'];
+
+	if(!empty($islogin2)){
+		$expire = isset($userrow['expiretime']) ? $userrow['expiretime'] : '';
+		if(empty($expire)){
+			$items[] = ['fa-clock-o', '有效期', '永久有效'];
+		}elseif(function_exists('is_user_permission_active') && !is_user_permission_active()){
+			$items[] = ['fa-clock-o', '有效期', '已过期'];
+		}else{
+			$left = max(1, ceil((strtotime($expire) - time()) / 86400));
+			$items[] = ['fa-clock-o', '有效期', '剩 '.$left.' 天'];
+		}
+		if(!empty($userrow['bonus_limit']) && $limit > 0){
+			$items[] = ['fa-plus-circle', '加量包', '+'.intval($userrow['bonus_limit']).' 个/天'];
+		}
+	}
+
+	ob_start();
+?>
+<div class="perm-bar">
+<?php foreach($items as $it){?>
+    <span class="perm-item"><i class="fa <?php echo $it[0]?>" aria-hidden="true"></i><em><?php echo $it[1]?></em><b><?php echo htmlspecialchars($it[2], ENT_QUOTES, 'UTF-8')?></b></span>
+<?php }?>
+<?php if(function_exists('is_buy_open') && is_buy_open()){?>
+    <a class="perm-buy" href="./buy.php"><?php echo !empty($islogin2) ? '购买权限' : '登录后可购买更多额度'?> <i class="fa fa-angle-right" aria-hidden="true"></i></a>
+<?php }elseif(empty($islogin2) && !empty($conf['userlogin'])){?>
+    <a class="perm-buy perm-buy-plain" href="./login.php">登录后额度独立计算 <i class="fa fa-angle-right" aria-hidden="true"></i></a>
+<?php }?>
+</div>
+<?php
+	return ob_get_clean();
 }
 
 /**

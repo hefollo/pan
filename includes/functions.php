@@ -50,24 +50,71 @@ function get_curl($url, $post=0, $referer=0, $cookie=0, $header=0, $ua=0, $nobao
 	curl_close($ch);
 	return $ret;
 }
+/*
+ * 取访问者 IP。$type 对应后台「用户IP地址设置」：
+ *   0 X-Forwarded-For（老行为，头可以伪造，只适合前面是自己可控的反代）
+ *   1 X-Real-IP
+ *   2 REMOTE_ADDR（直连时最准）
+ *   3 Cloudflare：只在请求确实来自 CF 的 IP 段时才采信 CF-Connecting-IP，
+ *     否则一律用 REMOTE_ADDR —— 套了 CF 的站点应该用这个
+ *
+ * 四种方式都支持 IPv6：原来只匹配 IPv4，CF 转发过来的 IPv6 用户会识别不出来，
+ * 退回 REMOTE_ADDR 变成 CF 边缘节点的地址，所有 IPv6 用户被算成同一个人。
+ */
 function real_ip($type=0){
-$ip = $_SERVER['REMOTE_ADDR'];
-if($type<=0 && isset($_SERVER['HTTP_X_FORWARDED_FOR']) && preg_match_all('#\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}#s', $_SERVER['HTTP_X_FORWARDED_FOR'], $matches)) {
-	foreach ($matches[0] AS $xip) {
-		if (filter_var($xip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 | FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
-			$ip = $xip;
-			break;
+	$remote = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '';
+
+	if($type >= 3)return trusted_client_ip();
+	if($type >= 2)return $remote !== '' ? $remote : '0.0.0.0';
+
+	if($type <= 0){
+		//X-Forwarded-For 是「客户端, 代理1, 代理2」的链，最左边那个才是访问者
+		if(!empty($_SERVER['HTTP_X_FORWARDED_FOR'])){
+			foreach(explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']) as $item){
+				$item = trim($item);
+				//去掉 IPv6 的方括号写法和端口号
+				if(substr($item, 0, 1) === '[' && strpos($item, ']') !== false){
+					$item = substr($item, 1, strpos($item, ']') - 1);
+				}
+				if(filter_var($item, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)){
+					return $item;
+				}
+			}
+		}
+		if(!empty($_SERVER['HTTP_CLIENT_IP']) && filter_var($_SERVER['HTTP_CLIENT_IP'], FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)){
+			return $_SERVER['HTTP_CLIENT_IP'];
 		}
 	}
-} elseif ($type<=0 && isset($_SERVER['HTTP_CLIENT_IP']) && filter_var($_SERVER['HTTP_CLIENT_IP'], FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 | FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
-	$ip = $_SERVER['HTTP_CLIENT_IP'];
-} elseif ($type<=1 && isset($_SERVER['HTTP_CF_CONNECTING_IP']) && filter_var($_SERVER['HTTP_CF_CONNECTING_IP'], FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 | FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
-	$ip = $_SERVER['HTTP_CF_CONNECTING_IP'];
-} elseif ($type<=1 && isset($_SERVER['HTTP_X_REAL_IP']) && filter_var($_SERVER['HTTP_X_REAL_IP'], FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 | FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
-	$ip = $_SERVER['HTTP_X_REAL_IP'];
+	if(!empty($_SERVER['HTTP_CF_CONNECTING_IP']) && filter_var($_SERVER['HTTP_CF_CONNECTING_IP'], FILTER_VALIDATE_IP)){
+		return $_SERVER['HTTP_CF_CONNECTING_IP'];
+	}
+	if(!empty($_SERVER['HTTP_X_REAL_IP']) && filter_var($_SERVER['HTTP_X_REAL_IP'], FILTER_VALIDATE_IP)){
+		return $_SERVER['HTTP_X_REAL_IP'];
+	}
+	return $remote !== '' ? $remote : '0.0.0.0';
 }
-return $ip;
+
+/*
+ * 限流用的统计维度。
+ *
+ * IPv4 用完整地址；IPv6 用 /64 前缀 —— 一个家庭宽带会分到一整个 /64，
+ * 里面每台设备、甚至每次连接的地址都不一样，按完整地址限流等于没限。
+ * 结果是规范化过的字符串，可以直接存库和比较。
+ */
+function client_ip_key($ip = null){
+	if($ip === null){
+		global $clientip;
+		$ip = $clientip;
+	}
+	$bin = @inet_pton($ip);
+	if($bin === false)return (string)$ip;
+	if(strlen($bin) === 4)return $ip;              //IPv4 原样
+	//IPv6：后 64 位清零，取 /64 前缀
+	$prefix = substr($bin, 0, 8).str_repeat(chr(0), 8);
+	$text = @inet_ntop($prefix);
+	return $text === false ? $ip : $text.'/64';
 }
+
 function get_ip_city($ip)
 {
 	$url = 'http://whois.pconline.com.cn/ipJson.jsp?json=true&ip=';
@@ -383,7 +430,7 @@ function send_mail_code($email, $purpose, $uid = 0){
 	$code = str_pad(strval(random_int(0, 999999)), 6, '0', STR_PAD_LEFT);
 
 	//同一用途的旧验证码先作废，避免用户拿着上一封的码来用
-	$DB->exec("UPDATE pre_mailcode SET used=1 WHERE email=:e AND purpose=:p AND used=0", [':e'=>$email, ':p'=>$purpose]);
+	$DB->exec("UPDATE pre_mailcode SET used=1, status=3 WHERE email=:e AND purpose=:p AND used=0", [':e'=>$email, ':p'=>$purpose]);
 
 	$titles = ['register'=>'注册账号', 'reset'=>'找回密码', 'changemail'=>'更换邮箱'];
 	$what = isset($titles[$purpose]) ? $titles[$purpose] : '验证邮箱';
@@ -415,15 +462,19 @@ function send_mail_code($email, $purpose, $uid = 0){
 	$mailer = mailer();
 	$res = $mailer->send($email, $subject, $html);
 	if(empty($res['ok'])){
-		//没发出去的码直接作废，免得它挡住用户下一次重新获取
-		if($id)$DB->exec("UPDATE pre_mailcode SET used=1 WHERE id=:id", [':id'=>$id]);
-		//失败原因只写进日志给站长看，不能原样回给前台：里面可能带着服务器信息
+		//没发出去的码直接作废，免得它挡住用户下一次重新获取；失败原因存进记录供后台排查
+		if($id)$DB->exec("UPDATE pre_mailcode SET used=1, status=2, errmsg=:e WHERE id=:id",
+			[':e'=>mb_substr((string)$res['msg'], 0, 250, 'UTF-8'), ':id'=>$id]);
+		//完整的失败详情（含 SMTP 会话）另外写文件，那里面可能带服务器信息，不进数据库
 		log_mail_error($email, $purpose, $res['msg'], $mailer->attempts());
 		return ['code'=>-1, 'msg'=>'验证码发送失败，请稍后重试或联系站长'];
 	}
+	if($id)$DB->exec("UPDATE pre_mailcode SET sender=:s WHERE id=:id",
+		[':s'=>isset($res['sender']) ? mb_substr($res['sender'], 0, 20, 'UTF-8') : '', ':id'=>$id]);
 	//顺手清掉三天前的记录，这张表只是临时用的，不用留着
+	//这张表现在兼作发信记录，保留 30 天再清，不然还没来得及查就被删了
 	if(mt_rand(1, 20) === 1){
-		$DB->exec("DELETE FROM pre_mailcode WHERE addtime < DATE_SUB(NOW(), INTERVAL 3 DAY)");
+		$DB->exec("DELETE FROM pre_mailcode WHERE addtime < DATE_SUB(NOW(), INTERVAL 30 DAY)");
 	}
 	return ['code'=>0, 'msg'=>'验证码已发送到 '.$email.'，'.$expire.' 分钟内有效'];
 }
@@ -442,11 +493,11 @@ function verify_mail_code($email, $code, $purpose){
 		[':e'=>$email, ':p'=>$purpose]);
 	if(!$row)return ['code'=>-1, 'msg'=>'请先获取验证码'];
 	if(strtotime($row['expiretime']) < time()){
-		$DB->exec("UPDATE pre_mailcode SET used=1 WHERE id=:id", [':id'=>$row['id']]);
+		$DB->exec("UPDATE pre_mailcode SET used=1, status=3 WHERE id=:id", [':id'=>$row['id']]);
 		return ['code'=>-1, 'msg'=>'验证码已过期，请重新获取'];
 	}
 	if(intval($row['trycount']) >= 5){
-		$DB->exec("UPDATE pre_mailcode SET used=1 WHERE id=:id", [':id'=>$row['id']]);
+		$DB->exec("UPDATE pre_mailcode SET used=1, status=3 WHERE id=:id", [':id'=>$row['id']]);
 		return ['code'=>-1, 'msg'=>'验证码错误次数过多，请重新获取'];
 	}
 	if(!hash_equals($row['code'], $code)){
@@ -454,7 +505,7 @@ function verify_mail_code($email, $code, $purpose){
 		return ['code'=>-1, 'msg'=>'验证码不正确'];
 	}
 	//用掉就作废
-	$DB->exec("UPDATE pre_mailcode SET used=1 WHERE id=:id", [':id'=>$row['id']]);
+	$DB->exec("UPDATE pre_mailcode SET used=1, status=1 WHERE id=:id", [':id'=>$row['id']]);
 	return ['code'=>0, 'msg'=>'验证通过', 'row'=>$row];
 }
 
@@ -1189,7 +1240,7 @@ function admin_setting_keys(){
 		's3_path_style', 's3_prefix', 's3_region', 's3_sk',
 		'site_theme', 'storage', 'storagename', 'title',
 		'tongji', 'type_audio', 'type_block', 'type_image',
-		'type_video', 'upload_limit', 'upload_size', 'uploadfile_type',
+		'type_video', 'upload_limit', 'upload_per_minute', 'upload_size', 'uploadfile_type',
 		'upyun_name', 'upyun_pwd', 'upyun_user', 'userlogin',
 		'videoreview', 'violation_notice', 'violation_open',
 		'alipay_open', 'alipay_appid', 'alipay_public_key', 'alipay_private_key',
@@ -1890,7 +1941,8 @@ function violation_mask_ip($ip){
 function create_file_record($name, $hash, $size, $ext, $hide, $pwd, $uid, $ip, $review = true){
 	global $DB, $conf;
 	$token = generate_file_token();
-	$sds = $DB->exec("INSERT INTO `pre_file` (`name`,`type`,`size`,`hash`,`token`,`addtime`,`ip`,`hide`,`pwd`,`uid`) values (:name,:type,:size,:hash,:token,NOW(),:ip,:hide,:pwd,:uid)", [':name'=>$name, ':type'=>$ext, ':size'=>$size, ':hash'=>$hash, ':token'=>$token, ':ip'=>$ip, ':hide'=>$hide, ':pwd'=>$pwd, ':uid'=>($uid?$uid:0)]);
+	//ipkey 是限流用的维度（IPv6 归并到 /64），和展示用的 ip 分开存
+	$sds = $DB->exec("INSERT INTO `pre_file` (`name`,`type`,`size`,`hash`,`token`,`addtime`,`ip`,`ipkey`,`hide`,`pwd`,`uid`) values (:name,:type,:size,:hash,:token,NOW(),:ip,:ipkey,:hide,:pwd,:uid)", [':name'=>$name, ':type'=>$ext, ':size'=>$size, ':hash'=>$hash, ':token'=>$token, ':ip'=>$ip, ':ipkey'=>client_ip_key($ip), ':hide'=>$hide, ':pwd'=>$pwd, ':uid'=>($uid?$uid:0)]);
 	if(!$sds)return false;
 	$id = $DB->lastInsertId();
 	if(!$review)return ['id'=>$id, 'token'=>$token];

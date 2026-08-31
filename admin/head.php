@@ -6,6 +6,8 @@ if(!in_array($site_theme, ['cloud', 'night', 'neon', 'aurora', 'onefour', 'celad
 }
 $admin_body_class = !empty($islogin) ? 'admin-body' : 'admin-login-body';
 $admin_body_class .= ' admin-theme-' . $site_theme;
+//这三套后台外观是固定侧栏，其余都是顶部导航；顶部导航的响应式规则只给后者用
+if(!in_array($site_theme, ['console', 'dashboard', 'workspace'], true))$admin_body_class .= ' top-nav-admin';
 //子菜单要精确到 set.php 的 mod 参数，checkIfActive 只认文件名区分不了，这里单独判断
 if(!function_exists('admin_sub_active')){
 	function admin_sub_active($file, $mod = null){
@@ -64,6 +66,7 @@ if(!function_exists('admin_sub_active')){
           <li class="<?php echo checkIfActive('order')?>">
             <a href="./order.php"><i class="fa fa-shopping-cart"></i> 订单记录</a>
           </li>
+		      <li class="<?php echo checkIfActive('mail_log')?>"><a href="./mail_log.php"><i class="fa fa-envelope-o"></i> 发信记录</a></li>
 		      <li class="<?php echo checkIfActive('set,set_stor,set_script,set_sponsor,set_violation,set_pay,set_mail')?>">
             <a href="#" class="dropdown-toggle" data-toggle="dropdown"><i class="fa fa-cog"></i> 系统设置<b class="caret"></b></a>
             <ul class="dropdown-menu">

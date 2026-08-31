@@ -152,13 +152,32 @@ case 'pre_upload':
 	if($limit_size > 0 && $size > $limit_size * 1024 * 1024){
 		exit('{"code":-1,"msg":"上传文件大小限制'.$limit_size.'MB"}');
 	}
+	/*
+	 * 频率限制：原来只有"每天多少个"，脚本几秒钟就能刷几百条。
+	 * 这里按分钟卡一道，登录用户按 uid、游客按 ipkey（伪造不了的来源，IPv6 归并到 /64）。
+	 */
+	if(!$replace_row){
+		$per_minute = isset($conf['upload_per_minute']) ? intval($conf['upload_per_minute']) : 10;
+		if($per_minute > 0){
+			$since = date("Y-m-d H:i:s", time() - 60);
+			if($islogin2){
+				$mincount = $DB->getColumn("SELECT count(*) from pre_file WHERE uid=:uid AND addtime>=:t", [':uid'=>intval($uid), ':t'=>$since]);
+			}else{
+				$mincount = $DB->getColumn("SELECT count(*) from pre_file WHERE ipkey=:k AND addtime>=:t", [':k'=>client_ip_key(), ':t'=>$since]);
+			}
+			if(intval($mincount) >= $per_minute){
+				exit('{"code":-1,"msg":"上传太频繁了，请稍后再试"}');
+			}
+		}
+	}
 	$upload_limit = get_effective_upload_count_limit();
 	if(!$replace_row && $upload_limit>0){
 		$thisday = date("Y-m-d 00:00:00");
 		if($islogin2){
 			$ipcount=$DB->getColumn("SELECT count(*) from pre_file WHERE uid='$uid' AND addtime>='".$thisday."'");
 		}else{
-			$ipcount=$DB->getColumn("SELECT count(*) from pre_file WHERE ip='$clientip' AND addtime>='".$thisday."'");
+			//按 ipkey 统计：伪造 X-Forwarded-For 换不掉这个值，IPv6 也不会一人一个额度
+			$ipcount=$DB->getColumn("SELECT count(*) from pre_file WHERE ipkey=:k AND addtime>=:t", [':k'=>client_ip_key(), ':t'=>$thisday]);
 		}
 		if($ipcount >= $upload_limit){
 			exit('{"code":-1,"msg":"你今天上传文件的数量已超过限制"}');

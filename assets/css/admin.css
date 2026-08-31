@@ -114,6 +114,26 @@ body.admin-body>.container>.center-block,body.admin-body>.container-fluid>.cente
 .admin-action-buttons .btn{display:inline-block;width:48px;min-width:48px;margin:0!important;padding:5px 0;line-height:1.25;text-align:center}
 .layui-layer{border-radius:8px!important;overflow:hidden}
 #showimg{display:flex;align-items:center;justify-content:center;background:#0f172a;border-radius:8px;overflow:hidden}
+/* 顶部导航的后台外观：菜单项排满时会换行，而各页面内容区是写死的 padding-top:70px，
+   导航一换成两行，内容就被固定导航压住（页面看着像"塌了"）。
+   ≥1200px 收紧项间距保证一行放得下；1200px 以下直接收成汉堡菜单
+   —— Bootstrap 3 默认 768px 才收，768~1199 这一段在菜单项 7 个时就已经会换行了。 */
+@media (min-width:1200px){
+.top-nav-admin .navbar-default .navbar-nav>li>a{padding-left:11px;padding-right:11px}
+.top-nav-admin .navbar-default .navbar-nav>li>a i{margin-right:4px}
+}
+@media (max-width:1199px){
+.top-nav-admin .navbar-header{float:none}
+.top-nav-admin .navbar-toggle{display:block}
+.top-nav-admin .navbar-collapse{max-height:340px;overflow-y:auto;border-top:1px solid var(--admin-line)}
+.top-nav-admin .navbar-collapse.collapse{display:none!important}
+.top-nav-admin .navbar-collapse.collapse.in{display:block!important}
+.top-nav-admin .navbar-nav{float:none!important;margin:6px -15px}
+.top-nav-admin .navbar-nav>li{float:none}
+.top-nav-admin .navbar-nav>li>a{padding-top:11px;padding-bottom:11px}
+.top-nav-admin .navbar-nav .open .dropdown-menu{position:static;float:none;width:auto;margin-top:0;background:transparent;border:0;box-shadow:none}
+.top-nav-admin .navbar-nav .open .dropdown-menu>li>a{padding:8px 15px 8px 32px}
+}
 @media (max-width:991px){.navbar-default .navbar-nav>li>a{padding-top:14px;padding-bottom:14px}.container[style*="padding-top"]{padding-top:82px!important}#searchToolbar .btn-group{margin-left:0}}
 @media (max-width:767px){body.admin-body{background:#fff}.navbar.navbar-default{min-height:56px}.navbar-default .navbar-brand{height:56px;line-height:28px}.container{width:100%}.panel,.modal-content,.fixed-table-container{border-radius:0;box-shadow:none}#searchToolbar{border-left:0;border-right:0;border-radius:0;box-shadow:none}.form-inline .form-control{width:100%}.form-inline .form-group,#searchToolbar .btn-group,#searchToolbar .btn{width:100%;margin-right:0}.admin-file-name{max-width:210px}.admin-file-thumb{width:58px;height:44px;flex-basis:58px}.admin-file-icon{width:44px;height:44px;flex-basis:44px}.huge{font-size:32px}.stat-panel .fa-5x{font-size:46px}.stat-panel .huge{font-size:30px}.stat-panel>.panel-heading>.row>.col-xs-3{flex-basis:34%;width:34%}.stat-panel>.panel-heading>.row>.col-xs-9{flex-basis:66%;width:66%}}
 

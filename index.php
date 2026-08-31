@@ -111,6 +111,7 @@ if($kw) $layout_base_query .= ($layout_base_query === '' ? '' : '&').'kw='.urlen
 				<button class="btn btn-default btn-raised btn-sm" type="submit"><i class="fa fa-search" aria-hidden="true"></i> 搜索</button>
 			</form>
         </span><?php }?><?php if($layout_key === 'console' || $layout_key === 'workspace'){?><a class="layout-cta" href="./upload.php"><i class="fa fa-plus" aria-hidden="true"></i> <span>上传新文件</span></a><?php }?></h2>
+<?php echo render_permission_bar($DB, 'list');?>
 <?php if($layout_key === 'console'){?>
         <p class="layout-page-sub">管理、预览并分享你上传的所有内容。</p>
         <?php echo layout_render_stats($layout_counts, layout_today_total($DB, $sql_base));?>

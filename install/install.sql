@@ -51,7 +51,8 @@ CREATE TABLE `pre_file` (
   `token` varchar(32) NOT NULL,
   `addtime` datetime NOT NULL,
   `lasttime` datetime DEFAULT NULL,
-  `ip` varchar(15) NOT NULL,
+  `ip` varchar(45) NOT NULL,
+  `ipkey` varchar(45) NOT NULL DEFAULT '' COMMENT '限流维度：IPv4存完整地址，IPv6存/64前缀',
   `hide` int(1) NOT NULL DEFAULT '0',
   `pwd` varchar(255) DEFAULT NULL,
   `block` int(1) NOT NULL DEFAULT '0',
@@ -60,6 +61,7 @@ CREATE TABLE `pre_file` (
    PRIMARY KEY (`id`),
    UNIQUE KEY `token` (`token`),
    KEY `hash` (`hash`),
+   KEY `ipkey` (`ipkey`,`addtime`),
    KEY `uid` (`uid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -147,6 +149,9 @@ CREATE TABLE `pre_mailcode` (
   `ip` varchar(45) DEFAULT NULL,
   `used` tinyint(1) NOT NULL DEFAULT '0' COMMENT '用过就作废，不能重复使用',
   `trycount` int(11) NOT NULL DEFAULT '0' COMMENT '输错次数，超过上限直接作废',
+  `status` tinyint(1) NOT NULL DEFAULT '0' COMMENT '0已发送 1已验证 2发送失败 3已作废',
+  `sender` varchar(20) NOT NULL DEFAULT '' COMMENT '实际发出去的通道',
+  `errmsg` varchar(255) NOT NULL DEFAULT '' COMMENT '发送失败的原因',
   `addtime` datetime NOT NULL,
   `expiretime` datetime NOT NULL,
   PRIMARY KEY (`id`),

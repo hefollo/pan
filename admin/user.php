@@ -97,8 +97,38 @@ if($islogin==1){}else exit("<script language='javascript'>window.location.href='
 <script src="https://s4.zstatic.net/ajax/libs/bootstrap-table/1.21.4/bootstrap-table.min.js"></script>
 <script src="https://s4.zstatic.net/ajax/libs/bootstrap-table/1.21.4/extensions/page-jump-to/bootstrap-table-page-jump-to.min.js"></script>
 <script src="../assets/js/custom.js"></script>
+<style>
+.user-avatar{position:relative;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;margin-right:9px;border-radius:50%;background:#3867f4;color:#fff;font-size:15px;font-weight:700;vertical-align:middle;overflow:hidden;user-select:none}
+.user-avatar img{position:absolute;left:0;top:0;width:100%;height:100%;border-radius:50%;object-fit:cover}
+.user-nick{vertical-align:middle}
+</style>
 <script>
 window.userRows = {};
+
+//昵称等字段是直接拼进 HTML 的，而快捷登录带回来的昵称并没有转义过（login.php 里只 trim），
+//不转义等于后台列表存在存储型 XSS，这里统一处理
+function escapeHtml(str){
+	return String(str == null ? '' : str).replace(/[&<>"']/g, function(c){
+		return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+	});
+}
+
+/*
+ * 头像：邮箱注册的账号没有第三方头像，原来直接输出 <img src=""> 会显示成一个坏图。
+ * 现在底下永远画一个带首字的圆形色块，有头像时图片盖在上面；
+ * 图片加载失败（QQ/微信头像失效也常见）就把 img 去掉，露出下面的字母头像。
+ */
+function userAvatar(row){
+	var colors = ['#3867f4','#16a369','#f07b2f','#9a6ae8','#ef5a55','#0ea5e9','#d69e2e','#14b8a6'];
+	var uid = parseInt(row.uid, 10) || 0;
+	var nick = String(row.nickname == null ? '' : row.nickname).replace(/^\s+/, '');
+	var letter = nick ? nick.charAt(0).toUpperCase() : '?';
+	var html = '<span class="user-avatar" style="background:' + colors[uid % colors.length] + '">' + escapeHtml(letter);
+	if(row.faceimg){
+		html += '<img src="' + escapeHtml(row.faceimg) + '" alt="" onerror="this.parentNode.removeChild(this)">';
+	}
+	return html + '</span>';
+}
 $(document).ready(function(){
 	updateToolbar();
 	const defaultPageSize = 15;
@@ -122,7 +152,7 @@ $(document).ready(function(){
 				field: 'openid',
 				title: '头像&昵称',
 				formatter: function(value, row, index) {
-					return '<img src="'+row.faceimg+'" alt="Avatar" width="40" class="img-circle">'+row.nickname;
+					return userAvatar(row) + '<span class="user-nick">' + escapeHtml(row.nickname) + '</span>';
 				}
 			},
 			{

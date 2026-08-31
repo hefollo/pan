@@ -89,7 +89,9 @@ if(in_array($site_theme, $layout_themes, true)){
         </ul>
         <?php
         //侧栏型外观（数据控制台风/深色工作台风）在侧栏底部补一张今日上传统计卡，对应原型里的存储条
-        if($site_theme === 'console' || $site_theme === 'workspace'){
+        //这三套是固定侧栏布局，底部放得下卡片；上传门户风和配色型外观是顶部导航，
+        //改在文件列表页和上传页顶部显示一条权限条（见 render_permission_bar）
+        if($site_theme === 'console' || $site_theme === 'workspace' || $site_theme === 'dashboard'){
           $side_limit = function_exists('get_effective_upload_count_limit') ? get_effective_upload_count_limit() : 0;
           //统计走会话缓存，pre_file 上没有 ip/addtime 索引，不能每次打开页面都扫一遍
           $side_today = function_exists('layout_today_upload_count') ? layout_today_upload_count($DB) : 0;

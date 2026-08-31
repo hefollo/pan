@@ -41,7 +41,12 @@ if($islogin==1){}else exit("<script language='javascript'>window.location.href='
                 <form onsubmit="return saveSetting(this)" method="post" class="form-horizontal" role="form">
                     <div class="mb-4">
                         <label class="form-label" for="ip_type">用户IP地址获取方式</label>
-                        <select name="ip_type" class="form-select" default="<?php echo $conf['ip_type']?>"><option value="0">0_X_FORWARDED_FOR</option><option value="1">1_X_REAL_IP</option><option value="2">2_REMOTE_ADDR</option></select>
+                        <p class="form-text" style="margin:6px 0 10px;color:#8a94a6;font-size:13px">
+                          站点套了 Cloudflare 的话请选 <b>3_Cloudflare（自动校验来源）</b>：它只在请求确实来自 CF 的 IP 段时才采信 CF 传来的真实 IP，其余情况一律用 TCP 连接的对端地址。
+                          选 0 或 1 时，请求头可以被伪造——脚本每次换一个假 IP 就等于换一个新身份，按 IP 的上传限制会失效。
+                          下面每个选项后面显示的就是当前这次访问用该方式取到的地址，对照着选即可。
+                        </p>
+                        <select name="ip_type" class="form-select" default="<?php echo $conf['ip_type']?>"><option value="0">0_X_FORWARDED_FOR</option><option value="1">1_X_REAL_IP</option><option value="2">2_REMOTE_ADDR</option><option value="3">3_Cloudflare（自动校验来源）</option></select>
                     </div>
                     <div class="mb-4">
                         <button type="submit" class="btn btn-primary">

@@ -127,6 +127,11 @@ body.theme-aurora .upload-link-btn:hover{border-color:#fff;background:rgba(255,2
          <input type="file" id="file" name="myfile[]" @change="selectFile" style="display:none" multiple/>
          
 
+<?php
+//没有侧栏的外观在这里显示权限条，让用户上传前就知道自己今天还能传多少
+include_once SYSTEM_ROOT.'layout_blocks.php';
+echo render_permission_bar($DB, 'upload');
+?>
          <div id="upload_frame">
 <?php if($conf['forcelogin']==1 && !$islogin2){?>
          <button id="uploadFile" class="btn btn-raised btn-primary" style="height:50px;font-size:20px;" onclick="window.location.href='./login.php'"><i class="fa fa-sign-in"></i> 请先登录<div class="ripple-container"></div></button>
