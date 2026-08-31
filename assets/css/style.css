@@ -69,19 +69,26 @@ a:hover,a:focus{color:var(--primary-dark);text-decoration:none}
 .loginform .form-control:focus{border-color:var(--primary);outline:none}
 .loginform .form-control::-webkit-input-placeholder{color:var(--muted)}
 .loginform .form-control::placeholder{color:var(--muted)}
-.loginform .captcha-row{display:flex;align-items:center;gap:10px}
-.loginform .captcha-q{flex:none;padding:0 12px;height:44px;line-height:44px;border:1px solid var(--line);border-radius:10px;background:var(--surface-soft);color:var(--text);font-size:15px;font-weight:750;letter-spacing:1px;white-space:nowrap;user-select:none}
-.loginform .captcha-row .form-control{flex:1;min-width:0}
-.loginform .captcha-refresh{flex:none;color:var(--muted);font-size:15px;text-decoration:none}
-.loginform .captcha-refresh:hover{color:var(--primary)}
+/* 算术题的题面、获取验证码的按钮都收进输入框内部：
+   这样每一行都是同一个等宽的框，左右边缘和其它输入框完全对齐，
+   不会出现"一个固定块在左、一个固定块在右"的锯齿感 */
+.loginform .field-wrap{position:relative}
+.loginform .field-wrap .form-control{width:100%}
+/* 题面最长形如 18 - 17 = ?，按最宽的情况预留左内边距 */
+.loginform .has-prefix .form-control{padding-left:132px}
+.loginform .has-suffix .form-control{padding-right:116px}
+.loginform .field-prefix,.loginform .field-suffix{position:absolute;top:5px;bottom:5px;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:0 12px;border:0;background:transparent;color:var(--text);font-size:14px;font-weight:750;white-space:nowrap;cursor:pointer;box-shadow:none;outline:none}
+.loginform .field-prefix{left:5px;max-width:122px;border-right:1px solid var(--line);border-radius:8px 0 0 8px;letter-spacing:1px}
+.loginform .field-suffix{right:5px;max-width:106px;border-left:1px solid var(--line);border-radius:0 8px 8px 0;color:var(--primary)}
+.loginform .field-prefix i{color:var(--muted);font-size:12px}
+.loginform .field-prefix:hover i,.loginform .field-suffix:hover{opacity:.75}
+.loginform .field-suffix:disabled{color:var(--muted);cursor:not-allowed;opacity:1}
 @media (max-width:400px){
-	/* 很窄的屏上给这两行留出余量：题面和按钮都不换行，输入框自己缩 */
-	.loginform .captcha-q{padding:0 9px;font-size:14px}
-	.loginform .code-row .btn,.loginform .captcha-row .form-control{min-width:0}
+	.loginform .has-prefix .form-control{padding-left:116px}
+	.loginform .has-suffix .form-control{padding-right:104px}
+	.loginform .field-prefix{max-width:106px;padding:0 9px;font-size:13px}
+	.loginform .field-suffix{max-width:96px;padding:0 9px;font-size:13px}
 }
-.loginform .code-row{display:flex;gap:10px}
-.loginform .code-row .form-control{flex:1;min-width:0}
-.loginform .code-row .btn{flex:none;height:44px;padding:0 14px;border-radius:10px;white-space:nowrap}
 .loginform .loginsubmit{height:44px;margin-top:4px;border-radius:10px;font-size:15px;font-weight:700}
 @media (max-width:767px){.loginpanel{margin-top:4vh}}
 .upload-pwd{width:100%;max-width:300px;margin-left:auto;margin-right:auto}

@@ -279,15 +279,14 @@ $show_reg = is_mail_reg_open();
                 <form class="loginform" onsubmit="return doRegister()">
                     <div class="form-group"><input type="email" id="reg_email" class="form-control" placeholder="邮箱地址" autocomplete="username" required/></div>
 <?php if($captcha_question !== ''){?>
-                    <div class="form-group captcha-row">
-                        <span class="captcha-q" id="captchaQ"><?php echo htmlspecialchars($captcha_question, ENT_QUOTES, 'UTF-8')?></span>
+                    <div class="form-group field-wrap has-prefix">
+                        <button type="button" class="field-prefix" onclick="refreshCaptcha()" title="点一下换一题"><span id="captchaQ"><?php echo htmlspecialchars($captcha_question, ENT_QUOTES, 'UTF-8')?></span><i class="fa fa-refresh" aria-hidden="true"></i></button>
                         <input type="text" id="reg_captcha" class="form-control" placeholder="答案" inputmode="numeric" maxlength="3" autocomplete="off" required/>
-                        <a href="javascript:void(0)" class="captcha-refresh" onclick="refreshCaptcha()" title="换一题"><i class="fa fa-refresh"></i></a>
                     </div>
 <?php }?>
-                    <div class="form-group code-row">
+                    <div class="form-group field-wrap has-suffix">
                         <input type="text" id="reg_code" class="form-control" placeholder="邮箱验证码" inputmode="numeric" maxlength="6" autocomplete="off" required/>
-                        <button type="button" class="btn btn-default" id="sendCodeBtn" onclick="sendCode()">获取验证码</button>
+                        <button type="button" class="field-suffix" id="sendCodeBtn" onclick="sendCode()">获取验证码</button>
                     </div>
                     <div class="form-group"><input type="password" id="reg_pwd" class="form-control" placeholder="设置密码（6-32 位，含字母和数字）" autocomplete="new-password" required/></div>
                     <div class="form-group"><input type="text" id="reg_nick" class="form-control" placeholder="昵称（选填，默认用邮箱前缀）" maxlength="20" autocomplete="off"/></div>
