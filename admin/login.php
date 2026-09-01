@@ -47,7 +47,9 @@ if(isset($_POST['user']) && isset($_POST['pass'])){
 		$expiretime=time()+2592000;
 		$token=authcode("{$user}\t{$session}\t{$expiretime}", 'ENCODE', SYS_KEY);
 		ob_clean();
-		setcookie("admin_token", $token, time() + 2592000);
+		//$sitepath 就是浏览器原本给这个 cookie 算出来的默认 path（/admin 或 /子目录/admin），
+		//显式传进去既不改变作用域，又能带上 HttpOnly/Secure/SameSite
+		set_auth_cookie("admin_token", $token, time() + 2592000, $sitepath);
 		@header('Content-Type: text/html; charset=UTF-8');
 		exit("<script language='javascript'>alert('登录管理中心成功！');window.location.href='./';</script>");
 	}else {
@@ -57,7 +59,7 @@ if(isset($_POST['user']) && isset($_POST['pass'])){
 		exit("<script language='javascript'>alert('用户名或密码不正确！');history.go(-1);</script>");
 	}
 }elseif(isset($_GET['logout'])){
-	setcookie("admin_token", "", time() - 2592000);
+	set_auth_cookie("admin_token", "", time() - 2592000, $sitepath);
 	@header('Content-Type: text/html; charset=UTF-8');
 	exit("<script language='javascript'>alert('您已成功注销本次登录！');window.location.href='./login.php';</script>");
 }elseif($islogin==1){

@@ -110,12 +110,14 @@ switch($act){
 case 'pre_upload':
 	if(!$_POST['csrf_token'] || $_POST['csrf_token']!=$_SESSION['csrf_token'])exit('{"code":-1,"msg":"CSRF TOKEN ERROR"}');
 	if($conf['forcelogin']==1 && !$islogin2)exit('{"code":-1,"msg":"请先登录"}');
-	$name = trim(htmlspecialchars($_POST['name']));
+	//必须显式传 ENT_QUOTES：PHP 8.1 以下 htmlspecialchars 默认不转义单引号，
+	//文件名后面会被拼进播放器的 JS 字符串里，漏掉单引号就是一个存储型 XSS
+	$name = trim(htmlspecialchars($_POST['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'));
 	$hash = trim($_POST['hash']);
 	$size = intval($_POST['size']);
 	$hide = $_POST['show']==1?0:1;
 	$ispwd = intval($_POST['ispwd']);
-	$pwd = $ispwd==1?trim(htmlspecialchars($_POST['pwd'])):null;
+	$pwd = $ispwd==1?trim(htmlspecialchars($_POST['pwd'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')):null;
 	$name = str_replace(['/','\\',':','*','"','<','>','|','?'],'',$name);
 	if(empty($name))exit('{"code":-1,"msg":"文件名不能为空"}');
 	if(!preg_match('/^[0-9a-z]{32}$/i', $hash))exit('{"code":-1,"msg":"hash error"}');

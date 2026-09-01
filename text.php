@@ -17,7 +17,7 @@ if(!is_editable_file_type($row['type']))exit('This file type cannot be viewed as
 //整个文件会读进内存，太大的直接拒绝，避免把内存打满
 if(intval($row['size']) > get_editable_file_max_size())exit('File is too large to view as text.');
 
-if($row['pwd']!=null && $row['pwd']!=$pwd){ ?>
+if(!check_file_pwd($row, $pwd)){ ?>
 	<meta http-equiv="content-type" content="text/html;charset=utf-8"/>
 	<title>请输入密码查看文件</title>
 	<script type="text/javascript">

@@ -5,7 +5,7 @@ $title = '文件查看 - '.$conf['title'];
 $is_file=true;
 include SYSTEM_ROOT.'header.php';
 
-$csrf_token = md5(mt_rand(0,999).time());
+$csrf_token = bin2hex(random_bytes(16));
 $_SESSION['csrf_token'] = $csrf_token;
 
 $hash = isset($_GET['hash'])?$_GET['hash']:exit("<script language='javascript'>window.location.href='./';</script>");
@@ -18,6 +18,10 @@ $type = $row['type'];
 $downurl = 'down.php/'.$row['token'].'.'.$type;
 if(!empty($row['pwd']))$downurl .= '&'.$row['pwd'];
 $viewurl = 'view.php/'.$row['token'].'.'.$type;
+//view.php 现在会校验密码了，预览地址和下载地址一样要把密码带上
+if(!empty($row['pwd']))$viewurl .= '&'.$row['pwd'];
+$playerurl = 'player.php?hash='.$row['token'];
+if(!empty($row['pwd']))$playerurl .= '&pwd='.rawurlencode($row['pwd']);
 $texturl = 'text.php?hash='.$row['token'];
 if(!empty($pwd))$texturl .= '&pwd='.rawurlencode($pwd);
 
@@ -47,7 +51,7 @@ if($view_type == 'image'){
   $filetype = 2;
   $title = '<i class="fa fa-music"></i> 音乐播放器';
   $htmlcode = htmlspecialchars('<audio id="bgmMusic" src="'.$viewurl_all.'" autoplay="autoplay" loop="loop" preload="auto"></audio>');
-  $htmlcode2 = htmlspecialchars('<iframe src="'.$siteurl.'player.php?hash='.$hash.'" width="407" scrolling="no"frameborder="0"height="70"></iframe>');
+  $htmlcode2 = htmlspecialchars('<iframe src="'.$siteurl.$playerurl.'" width="407" scrolling="no"frameborder="0"height="70"></iframe>');
   $ubbcode = '[audio=X]'.$viewurl_all.'[/audio]';
   $linktitle = '音乐链接';
 }elseif($view_type == 'video'){
@@ -55,7 +59,7 @@ if($view_type == 'image'){
   $title = '<i class="fa fa-video-camera"></i> 视频播放器';
   $htmlcode = htmlspecialchars('<video id="movies" src="'.$viewurl_all.'" autobuffer="true" controls="" width="100
   %"></video>');
-  $htmlcode2 = htmlspecialchars('<iframe src="'.$siteurl.'player.php?hash='.$hash.'" width="800" height="500" scrolling="no" frameborder="0"></iframe>');
+  $htmlcode2 = htmlspecialchars('<iframe src="'.$siteurl.$playerurl.'" width="800" height="500" scrolling="no" frameborder="0"></iframe>');
   $ubbcode = '[movie=320*180]'.$viewurl_all.'[/movie]';
   $linktitle = '视频链接';
 }else{
@@ -71,7 +75,7 @@ if($view_type == 'image'){
 <div class="container">
     <div class="row">
 <?php
-if($row['pwd']!=null && $row['pwd']!=$pwd){ ?>
+if(!check_file_pwd($row, $pwd)){ ?>
   <meta http-equiv="content-type" content="text/html;charset=utf-8"/>
   <title>请输入密码下载文件</title>
   <script type="text/javascript">
@@ -95,7 +99,9 @@ if($row['pwd']!=null && $row['pwd']!=$pwd){ ?>
 <div class="panel-body" align="center">
 <?php
 if($filetype==1){
-  echo '<div class="image_view"><a href="'.$viewurl.'" title="点击查看原图"><img alt="loading" src="'.$viewurl.'" class="image"></a></div>';
+  //带密码的地址里有 '&'，写进属性必须转义，否则像 &copy / &reg 这种会被当成实体解析，图片直接加载不出来
+  $viewurl_attr = htmlspecialchars($viewurl, ENT_QUOTES, 'UTF-8');
+  echo '<div class="image_view"><a href="'.$viewurl_attr.'" title="点击查看原图"><img alt="loading" src="'.$viewurl_attr.'" class="image"></a></div>';
 }elseif($filetype==2){
   echo '<div class="view"><div id="aplayer"></div></div>';
 }elseif($filetype==3 && $row['block']==0){
@@ -268,7 +274,7 @@ var ap = new APlayer({
   loop: 'none',
   theme: '#b2dae6',
   audio: [{
-      title: '<?php echo $name?>',
+      title: <?php echo json_encode($name, JSON_UNESCAPED_UNICODE|JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT) ?: '""'?>,
       author: 'none',
       url: '<?php echo $viewurl_all?>',
       cover: './assets/img/music.png',

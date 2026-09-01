@@ -4,7 +4,7 @@ include("./includes/common.php");
 $title = '在线编辑 - '.$conf['title'];
 $is_file = true;
 
-$csrf_token = md5(mt_rand(0,999).time());
+$csrf_token = bin2hex(random_bytes(16));
 $_SESSION['csrf_token'] = $csrf_token;
 
 $id = isset($_GET['id']) ? intval($_GET['id']) : 0;

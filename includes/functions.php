@@ -547,7 +547,7 @@ function user_login_session($uid, $row){
 	}
 	$expiretime = time() + 2592000;
 	$token = authcode("{$uid}\t".user_session_hash($row)."\t{$expiretime}", 'ENCODE', SYS_KEY);
-	setcookie("user_token", $token, $expiretime, '/');
+	set_auth_cookie("user_token", $token, $expiretime, '/');
 	unset($_SESSION['user_block']);
 	return true;
 }
@@ -1458,6 +1458,15 @@ function type_to_icon($type){
 	}
 }
 
+/*
+ * 浏览器会当成"可执行文档"解析的类型：SVG 内部允许写 <script>，HTML/XHTML/XML 更不用说。
+ * 这些内容只要以 inline 的形式挂在本站域名下，就是一个现成的存储型 XSS，
+ * 所以无论后台把它们配成什么，file_output() 都只按附件下载处理。
+ */
+function is_scriptable_file_type($type){
+	return in_array(strtolower(trim((string)$type)), ['svg','svgz','html','htm','xhtml','xht','shtml','xml','mhtml','mht','swf'], true);
+}
+
 function is_view($type){
 	global $conf;
 	$type_image = explode('|',$conf['type_image']);
@@ -1550,6 +1559,40 @@ function can_manage_file($row){
 		return intval($row['uid']) === intval($uid);
 	}
 	return isset($_SESSION['fileids']) && in_array($row['id'], $_SESSION['fileids']) && strtotime($row['addtime']) > strtotime("-7 days");
+}
+
+/*
+ * 文件访问密码校验。所有对外输出文件内容的入口都必须走这里，别再各写各的。
+ *
+ * 一定要用 hash_equals 做二进制比较：'=='/'!=' 会把两个纯数字串按数值比，
+ * 密码允许字母数字，'0e12345' 这种是合法的科学计数法数字串，输 '0' 就能对上。
+ */
+function check_file_pwd($row, $pwd){
+	if(!is_array($row))return false;
+	if(!isset($row['pwd']) || $row['pwd'] === null || $row['pwd'] === '')return true;
+	return hash_equals((string)$row['pwd'], (string)$pwd);
+}
+
+/*
+ * 签发/清除登录态 Cookie。
+ *
+ * HttpOnly 必须开：admin_token / user_token 有效期 30 天，被 JS 读到就等于账号被永久接管，
+ * 站内任何一处 XSS 都会直接升级成后台失陷。SameSite=Lax 再挡一道跨站携带。
+ * setcookie 的数组写法要 PHP 7.3+，本程序最低支持 7.1，低版本走 path 拼接的兼容写法。
+ */
+function set_auth_cookie($name, $value, $expire, $path = '/'){
+	$secure = is_https();
+	if(PHP_VERSION_ID >= 70300){
+		return setcookie($name, $value, [
+			'expires'  => $expire,
+			'path'     => $path,
+			'httponly' => true,
+			'secure'   => $secure,
+			'samesite' => 'Lax',
+		]);
+	}
+	//7.3 以下没有 samesite 参数，只能把它拼在 path 后面，浏览器照样能识别
+	return setcookie($name, $value, $expire, $path.'; samesite=Lax', '', $secure, true);
 }
 
 function storage_content_to_string($content){
@@ -2034,6 +2077,12 @@ function file_output($hash, $type, $size, $name, $is_view = false, $is_admin = f
 	}
 
 	$filename = '"'.$name.'"; filename*=utf-8\'\''.rawurlencode($name);
+
+	//不给浏览器猜类型的机会：猜错一次就是本站域名下的存储型 XSS
+	header("X-Content-Type-Options: nosniff");
+	//SVG 里可以写 <script>，HTML/XML 同理。这类内容一律不能带 inline 送出去，
+	//哪怕后台把 svg 加进了"可预览类型"，也只能当附件下载
+	if($is_view && is_scriptable_file_type($type))$is_view = false;
 
 	if(\lib\StorHelper::is_cloud() && $conf['downfile_type'] == 1){
 		$redirect = $stor->getDownUrl($hash, $name, $is_view ? minetype($type) : null);

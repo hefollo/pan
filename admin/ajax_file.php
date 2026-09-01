@@ -130,11 +130,12 @@ case 'getFileInfo':
 break;
 case 'saveFileInfo':
 	$id = intval($_POST['id']);
-	$name = trim(htmlspecialchars($_POST['name']));
-	$type = trim(htmlspecialchars($_POST['type']));
+	//和前台上传一致：显式带 ENT_QUOTES，PHP 8.1 以下默认不转义单引号
+	$name = trim(htmlspecialchars($_POST['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'));
+	$type = trim(htmlspecialchars($_POST['type'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'));
 	$hide = intval($_POST['hide']);
 	$ispwd = intval($_POST['ispwd']);
-	$pwd = $ispwd==1?trim(htmlspecialchars($_POST['pwd'])):null;
+	$pwd = $ispwd==1?trim(htmlspecialchars($_POST['pwd'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')):null;
 	if(empty($name))exit('{"code":-1,"msg":"文件名称不能为空"}');
 	if($ispwd==1 && !empty($pwd)){
         if (!preg_match('/^[a-zA-Z0-9]+$/', $pwd)) {

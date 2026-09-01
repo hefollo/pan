@@ -9,7 +9,21 @@ define('DB_VERSION', '1018');
 date_default_timezone_set('Asia/Shanghai');
 $date = date("Y-m-d H:i:s");
 
-if(!$nosession)session_start();
+if(!$nosession){
+	//会话 cookie 也必须 HttpOnly：PHPSESSID 被 JS 读走同样等于会话被劫持。
+	//这里在 functions.php 之前执行，用不了 is_https()，就地判断一次协议
+	$secure_cookie = (isset($_SERVER['HTTPS']) && (strtolower($_SERVER['HTTPS']) == 'on' || $_SERVER['HTTPS'] == '1'))
+		|| (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443)
+		|| (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https')
+		|| (isset($_SERVER['REQUEST_SCHEME']) && $_SERVER['REQUEST_SCHEME'] == 'https');
+	if(PHP_VERSION_ID >= 70300){
+		@session_set_cookie_params(['lifetime'=>0, 'path'=>'/', 'httponly'=>true, 'secure'=>$secure_cookie, 'samesite'=>'Lax']);
+	}else{
+		//7.3 以下没有 samesite 参数，拼在 path 后面浏览器一样认
+		@session_set_cookie_params(0, '/; samesite=Lax', '', $secure_cookie, true);
+	}
+	session_start();
+}
 
 include_once(SYSTEM_ROOT.'txprotect.php');
 include_once(SYSTEM_ROOT."autoloader.php");

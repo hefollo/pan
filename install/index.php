@@ -97,7 +97,7 @@ if($step==3){
             $DB->exec("set names utf8");
             $sqls=file_get_contents('install.sql');
             $sqls=explode(';', $sqls);
-            $sqls[]="INSERT INTO `pre_config` VALUES ('syskey', '".random(32)."')";
+            $sqls[]="INSERT INTO `pre_config` VALUES ('syskey', '".bin2hex(random_bytes(16))."')";
             $sqls[]="INSERT INTO `pre_config` VALUES ('build', '".date("Y-m-d")."')";
             //install.sql 里的默认密码是 123456，装完就是公开的弱口令，这里改成随机密码并在完成页展示一次
             $admin_pwd = bin2hex(random_bytes(6));

@@ -8,7 +8,7 @@ if(!$conf['userlogin']){
 if(isset($_GET['logout'])){
 	if(!checkRefererHost())exit();
 	unset($_SESSION['user_block']);
-	setcookie("user_token", "", time() - 1, '/');
+	set_auth_cookie("user_token", "", time() - 1, '/');
 	@header('Content-Type: text/html; charset=UTF-8');
 	exit("<script language='javascript'>alert('您已成功注销本次登录！');window.location.href='./login.php';</script>");
 }elseif($islogin2==1){

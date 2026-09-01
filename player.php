@@ -2,12 +2,17 @@
 include("./includes/common.php");
 
 $hash = isset($_GET['hash'])?trim($_GET['hash']):exit();
+$pwd = isset($_GET['pwd'])?trim($_GET['pwd']):null;
 $row = $DB->getRow("SELECT * FROM pre_file WHERE token=:token", [':token'=>$hash]);
 if(!$row)exit('404 Not Found');
 if($row['block']!=0)exit('File is blocked!');
+//加密文件同样要过密码这一关：本页原来完全不校验，等于绕过 file.php 的密码框
+if(!check_file_pwd($row, $pwd))exit('请输入正确的访问密码');
 $name = $row['name'];
 $type = $row['type'];
 $viewurl_all = $siteurl.'view.php/'.$row['token'].'.'.$type;
+//view.php 现在会校验密码，播放地址要把密码带上，否则加密文件的播放器拉不到内容
+if(!empty($row['pwd']))$viewurl_all .= '&'.$row['pwd'];
 
 $view_type = get_view_type($type);
 
@@ -55,7 +60,7 @@ var ap = new APlayer({
   loop: 'none',
   theme: '#b2dae6',
   audio: [{
-      title: '<?php echo $name?>',
+      title: <?php echo json_encode($name, JSON_UNESCAPED_UNICODE|JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT) ?: '""'?>,
       author: 'none',
       url: '<?php echo $viewurl_all?>',
       cover: './assets/img/music.png',

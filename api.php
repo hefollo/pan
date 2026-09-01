@@ -23,6 +23,7 @@ function showresult($arr, $format='json'){
 			$backurl = htmlspecialchars($backurl, ENT_QUOTES, 'UTF-8');
 			$safe_downurl = htmlspecialchars((string)$arr['downurl'], ENT_QUOTES, 'UTF-8');
 			$safe_type = htmlspecialchars((string)$arr['type'], ENT_QUOTES, 'UTF-8');
+			$safe_name = htmlspecialchars((string)$arr['name'], ENT_QUOTES, 'UTF-8');
 echo '<html>
 <head>
 <meta http-equiv="content-type" content="text/html;charset=utf-8"/>
@@ -33,7 +34,7 @@ echo '<html>
 <form action="'.$backurl.'" method="post">
 <input name="file" type="hidden" value="'.$safe_downurl.'" />
 <input name="type" type="hidden" value="'.$safe_type.'" />
-<input name="name" type="hidden" value="'.$arr['name'].'" />
+<input name="name" type="hidden" value="'.$safe_name.'" />
 <input name="submit" type="submit" value="下一步" />
 </form>
 </body></html>';
@@ -62,11 +63,12 @@ if($conf['forcelogin']==1 && !$islogin2)showresult(['code'=>-1, 'msg'=>'请先�
 if(!isset($_FILES['file']))showresult(['code'=>-1, 'msg'=>'请选择文件']);
 if($_FILES['file']['error'] !== UPLOAD_ERR_OK)showresult(['code'=>-1, 'msg'=>'文件上传失败，可能超出服务器限制', 'error'=>'upload']);
 if(!is_uploaded_file($_FILES['file']['tmp_name']))showresult(['code'=>-1, 'msg'=>'非法的上传请求']);
-$name=trim(htmlspecialchars($_FILES['file']['name']));
+//ENT_QUOTES 不能省：PHP 8.1 以下默认不转义单引号，文件名会被拼进播放器的 JS 字符串
+$name=trim(htmlspecialchars($_FILES['file']['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'));
 $size=intval($_FILES['file']['size']);
 $hide = $_POST['show']==1?0:1;
 $ispwd = intval($_POST['ispwd']);
-$pwd = $ispwd==1?trim(htmlspecialchars($_POST['pwd'])):null;
+$pwd = $ispwd==1?trim(htmlspecialchars($_POST['pwd'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')):null;
 $name = str_replace(['/','\\',':','*','"','<','>','|','?'],'',$name);
 if(empty($name))showresult(['code'=>-1, 'msg'=>'文件名不能为空']);
 if($ispwd==1 && !empty($pwd)){
@@ -114,7 +116,11 @@ if($row){
 	$downurl = $siteurl.'down.php/'.$record['token'].'.'.$ext;
 	if(!empty($pwd))$downurl .= '&'.$pwd;
 	$result = ['code'=>0, 'msg'=>'本站已存在该文件', 'exists'=>1, 'hash'=>$hash, 'token'=>$record['token'], 'name'=>$name, 'size'=>$size, 'type'=>$ext, 'id'=>$record['id'], 'downurl'=>$downurl];
-	if(is_view($ext))$result['viewurl'] = $siteurl.'view.php/'.$record['token'].'.'.$ext;
+	//view.php 现在会校验密码，预览地址要跟下载地址一样把密码带上
+	if(is_view($ext)){
+		$result['viewurl'] = $siteurl.'view.php/'.$record['token'].'.'.$ext;
+		if(!empty($pwd))$result['viewurl'] .= '&'.$pwd;
+	}
 	showresult($result);
 }
 $result = $stor->upload($hash, $_FILES['file']['tmp_name'], minetype($ext));
@@ -128,5 +134,8 @@ $token = $record['token'];
 $downurl = $siteurl.'down.php/'.$token.'.'.$ext;
 if(!empty($pwd))$downurl .= '&'.$pwd;
 $result = ['code'=>0, 'msg'=>'文件上传成功！', 'exists'=>0, 'hash'=>$hash, 'token'=>$token, 'name'=>$name, 'size'=>$size, 'type'=>$ext, 'id'=>$id, 'downurl'=>$downurl];
-if(is_view($ext))$result['viewurl'] = $siteurl.'view.php/'.$token.'.'.$ext;
+if(is_view($ext)){
+	$result['viewurl'] = $siteurl.'view.php/'.$token.'.'.$ext;
+	if(!empty($pwd))$result['viewurl'] .= '&'.$pwd;
+}
 showresult($result);

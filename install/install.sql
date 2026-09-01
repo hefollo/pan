@@ -28,7 +28,7 @@ INSERT INTO `pre_config` VALUES ('aliyun_ak', '');
 INSERT INTO `pre_config` VALUES ('aliyun_sk', '');
 INSERT INTO `pre_config` VALUES ('name_block', '');
 INSERT INTO `pre_config` VALUES ('type_block', '');
-INSERT INTO `pre_config` VALUES ('type_image', 'png|jpg|jpeg|gif|bmp|webp|ico|svg|svgz|tif|tiff|heic|exif');
+INSERT INTO `pre_config` VALUES ('type_image', 'png|jpg|jpeg|gif|bmp|webp|ico|tif|tiff|heic|exif');
 INSERT INTO `pre_config` VALUES ('type_audio', 'mp3|wav|ogg|m4a|flac|aac');
 INSERT INTO `pre_config` VALUES ('type_video', 'mp4|webm|flv|f4v|mov|3gp|3gpp|avi|mpg|mpeg|wmv|mkv|ts|dat|asf|mts|m2ts|m3u8|m4v');
 INSERT INTO `pre_config` VALUES ('green_check', '0');

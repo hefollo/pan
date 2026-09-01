@@ -4,7 +4,7 @@ include("./includes/common.php");
 $title = '上传文件 - '.$conf['title'];
 include SYSTEM_ROOT.'header.php';
 
-$csrf_token = md5(mt_rand(0,999).time());
+$csrf_token = bin2hex(random_bytes(16));
 $_SESSION['csrf_token'] = $csrf_token;
 //打赏码跟 file.php 用同一套后台配置，后台关掉或改图这里同步生效
 $file_reward_enable = isset($conf['file_reward_enable']) ? ((int)$conf['file_reward_enable'] === 1) : true;

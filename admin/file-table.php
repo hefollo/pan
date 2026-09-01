@@ -30,20 +30,26 @@ if (isset($_GET['dstatus']) && $_GET['dstatus']>0) {
 
 if(isset($_GET['kw']) && !empty($_GET['kw'])) {
 	$type = intval($_GET['type']);
-	$kw = trim(daddslashes($_GET['kw']));
-	if($type == 1){
-		$sql=" `name` LIKE '%{$kw}%'";
-	}elseif($type == 2){
+	//搜索词分两种用途：入SQL的转义版和回显/进URL的原始版，混用就是漏洞。
+	//原来 $kw 只过了 addslashes（那是给 SQL 用的）却直接回显，
+	//给管理员发一条带 kw=<script> 的链接就能在后台上下文执行脚本
+	$kw_raw = trim((string)$_GET['kw']);
+	$kw = daddslashes($kw_raw);
+	if($type == 2){
 		$sql=" `hash`='{$kw}'";
 	}elseif($type == 3){
 		$sql=" `type`='{$kw}'";
 	}elseif($type == 4){
 		$sql=" `ip`='{$kw}'";
+	}else{
+		//type 不在 1~4 时原来 $sql 是未定义的，拼出来的 SQL 会直接报错让整页崩掉
+		$type = 1;
+		$sql=" `name` LIKE '%{$kw}%'";
 	}
 	$sql.=$sqls;
 	$numrows=$DB->getColumn("SELECT count(*) from pre_file WHERE{$sql}");
-	$con='包含 '.$kw.' 的共有 <b>'.$numrows.'</b> 个记录';
-	$link='&type='.$type.'&kw='.$kw.$links;
+	$con='包含 '.htmlspecialchars($kw_raw, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8').' 的共有 <b>'.$numrows.'</b> 个记录';
+	$link='&type='.$type.'&kw='.urlencode($kw_raw).$links;
 }else{
 	$sql=" 1".$sqls;
 	$numrows=$DB->getColumn("SELECT count(*) from pre_file WHERE{$sql}");

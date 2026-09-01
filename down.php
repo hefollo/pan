@@ -3,7 +3,9 @@ $nosession=true;
 $nosecu=true;
 include("./includes/common.php");
 
-$urlarr=explode('/',$_SERVER['PATH_INFO']);
+$url = '';
+$pwd = null;
+$urlarr=explode('/',isset($_SERVER['PATH_INFO'])?$_SERVER['PATH_INFO']:'');
 if (($length = count($urlarr)) > 1) {
 $url = $urlarr[$length-1];
 }
@@ -23,14 +25,14 @@ $row = $DB->getRow("SELECT * FROM `pre_file` WHERE `token`=:token limit 1", [':t
 if(!$row)exit('404 Not Found');
 if($row['block']>=1)exit('File is blocked!');
 
-if($row['pwd']!=null && $row['pwd']!=$pwd){ ?>
+if(!check_file_pwd($row, $pwd)){ ?>
     <meta http-equiv="content-type" content="text/html;charset=utf-8"/>
     <title>请输入密码下载文件</title>
     <script type="text/javascript">
     var pwd=prompt("请输入密码","")
     if (pwd!=null && pwd!="")
     {
-        window.location.href='<?php echo $siteurl.'down.php/'.$token?>&'+pwd
+        window.location.href='<?php echo $siteurl.'down.php/'.$row['token']?>&'+encodeURIComponent(pwd)
     }
     </script>
     请刷新页面，或[ <a href="javascript:history.back();">返回上一页</a> ]
