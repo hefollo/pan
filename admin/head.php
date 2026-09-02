@@ -4,10 +4,13 @@ $site_theme = isset($conf['site_theme']) ? $conf['site_theme'] : default_site_th
 if(!in_array($site_theme, site_theme_keys(), true)){
   $site_theme = default_site_theme();
 }
+//这三套是固定侧栏外观，竖着排菜单，能多放一级项
+$is_sidebar_admin = in_array($site_theme, ['console', 'dashboard', 'workspace'], true);
+$green_log_top = !empty($conf['green_check']) && $is_sidebar_admin;
 $admin_body_class = !empty($islogin) ? 'admin-body' : 'admin-login-body';
 $admin_body_class .= ' admin-theme-' . $site_theme;
 //这三套后台外观是固定侧栏，其余都是顶部导航；顶部导航的响应式规则只给后者用
-if(!in_array($site_theme, ['console', 'dashboard', 'workspace'], true))$admin_body_class .= ' top-nav-admin';
+if(!$is_sidebar_admin)$admin_body_class .= ' top-nav-admin';
 //子菜单要精确到 set.php 的 mod 参数，checkIfActive 只认文件名区分不了，这里单独判断
 if(!function_exists('admin_sub_active')){
 	function admin_sub_active($file, $mod = null){
@@ -67,7 +70,18 @@ if(!function_exists('admin_sub_active')){
             <a href="./order.php"><i class="fa fa-shopping-cart"></i> 订单记录</a>
           </li>
 		      <li class="<?php echo checkIfActive('mail_log')?>"><a href="./mail_log.php"><i class="fa fa-envelope-o"></i> 发信记录</a></li>
-		      <li class="<?php echo checkIfActive('set,set_stor,set_script,set_sponsor,set_violation,set_pay,set_mail')?>">
+<?php
+/*
+ * 图片检测记录的位置分两种：
+ *   侧栏外观（控制台/数据控制台/深色工作台）竖着排，空间管够，直接放一级菜单，紧跟发信记录；
+ *   顶部导航的外观只能横着排，加上这个就是第 9 个一级项，实测整条导航会换成两行、
+ *   把页面内容压到固定导航底下看不见，所以那几套收进下面的「系统设置」里。
+ * 检测没开的话两处都不显示。
+ */
+if($green_log_top){?>
+		      <li class="<?php echo checkIfActive('green_log')?>"><a href="./green_log.php"><i class="fa fa-shield"></i> 图片检测记录</a></li>
+<?php }?>
+		      <li class="<?php echo checkIfActive('set,set_stor,set_script,set_sponsor,set_violation,set_pay,set_mail,green_log')?>">
             <a href="#" class="dropdown-toggle" data-toggle="dropdown"><i class="fa fa-cog"></i> 系统设置<b class="caret"></b></a>
             <ul class="dropdown-menu">
               <li class="<?php echo admin_sub_active('set.php','site')?>"><a href="./set.php?mod=site">网站信息设置</a></li>
@@ -78,6 +92,10 @@ if(!function_exists('admin_sub_active')){
               <li class="<?php echo admin_sub_active('set_stor.php')?>"><a href="./set_stor.php">存储类型设置</a></li>
 			        <li class="<?php echo admin_sub_active('set.php','file')?>"><a href="./set.php?mod=file">文件上传设置</a></li>
 			        <li class="<?php echo admin_sub_active('set.php','green')?>"><a href="./set.php?mod=green">图片检测设置</a></li>
+<?php //顶部导航的外观放不下一级菜单，收在这儿（侧栏外观已经放到上面去了）
+if(!empty($conf['green_check']) && !$green_log_top){?>
+			        <li class="<?php echo admin_sub_active('green_log.php')?>"><a href="./green_log.php">图片检测记录</a></li>
+<?php }?>
               <li class="<?php echo admin_sub_active('set.php','api')?>"><a href="./set.php?mod=api">上传API设置</a></li>
               <li class="<?php echo admin_sub_active('set.php','iptype')?>"><a href="./set.php?mod=iptype">用户IP地址设置</a></li>
               <li class="<?php echo admin_sub_active('set.php','account')?>"><a href="./set.php?mod=account">管理账号设置</a></li>

@@ -590,7 +590,8 @@ $(document).ready(function(){
   <form onsubmit="return saveSetting(this)" method="post" class="form-horizontal" role="form">
     <div class="form-group">
 	  <label class="col-sm-3 control-label">图片违规检测</label>
-	  <div class="col-sm-9"><select class="form-control" name="green_check" default="<?php echo $conf['green_check']?>"><option value="0">关闭</option><option value="1">阿里云内容安全接口</option><option value="2">腾讯云内容安全接口</option></select></div>
+	  <div class="col-sm-9"><select class="form-control" name="green_check" default="<?php echo $conf['green_check']?>"><option value="0">关闭</option><option value="1">阿里云内容安全接口</option><option value="2">腾讯云内容安全接口</option><option value="3">自建检测服务（本机模型）</option></select>
+	  <p class="help-block">自建检测不产生调用费，图片也不出服务器，但要在服务器上另跑一个 Python 服务，部署说明见 <b>tools/nsfw/README.md</b>。</p></div>
 	</div><br/>
 	<div id="green_aliyun" style="<?php echo $conf['green_check']!='1'?'display:none;':null; ?>">
 	<div class="form-group">
@@ -640,6 +641,33 @@ $(document).ready(function(){
 	  </div>
 	</div><br/>
 	</div>
+	<div id="green_self" style="<?php echo $conf['green_check']!='3'?'display:none;':null; ?>">
+	<div class="form-group">
+	  <label class="col-sm-3 control-label">检测服务地址</label>
+	  <div class="col-sm-9"><input type="text" name="green_self_api" value="<?php echo htmlspecialchars(isset($conf['green_self_api'])?$conf['green_self_api']:'', ENT_QUOTES, 'UTF-8'); ?>" class="form-control" placeholder="http://127.0.0.1:9012/check"/>
+	  <p class="help-block">留空就用默认的 <b>http://127.0.0.1:9012/check</b>。服务只监听本机回环地址，不要暴露到公网。</p></div>
+	</div><br/>
+	<div class="form-group">
+	  <label class="col-sm-3 control-label">访问令牌</label>
+	  <div class="col-sm-9"><input type="text" name="green_self_token" value="<?php echo htmlspecialchars(isset($conf['green_self_token'])?$conf['green_self_token']:'', ENT_QUOTES, 'UTF-8'); ?>" class="form-control" placeholder="选填，与 config.json 里的 token 保持一致"/>
+	  <p class="help-block">同一台机器上还跑着别人的程序时才需要设，填了要和检测服务的 <b>token</b> 一样。</p></div>
+	</div><br/>
+	<div class="form-group">
+	  <label class="col-sm-3 control-label">直接封禁阈值</label>
+	  <div class="col-sm-9"><input type="text" name="green_self_block" value="<?php echo htmlspecialchars(isset($conf['green_self_block']) && $conf['green_self_block']!==''?$conf['green_self_block']:'0.85', ENT_QUOTES, 'UTF-8'); ?>" class="form-control" placeholder="0.85"/>
+	  <p class="help-block">0~1 之间。评分达到这个值直接屏蔽并记入违规公示。调低会更严，误伤也更多。</p></div>
+	</div><br/>
+	<div class="form-group">
+	  <label class="col-sm-3 control-label">转人工阈值</label>
+	  <div class="col-sm-9"><input type="text" name="green_self_review" value="<?php echo htmlspecialchars(isset($conf['green_self_review']) && $conf['green_self_review']!==''?$conf['green_self_review']:'0.6', ENT_QUOTES, 'UTF-8'); ?>" class="form-control" placeholder="0.6"/>
+	  <p class="help-block">评分在这个值和封禁阈值之间的，标成<b>待审核</b>（前台下载不了），等你在文件管理里筛「待审核文件」逐个确认。自建模型误判率比云接口高，留这一档比一刀切稳妥。设成和封禁阈值一样就等于不用中间档。</p></div>
+	</div><br/>
+	<div class="form-group">
+	  <label class="col-sm-3 control-label">超时时间</label>
+	  <div class="col-sm-9"><input type="text" name="green_self_timeout" value="<?php echo htmlspecialchars(isset($conf['green_self_timeout']) && $conf['green_self_timeout']!==''?$conf['green_self_timeout']:'5', ENT_QUOTES, 'UTF-8'); ?>" class="form-control" placeholder="5"/>
+	  <p class="help-block">单位秒。检测服务没起来或者超时，一律<b>放行</b>不拦，不会因为它挂了就让用户传不了图，失败原因写在网站日志里。</p></div>
+	</div><br/>
+	</div>
 	<div id="green_qcloud" style="<?php echo $conf['green_check']!='2'?'display:none;':null; ?>">
 	<div class="form-group">
 	  <label class="col-sm-3 control-label">腾讯云SecretId</label>
@@ -673,16 +701,10 @@ $(document).ready(function(){
 </div>
 <script>
 $("select[name='green_check']").change(function(){
-	if($(this).val() == 1){
-		$("#green_aliyun").show();
-		$("#green_qcloud").hide();
-	}else if($(this).val() == 2){
-		$("#green_aliyun").hide();
-		$("#green_qcloud").show();
-	}else{
-		$("#green_aliyun").hide();
-		$("#green_qcloud").hide();
-	}
+	var v = $(this).val();
+	$("#green_aliyun").toggle(v == 1);
+	$("#green_qcloud").toggle(v == 2);
+	$("#green_self").toggle(v == 3);
 });
 $("select[name='green_check_porn']").change(function(){
 	if($(this).val() == 1){

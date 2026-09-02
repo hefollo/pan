@@ -19,6 +19,12 @@ class Local implements IStorage {
 	public function getClient(){
 		return null;
 	}
+
+	//自建内容检测要直接读盘打分，避免再绕一次 view.php 的 HTTP 回环。
+	//只有本地存储有这个方法，调用方用 method_exists 判断
+	public function filepath($name){
+		return $this->path.$name;
+	}
 	
 	public function errmsg(){
 		return $this->errmsg;

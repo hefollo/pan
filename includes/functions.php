@@ -1237,6 +1237,8 @@ function admin_setting_keys(){
 		'downfile_protocol', 'downfile_type', 'filepath', 'filesearch',
 		'forcelogin', 'gg_file', 'gonggao', 'green_check',
 		'green_check_porn', 'green_check_region', 'green_check_terrorism', 'green_label_porn',
+		'green_self_api', 'green_self_token', 'green_self_block', 'green_self_review',
+		'green_self_timeout',
 		'green_label_terrorism', 'ip_type', 'keywords', 'login_apiurl',
 		'login_appid', 'login_appkey', 'login_qq', 'login_wx',
 		'name_block', 'obs_ak', 'obs_bucket', 'obs_endpoint',
@@ -1703,16 +1705,157 @@ function save_storage_content($hash, $content, $type){
 }
 
 
-function checkImage($hash, $ext){
+/*
+ * 图片违规检测的分发入口。
+ * 返回 '' 通过 / 'block' 直接封禁 / 'review' 转人工复核（block=2，前台同样不可下载）。
+ * 云接口只有命中和不命中两种结果，所以只会返回 '' 或 'block'；自建模型误判率高得多，
+ * 多留一档 review 交给人工看，别一刀切封掉。
+ * '' 是假值，原先 if(checkImage(...)) 那种写法依然成立。
+ */
+function checkImage($hash, $ext, $ctx = []){
 	global $conf,$siteurl;
 	$apiurl = $conf['apiurl']?$conf['apiurl']:$siteurl;
 	$fileurl = $apiurl.'view.php/'.$hash.'.'.$ext.'?greencheck=1';
+	$started = microtime(true);
+	$engine = '';
+	$score = 0;
+	$detail = '';
+	$verdict = '';
+
 	if($conf['green_check'] == 1){
-		return checkImage_aliyun($fileurl);
+		$engine = 'aliyun';
+		$verdict = checkImage_aliyun($fileurl) ? 'block' : '';
 	}elseif($conf['green_check'] == 2){
-		return checkImage_qcloud($fileurl);
+		$engine = 'qcloud';
+		$verdict = checkImage_qcloud($fileurl) ? 'block' : '';
+	}elseif($conf['green_check'] == 3){
+		$engine = 'self';
+		$res = checkImage_self($hash, $fileurl);
+		$verdict = $res['verdict'];
+		$score = $res['score'];
+		$detail = $res['detail'];
+	}else{
+		return '';
 	}
-	return false;
+
+	//检测记录：后台「图片检测记录」那一页读的就是这张表。
+	//放行的也记，不然没法回头判断阈值定得高了还是低了
+	add_green_log([
+		'engine' => $engine,
+		'score' => $score,
+		'detail' => $detail,
+		'verdict' => $verdict === '' ? 'pass' : $verdict,
+		'ms' => intval((microtime(true) - $started) * 1000),
+		'hash' => $hash,
+		'type' => $ext,
+	] + $ctx);
+
+	return $verdict;
+}
+
+/*
+ * 写一条检测记录。表是 1019 版新增的，老站点没跑升级也不能因此报错，
+ * 所以这里失败了就静默跳过——记录丢了是小事，挡住上传是大事。
+ */
+function add_green_log($row){
+	global $DB, $clientip;
+	/*
+	 * 这里不能用 $DB->insert()：它把「值等于空」的字段写成 NULL，而 PHP 7 里
+	 * 0 == '' 成立，score / ms / uid 这几个为 0 的列就会被写成 NULL，
+	 * 撞上 NOT NULL 直接插入失败。所以老老实实自己拼 SQL 绑参数。
+	 */
+	$sql = "INSERT INTO pre_greenlog (`file_id`,`name`,`type`,`hash`,`engine`,`score`,`detail`,`verdict`,`ms`,`uid`,`ip`,`addtime`)"
+		." VALUES (:file_id,:name,:type,:hash,:engine,:score,:detail,:verdict,:ms,:uid,:ip,:addtime)";
+	return @$DB->exec($sql, [
+		':file_id' => isset($row['id']) ? intval($row['id']) : 0,
+		':name' => isset($row['name']) ? mb_substr((string)$row['name'], 0, 250, 'UTF-8') : '',
+		':type' => isset($row['type']) ? (string)$row['type'] : '',
+		':hash' => isset($row['hash']) ? (string)$row['hash'] : '',
+		':engine' => isset($row['engine']) ? (string)$row['engine'] : '',
+		':score' => isset($row['score']) ? round(floatval($row['score']), 4) : 0,
+		':detail' => isset($row['detail']) ? mb_substr((string)$row['detail'], 0, 250, 'UTF-8') : '',
+		':verdict' => isset($row['verdict']) ? (string)$row['verdict'] : 'pass',
+		':ms' => isset($row['ms']) ? intval($row['ms']) : 0,
+		':uid' => isset($row['uid']) ? intval($row['uid']) : 0,
+		':ip' => isset($row['ip']) ? (string)$row['ip'] : (isset($clientip) ? $clientip : ''),
+		':addtime' => date('Y-m-d H:i:s'),
+	]);
+}
+
+/*
+ * 自建检测服务：把图片交给本机跑的模型服务打分（tools/nsfw/server.py）。
+ * 本地存储直接给绝对路径，省掉一次 HTTP 回环；云存储只能给 URL 让服务自己去抓。
+ * 阈值以后台设置为准，随请求一起发过去，改完不用重启检测服务。
+ *
+ * 服务连不上、超时、返回看不懂，一律当没命中放行——不能因为检测服务挂了就把正常
+ * 上传卡死，宁可漏检也不能误伤，出了什么事日志里有记录。
+ */
+function checkImage_self($hash, $fileurl){
+	global $conf, $stor;
+	if(!function_exists('curl_init')){
+		writeLog('self green check: 服务器没开启 curl 扩展');
+		return ['verdict'=>'', 'score'=>0, 'detail'=>'服务器没开启 curl'];
+	}
+	$api = isset($conf['green_self_api']) && trim($conf['green_self_api']) !== '' ? trim($conf['green_self_api']) : 'http://127.0.0.1:9012/check';
+	$block = isset($conf['green_self_block']) && $conf['green_self_block'] !== '' ? floatval($conf['green_self_block']) : 0.85;
+	$review = isset($conf['green_self_review']) && $conf['green_self_review'] !== '' ? floatval($conf['green_self_review']) : 0.60;
+	$timeout = isset($conf['green_self_timeout']) && intval($conf['green_self_timeout']) > 0 ? intval($conf['green_self_timeout']) : 5;
+
+	$payload = ['block'=>$block, 'review'=>$review];
+	//本地存储能拿到真实路径，让检测服务直接读盘，比再绕一次 view.php 快得多
+	$path = ($conf['storage'] === 'local' && is_object($stor) && method_exists($stor, 'filepath')) ? $stor->filepath($hash) : '';
+	if($path !== '' && is_file($path)){
+		$payload['path'] = $path;
+	}else{
+		$payload['url'] = $fileurl;
+	}
+
+	$headers = ['Content-Type: application/json'];
+	if(!empty($conf['green_self_token']))$headers[] = 'X-Auth-Token: '.$conf['green_self_token'];
+
+	$ch = curl_init($api);
+	curl_setopt($ch, CURLOPT_POST, true);
+	curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+	curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+	curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
+	curl_setopt($ch, CURLOPT_TIMEOUT, $timeout);
+	$body = curl_exec($ch);
+	$status = intval(curl_getinfo($ch, CURLINFO_HTTP_CODE));
+	$error = curl_error($ch);
+	curl_close($ch);
+
+	if($body === false || $status !== 200){
+		writeLog('self green check 失败（HTTP '.$status.'）：'.($error ? $error : substr((string)$body, 0, 200)));
+		return ['verdict'=>'', 'score'=>0, 'detail'=>'检测失败 HTTP '.$status];
+	}
+	$json = json_decode($body, true);
+	if(!is_array($json) || empty($json['ok']) || !isset($json['score'])){
+		writeLog('self green check 返回异常：'.substr((string)$body, 0, 200));
+		return ['verdict'=>'', 'score'=>0, 'detail'=>'返回内容无法识别'];
+	}
+	$score = floatval($json['score']);
+	//每个模型各打了多少分，记进日志方便回头判断是哪个模型误判
+	$parts = [];
+	if(isset($json['detail']) && is_array($json['detail'])){
+		foreach($json['detail'] as $name => $info){
+			if(!is_array($info))continue;
+			if(isset($info['nsfw'])){
+				$parts[] = $name.'='.round(floatval($info['nsfw']), 4);
+			}elseif(isset($info['explicit'])){
+				$parts[] = $name.'=explicit '.round(floatval($info['explicit']), 4).'/questionable '.round(floatval(isset($info['questionable'])?$info['questionable']:0), 4);
+			}elseif(isset($info['error'])){
+				$parts[] = $name.'=出错';
+			}
+		}
+	}
+	$verdict = '';
+	if($score >= $block){
+		$verdict = 'block';
+	}elseif($score >= $review){
+		$verdict = 'review';
+	}
+	return ['verdict'=>$verdict, 'score'=>$score, 'detail'=>implode('  ', $parts)];
 }
 function checkImage_aliyun($fileurl){
 	global $conf;
@@ -1895,9 +2038,13 @@ function replace_file_record($old, $name, $hash, $size, $ext, $uid, $ip, $source
 	$type_image = explode('|',$conf['type_image']);
 	$type_video = explode('|',$conf['type_video']);
 	if($conf['green_check']>0 && in_array($ext,$type_image)){
-		if(checkImage($hash, $ext)){
+		$verdict = checkImage($hash, $ext, ['id'=>$id, 'name'=>$name, 'uid'=>$uid, 'ip'=>$ip]);
+		if($verdict === 'block'){
 			$DB->exec("UPDATE `pre_file` SET `block`=1 WHERE `id`=:id LIMIT 1", [':id'=>$id]);
 			add_violation_log(['id'=>$id, 'name'=>$name, 'type'=>$ext, 'size'=>$size, 'hash'=>$hash, 'ip'=>$ip, 'uid'=>$uid], 'green', '覆盖上传后图片自动检测命中', 0);
+		}elseif($verdict === 'review'){
+			//分数落在中间档：先按待审处理，前台下不下来，等后台人工看过再放行
+			$DB->exec("UPDATE `pre_file` SET `block`=2 WHERE `id`=:id LIMIT 1", [':id'=>$id]);
 		}
 	}
 	if($conf['videoreview']==1 && in_array($ext,$type_video)){
@@ -2004,10 +2151,14 @@ function create_file_record($name, $hash, $size, $ext, $hide, $pwd, $uid, $ip, $
 	$type_image = explode('|',$conf['type_image']);
 	$type_video = explode('|',$conf['type_video']);
 	if($conf['green_check']>0 && in_array($ext,$type_image)){
-		if(checkImage($hash, $ext)){
+		$verdict = checkImage($hash, $ext, ['id'=>$id, 'name'=>$name, 'uid'=>($uid?$uid:0), 'ip'=>$ip]);
+		if($verdict === 'block'){
 			$DB->exec("UPDATE `pre_file` SET `block`=1 WHERE `id`='{$id}' LIMIT 1");
 			//机器判定可能误伤，先留档但不公示，等后台在违规公示管理里确认后再放出
 			add_violation_log(['id'=>$id, 'name'=>$name, 'type'=>$ext, 'size'=>$size, 'hash'=>$hash, 'ip'=>$ip, 'uid'=>($uid?$uid:0)], 'green', '图片自动检测命中', 0);
+		}elseif($verdict === 'review'){
+			//分数落在中间档：先按待审处理，前台下不下来，等后台人工看过再放行
+			$DB->exec("UPDATE `pre_file` SET `block`=2 WHERE `id`='{$id}' LIMIT 1");
 		}
 	}
 	if($conf['videoreview']==1 && in_array($ext,$type_video)){

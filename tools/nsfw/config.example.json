@@ -1,0 +1,52 @@
+{
+  "host": "127.0.0.1",
+  "port": 9012,
+  "token": "",
+
+  "block_threshold": 0.85,
+  "review_threshold": 0.60,
+  "max_pixels": 40000000,
+  "max_fetch_bytes": 33554432,
+  "fetch_timeout": 10,
+
+  "models": [
+    {
+      "name": "anime",
+      "kind": "anime",
+      "enabled": true,
+      "path": "/opt/pan-nsfw/models/wd-swinv2-tagger-v3.onnx",
+      "labels": "/opt/pan-nsfw/models/selected_tags.csv",
+      "channel_order": "bgr",
+      "scale": 1.0,
+      "mean": [0, 0, 0],
+      "std": [1, 1, 1],
+      "pad_color": [255, 255, 255],
+      "activation": "sigmoid",
+      "layout": "nhwc",
+      "size": 448,
+      "threads": 2,
+      "rating_weights": {
+        "explicit": 1.0,
+        "questionable": 0.5,
+        "sensitive": 0.0,
+        "general": 0.0
+      }
+    },
+    {
+      "name": "photo",
+      "kind": "photo",
+      "enabled": true,
+      "path": "/opt/pan-nsfw/models/vit-nsfw-detector.onnx",
+      "channel_order": "rgb",
+      "scale": 0.00392156862745098,
+      "mean": [0.5, 0.5, 0.5],
+      "std": [0.5, 0.5, 0.5],
+      "pad_color": [255, 255, 255],
+      "activation": "softmax",
+      "layout": "nchw",
+      "size": 384,
+      "threads": 2,
+      "nsfw_index": 1
+    }
+  ]
+}

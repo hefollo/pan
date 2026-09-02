@@ -57,3 +57,10 @@ $RECYCLE.BIN/
 
 # 赞助页收款码，属于本地私有素材，不入库
 /includes/sponsor/images/
+
+# writeLog() 写的运行日志，不进版本库
+/includes/log.txt
+
+# Python 编译缓存
+__pycache__/
+*.pyc
