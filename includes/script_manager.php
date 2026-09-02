@@ -9,16 +9,21 @@ function mpimg_default_gg_text(){
 	return '网站已开启一天一备份数据功能，您的支持是我维持下去的动力！前往赞助<a href="/includes/sponsor" target="_blank">点击前往</a> 网站问题可联系QQ：<a href="https://wpa.qq.com/msgrd?v=3&uin=7619897&site=qq&menu=yes&jumpflag=1" target="_blank">7619897</a>，网站内软件等问题勿扰！QQ交流群：<a href="https://qm.qq.com/q/Wddyy2mcGS" target="_blank">251912122</a>。网络并非法外之地！请勿上传儿童色情内容或威胁、骚扰、诽谤、侵权、政治或鼓动非法行为等材料！上传者将屏蔽IP。';
 }
 
+/*
+ * 广告位的出厂内容：8 个「广告招租」占位，默认全部关闭。
+ * 后台没保存过广告设置时用这一份，管理员把要用的那条勾上再保存即可，
+ * 免得新站点一装好前台就挂着一排招租广告。
+ */
 function mpimg_default_ads(){
 	return [
-		['enabled'=>1, 'mode'=>'text', 'text'=>'广告招租', 'href'=>'#', 'image'=>'', 'bgColor'=>'#2f86ff', 'tooltip'=>'点击查看广告详情，欢迎咨询广告位出租。'],
-		['enabled'=>1, 'mode'=>'text', 'text'=>'广告招租', 'href'=>'#', 'image'=>'', 'bgColor'=>'#ff4d5f', 'tooltip'=>'抢占广告位，提升曝光，欢迎咨询。'],
-		['enabled'=>1, 'mode'=>'text', 'text'=>'广告招租', 'href'=>'#', 'image'=>'', 'bgColor'=>'#10b981', 'tooltip'=>'开启您的广告展示，吸引更多用户。'],
-		['enabled'=>1, 'mode'=>'text', 'text'=>'广告招租', 'href'=>'#', 'image'=>'', 'bgColor'=>'#f59e0b', 'tooltip'=>'提升品牌知名度，覆盖更多用户。'],
-		['enabled'=>1, 'mode'=>'text', 'text'=>'广告招租', 'href'=>'#', 'image'=>'', 'bgColor'=>'#f59e0b', 'tooltip'=>'让更多人看到您，增加用户点击。'],
-		['enabled'=>1, 'mode'=>'text', 'text'=>'广告招租', 'href'=>'#', 'image'=>'', 'bgColor'=>'#10b981', 'tooltip'=>'广告位有限，欢迎联系预订。'],
-		['enabled'=>1, 'mode'=>'text', 'text'=>'广告招租', 'href'=>'#', 'image'=>'', 'bgColor'=>'#ff4d5f', 'tooltip'=>'点击了解详情，助力品牌增长。'],
-		['enabled'=>1, 'mode'=>'text', 'text'=>'广告招租', 'href'=>'#', 'image'=>'', 'bgColor'=>'#2f86ff', 'tooltip'=>'广告位等您来抢，详情请咨询客服。'],
+		['enabled'=>0, 'mode'=>'text', 'text'=>'广告招租', 'href'=>'#', 'image'=>'', 'bgColor'=>'#2f86ff', 'tooltip'=>'点击查看广告详情，欢迎咨询广告位出租。'],
+		['enabled'=>0, 'mode'=>'text', 'text'=>'广告招租', 'href'=>'#', 'image'=>'', 'bgColor'=>'#ff4d5f', 'tooltip'=>'抢占广告位，提升曝光，欢迎咨询。'],
+		['enabled'=>0, 'mode'=>'text', 'text'=>'广告招租', 'href'=>'#', 'image'=>'', 'bgColor'=>'#10b981', 'tooltip'=>'开启您的广告展示，吸引更多用户。'],
+		['enabled'=>0, 'mode'=>'text', 'text'=>'广告招租', 'href'=>'#', 'image'=>'', 'bgColor'=>'#f59e0b', 'tooltip'=>'提升品牌知名度，覆盖更多用户。'],
+		['enabled'=>0, 'mode'=>'text', 'text'=>'广告招租', 'href'=>'#', 'image'=>'', 'bgColor'=>'#f59e0b', 'tooltip'=>'让更多人看到您，增加用户点击。'],
+		['enabled'=>0, 'mode'=>'text', 'text'=>'广告招租', 'href'=>'#', 'image'=>'', 'bgColor'=>'#10b981', 'tooltip'=>'广告位有限，欢迎联系预订。'],
+		['enabled'=>0, 'mode'=>'text', 'text'=>'广告招租', 'href'=>'#', 'image'=>'', 'bgColor'=>'#ff4d5f', 'tooltip'=>'点击了解详情，助力品牌增长。'],
+		['enabled'=>0, 'mode'=>'text', 'text'=>'广告招租', 'href'=>'#', 'image'=>'', 'bgColor'=>'#2f86ff', 'tooltip'=>'广告位等您来抢，详情请咨询客服。'],
 	];
 }
 
@@ -214,7 +219,7 @@ function mpimg_render_notice_html($conf){
 	if($text === ''){
 		return '';
 	}
-	$site_theme = isset($conf['site_theme']) ? $conf['site_theme'] : 'cloud';
+	$site_theme = isset($conf['site_theme']) ? $conf['site_theme'] : default_site_theme();
 	$theme_styles = [
 		'cloud' => [
 			'bg' => 'rgba(255,255,255,.96)',
@@ -351,7 +356,7 @@ function mpimg_render_notice_html($conf){
 		],
 	];
 	if(!isset($theme_styles[$site_theme])){
-		$site_theme = 'cloud';
+		$site_theme = default_site_theme();
 	}
 	$current = $theme_styles[$site_theme];
 	$wrap_style = 'display:block;clear:both;width:100%;overflow:hidden;white-space:nowrap;position:relative;margin:-28px 0 0;padding:0;background:'.$current['bg'].';border-top:1px solid '.$current['border'].';border-bottom:1px solid '.$current['border'].';box-shadow:'.$current['shadow'].';color:'.$current['text'].';';

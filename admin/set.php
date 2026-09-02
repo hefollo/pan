@@ -69,9 +69,9 @@ if($mod=='site'){
 </div>
 <?php
 }elseif($mod=='appearance'){
-$site_theme = isset($conf['site_theme']) ? $conf['site_theme'] : 'cloud';
-if(!in_array($site_theme, ['cloud', 'night', 'neon', 'aurora', 'onefour', 'celadon', 'lilac', 'paper', 'blush', 'sky', 'mint', 'sunset', 'abyss', 'emerald', 'sakura', 'dashboard', 'console', 'portal', 'workspace'], true)){
-	$site_theme = 'cloud';
+$site_theme = isset($conf['site_theme']) ? $conf['site_theme'] : default_site_theme();
+if(!in_array($site_theme, site_theme_keys(), true)){
+	$site_theme = default_site_theme();
 }
 //顺手同步一次静态 404 页的外观：已经设置好外观的站点不用再点一次保存
 sync_404_theme($site_theme);

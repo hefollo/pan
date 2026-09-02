@@ -27,9 +27,9 @@
   <script type="text/javascript" src="https://s4.zstatic.net/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
 </head>
 <?php
-$site_theme = isset($conf['site_theme']) ? $conf['site_theme'] : 'cloud';
-if(!in_array($site_theme, ['cloud', 'night', 'neon', 'aurora', 'onefour', 'celadon', 'lilac', 'paper', 'blush', 'sky', 'mint', 'sunset', 'abyss', 'emerald', 'sakura', 'dashboard', 'console', 'portal', 'workspace'], true)){
-  $site_theme = 'cloud';
+$site_theme = isset($conf['site_theme']) ? $conf['site_theme'] : default_site_theme();
+if(!in_array($site_theme, site_theme_keys(), true)){
+  $site_theme = default_site_theme();
 }
 //布局型外观（侧栏/门户/工作台）共用一套结构样式，统一挂 layout-theme
 $layout_themes = ['dashboard', 'console', 'portal', 'workspace'];

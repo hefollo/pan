@@ -44,8 +44,8 @@ $sp_themes = [
 	'portal'   => ['bg'=>'#f6f8f5','surface'=>'#ffffff','line'=>'#dfe7e2','text'=>'#17211d','soft'=>'#2b3833','muted'=>'#66716c','faint'=>'#8a948f','primary'=>'#0d7c57','primary_dark'=>'#0a5f42','on_primary'=>'#ffffff','amount'=>'#0d7c57'],
 	'workspace'=> ['bg'=>'#10141b','surface'=>'#171c25','line'=>'#2a313d','text'=>'#edf1f7','soft'=>'#d5dce6','muted'=>'#8993a3','faint'=>'#6f7889','primary'=>'#f4c95d','primary_dark'=>'#d9ad3f','on_primary'=>'#221a05','amount'=>'#5ed6a0'],
 ];
-$sp_key = isset($conf['site_theme']) ? $conf['site_theme'] : 'cloud';
-if(!isset($sp_themes[$sp_key])) $sp_key = 'cloud';
+$sp_key = isset($conf['site_theme']) ? $conf['site_theme'] : default_site_theme();
+if(!isset($sp_themes[$sp_key])) $sp_key = default_site_theme();
 $sp = $sp_themes[$sp_key];
 ?>
 <!DOCTYPE html>

@@ -323,7 +323,7 @@ body.admin-theme-onefour.admin-body .script-ad-table-wrap{border-color:rgba(148,
 		row.innerHTML =
 			'<td class="text-center">' +
 				'<input type="hidden" name="ad_index[]" value="' + index + '">' +
-				'<input type="checkbox" name="ad_enabled[' + index + ']" value="1" checked>' +
+				'<input type="checkbox" name="ad_enabled[' + index + ']" value="1">' +
 			'</td>' +
 			'<td><select class="form-control" name="ad_mode[' + index + ']"><option value="text" selected>&#25991;&#23383;&#24191;&#21578;</option><option value="image">&#22270;&#29255;&#24191;&#21578;</option></select></td>' +
 			'<td><input type="text" class="form-control" name="ad_text[' + index + ']" value="&#24191;&#21578;&#25307;&#31199;"></td>' +

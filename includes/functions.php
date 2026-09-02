@@ -1178,6 +1178,14 @@ function build_trade_no($uid){
 }
 
 /*
+ * 默认外观：新装站点、以及配置里没有外观或存了个不认识的值时都用它。
+ * 想换默认外观只改这一处，其余地方一律调这个函数。
+ */
+function default_site_theme(){
+	return 'console';
+}
+
+/*
  * 站点外观的全部可选值。header.php / admin/head.php 等处各自还有一份同样的列表，
  * 新增外观时记得一起改。
  */
@@ -1238,6 +1246,9 @@ function admin_setting_keys(){
 		'qcloud_region', 'qiniu_ak', 'qiniu_bucket', 'qiniu_domain',
 		'qiniu_sk', 's3_ak', 's3_bucket', 's3_endpoint',
 		's3_path_style', 's3_prefix', 's3_region', 's3_sk',
+		'webdav_url', 'webdav_user', 'webdav_pass', 'webdav_path',
+		//onedrive_refresh_token / access_token 由授权流程自己写，不从表单进来
+		'onedrive_type', 'onedrive_client_id', 'onedrive_client_secret', 'onedrive_path',
 		'site_theme', 'storage', 'storagename', 'title',
 		'tongji', 'type_audio', 'type_block', 'type_image',
 		'type_video', 'upload_limit', 'upload_per_minute', 'upload_size', 'uploadfile_type',
@@ -2084,7 +2095,7 @@ function file_output($hash, $type, $size, $name, $is_view = false, $is_admin = f
 	//哪怕后台把 svg 加进了"可预览类型"，也只能当附件下载
 	if($is_view && is_scriptable_file_type($type))$is_view = false;
 
-	if(\lib\StorHelper::is_cloud() && $conf['downfile_type'] == 1){
+	if(\lib\StorHelper::is_direct_down() && $conf['downfile_type'] == 1){
 		$redirect = $stor->getDownUrl($hash, $name, $is_view ? minetype($type) : null);
 		if($redirect){
 			header("Location: ".$redirect);

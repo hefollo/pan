@@ -1,8 +1,8 @@
 <?php
 @header('Content-Type: text/html; charset=UTF-8');
-$site_theme = isset($conf['site_theme']) ? $conf['site_theme'] : 'cloud';
-if(!in_array($site_theme, ['cloud', 'night', 'neon', 'aurora', 'onefour', 'celadon', 'lilac', 'paper', 'blush', 'sky', 'mint', 'sunset', 'abyss', 'emerald', 'sakura', 'dashboard', 'console', 'portal', 'workspace'], true)){
-  $site_theme = 'cloud';
+$site_theme = isset($conf['site_theme']) ? $conf['site_theme'] : default_site_theme();
+if(!in_array($site_theme, site_theme_keys(), true)){
+  $site_theme = default_site_theme();
 }
 $admin_body_class = !empty($islogin) ? 'admin-body' : 'admin-login-body';
 $admin_body_class .= ' admin-theme-' . $site_theme;

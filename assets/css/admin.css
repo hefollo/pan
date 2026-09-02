@@ -1850,3 +1850,53 @@ body.admin-body .modal-title{color:var(--admin-popup-text)}
 body.admin-body .modal-body{color:var(--admin-popup-text)}
 body.admin-body .modal-header .close{color:var(--admin-popup-text);opacity:.6;text-shadow:none}
 body.admin-body .modal-header .close:hover{opacity:1}
+
+/* 存储类型设置页：卡片选存储 + 下面只显示选中那一种的参数表单，
+   颜色全部走 --admin-* 变量，深色外观不用再单独写一套 */
+/* .panel-title 在上面被写死成深色 #142642，深色外观里的面板标题会糊在背景上，
+   这里让它跟着 .panel-heading 走，浅色深色都能看清 */
+.stor-page .panel-title{color:inherit}
+.stor-page .panel-title small{margin-left:6px;color:var(--admin-muted);font-size:14px;font-weight:600}
+.stor-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+.stor-card{position:relative;display:flex;flex-direction:column;margin:0;padding:15px 16px;border:1px solid var(--admin-line);border-radius:14px;background:var(--admin-surface);cursor:pointer;font-weight:400;transition:border-color .18s,box-shadow .18s}
+.stor-card:hover{border-color:var(--admin-primary)}
+.stor-card.active{border-color:var(--admin-primary);box-shadow:inset 0 0 0 1px var(--admin-primary)}
+.stor-card input{position:absolute;opacity:0;pointer-events:none}
+.stor-card-head{display:flex;align-items:center;gap:8px}
+.stor-card-head i{width:20px;color:var(--admin-muted);font-size:16px;text-align:center}
+.stor-card-head b{color:var(--admin-text);font-size:15px}
+.stor-card.active .stor-card-head i{color:var(--admin-primary)}
+.stor-badge{margin-left:auto;padding:2px 9px;border-radius:999px;background:var(--admin-green);color:#fff;font-size:12px;font-style:normal;font-weight:700}
+.stor-card-desc{display:block;min-height:46px;margin-top:9px;color:var(--admin-muted);font-size:13px;line-height:1.7}
+.stor-card-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto;padding-top:11px}
+.stor-card-tags i{padding:2px 9px;border:1px solid var(--admin-line);border-radius:999px;background:var(--admin-soft);color:var(--admin-muted);font-size:12px;font-style:normal}
+.stor-submit{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-top:20px;padding-top:16px;border-top:1px solid var(--admin-line)}
+.stor-warn{flex:1;min-width:260px;margin:0;color:var(--admin-yellow);font-size:13px;line-height:1.7}
+.stor-warn i{margin-right:5px}
+.stor-submit .btn{min-width:150px}
+.stor-config-body .form-horizontal,#transfer_panel .form-horizontal{max-width:920px}
+.stor-page .form-group{margin-bottom:20px}
+.stor-page .help-block{margin-top:7px;color:var(--admin-muted);font-size:13px;line-height:1.8}
+.stor-page .control-label{color:var(--admin-text)}
+.stor-form-btns .btn{margin:0 8px 6px 0}
+.stor-test-result{font-size:13px;line-height:34px}
+.stor-test-result.ok{color:var(--admin-green)}
+.stor-test-result.fail{color:var(--admin-red)}
+.stor-oauth{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:20px;padding:14px 16px;border:1px solid var(--admin-line);border-radius:12px;background:var(--admin-soft)}
+.stor-oauth-status{flex:1;min-width:260px;color:var(--admin-text)}
+.stor-oauth-info{display:block;margin-top:5px;color:var(--admin-muted);font-size:13px;line-height:1.7}
+.stor-oauth-info.fail{color:var(--admin-red)}
+.stor-dot{display:inline-block;width:9px;height:9px;margin-right:7px;border-radius:50%;background:var(--admin-muted);vertical-align:middle}
+.stor-dot.on{background:var(--admin-green)}
+.stor-dot.off{background:var(--admin-red)}
+.stor-page .alert{border:1px solid var(--admin-line);border-radius:10px;background:var(--admin-soft);color:var(--admin-text)}
+.stor-page .alert-info{border-left:3px solid var(--admin-primary)}
+.stor-page .alert-warning{border-left:3px solid var(--admin-yellow)}
+.stor-page .alert-success{border-left:3px solid var(--admin-green)}
+.stor-page .alert-danger{border-left:3px solid var(--admin-red)}
+.stor-note{max-width:920px;margin:16px 0 0;font-size:13px;line-height:1.8}
+@media (max-width:767px){
+	.stor-grid{grid-template-columns:1fr}
+	.stor-card-desc{min-height:0}
+	.stor-submit .btn{width:100%}
+}

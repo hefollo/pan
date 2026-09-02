@@ -65,9 +65,9 @@ if(isset($_POST['user']) && isset($_POST['pass'])){
 }elseif($islogin==1){
 	exit("<script language='javascript'>alert('您已登录！');window.location.href='./';</script>");
 }
-$site_theme = isset($conf['site_theme']) ? $conf['site_theme'] : 'cloud';
-if(!in_array($site_theme, ['cloud', 'night', 'neon', 'aurora', 'onefour', 'celadon', 'lilac', 'paper', 'blush', 'sky', 'mint', 'sunset', 'abyss', 'emerald', 'sakura', 'dashboard', 'console', 'portal', 'workspace'], true)){
-	$site_theme = 'cloud';
+$site_theme = isset($conf['site_theme']) ? $conf['site_theme'] : default_site_theme();
+if(!in_array($site_theme, site_theme_keys(), true)){
+	$site_theme = default_site_theme();
 }
 ?>
 <!DOCTYPE html>

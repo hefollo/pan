@@ -36,6 +36,21 @@ class StorHelper
                     'pathStyle' => !empty($conf['s3_path_style']),
                     'prefix' => isset($conf['s3_prefix']) ? $conf['s3_prefix'] : 'file/'
                 ];
+            case 'webdav':
+                return [
+                    'url' => isset($conf['webdav_url']) ? $conf['webdav_url'] : '',
+                    'user' => isset($conf['webdav_user']) ? $conf['webdav_user'] : '',
+                    'pass' => isset($conf['webdav_pass']) ? $conf['webdav_pass'] : '',
+                    'path' => isset($conf['webdav_path']) ? $conf['webdav_path'] : 'file'
+                ];
+            case 'onedrive':
+                return [
+                    'clientId' => isset($conf['onedrive_client_id']) ? $conf['onedrive_client_id'] : '',
+                    'clientSecret' => isset($conf['onedrive_client_secret']) ? $conf['onedrive_client_secret'] : '',
+                    'refreshToken' => isset($conf['onedrive_refresh_token']) ? $conf['onedrive_refresh_token'] : '',
+                    'china' => isset($conf['onedrive_type']) && $conf['onedrive_type'] == 'china',
+                    'path' => isset($conf['onedrive_path']) ? $conf['onedrive_path'] : 'pan/file'
+                ];
             default:
                 break;
         }
@@ -52,19 +67,32 @@ class StorHelper
         return false;
     }
 
-    //判断是否可以直接链接
-    public static function is_cloud(){
+    //是不是云存储（本地磁盘之外的都算），后台据此决定要不要显示上传下载方式
+    public static function is_cloud($storage = null){
         global $conf;
-        $is_cloud = false;
-        if(in_array($conf['storage'], ['oss','qcloud','obs','upyun','qiniu','s3'])) $is_cloud = true;
-        return $is_cloud;
+        if($storage === null) $storage = $conf['storage'];
+        return !in_array($storage, ['local','sae','ace'], true);
+    }
+
+    //能不能直传：浏览器带着签名参数把文件直接 POST 给存储，不经过本站。
+    //WebDAV 和 OneDrive 的直传要用 PUT / 上传会话，跟前端这套 POST 表单对不上，只能中转
+    public static function is_direct_upload($storage = null){
+        global $conf;
+        if($storage === null) $storage = $conf['storage'];
+        return in_array($storage, ['oss','qcloud','obs','upyun','qiniu','s3'], true);
+    }
+
+    //能不能直链下载：下载时 302 到存储自己的地址，省本站流量
+    public static function is_direct_down($storage = null){
+        global $conf;
+        if($storage === null) $storage = $conf['storage'];
+        return in_array($storage, ['oss','qcloud','obs','upyun','qiniu','s3','onedrive'], true);
     }
 
     //判断是否可以断点续传
-    public static function is_range(){
+    public static function is_range($storage = null){
         global $conf;
-        $is_range = false;
-        if(in_array($conf['storage'], ['local','oss','qcloud','obs','qiniu','s3'])) $is_range = true;
-        return $is_range;
+        if($storage === null) $storage = $conf['storage'];
+        return in_array($storage, ['local','oss','qcloud','obs','qiniu','s3','webdav','onedrive'], true);
     }
 }
