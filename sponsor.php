@@ -1,6 +1,12 @@
 <?php
 include("./includes/common.php");
 
+//赞助名单关掉之后，直接敲地址也进不来（导航入口藏了不等于页面就访问不到）
+if(isset($conf['sponsor_open']) && $conf['sponsor_open'] == 0){
+    header('Location: ./');
+    exit;
+}
+
 $title = '赞助名单 - ' . $conf['title'];
 
 $sponsors = $DB->getAll("SELECT `name`,`platform`,`amount`,`sponsor_time` FROM pre_sponsor ORDER BY id ASC");

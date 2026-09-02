@@ -79,7 +79,7 @@ if(!in_array($site_theme, site_theme_keys(), true)){
 	<title>管理员登录</title>
 	<link href="https://s4.zstatic.net/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css" rel="stylesheet"/>
 	<link href="https://s4.zstatic.net/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet"/>
-	<link href="../assets/css/admin.css?v=<?php echo VERSION?>" rel="stylesheet"/>
+	<link href="../assets/css/admin.css?v=<?php echo asset_ver('assets/css/admin.css')?>" rel="stylesheet"/>
 </head>
 <body class="admin-login-body admin-theme-<?php echo $site_theme;?>">
   <div class="container">

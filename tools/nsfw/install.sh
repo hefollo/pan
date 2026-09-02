@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# 自建图片检测服务 一键安装
+# 自建图片/视频检测服务 一键安装
 #
 #   bash install.sh                 # 按机器配置自动挑模型，装完自动开机自启
 #   bash install.sh --dry-run       # 只打印要做什么，不动系统
@@ -59,6 +59,9 @@ if [ "$UNINSTALL" = 1 ]; then
 	echo
 	info "已卸载。模型和配置还留在 $DIR，确认不要了再自己删："
 	echo "    rm -rf $DIR"
+	# 系统 ffmpeg 是包管理器装的，别的程序很可能也在用，不能替用户卸掉；
+	# pip 那份在 venv 里，跟着上面这条 rm 一起走
+	echo "${DIM}    （系统 ffmpeg 不动，可能有别的程序在用；pip 装的那份在 venv 里，删目录即可）${OFF}"
 	exit 0
 fi
 
@@ -202,6 +205,59 @@ else
 	fi
 	[ "$PIP_OK" = 1 ] || die "依赖装不上，手动试试：$PYBIN -m pip install $PIPFLAG onnxruntime pillow numpy"
 	"$PYBIN" -c 'import onnxruntime, PIL, numpy' 2>/dev/null || die "依赖装完还是导入失败，检查 python3 环境"
+fi
+
+# ---------------------------------------------------------------- ffmpeg
+# 视频检测靠 ffmpeg 抽帧。系统有就用系统的，没有才 pip 装 imageio-ffmpeg——
+# 它自带一份静态二进制，不要 root，也不会和系统包打架，卸载时跟着 venv 一起走。
+#
+# 这一段装不上只警告，绝不 die：ffmpeg 只是视频检测的依赖，图片检测一点不需要它。
+# 因为装不上 ffmpeg 就让整个服务装不起来，比现状还差。
+info "检查 ffmpeg（视频检测用）"
+FFMPEG_OK=0
+if [ "$DRY" = 1 ]; then
+	echo "${DIM}    \$ command -v ffmpeg；没有就用 apt/dnf/yum/apk 装${OFF}"
+	echo "${DIM}    \$ 还是没有就 $PYBIN -m pip install imageio-ffmpeg${OFF}"
+	FFMPEG_OK=1
+else
+	FF=$(command -v ffmpeg || true)
+	# PATH 里有不代表能用：断掉的软链、缺库跑不起来的构建都存在，实际跑一次才算数
+	if [ -n "$FF" ] && ! "$FF" -version >/dev/null 2>&1; then
+		warn "PATH 里的 ffmpeg 跑不起来（$FF），当作没有"
+		FF=""
+	fi
+	if [ -z "$FF" ]; then
+		info "系统里没有 ffmpeg，用包管理器装"
+		if command -v apt-get >/dev/null 2>&1; then
+			DEBIAN_FRONTEND=noninteractive apt-get update -qq >/dev/null 2>&1
+			DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ffmpeg >/dev/null 2>&1
+		elif command -v dnf >/dev/null 2>&1; then
+			dnf install -y -q ffmpeg >/dev/null 2>&1
+		elif command -v yum >/dev/null 2>&1; then
+			yum install -y -q ffmpeg >/dev/null 2>&1
+		elif command -v apk >/dev/null 2>&1; then
+			apk add --quiet ffmpeg >/dev/null 2>&1
+		fi
+		FF=$(command -v ffmpeg || true)
+		[ -n "$FF" ] && ! "$FF" -version >/dev/null 2>&1 && FF=""
+	fi
+	if [ -n "$FF" ]; then
+		FFVER=$("$FF" -version 2>/dev/null | head -n1 | awk '{print $3}')
+		info "ffmpeg 可用：$FF（$FFVER）"
+		FFMPEG_OK=1
+	else
+		# CentOS 7 之类的源里干脆没有 ffmpeg（要挂 EPEL/RPMFusion），pip 这条路省事得多
+		warn "包管理器装不上 ffmpeg，改用 pip 的 imageio-ffmpeg"
+		if "$PYBIN" -m pip install -q $PIPFLAG imageio-ffmpeg 2>/dev/null \
+			|| "$PYBIN" -m pip install -q $PIPFLAG -i https://pypi.tuna.tsinghua.edu.cn/simple imageio-ffmpeg 2>/dev/null; then
+			# 装上了也要真跑一次：这个包是下载静态二进制的，下载失败时导入照样成功
+			if "$PYBIN" -c 'import imageio_ffmpeg,subprocess,sys;sys.exit(subprocess.run([imageio_ffmpeg.get_ffmpeg_exe(),"-version"],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL).returncode)' 2>/dev/null; then
+				info "已用 pip 装上 imageio-ffmpeg"
+				FFMPEG_OK=1
+			fi
+		fi
+	fi
+	[ "$FFMPEG_OK" = 1 ] || warn "没装上 ffmpeg：${YELLOW}视频检测不可用${OFF}，图片检测不受影响。装好后重启 $SERVICE 即可"
 fi
 
 # ---------------------------------------------------------------- 下模型
@@ -363,14 +419,23 @@ echo
 echo
 info "装好了，已设为开机自启。"
 echo
-echo "  接下来去后台：系统设置 → 图片检测设置"
+echo "  接下来去后台：系统设置 → 内容检测设置"
 echo "    1. 「图片违规检测」选 ${GREEN}自建检测服务（本机模型）${OFF}"
 echo "    2. 「检测服务地址」填 ${GREEN}http://127.0.0.1:$PORT/check${OFF}"
 echo "    3. 保存后传张图试试"
+if [ "$FFMPEG_OK" = 1 ]; then
+	echo "    4. 想连视频一起查，把「视频违规检测」也打开"
+	echo "       视频是异步的：传完先挂起，检测完自动放行或封禁，不会卡住上传"
+else
+	echo
+	warn "这台机器没有 ffmpeg，后台的「视频违规检测」打开也不会工作。"
+	echo "     装好后重启服务即可：${GREEN}systemctl restart $SERVICE${OFF}"
+fi
 echo
 echo "  ${YELLOW}强烈建议先定阈值${OFF}，别直接用默认的 0.85 / 0.6："
 echo "    $PYBIN $DIR/server.py $DIR/config.json --scan /你的网站目录/file/"
 echo "  看正常图和违规图各自落在什么分数区间，把后台两个阈值卡中间。"
+echo "  ${DIM}--scan 也认视频，会顺带打出每个视频命中了几帧——视频阈值同样不能靠猜${OFF}"
 echo
 echo "  常用命令："
 echo "    systemctl status $SERVICE          # 看状态"

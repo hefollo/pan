@@ -2,6 +2,12 @@
 $nosession = true;
 include __DIR__.'/../common.php';
 
+//同上：关掉之后这个独立页面也不让进
+if(isset($conf['sponsor_open']) && $conf['sponsor_open'] == 0){
+	header('Location: ../../');
+	exit;
+}
+
 $sponsors = $DB->getAll("SELECT `name`,`platform`,`amount`,`sponsor_time` FROM pre_sponsor ORDER BY id ASC");
 if(!$sponsors) $sponsors = [];
 $sponsors = array_map(function($row){

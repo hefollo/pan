@@ -109,6 +109,65 @@ body.admin-body>.container>.center-block,body.admin-body>.container-fluid>.cente
 .admin-file-thumb:hover{border-color:var(--admin-primary)}
 .admin-file-icon{flex:0 0 50px;width:50px;height:50px;margin:0 auto;border-radius:8px;background:#eef4ff;color:var(--admin-primary);display:flex;align-items:center;justify-content:center;font-size:24px}
 .admin-status{display:inline-block;min-width:46px;text-align:center}
+/* 内容检测设置页：原来是一路往下排的 form-horizontal，加上视频那十项之后要滚很久，
+   而且看不出哪些是一组的。改成分区卡片 + 自适应网格，短字段自动并排。 */
+.green-page .green-sec{margin:0 0 16px;padding:16px 18px;border:1px solid var(--admin-line);border-radius:10px;background:var(--admin-soft)}
+.green-page .green-sec-h{margin:0 0 14px;padding-bottom:10px;border-bottom:1px solid var(--admin-line);color:var(--admin-text);font-size:14px;font-weight:800}
+.green-page .green-sec-h small{margin-left:10px;color:var(--admin-muted);font-size:12px;font-weight:400}
+/* 一行放几个由容器宽度决定：宽屏三列、窄屏自动掉成一列，不用写断点 */
+.green-page .green-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px 18px}
+.green-page .green-f{min-width:0}
+.green-page .green-f>label{display:block;margin:0 0 6px;color:var(--admin-text);font-size:13px;font-weight:700}
+.green-page .green-f p{margin:6px 0 0;color:var(--admin-muted);font-size:12px;line-height:1.6}
+.green-page .green-f .form-control{height:36px}
+.green-page .g-wide{grid-column:1/-1}
+.green-page .green-checks{margin-top:12px;padding:12px 14px;border:1px dashed var(--admin-line);border-radius:8px;background:var(--admin-surface)}
+.green-page .green-checks-t{display:block;margin-bottom:8px;color:var(--admin-text);font-size:13px;font-weight:700}
+.green-page .green-checks label{display:inline-block;margin:0 16px 6px 0;color:var(--admin-muted);font-size:13px;font-weight:400}
+.green-page .green-health{margin-top:12px;padding:8px 12px;border-radius:8px;background:var(--admin-surface);color:var(--admin-muted);font-size:12px}
+.green-page .green-submit{margin-top:4px}
+.green-page .green-submit .btn{min-width:140px;padding:9px 18px;font-weight:700}
+
+/* 通用状态标签。几何尺寸和下面的状态选择器完全一致，两列并排看着才像一套东西
+   （原来「结果」用的是 bootstrap 的 .label，字号圆角都不一样，挨在一起很割裂）。
+   语义固定：绿=没问题 红=被拦下 橙=要人看 灰=不确定 */
+.admin-tag{display:inline-block;min-width:46px;padding:5px 9px;border:1px solid transparent;border-radius:6px;text-align:center;font-size:12px;font-weight:700;line-height:1;color:#fff;white-space:nowrap}
+.admin-tag.t-ok{background:#16a34a;border-color:#16a34a}
+.admin-tag.t-bad{background:#dc2626;border-color:#dc2626}
+.admin-tag.t-warn{background:#d97706;border-color:#d97706}
+.admin-tag.t-mute{background:#94a3b8;border-color:#94a3b8}
+
+/* 文件状态选择器（文件管理 + 内容检测记录共用，行为在 admin/head.php 里）。
+   平时只显示当前状态一个小标签，点一下就地展开成三格——表格十几行里每行摆一排按钮太吵。
+   展开是在原格子里换内容而不是弹下拉：外面套着 overflow 容器，弹菜单会被裁掉。
+   容器留出展开后的宽度，展开时行不会跟着抖。 */
+/* 宽度按展开后的三格预留，展开时这一行不会跟着抖；收起时只有一个小标签，
+   所以要居中——靠左会在右边空出一大块，看着像没对齐 */
+.admin-block-pick{display:inline-block;min-width:118px;font-size:12px;line-height:1;text-align:center;white-space:nowrap}
+.admin-block-pick .admin-block-cur{display:inline-block;min-width:46px;padding:5px 9px;border:1px solid transparent;border-radius:6px;text-align:center;font-weight:700;cursor:pointer}
+/* 当前状态用实色块+白字：只显示一个的时候就该看得清清楚楚，
+   浅底彩字在一列里太飘，扫不出哪些是被拦下的 */
+body.admin-body .admin-block-pick .admin-block-cur.v0{background:#16a34a;border-color:#16a34a;color:#fff}
+body.admin-body .admin-block-pick .admin-block-cur.v1{background:#dc2626;border-color:#dc2626;color:#fff}
+body.admin-body .admin-block-pick .admin-block-cur.v2{background:#d97706;border-color:#d97706;color:#fff}
+body.admin-body .admin-block-pick .admin-block-cur:hover{color:#fff;filter:brightness(1.08)}
+/* 底色用浅灰不用白：白底挨着实色块像是缺了一块，两个未选项看着不像同一个控件里的 */
+.admin-block-opts{display:none;border:1px solid var(--admin-line);border-radius:6px;overflow:hidden;background:#eef1f6}
+.admin-block-pick.is-open .admin-block-cur{display:none}
+.admin-block-pick.is-open .admin-block-opts{display:inline-flex}
+.admin-block-opts>a{display:block;width:38px;padding:5px 0;text-align:center;font-weight:600;cursor:pointer;transition:background .12s,color .12s}
+.admin-block-opts>a+a{border-left:1px solid var(--admin-line)}
+/* 颜色必须带 body.admin-body 前缀：body.admin-body a{color:主题蓝} 的优先级是 (0,1,2)，
+   只写 .admin-block-opts>a 是 (0,1,1)，压不过它，选项会全是蓝色链接色 */
+body.admin-body .admin-block-opts>a{background:#eef1f6;color:#5b6675}
+body.admin-body .admin-block-opts>a:hover,body.admin-body .admin-block-opts>a:focus{background:#dde3ec;color:var(--admin-text);text-decoration:none}
+/* 展开时当前项同样用实色，和收起时是同一个颜色，一眼对得上 */
+body.admin-body .admin-block-opts>a.on{font-weight:800;color:#fff}
+body.admin-body .admin-block-opts>a.on.v0,body.admin-body .admin-block-opts>a.on.v0:hover{background:#16a34a;color:#fff}
+body.admin-body .admin-block-opts>a.on.v1,body.admin-body .admin-block-opts>a.on.v1:hover{background:#dc2626;color:#fff}
+body.admin-body .admin-block-opts>a.on.v2,body.admin-body .admin-block-opts>a.on.v2:hover{background:#d97706;color:#fff}
+/* 请求飞出去到刷新回来这段时间锁住，避免连点几下发出一串互相矛盾的修改 */
+.admin-block-pick.is-busy{opacity:.45;pointer-events:none}
 .admin-actions-cell{min-width:190px!important;width:190px!important;padding-left:8px!important;padding-right:8px!important;white-space:nowrap!important;text-align:center;overflow:visible!important}
 .admin-action-buttons{display:flex;flex-direction:row;align-items:center;justify-content:center;gap:6px;width:160px;margin:0 auto;white-space:nowrap}
 .admin-action-buttons .btn{display:inline-block;width:48px;min-width:48px;margin:0!important;padding:5px 0;line-height:1.25;text-align:center}

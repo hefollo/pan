@@ -48,6 +48,17 @@ INSERT INTO `pre_config` VALUES ('green_self_token', '');
 INSERT INTO `pre_config` VALUES ('green_self_block', '0.85');
 INSERT INTO `pre_config` VALUES ('green_self_review', '0.6');
 INSERT INTO `pre_config` VALUES ('green_self_timeout', '5');
+INSERT INTO `pre_config` VALUES ('green_video', '0');
+INSERT INTO `pre_config` VALUES ('green_video_block', '0.85');
+INSERT INTO `pre_config` VALUES ('green_video_review', '0.6');
+INSERT INTO `pre_config` VALUES ('green_video_hit', '2');
+INSERT INTO `pre_config` VALUES ('green_video_interval', '5');
+INSERT INTO `pre_config` VALUES ('green_video_frames', '40');
+INSERT INTO `pre_config` VALUES ('green_video_maxlen', '7200');
+INSERT INTO `pre_config` VALUES ('green_video_maxsize', '2048');
+INSERT INTO `pre_config` VALUES ('green_video_timeout', '30');
+INSERT INTO `pre_config` VALUES ('green_video_shot', '1');
+INSERT INTO `pre_config` VALUES ('green_poll_time', '0');
 INSERT INTO `pre_config` VALUES ('green_check_region', 'cn-beijing');
 INSERT INTO `pre_config` VALUES ('green_check_porn', '0');
 INSERT INTO `pre_config` VALUES ('green_check_terrorism', '0');
@@ -55,6 +66,7 @@ INSERT INTO `pre_config` VALUES ('green_label_porn', 'sexy,porn');
 INSERT INTO `pre_config` VALUES ('green_label_terrorism', 'bloody,explosion,outfit,logo,weapon,politics');
 INSERT INTO `pre_config` VALUES ('gg_file', '网站所有文件内容均由用户自行上传分享，本站严格遵守国家相关法律法规，尊重著作权、版权等第三方权利，如果当前文件侵犯了您的相关权利，请邮件反馈至@qq.com，我们将及时处理。');
 INSERT INTO `pre_config` VALUES ('violation_open', '1');
+INSERT INTO `pre_config` VALUES ('sponsor_open', '1');
 INSERT INTO `pre_config` VALUES ('violation_notice', '本站严格遵守国家法律法规，对用户举报及系统检测发现的违规文件一律予以封禁，并在此公示。文件名、上传IP等信息已做脱敏处理。');
 
 DROP TABLE IF EXISTS `pre_file`;
@@ -167,6 +179,9 @@ CREATE TABLE `pre_greenlog` (
   `detail` varchar(255) NOT NULL DEFAULT '' COMMENT '各模型分数明细',
   `verdict` varchar(10) NOT NULL DEFAULT 'pass' COMMENT 'pass放行 review待审 block封禁 error检测失败',
   `ms` int(11) NOT NULL DEFAULT '0' COMMENT '耗时毫秒',
+  `frames` varchar(20) NOT NULL DEFAULT '' COMMENT '视频抽帧命中数/总数',
+  `hit_at` int(11) NOT NULL DEFAULT '0' COMMENT '最高分出现在第几秒',
+  `shot` varchar(80) NOT NULL DEFAULT '' COMMENT '证据帧文件名',
   `uid` int(11) unsigned NOT NULL DEFAULT '0',
   `ip` varchar(45) DEFAULT NULL,
   `addtime` datetime NOT NULL,
@@ -175,6 +190,27 @@ CREATE TABLE `pre_greenlog` (
   KEY `addtime` (`addtime`),
   KEY `file_id` (`file_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+DROP TABLE IF EXISTS `pre_greenjob`;
+CREATE TABLE `pre_greenjob` (
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `file_id` int(11) unsigned NOT NULL DEFAULT '0',
+  `hash` varchar(32) NOT NULL DEFAULT '',
+  `name` varchar(255) NOT NULL DEFAULT '',
+  `type` varchar(50) NOT NULL DEFAULT '',
+  `job` varchar(64) NOT NULL DEFAULT '' COMMENT '检测服务返回的任务号',
+  `cbkey` varchar(64) NOT NULL DEFAULT '' COMMENT '回调地址里带的一次性密钥，认这个才收结果',
+  `status` tinyint(1) NOT NULL DEFAULT '0' COMMENT '0待结果 1已完成 2检测失败 3超时自动放行',
+  `tries` tinyint(3) unsigned NOT NULL DEFAULT '0' COMMENT '轮询次数',
+  `uid` int(11) unsigned NOT NULL DEFAULT '0',
+  `ip` varchar(45) DEFAULT NULL,
+  `addtime` datetime NOT NULL,
+  `updatetime` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `job` (`job`),
+  KEY `status` (`status`,`id`),
+  KEY `hash` (`hash`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='视频检测任务，异步跑完回来更新文件状态';
 
 DROP TABLE IF EXISTS `pre_mailcode`;
 CREATE TABLE `pre_mailcode` (

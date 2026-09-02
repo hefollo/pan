@@ -1239,6 +1239,9 @@ function admin_setting_keys(){
 		'green_check_porn', 'green_check_region', 'green_check_terrorism', 'green_label_porn',
 		'green_self_api', 'green_self_token', 'green_self_block', 'green_self_review',
 		'green_self_timeout',
+		'green_video', 'green_video_block', 'green_video_review', 'green_video_hit',
+		'green_video_interval', 'green_video_frames', 'green_video_maxlen',
+		'green_video_maxsize', 'green_video_timeout', 'green_video_shot',
 		'green_label_terrorism', 'ip_type', 'keywords', 'login_apiurl',
 		'login_appid', 'login_appkey', 'login_qq', 'login_wx',
 		'name_block', 'obs_ak', 'obs_bucket', 'obs_endpoint',
@@ -1255,7 +1258,7 @@ function admin_setting_keys(){
 		'tongji', 'type_audio', 'type_block', 'type_image',
 		'type_video', 'upload_limit', 'upload_per_minute', 'upload_size', 'uploadfile_type',
 		'upyun_name', 'upyun_pwd', 'upyun_user', 'userlogin',
-		'videoreview', 'violation_notice', 'violation_open',
+		'videoreview', 'violation_notice', 'violation_open', 'sponsor_open',
 		'alipay_open', 'alipay_appid', 'alipay_public_key', 'alipay_private_key',
 		'epay_open', 'epay_apiurl', 'epay_pid', 'epay_key', 'epay_type', 'epay_charset',
 		'pay_subject',
@@ -1714,13 +1717,16 @@ function save_storage_content($hash, $content, $type){
  */
 function checkImage($hash, $ext, $ctx = []){
 	global $conf,$siteurl;
-	$apiurl = $conf['apiurl']?$conf['apiurl']:$siteurl;
-	$fileurl = $apiurl.'view.php/'.$hash.'.'.$ext.'?greencheck=1';
 	$started = microtime(true);
 	$engine = '';
 	$score = 0;
 	$detail = '';
 	$verdict = '';
+
+	//云接口只能远程抓取，必须给一个公网访问得到的地址；自建服务在本机，路径和地址都行
+	$cloud = ($conf['green_check'] == 1 || $conf['green_check'] == 2);
+	$src = green_file_source($hash, $ext, $ctx, ['url_only'=>$cloud]);
+	$fileurl = isset($src['url']) ? $src['url'] : '';
 
 	if($conf['green_check'] == 1){
 		$engine = 'aliyun';
@@ -1730,7 +1736,7 @@ function checkImage($hash, $ext, $ctx = []){
 		$verdict = checkImage_qcloud($fileurl) ? 'block' : '';
 	}elseif($conf['green_check'] == 3){
 		$engine = 'self';
-		$res = checkImage_self($hash, $fileurl);
+		$res = checkImage_self($hash, $src);
 		$verdict = $res['verdict'];
 		$score = $res['score'];
 		$detail = $res['detail'];
@@ -1764,9 +1770,13 @@ function add_green_log($row){
 	 * 0 == '' 成立，score / ms / uid 这几个为 0 的列就会被写成 NULL，
 	 * 撞上 NOT NULL 直接插入失败。所以老老实实自己拼 SQL 绑参数。
 	 */
-	$sql = "INSERT INTO pre_greenlog (`file_id`,`name`,`type`,`hash`,`engine`,`score`,`detail`,`verdict`,`ms`,`uid`,`ip`,`addtime`)"
-		." VALUES (:file_id,:name,:type,:hash,:engine,:score,:detail,:verdict,:ms,:uid,:ip,:addtime)";
-	return @$DB->exec($sql, [
+	$sql = "INSERT INTO pre_greenlog (`file_id`,`name`,`type`,`hash`,`engine`,`score`,`detail`,`verdict`,`ms`,`frames`,`hit_at`,`shot`,`uid`,`ip`,`addtime`)"
+		." VALUES (:file_id,:name,:type,:hash,:engine,:score,:detail,:verdict,:ms,:frames,:hit_at,:shot,:uid,:ip,:addtime)";
+	$ok = @$DB->exec($sql, [
+		//视频独有的三列：命中几帧、最高分在第几秒、证据帧存成了哪个文件。图片全是空
+		':frames' => isset($row['frames']) ? (string)$row['frames'] : '',
+		':hit_at' => isset($row['hit_at']) ? intval($row['hit_at']) : 0,
+		':shot' => isset($row['shot']) ? (string)$row['shot'] : '',
 		':file_id' => isset($row['id']) ? intval($row['id']) : 0,
 		':name' => isset($row['name']) ? mb_substr((string)$row['name'], 0, 250, 'UTF-8') : '',
 		':type' => isset($row['type']) ? (string)$row['type'] : '',
@@ -1780,6 +1790,451 @@ function add_green_log($row){
 		':ip' => isset($row['ip']) ? (string)$row['ip'] : (isset($clientip) ? $clientip : ''),
 		':addtime' => date('Y-m-d H:i:s'),
 	]);
+	/*
+	 * 失败必须留痕。这条 INSERT 挂掉的典型原因是升级没跑全（frames/hit_at/shot 三个
+	 * 字段不存在），而它一挂，后台就是「一条记录都没有」——检测明明跑了，页面上却什么
+	 * 都看不见，这种没有任何线索的坏法最难查。记录丢了是小事，不知道丢了才是大事。
+	 */
+	if($ok === false){
+		$err = $DB->error();
+		writeLog('检测记录写入失败：'.(is_array($err) && isset($err[2]) ? $err[2] : '未知错误'));
+	}
+	return $ok;
+}
+
+/*
+ * 给检测服务指一个能读到文件的地方，按「本地绝对路径 → 存储直链 → 站内 view.php」挑。
+ * 返回 ['path'=>...] 或 ['url'=>...]，都拿不到返回 null。
+ *
+ * 本地存储直接给路径，检测服务读盘，省掉一次 HTTP 回环。云存储给带签名的直链，
+ * 它支持 Range——视频抽帧靠这个才能只拉需要的那几段，不然一个 2G 的片子每检测一次
+ * 就要整个下一遍。最后才退回 view.php。
+ *
+ * view.php 认的是 token 不是 hash，这里以前拼的是 hash，等于给了个必然查不到记录的
+ * 地址，云存储下的图片检测实际上一直没生效（检测服务抓不到图，按放行处理，没人会发现）。
+ * 而且它对封禁和带密码的文件一律返回占位图，所以只能给图片兜底：视频检测期间文件是
+ * block=2，走 view.php 只会拿到那张占位图，指望不上。
+ */
+function green_file_source($hash, $ext, $ctx = [], $opt = []){
+	global $conf, $stor, $siteurl;
+	$url_only = !empty($opt['url_only']);
+	$no_view = !empty($opt['no_view']);
+
+	if(!$url_only && $conf['storage'] === 'local' && is_object($stor) && method_exists($stor, 'filepath')){
+		$path = $stor->filepath($hash);
+		if($path !== '' && is_file($path))return ['path'=>$path];
+	}
+	if(is_object($stor) && method_exists($stor, 'getDownUrl')){
+		$name = isset($ctx['name']) && $ctx['name'] !== '' ? $ctx['name'] : $hash.'.'.$ext;
+		$url = @$stor->getDownUrl($hash, $name, minetype($ext));
+		if($url)return ['url'=>$url];
+	}
+	if($no_view)return null;
+	$token = isset($ctx['token']) ? (string)$ctx['token'] : '';
+	if($token === '')return null;
+	$apiurl = $conf['apiurl'] ? $conf['apiurl'] : $siteurl;
+	//带密码的文件 view.php 同样只给占位图，密码要拼进去（格式和 player.php 用的一致）
+	$pwd = isset($ctx['pwd']) && $ctx['pwd'] !== '' && $ctx['pwd'] !== null ? '&'.$ctx['pwd'] : '';
+	return ['url'=>$apiurl.'view.php/'.$token.'.'.$ext.$pwd.'?greencheck=1'];
+}
+
+/*
+ * 后台填的是 /check 那个完整地址，其它接口（check_video、result、health）在同一个根下面，
+ * 所以从配置里把结尾的 /check 摘掉再拼，站长不用为每个接口各填一遍。
+ */
+function green_self_url($endpoint = 'check'){
+	global $conf;
+	$api = isset($conf['green_self_api']) && trim($conf['green_self_api']) !== '' ? trim($conf['green_self_api']) : 'http://127.0.0.1:9012/check';
+	$base = preg_replace('#/check(_video)?/*$#i', '', $api);
+	if($base === '' || $base === null)$base = $api;
+	return rtrim($base, '/').'/'.$endpoint;
+}
+
+/*
+ * 查一下检测功能依赖的表和字段在不在，返回缺的东西（都齐全返回空数组）。
+ *
+ * 为什么要专门查：install/update.php 是「先合并 SQL 再无条件写版本号」的，万一
+ * update_1020.sql 没传上服务器，版本号照样被写成 1020，而表和字段一个都没建。
+ * 之后每次写检测记录的 INSERT 都会失败，后台却只显示「共 0 条」——检测跑了、
+ * 文件也挂起了，就是什么都看不见。与其让人对着空列表猜，不如直接把话说明白。
+ */
+function green_schema_missing(){
+	global $DB;
+	static $cache = null;
+	if($cache !== null)return $cache;
+	$cache = [];
+	if(!$DB->getRow("SHOW TABLES LIKE 'pre_greenjob'")){
+		$cache[] = 'pre_greenjob 表（视频检测任务）';
+	}
+	$cols = $DB->getAll("SHOW COLUMNS FROM `pre_greenlog`");
+	if(is_array($cols)){
+		$have = [];
+		foreach($cols as $c){
+			if(isset($c['Field']))$have[] = $c['Field'];
+		}
+		foreach(['frames'=>'命中帧数', 'hit_at'=>'命中时间点', 'shot'=>'证据帧'] as $f => $label){
+			if(!in_array($f, $have, true))$cache[] = 'pre_greenlog.'.$f.' 字段（'.$label.'）';
+		}
+	}else{
+		$cache[] = 'pre_greenlog 表（检测记录）';
+	}
+	return $cache;
+}
+
+/*
+ * 静态资源的缓存版本号，用于 style.css?v=xxx 这种后缀。
+ *
+ * 取文件自身的修改时间，而不是手写一个常量：改完 CSS 忘了改版本号，浏览器和 CDN
+ * 就会一直拿旧文件——「明明改了却没生效」十次有九次是这么来的，而且套了 CDN 之后
+ * 连强刷都救不回来（请求根本到不了源站）。用 mtime 的话，文件一变地址就变，
+ * 传上去自动生效，不用记着改任何东西。
+ * 拿不到时间（文件不存在等）就退回 VERSION，至少还有个固定值。
+ */
+function asset_ver($file){
+	$t = @filemtime(ROOT.ltrim($file, '/'));
+	return $t ? $t : VERSION;
+}
+
+/*
+ * 轮询入口 green_cb.php?poll=1 用的钥匙。从站点密钥推出来，不单独存一个配置项，
+ * 后台设置页把整条 crontab 命令打出来给站长复制。
+ */
+function green_poll_key(){
+	return substr(hash_hmac('sha256', 'greenpoll', SYS_KEY), 0, 32);
+}
+
+/*
+ * 跟自建检测服务说话的统一出口。$payload 传 null 就是 GET。
+ * 连不上、超时、返回看不懂都返回 null，由调用方决定怎么兜底——这个服务挂了不能
+ * 反过来把网站的上传卡死。
+ */
+function green_self_request($endpoint, $payload = null, $timeout = 5){
+	global $conf;
+	if(!function_exists('curl_init')){
+		writeLog('self green check: 服务器没开启 curl 扩展');
+		return null;
+	}
+	$url = green_self_url($endpoint);
+	$headers = ['Content-Type: application/json'];
+	if(!empty($conf['green_self_token']))$headers[] = 'X-Auth-Token: '.$conf['green_self_token'];
+
+	$ch = curl_init($url);
+	if($payload !== null){
+		curl_setopt($ch, CURLOPT_POST, true);
+		curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+	}
+	curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+	curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
+	curl_setopt($ch, CURLOPT_TIMEOUT, $timeout > 0 ? $timeout : 5);
+	$body = curl_exec($ch);
+	$status = intval(curl_getinfo($ch, CURLINFO_HTTP_CODE));
+	$error = curl_error($ch);
+	curl_close($ch);
+
+	if($body === false){
+		writeLog('检测服务连不上（'.$url.'）：'.$error);
+		return null;
+	}
+	$json = json_decode($body, true);
+	if(!is_array($json)){
+		writeLog('检测服务返回异常（HTTP '.$status.'）：'.substr((string)$body, 0, 200));
+		return null;
+	}
+	//404 之类也要把 body 带回去，调用方靠它区分「任务不存在」和「服务挂了」
+	$json['_status'] = $status;
+	return $json;
+}
+
+/*
+ * 视频检测入口：只建任务、提交，然后立刻返回。
+ *
+ * 和图片最大的区别是它必须异步——一个视频要抽几十帧、跑两套模型，十几秒起步，
+ * 卡在上传请求里必然超时。站点策略是「先挂起再放行」：调用方在调这里之前已经把文件
+ * 置成 block=2，检测跑完由回调或轮询决定放行还是封禁。
+ *
+ * 所以这里提交失败也不用做补偿：任务记录已经落库了，轮询会重试，实在不行按超时放行。
+ */
+function checkVideo($hash, $ext, $ctx = []){
+	global $conf, $DB;
+	//视频只有自建服务支持。云厂商的视频审核是另一套按量计费的异步接口，没接
+	if(empty($conf['green_video']) || intval($conf['green_check']) != 3)return false;
+
+	$base = ['engine'=>'self-video', 'hash'=>$hash, 'type'=>$ext] + $ctx;
+	$maxsize = isset($conf['green_video_maxsize']) ? intval($conf['green_video_maxsize']) : 2048;
+	$size = isset($ctx['size']) ? intval($ctx['size']) : 0;
+	if($maxsize > 0 && $size > $maxsize * 1024 * 1024){
+		//太大的片子抽帧要拉很多数据，跑完可能好几分钟，与其占住队列不如直接交给人工。
+		//文件保持 block=2，也就是待审核
+		add_green_log(['verdict'=>'review', 'detail'=>'超过 '.$maxsize.'MB，未自动检测'] + $base);
+		return false;
+	}
+
+	$src = green_file_source($hash, $ext, $ctx, ['no_view'=>true]);
+	if(!$src){
+		/*
+		 * 取不到文件源是配置问题（比如 WebDAV 不支持直链），不是这个文件的问题，
+		 * 而且它对每一个视频都会发生。这种情况下继续挂起等于全站视频永远卡在待审，
+		 * 所以放行并留下日志，让站长在检测记录里看得见——除非站长本来就要求人工审所有视频。
+		 */
+		add_green_log(['verdict'=>'error', 'detail'=>'当前存储方式取不到文件地址'] + $base);
+		if($conf['videoreview'] != 1){
+			$DB->exec("UPDATE `pre_file` SET `block`=0 WHERE `hash`=:hash AND `block`=2", [':hash'=>$hash]);
+		}
+		return false;
+	}
+
+	//回调地址里带一把一次性钥匙：检测服务原样 POST 回来，认钥匙不认来源 IP。
+	//没有它的话，任何人都能往 green_cb.php 打一个「合规」结果，把待审的文件放出来
+	$cbkey = bin2hex(random_bytes(16));
+	$ok = $DB->exec("INSERT INTO `pre_greenjob` (`file_id`,`hash`,`name`,`type`,`job`,`cbkey`,`status`,`tries`,`uid`,`ip`,`addtime`,`updatetime`)"
+		." VALUES (:file_id,:hash,:name,:type,'',:cbkey,0,0,:uid,:ip,NOW(),NOW())", [
+		':file_id' => isset($ctx['id']) ? intval($ctx['id']) : 0,
+		':hash' => $hash,
+		':name' => isset($ctx['name']) ? mb_substr((string)$ctx['name'], 0, 250, 'UTF-8') : '',
+		':type' => $ext,
+		':cbkey' => $cbkey,
+		':uid' => isset($ctx['uid']) ? intval($ctx['uid']) : 0,
+		':ip' => isset($ctx['ip']) ? (string)$ctx['ip'] : '',
+	]);
+	if($ok === false){
+		//1020 版才有这张表，没跑升级的站点就当视频检测没开，别把上传拖下水
+		writeLog('video green check: pre_greenjob 写入失败，可能没执行数据库升级');
+		if($conf['videoreview'] != 1){
+			$DB->exec("UPDATE `pre_file` SET `block`=0 WHERE `hash`=:hash AND `block`=2", [':hash'=>$hash]);
+		}
+		return false;
+	}
+	$id = $DB->lastInsertId();
+
+	$res = checkVideo_submit($hash, $ext, $src, $cbkey);
+	if(is_array($res) && !empty($res['job'])){
+		$DB->exec("UPDATE `pre_greenjob` SET `job`=:job,`updatetime`=NOW() WHERE `id`=:id LIMIT 1", [':job'=>(string)$res['job'], ':id'=>$id]);
+		return true;
+	}
+	if(is_array($res) && !empty($res['unsupported'])){
+		/*
+		 * 服务端明说了做不了（多半是没装 ffmpeg）。这是个不会自己好的状态，
+		 * 每个视频都要先挂 30 分钟等超时太蠢，直接放行并把原因记下来。
+		 * 后台设置页那行「检测服务状态」会同时显示成红字。
+		 */
+		green_video_give_up($id, $hash, $ext, $ctx, isset($res['msg']) ? (string)$res['msg'] : '服务端不支持视频检测');
+		return false;
+	}
+	//没提交上去（服务没起来、队列满了），任务留在库里，交给轮询重试
+	writeLog('video green check 提交失败：'.(is_array($res) && isset($res['msg']) ? $res['msg'] : '检测服务无响应'));
+	return false;
+}
+
+/*
+ * 检测服务明确表示做不了（没装 ffmpeg 之类）时的收尾：任务标成失败，文件放行。
+ * 这类问题不会自己好，每个视频都挂到超时才放没有任何意义，还会让站长以为在审核。
+ */
+function green_video_give_up($job_id, $hash, $ext, $ctx, $msg){
+	global $DB, $conf;
+	$DB->exec("UPDATE `pre_greenjob` SET `status`=2,`updatetime`=NOW() WHERE `id`=:id LIMIT 1", [':id'=>$job_id]);
+	add_green_log(['engine'=>'self-video', 'hash'=>$hash, 'type'=>$ext,
+		'verdict'=>'error', 'detail'=>mb_substr($msg, 0, 100, 'UTF-8')] + $ctx);
+	if($conf['videoreview'] != 1){
+		$DB->exec("UPDATE `pre_file` SET `block`=0 WHERE `hash`=:hash AND `block`=2", [':hash'=>$hash]);
+	}
+	writeLog('video green check 不可用，已放行：'.$msg);
+}
+
+//把一个视频任务丢给检测服务。阈值和抽帧参数每次都随请求发过去，后台改完立刻生效
+function checkVideo_submit($hash, $ext, $src, $cbkey){
+	global $conf, $siteurl;
+	$apiurl = $conf['apiurl'] ? $conf['apiurl'] : $siteurl;
+	$payload = $src + [
+		'block' => isset($conf['green_video_block']) && $conf['green_video_block'] !== '' ? floatval($conf['green_video_block']) : 0.85,
+		'review' => isset($conf['green_video_review']) && $conf['green_video_review'] !== '' ? floatval($conf['green_video_review']) : 0.60,
+		'hit_frames' => isset($conf['green_video_hit']) ? intval($conf['green_video_hit']) : 2,
+		'interval' => isset($conf['green_video_interval']) ? intval($conf['green_video_interval']) : 5,
+		'max_frames' => isset($conf['green_video_frames']) ? intval($conf['green_video_frames']) : 40,
+		'max_duration' => isset($conf['green_video_maxlen']) ? intval($conf['green_video_maxlen']) : 7200,
+		'callback' => $apiurl.'green_cb.php?k='.$cbkey,
+	];
+	return green_self_request('check_video', $payload, 10);
+}
+
+//证据帧存哪儿。目录里带 .htaccess 和空 index.html，别让人直接从 URL 翻这些图
+function green_shot_dir(){
+	$dir = ROOT.'data/greenshot/';
+	if(!is_dir($dir)){
+		@mkdir($dir, 0755, true);
+		@file_put_contents($dir.'.htaccess', "Order Deny,Allow\nDeny from all\n");
+		@file_put_contents($dir.'index.html', '');
+	}
+	return $dir;
+}
+
+//把回调带回来的证据帧写到磁盘，返回文件名。失败返回空串，不影响判定落地
+function green_shot_save($b64){
+	$raw = base64_decode((string)$b64, true);
+	//再小的 jpeg 也不止 200 字节，太小的必然不是图；上限挡住异常的大包
+	if($raw === false || strlen($raw) < 200 || strlen($raw) > 2 * 1024 * 1024)return '';
+	if(substr($raw, 0, 2) !== "\xFF\xD8")return '';   //不是 JPEG 就不收
+	/*
+	 * 文件名整段随机，不掺文件 hash：Nginx 不认 .htaccess，那道防线在一部分站点上
+	 * 是不生效的，名字要是能从文件 hash 推出来，等于把命中的画面挂在公网上。
+	 * 前面的日期只是为了目录里好按时间清理。
+	 */
+	$name = date('Ymd').'_'.bin2hex(random_bytes(16)).'.jpg';
+	$dir = green_shot_dir();
+	if(@file_put_contents($dir.$name, $raw) === false)return '';
+	return $name;
+}
+
+/*
+ * 把检测结果落到文件上。回调和轮询都走这里，两条路不能各写一份判定逻辑。
+ *
+ * 一定要按 hash 而不是 file_id 更新：秒传是按 hash 命中的，待检那段时间里别人秒传
+ * 同一个文件会生成新记录（继承 block=2）。只处理原始那条的话，放行时秒传出来的几条
+ * 会永远卡在待审，封禁时它们又照样能下——这是这套流程最容易破的地方。
+ */
+function apply_video_verdict($job, $res){
+	global $DB, $conf;
+	$hash = (string)$job['hash'];
+	$verdict = isset($res['verdict']) ? (string)$res['verdict'] : 'pass';
+	if(!in_array($verdict, ['pass', 'review', 'block'], true))$verdict = 'review';
+
+	$shot = '';
+	if(!empty($res['shot']) && !empty($conf['green_video_shot']))$shot = green_shot_save($res['shot']);
+
+	$parts = [];
+	if(isset($res['detail']) && is_array($res['detail'])){
+		foreach($res['detail'] as $name => $value){
+			if(is_numeric($value))$parts[] = $name.'='.round(floatval($value), 4);
+		}
+	}
+	if(!empty($res['duration']))$parts[] = '时长'.intval($res['duration']).'秒';
+	if(!empty($res['msg']))$parts[] = (string)$res['msg'];
+
+	$frames = (isset($res['hits']) ? intval($res['hits']) : 0).'/'.(isset($res['scored']) ? intval($res['scored']) : 0);
+	add_green_log([
+		'id' => intval($job['file_id']),
+		'name' => $job['name'],
+		'type' => $job['type'],
+		'hash' => $hash,
+		'engine' => 'self-video',
+		'score' => isset($res['score']) ? floatval($res['score']) : 0,
+		'detail' => implode('  ', $parts),
+		'verdict' => $verdict,
+		'ms' => isset($res['ms']) ? intval($res['ms']) : 0,
+		'frames' => $frames,
+		'hit_at' => isset($res['hit_at']) ? intval($res['hit_at']) : 0,
+		'shot' => $shot,
+		'uid' => intval($job['uid']),
+		'ip' => $job['ip'],
+	]);
+
+	if($verdict === 'block'){
+		//先把要封的记录捞出来再更新，不然更新完就分不清哪些是这次封的了
+		$rows = $DB->getAll("SELECT * FROM `pre_file` WHERE `hash`=:hash AND `block`<>1", [':hash'=>$hash]);
+		$DB->exec("UPDATE `pre_file` SET `block`=1 WHERE `hash`=:hash AND `block`<>1", [':hash'=>$hash]);
+		if(is_array($rows)){
+			foreach($rows as $row){
+				//机器判定可能误伤，先留档但不公示，等后台在违规公示管理里确认后再放出
+				add_violation_log($row, 'green', '视频自动检测命中（'.$frames.' 帧）', 0);
+			}
+		}
+	}elseif($verdict === 'pass'){
+		//videoreview 是站长主动要求「所有视频都人工过一遍」，机器说没问题也不能替他放行
+		if($conf['videoreview'] != 1){
+			$DB->exec("UPDATE `pre_file` SET `block`=0 WHERE `hash`=:hash AND `block`=2", [':hash'=>$hash]);
+		}
+	}
+	//review 就是保持 block=2 不动，等人工在文件管理里筛「待审核文件」确认
+	return true;
+}
+
+/*
+ * 轮询兜底。回调走不通（反代拦了、内网不通、地址填错）时，视频会永远停在待审——
+ * 先挂起的策略下这不是漏检而是文件永久卡死，用户会直接找上门，所以这条路是必需的，
+ * 不是锦上添花。
+ *
+ * 三种收尾：查到结果就落地；反复报错的判给人工（反复解不开的文件本身可疑）；
+ * 超过设定时间还没下文的直接放行——检测服务出什么事都不该让正常文件永远出不来。
+ */
+function green_video_poll($limit = 10){
+	global $DB, $conf;
+	if(intval($conf['green_check']) != 3 || empty($conf['green_video']))return 0;
+	$rows = $DB->getAll("SELECT * FROM `pre_greenjob` WHERE `status`=0 ORDER BY `id` ASC LIMIT ".intval($limit));
+	if(!is_array($rows) || !$rows)return 0;
+
+	$timeout = isset($conf['green_video_timeout']) ? intval($conf['green_video_timeout']) : 30;
+	if($timeout < 1)$timeout = 30;
+	$done = 0;
+	foreach($rows as $job){
+		$expired = (time() - strtotime($job['addtime'])) > $timeout * 60;
+		$res = null;
+		if($job['job'] === ''){
+			//当初就没提交上去，重试一次
+			$src = green_file_source($job['hash'], $job['type'], ['name'=>$job['name']], ['no_view'=>true]);
+			if($src){
+				$sub = checkVideo_submit($job['hash'], $job['type'], $src, $job['cbkey']);
+				if(is_array($sub) && !empty($sub['job'])){
+					$DB->exec("UPDATE `pre_greenjob` SET `job`=:job,`tries`=`tries`+1,`updatetime`=NOW() WHERE `id`=:id LIMIT 1", [':job'=>(string)$sub['job'], ':id'=>$job['id']]);
+					continue;
+				}
+				if(is_array($sub) && !empty($sub['unsupported'])){
+					//服务端做不了，别再挂着等超时了
+					green_video_give_up($job['id'], $job['hash'], $job['type'],
+						['id'=>$job['file_id'], 'name'=>$job['name'], 'uid'=>$job['uid'], 'ip'=>$job['ip']],
+						isset($sub['msg']) ? (string)$sub['msg'] : '服务端不支持视频检测');
+					$done++;
+					continue;
+				}
+			}
+		}else{
+			$res = green_self_request('result?job='.urlencode($job['job']), null, 5);
+		}
+
+		if(is_array($res) && isset($res['status'])){
+			if($res['status'] === 'done'){
+				apply_video_verdict($job, $res);
+				$DB->exec("UPDATE `pre_greenjob` SET `status`=1,`updatetime`=NOW() WHERE `id`=:id LIMIT 1", [':id'=>$job['id']]);
+				$done++;
+				continue;
+			}
+			if($res['status'] === 'error' && $job['tries'] >= 2){
+				//试了三次都解不开：交给人工，别放行。文件保持 block=2
+				apply_video_verdict($job, ['verdict'=>'review', 'msg'=>'检测失败：'.substr(isset($res['msg']) ? (string)$res['msg'] : '', 0, 100)]);
+				$DB->exec("UPDATE `pre_greenjob` SET `status`=2,`updatetime`=NOW() WHERE `id`=:id LIMIT 1", [':id'=>$job['id']]);
+				continue;
+			}
+			//queued / running：还在跑，下次再来看
+		}elseif(is_array($res) && intval($res['_status']) === 404){
+			//结果过期了，或者检测服务重启过，任务丢了。下一轮当没提交过重新排队
+			$DB->exec("UPDATE `pre_greenjob` SET `job`='',`tries`=`tries`+1,`updatetime`=NOW() WHERE `id`=:id LIMIT 1", [':id'=>$job['id']]);
+			continue;
+		}
+
+		if($expired){
+			//超时兜底：宁可漏检也不能让文件永远出不来，这是先挂起策略必须配的安全阀
+			apply_video_verdict($job, ['verdict'=>'pass', 'msg'=>'超过 '.$timeout.' 分钟没有检测结果，自动放行']);
+			$DB->exec("UPDATE `pre_greenjob` SET `status`=3,`updatetime`=NOW() WHERE `id`=:id LIMIT 1", [':id'=>$job['id']]);
+			$done++;
+			continue;
+		}
+		$DB->exec("UPDATE `pre_greenjob` SET `tries`=`tries`+1,`updatetime`=NOW() WHERE `id`=:id LIMIT 1", [':id'=>$job['id']]);
+	}
+	return $done;
+}
+
+/*
+ * 顺手轮询：每分钟最多一次，蹭正常请求把待处理的任务推进一下。
+ * $conf 是整表读进来的，判断这个时间戳不额外查库；真要轮询时才写一次。
+ * 有 crontab 的站点靠 green_cb.php?poll=1 更及时，这里只是没配 cron 时的保底。
+ */
+function green_video_poll_tick(){
+	global $DB, $conf;
+	if(intval($conf['green_check']) != 3 || empty($conf['green_video']))return;
+	$last = isset($conf['green_poll_time']) ? intval($conf['green_poll_time']) : 0;
+	if(time() - $last < 60)return;
+	$conf['green_poll_time'] = time();
+	$DB->exec("REPLACE INTO `pre_config` (`k`,`v`) VALUES ('green_poll_time',:v)", [':v'=>(string)time()]);
+	green_video_poll(5);
 }
 
 /*
@@ -1790,49 +2245,19 @@ function add_green_log($row){
  * 服务连不上、超时、返回看不懂，一律当没命中放行——不能因为检测服务挂了就把正常
  * 上传卡死，宁可漏检也不能误伤，出了什么事日志里有记录。
  */
-function checkImage_self($hash, $fileurl){
-	global $conf, $stor;
-	if(!function_exists('curl_init')){
-		writeLog('self green check: 服务器没开启 curl 扩展');
-		return ['verdict'=>'', 'score'=>0, 'detail'=>'服务器没开启 curl'];
+function checkImage_self($hash, $src){
+	global $conf;
+	if(!is_array($src)){
+		writeLog('self green check: 取不到文件地址，已放行');
+		return ['verdict'=>'', 'score'=>0, 'detail'=>'取不到文件地址'];
 	}
-	$api = isset($conf['green_self_api']) && trim($conf['green_self_api']) !== '' ? trim($conf['green_self_api']) : 'http://127.0.0.1:9012/check';
 	$block = isset($conf['green_self_block']) && $conf['green_self_block'] !== '' ? floatval($conf['green_self_block']) : 0.85;
 	$review = isset($conf['green_self_review']) && $conf['green_self_review'] !== '' ? floatval($conf['green_self_review']) : 0.60;
 	$timeout = isset($conf['green_self_timeout']) && intval($conf['green_self_timeout']) > 0 ? intval($conf['green_self_timeout']) : 5;
 
-	$payload = ['block'=>$block, 'review'=>$review];
-	//本地存储能拿到真实路径，让检测服务直接读盘，比再绕一次 view.php 快得多
-	$path = ($conf['storage'] === 'local' && is_object($stor) && method_exists($stor, 'filepath')) ? $stor->filepath($hash) : '';
-	if($path !== '' && is_file($path)){
-		$payload['path'] = $path;
-	}else{
-		$payload['url'] = $fileurl;
-	}
-
-	$headers = ['Content-Type: application/json'];
-	if(!empty($conf['green_self_token']))$headers[] = 'X-Auth-Token: '.$conf['green_self_token'];
-
-	$ch = curl_init($api);
-	curl_setopt($ch, CURLOPT_POST, true);
-	curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
-	curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-	curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
-	curl_setopt($ch, CURLOPT_TIMEOUT, $timeout);
-	$body = curl_exec($ch);
-	$status = intval(curl_getinfo($ch, CURLINFO_HTTP_CODE));
-	$error = curl_error($ch);
-	curl_close($ch);
-
-	if($body === false || $status !== 200){
-		writeLog('self green check 失败（HTTP '.$status.'）：'.($error ? $error : substr((string)$body, 0, 200)));
-		return ['verdict'=>'', 'score'=>0, 'detail'=>'检测失败 HTTP '.$status];
-	}
-	$json = json_decode($body, true);
+	$json = green_self_request('check', $src + ['block'=>$block, 'review'=>$review], $timeout);
 	if(!is_array($json) || empty($json['ok']) || !isset($json['score'])){
-		writeLog('self green check 返回异常：'.substr((string)$body, 0, 200));
-		return ['verdict'=>'', 'score'=>0, 'detail'=>'返回内容无法识别'];
+		return ['verdict'=>'', 'score'=>0, 'detail'=>'检测失败'];
 	}
 	$score = floatval($json['score']);
 	//每个模型各打了多少分，记进日志方便回头判断是哪个模型误判
@@ -2037,8 +2462,9 @@ function replace_file_record($old, $name, $hash, $size, $ext, $uid, $ip, $source
 
 	$type_image = explode('|',$conf['type_image']);
 	$type_video = explode('|',$conf['type_video']);
+	$ctx = ['id'=>$id, 'name'=>$name, 'uid'=>$uid, 'ip'=>$ip, 'token'=>(isset($old['token'])?$old['token']:''), 'size'=>$size, 'pwd'=>(isset($old['pwd'])?$old['pwd']:'')];
 	if($conf['green_check']>0 && in_array($ext,$type_image)){
-		$verdict = checkImage($hash, $ext, ['id'=>$id, 'name'=>$name, 'uid'=>$uid, 'ip'=>$ip]);
+		$verdict = checkImage($hash, $ext, $ctx);
 		if($verdict === 'block'){
 			$DB->exec("UPDATE `pre_file` SET `block`=1 WHERE `id`=:id LIMIT 1", [':id'=>$id]);
 			add_violation_log(['id'=>$id, 'name'=>$name, 'type'=>$ext, 'size'=>$size, 'hash'=>$hash, 'ip'=>$ip, 'uid'=>$uid], 'green', '覆盖上传后图片自动检测命中', 0);
@@ -2047,8 +2473,14 @@ function replace_file_record($old, $name, $hash, $size, $ext, $uid, $ip, $source
 			$DB->exec("UPDATE `pre_file` SET `block`=2 WHERE `id`=:id LIMIT 1", [':id'=>$id]);
 		}
 	}
-	if($conf['videoreview']==1 && in_array($ext,$type_video)){
-		$DB->exec("UPDATE `pre_file` SET `block`=2 WHERE `id`=:id LIMIT 1", [':id'=>$id]);
+	if(in_array($ext,$type_video)){
+		//覆盖上传换的是内容，必须和新上传一样重新过一遍审，否则先传正常视频、事后覆盖成
+		//违规内容就能绕过检测
+		$video_check = (intval($conf['green_check'])==3 && !empty($conf['green_video']));
+		if($conf['videoreview']==1 || $video_check){
+			$DB->exec("UPDATE `pre_file` SET `block`=2 WHERE `id`=:id LIMIT 1", [':id'=>$id]);
+		}
+		if($video_check)checkVideo($hash, $ext, $ctx);
 	}
 
 	add_replace_log($old, ['name'=>$name, 'type'=>$ext, 'size'=>$size, 'hash'=>$hash], $uid, $ip, $source);
@@ -2150,8 +2582,9 @@ function create_file_record($name, $hash, $size, $ext, $hide, $pwd, $uid, $ip, $
 
 	$type_image = explode('|',$conf['type_image']);
 	$type_video = explode('|',$conf['type_video']);
+	$ctx = ['id'=>$id, 'name'=>$name, 'uid'=>($uid?$uid:0), 'ip'=>$ip, 'token'=>$token, 'size'=>$size, 'pwd'=>$pwd];
 	if($conf['green_check']>0 && in_array($ext,$type_image)){
-		$verdict = checkImage($hash, $ext, ['id'=>$id, 'name'=>$name, 'uid'=>($uid?$uid:0), 'ip'=>$ip]);
+		$verdict = checkImage($hash, $ext, $ctx);
 		if($verdict === 'block'){
 			$DB->exec("UPDATE `pre_file` SET `block`=1 WHERE `id`='{$id}' LIMIT 1");
 			//机器判定可能误伤，先留档但不公示，等后台在违规公示管理里确认后再放出
@@ -2161,8 +2594,21 @@ function create_file_record($name, $hash, $size, $ext, $hide, $pwd, $uid, $ip, $
 			$DB->exec("UPDATE `pre_file` SET `block`=2 WHERE `id`='{$id}' LIMIT 1");
 		}
 	}
-	if($conf['videoreview']==1 && in_array($ext,$type_video)){
-		$DB->exec("UPDATE `pre_file` SET `block`=2 WHERE `id`='{$id}' LIMIT 1");
+	if(in_array($ext,$type_video)){
+		/*
+		 * 视频是先挂起再放行：这里只把文件置成 block=2 并把任务提交出去，抽帧打分在
+		 * 检测服务里异步跑，跑完由 green_cb.php 的回调或轮询来放行/封禁。
+		 * 挂起期间前台下载不了，file.php 会显示「需审核通过后才能在线播放和下载」。
+		 */
+		$video_check = (intval($conf['green_check'])==3 && !empty($conf['green_video']));
+		if($conf['videoreview']==1 || $video_check){
+			$DB->exec("UPDATE `pre_file` SET `block`=2 WHERE `id`='{$id}' LIMIT 1");
+		}
+		if($video_check){
+			checkVideo($hash, $ext, $ctx);
+			//蹭这次上传把积压的任务推一下，没配 crontab 的站点也能转起来
+			green_video_poll_tick();
+		}
 	}
 
 	return ['id'=>$id, 'token'=>$token];

@@ -208,14 +208,13 @@ $(document).ready(function(){
 			{
 				field: 'block',
 				title: '状态',
+				//表头也要居中：内容是居中的小标签，表头却贴在左边，看着像错位
+				align: 'center',
+				halign: 'center',
 				formatter: function(value, row, index) {
-					if(value == '2'){
-						return '<a href="javascript:setBlock('+row.id+',0)" class="btn btn-xs btn-warning">待审</a>';
-					}else if(value == '1'){
-						return '<a href="javascript:setBlock('+row.id+',0)" class="btn btn-xs btn-danger">封禁</a>';
-					}else{
-						return '<a href="javascript:setBlock('+row.id+',1)" class="btn btn-xs btn-success">正常</a>';
-					}
+					//平时只显示当前状态，点一下展开三个选项。原来是一个在 正常/封禁 之间
+					//来回切的按钮，根本设不出「待审核」——自动检测判成待人工的文件回不去
+					return adminBlockHtml(row.id, value);
 				}
 			},
 			{
@@ -242,18 +241,12 @@ function change_ispwd(obj){
 		$('#pwd_frame').hide()
 	}
 }
-function setBlock(id,status) {
-	$.ajax({
-		type : 'GET',
-		url : 'ajax_file.php?act=setBlock&id='+id+'&status='+status,
-		dataType : 'json',
-		success : function(data) {
-			searchSubmit();
-		},
-		error:function(data){
-			layer.msg('服务器错误');
-		}
-	});
+/*
+ * 状态选择器的结构和交互都在 admin/head.php 里（内容检测记录页共用同一套），
+ * 这里只负责把它渲染出来、以及改完之后刷新列表。
+ */
+function adminBlockDone(id, status, res){
+	searchSubmit();
 }
 function editframe(id){
 	var ii = layer.load(2, {shade:[0.1,'#fff']});

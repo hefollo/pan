@@ -111,7 +111,7 @@ if($filetype==1){
   <div class="elseview">
   <div class="tubiao"><i class="fa '.type_to_icon($type).'"></i> </div>
 </div>
-<div class="elsetext"><p>'.$name.'</p><p>视频文件需审核通过后才能在线播放和下载，请等待审核通过。</p></div>
+<div class="elsetext"><p>'.$name.'</p><p>'.($row['block']==2 ? '视频文件需审核通过后才能在线播放和下载，请等待审核通过。' : '该视频已被屏蔽，无法在线播放或下载。').'</p></div>
 </div>';
 }else{
   echo '<div class="view">

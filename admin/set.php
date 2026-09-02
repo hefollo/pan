@@ -49,6 +49,10 @@ if($mod=='site'){
 	  <div class="col-sm-10"><select class="form-control" name="violation_open" default="<?php echo isset($conf['violation_open'])?$conf['violation_open']:1?>"><option value="0">关闭</option><option value="1">开启</option></select><span class="help-block">开启后前台显示“违规公示”页，公示内容在<a href="./set_violation.php">违规公示管理</a>里维护</span></div>
 	</div><br/>
 	<div class="form-group">
+	  <label class="col-sm-2 control-label">赞助名单</label>
+	  <div class="col-sm-10"><select class="form-control" name="sponsor_open" default="<?php echo isset($conf['sponsor_open'])?$conf['sponsor_open']:1?>"><option value="0">关闭</option><option value="1">开启</option></select><span class="help-block">关闭后前台导航不再显示“赞助名单”、直接敲地址也进不去，后台的<a href="./set_sponsor.php">赞助名单管理</a>菜单同时隐藏。名单数据保留，随时可以再打开。</span></div>
+	</div><br/>
+	<div class="form-group">
 	  <label class="col-sm-2 control-label">公示页说明</label>
 	  <div class="col-sm-10"><textarea class="form-control" name="violation_notice" rows="3" placeholder="显示在违规公示页顶部的说明文字"><?php echo htmlspecialchars(isset($conf['violation_notice'])?$conf['violation_notice']:'')?></textarea></div>
 	</div><br/>
@@ -584,112 +588,173 @@ $(document).ready(function(){
 	$green_label_porn = explode(',', $conf['green_label_porn']);
 	$green_label_terrorism = explode(',', $conf['green_label_terrorism']);
 ?>
-<div class="panel panel-primary">
-<div class="panel-heading"><h3 class="panel-title">图片检测设置</h3></div>
+<div class="panel panel-primary green-page">
+<div class="panel-heading"><h3 class="panel-title"><i class="fa fa-shield"></i> 内容检测设置</h3></div>
 <div class="panel-body">
-  <form onsubmit="return saveSetting(this)" method="post" class="form-horizontal" role="form">
-    <div class="form-group">
-	  <label class="col-sm-3 control-label">图片违规检测</label>
-	  <div class="col-sm-9"><select class="form-control" name="green_check" default="<?php echo $conf['green_check']?>"><option value="0">关闭</option><option value="1">阿里云内容安全接口</option><option value="2">腾讯云内容安全接口</option><option value="3">自建检测服务（本机模型）</option></select>
-	  <p class="help-block">自建检测不产生调用费，图片也不出服务器，但要在服务器上另跑一个 Python 服务，部署说明见 <b>tools/nsfw/README.md</b>。</p></div>
-	</div><br/>
-	<div id="green_aliyun" style="<?php echo $conf['green_check']!='1'?'display:none;':null; ?>">
-	<div class="form-group">
-	  <label class="col-sm-3 control-label">阿里云AccessKey Id</label>
-	  <div class="col-sm-9"><input type="text" name="aliyun_ak" value="<?php echo $conf['aliyun_ak']; ?>" class="form-control"/></div>
-	</div><br/>
-	<div class="form-group">
-	  <label class="col-sm-3 control-label">阿里云AccessKey Secret</label>
-	  <div class="col-sm-9"><input type="text" name="aliyun_sk" value="<?php echo $conf['aliyun_sk']; ?>" class="form-control"/></div>
-	</div><br/>
-	<div class="form-group">
-	  <label class="col-sm-3 control-label">图片检测接入区域</label>
-	  <div class="col-sm-9"><select class="form-control" name="green_check_region" default="<?php echo $conf['green_check_region']?>"><option value="cn-beijing">华北2（北京）</option><option value="cn-shanghai">华东2（上海）</option><option value="cn-shenzhen">华南1（深圳）</option><option value="ap-southeast-1">新加坡</option><option value="us-west-1">美西</option></select><font color="green">你可以选择一个离本站服务器最近的以提升检测速度</font></div>
-	</div><br/>
-	<div class="form-group">
-	  <label class="col-sm-3 control-label">图片智能鉴黄</label>
-	  <div class="col-sm-9"><select class="form-control" name="green_check_porn" default="<?php echo $conf['green_check_porn']?>"><option value="0">关闭</option><option value="1">开启</option></select></div>
-	</div><br/>
-	<div class="form-group" id="green_check_porn_" style="<?php echo $conf['green_check_porn']!=1?'display:none;':null; ?>">
-	  <label class="col-sm-3 control-label">图片智能鉴黄屏蔽类型</label>
-	  <div class="col-sm-9">
-	  <label class="checkbox-inline"><input type="checkbox" name="green_label_porn[]" value="porn" <?php echo in_array('porn',$green_label_porn)?'checked':null;?>> 色情图片（porn）</label>
-	  <label class="checkbox-inline"><input type="checkbox" name="green_label_porn[]" value="sexy" <?php echo in_array('sexy',$green_label_porn)?'checked':null;?>> 性感图片（sexy）</label>
+  <form onsubmit="return saveSetting(this)" method="post" role="form">
+
+	<div class="green-sec">
+	  <div class="green-sec-h">检测引擎</div>
+	  <div class="green-grid">
+		<div class="green-f">
+		  <label>图片违规检测</label>
+		  <select class="form-control" name="green_check" default="<?php echo $conf['green_check']?>"><option value="0">关闭</option><option value="1">阿里云内容安全接口</option><option value="2">腾讯云内容安全接口</option><option value="3">自建检测服务（本机模型）</option></select>
+		  <p>自建检测不产生调用费、文件不出服务器，但要在服务器上另跑一个 Python 服务，部署见 <b>tools/nsfw/README.md</b>。</p>
+		</div>
+		<div class="green-f">
+		  <label>检测访问网址</label>
+		  <input type="text" name="apiurl" value="<?php echo $conf['apiurl']; ?>" class="form-control" placeholder="不填写则默认使用当前网址"/>
+		  <p>云接口回来抓图、以及视频检测回调用的地址。留空用当前网址；填的话要以 http:// 开头、以 / 结尾。套了 CDN 建议填源站地址，绕开 CDN。</p>
+		</div>
 	  </div>
-	</div><br/>
-	<div class="form-group">
-	  <label class="col-sm-3 control-label">图片暴恐涉政识别</label>
-	  <div class="col-sm-9"><select class="form-control" name="green_check_terrorism" default="<?php echo $conf['green_check_terrorism']?>"><option value="0">关闭</option><option value="1">开启</option></select></div>
-	</div><br/>
-	<div class="form-group" id="green_check_terrorism_" style="<?php echo $conf['green_check_terrorism']!=1?'display:none;':null; ?>">
-	  <label class="col-sm-3 control-label">图片暴恐涉政识别屏蔽类型</label>
-	  <div class="col-sm-9">
-	  <label class="checkbox-inline"><input type="checkbox" name="green_label_terrorism[]" value="bloody" <?php echo in_array('bloody',$green_label_terrorism)?'checked':null;?>> 血腥（bloody）</label>
-	  <label class="checkbox-inline"><input type="checkbox" name="green_label_terrorism[]" value="explosion" <?php echo in_array('explosion',$green_label_terrorism)?'checked':null;?>> 爆炸烟光（explosion）</label>
-	  <label class="checkbox-inline"><input type="checkbox" name="green_label_terrorism[]" value="outfit" <?php echo in_array('outfit',$green_label_terrorism)?'checked':null;?>> 特殊装束（outfit）</label>
-	  <label class="checkbox-inline"><input type="checkbox" name="green_label_terrorism[]" value="logo" <?php echo in_array('logo',$green_label_terrorism)?'checked':null;?>> 特殊标识（logo）</label>
-	  <label class="checkbox-inline"><input type="checkbox" name="green_label_terrorism[]" value="weapon" <?php echo in_array('weapon',$green_label_terrorism)?'checked':null;?>> 武器（weapon）</label>
-	  <label class="checkbox-inline"><input type="checkbox" name="green_label_terrorism[]" value="politics" <?php echo in_array('politics',$green_label_terrorism)?'checked':null;?>> 涉政（politics）</label>
-	  <label class="checkbox-inline"><input type="checkbox" name="green_label_terrorism[]" value="violence" <?php echo in_array('violence',$green_label_terrorism)?'checked':null;?>> 打斗（violence）</label>
-	  <label class="checkbox-inline"><input type="checkbox" name="green_label_terrorism[]" value="crowd" <?php echo in_array('crowd',$green_label_terrorism)?'checked':null;?>> 聚众（crowd）</label>
-	  <label class="checkbox-inline"><input type="checkbox" name="green_label_terrorism[]" value="parade" <?php echo in_array('parade',$green_label_terrorism)?'checked':null;?>> 游行（parade）</label>
-	  <label class="checkbox-inline"><input type="checkbox" name="green_label_terrorism[]" value="carcrash" <?php echo in_array('carcrash',$green_label_terrorism)?'checked':null;?>> 车祸现场（carcrash）</label>
-	  <label class="checkbox-inline"><input type="checkbox" name="green_label_terrorism[]" value="flag" <?php echo in_array('flag',$green_label_terrorism)?'checked':null;?>> 旗帜（flag）</label>
-	  <label class="checkbox-inline"><input type="checkbox" name="green_label_terrorism[]" value="location" <?php echo in_array('location',$green_label_terrorism)?'checked':null;?>> 地标（location）</label>
-	  <label class="checkbox-inline"><input type="checkbox" name="green_label_terrorism[]" value="drug" <?php echo in_array('drug',$green_label_terrorism)?'checked':null;?>> 涉毒（drug）</label>
-	  <label class="checkbox-inline"><input type="checkbox" name="green_label_terrorism[]" value="gamble" <?php echo in_array('gamble',$green_label_terrorism)?'checked':null;?>> 赌博（gamble）</label>
-	  </div>
-	</div><br/>
+	  <div id="greenhealth" class="green-health">检测服务状态查询中…</div>
 	</div>
+
+	<div id="green_aliyun" class="green-sec" style="<?php echo $conf['green_check']!='1'?'display:none;':null; ?>">
+	  <div class="green-sec-h">阿里云内容安全</div>
+	  <div class="green-grid">
+		<div class="green-f"><label>AccessKey Id</label><input type="text" name="aliyun_ak" value="<?php echo $conf['aliyun_ak']; ?>" class="form-control"/></div>
+		<div class="green-f"><label>AccessKey Secret</label><input type="text" name="aliyun_sk" value="<?php echo $conf['aliyun_sk']; ?>" class="form-control"/></div>
+		<div class="green-f">
+		  <label>接入区域</label>
+		  <select class="form-control" name="green_check_region" default="<?php echo $conf['green_check_region']?>"><option value="cn-beijing">华北2（北京）</option><option value="cn-shanghai">华东2（上海）</option><option value="cn-shenzhen">华南1（深圳）</option><option value="ap-southeast-1">新加坡</option><option value="us-west-1">美西</option></select>
+		  <p>选一个离本站服务器最近的。</p>
+		</div>
+		<div class="green-f"><label>智能鉴黄</label><select class="form-control" name="green_check_porn" default="<?php echo $conf['green_check_porn']?>"><option value="0">关闭</option><option value="1">开启</option></select></div>
+	  </div>
+	  <div id="green_check_porn_" class="green-checks" style="<?php echo $conf['green_check_porn']!=1?'display:none;':null; ?>">
+		<span class="green-checks-t">鉴黄屏蔽类型</span>
+		<label><input type="checkbox" name="green_label_porn[]" value="porn" <?php echo in_array('porn',$green_label_porn)?'checked':null;?>> 色情（porn）</label>
+		<label><input type="checkbox" name="green_label_porn[]" value="sexy" <?php echo in_array('sexy',$green_label_porn)?'checked':null;?>> 性感（sexy）</label>
+	  </div>
+	  <div class="green-grid" style="margin-top:14px">
+		<div class="green-f"><label>暴恐涉政识别</label><select class="form-control" name="green_check_terrorism" default="<?php echo $conf['green_check_terrorism']?>"><option value="0">关闭</option><option value="1">开启</option></select></div>
+	  </div>
+	  <div id="green_check_terrorism_" class="green-checks" style="<?php echo $conf['green_check_terrorism']!=1?'display:none;':null; ?>">
+		<span class="green-checks-t">暴恐涉政屏蔽类型</span>
+<?php foreach(['bloody'=>'血腥','explosion'=>'爆炸烟光','outfit'=>'特殊装束','logo'=>'特殊标识','weapon'=>'武器','politics'=>'涉政','violence'=>'打斗','crowd'=>'聚众','parade'=>'游行','carcrash'=>'车祸现场','flag'=>'旗帜','location'=>'地标','drug'=>'涉毒','gamble'=>'赌博'] as $lk=>$lv){?>
+		<label><input type="checkbox" name="green_label_terrorism[]" value="<?php echo $lk?>" <?php echo in_array($lk,$green_label_terrorism)?'checked':null;?>> <?php echo $lv?>（<?php echo $lk?>）</label>
+<?php }?>
+	  </div>
+	</div>
+
+	<div id="green_qcloud" class="green-sec" style="<?php echo $conf['green_check']!='2'?'display:none;':null; ?>">
+	  <div class="green-sec-h">腾讯云内容安全</div>
+	  <div class="green-grid">
+		<div class="green-f"><label>SecretId</label><input type="text" name="qcloud_green_id" value="<?php echo $conf['qcloud_green_id']; ?>" class="form-control"/></div>
+		<div class="green-f"><label>SecretKey</label><input type="text" name="qcloud_green_key" value="<?php echo $conf['qcloud_green_key']; ?>" class="form-control"/></div>
+		<div class="green-f">
+		  <label>接入区域</label>
+		  <select class="form-control" name="green_check_region" default="<?php echo $conf['green_check_region']?>"><option value="ap-beijing">华北地区(北京)</option><option value="ap-shanghai">华东地区(上海)</option><option value="ap-guangzhou">华南地区(广州)</option><option value="ap-mumbai">亚太南部(孟买)</option><option value="ap-singapore">亚太东南(新加坡)</option><option value="eu-frankfurt">欧洲地区(法兰克福)</option><option value="na-ashburn">美国东部(弗吉尼亚)</option><option value="na-siliconvalley">美国西部(硅谷)</option></select>
+		  <p>选一个离本站服务器最近的。</p>
+		</div>
+	  </div>
+	</div>
+
 	<div id="green_self" style="<?php echo $conf['green_check']!='3'?'display:none;':null; ?>">
-	<div class="form-group">
-	  <label class="col-sm-3 control-label">检测服务地址</label>
-	  <div class="col-sm-9"><input type="text" name="green_self_api" value="<?php echo htmlspecialchars(isset($conf['green_self_api'])?$conf['green_self_api']:'', ENT_QUOTES, 'UTF-8'); ?>" class="form-control" placeholder="http://127.0.0.1:9012/check"/>
-	  <p class="help-block">留空就用默认的 <b>http://127.0.0.1:9012/check</b>。服务只监听本机回环地址，不要暴露到公网。</p></div>
-	</div><br/>
-	<div class="form-group">
-	  <label class="col-sm-3 control-label">访问令牌</label>
-	  <div class="col-sm-9"><input type="text" name="green_self_token" value="<?php echo htmlspecialchars(isset($conf['green_self_token'])?$conf['green_self_token']:'', ENT_QUOTES, 'UTF-8'); ?>" class="form-control" placeholder="选填，与 config.json 里的 token 保持一致"/>
-	  <p class="help-block">同一台机器上还跑着别人的程序时才需要设，填了要和检测服务的 <b>token</b> 一样。</p></div>
-	</div><br/>
-	<div class="form-group">
-	  <label class="col-sm-3 control-label">直接封禁阈值</label>
-	  <div class="col-sm-9"><input type="text" name="green_self_block" value="<?php echo htmlspecialchars(isset($conf['green_self_block']) && $conf['green_self_block']!==''?$conf['green_self_block']:'0.85', ENT_QUOTES, 'UTF-8'); ?>" class="form-control" placeholder="0.85"/>
-	  <p class="help-block">0~1 之间。评分达到这个值直接屏蔽并记入违规公示。调低会更严，误伤也更多。</p></div>
-	</div><br/>
-	<div class="form-group">
-	  <label class="col-sm-3 control-label">转人工阈值</label>
-	  <div class="col-sm-9"><input type="text" name="green_self_review" value="<?php echo htmlspecialchars(isset($conf['green_self_review']) && $conf['green_self_review']!==''?$conf['green_self_review']:'0.6', ENT_QUOTES, 'UTF-8'); ?>" class="form-control" placeholder="0.6"/>
-	  <p class="help-block">评分在这个值和封禁阈值之间的，标成<b>待审核</b>（前台下载不了），等你在文件管理里筛「待审核文件」逐个确认。自建模型误判率比云接口高，留这一档比一刀切稳妥。设成和封禁阈值一样就等于不用中间档。</p></div>
-	</div><br/>
-	<div class="form-group">
-	  <label class="col-sm-3 control-label">超时时间</label>
-	  <div class="col-sm-9"><input type="text" name="green_self_timeout" value="<?php echo htmlspecialchars(isset($conf['green_self_timeout']) && $conf['green_self_timeout']!==''?$conf['green_self_timeout']:'5', ENT_QUOTES, 'UTF-8'); ?>" class="form-control" placeholder="5"/>
-	  <p class="help-block">单位秒。检测服务没起来或者超时，一律<b>放行</b>不拦，不会因为它挂了就让用户传不了图，失败原因写在网站日志里。</p></div>
-	</div><br/>
+	  <div class="green-sec">
+		<div class="green-sec-h">自建服务连接</div>
+		<div class="green-grid">
+		  <div class="green-f">
+			<label>检测服务地址</label>
+			<input type="text" name="green_self_api" value="<?php echo htmlspecialchars(isset($conf['green_self_api'])?$conf['green_self_api']:'', ENT_QUOTES, 'UTF-8'); ?>" class="form-control" placeholder="http://127.0.0.1:9012/check"/>
+			<p>留空即用默认的 http://127.0.0.1:9012/check。服务只监听回环地址，不要暴露到公网。</p>
+		  </div>
+		  <div class="green-f">
+			<label>访问令牌</label>
+			<input type="text" name="green_self_token" value="<?php echo htmlspecialchars(isset($conf['green_self_token'])?$conf['green_self_token']:'', ENT_QUOTES, 'UTF-8'); ?>" class="form-control" placeholder="选填，与 config.json 的 token 一致"/>
+			<p>同机还跑着别人的程序时才需要设。</p>
+		  </div>
+		  <div class="green-f">
+			<label>超时时间</label>
+			<div class="input-group"><input type="text" name="green_self_timeout" value="<?php echo htmlspecialchars(isset($conf['green_self_timeout']) && $conf['green_self_timeout']!==''?$conf['green_self_timeout']:'5', ENT_QUOTES, 'UTF-8'); ?>" class="form-control" placeholder="5"/><span class="input-group-addon">秒</span></div>
+			<p>服务没起来或超时一律<b>放行</b>，不会因为它挂了让用户传不了图。</p>
+		  </div>
+		</div>
+	  </div>
+
+	  <div class="green-sec">
+		<div class="green-sec-h">图片判定<small>0~1 之间，调低更严、误伤也更多</small></div>
+		<div class="green-grid">
+		  <div class="green-f">
+			<label>直接封禁阈值</label>
+			<input type="text" name="green_self_block" value="<?php echo htmlspecialchars(isset($conf['green_self_block']) && $conf['green_self_block']!==''?$conf['green_self_block']:'0.85', ENT_QUOTES, 'UTF-8'); ?>" class="form-control" placeholder="0.85"/>
+			<p>达到即屏蔽并记入违规公示。</p>
+		  </div>
+		  <div class="green-f">
+			<label>转人工阈值</label>
+			<input type="text" name="green_self_review" value="<?php echo htmlspecialchars(isset($conf['green_self_review']) && $conf['green_self_review']!==''?$conf['green_self_review']:'0.6', ENT_QUOTES, 'UTF-8'); ?>" class="form-control" placeholder="0.6"/>
+			<p>介于两者之间标成<b>待审核</b>（前台下不了），等人工确认。设成和封禁阈值一样就等于不用中间档。</p>
+		  </div>
+		</div>
+	  </div>
+
+	  <div class="green-sec">
+		<div class="green-sec-h">视频检测<small>抽帧送进同一套模型；传完先挂起，检测完自动放行或封禁，不卡上传</small></div>
+		<div class="green-grid">
+		  <div class="green-f">
+			<label>视频违规检测</label>
+			<select class="form-control" name="green_video" default="<?php echo isset($conf['green_video'])?$conf['green_video']:0?>"><option value="0">关闭</option><option value="1">开启</option></select>
+		  </div>
+		</div>
+		<div id="green_video_" style="<?php echo empty($conf['green_video'])?'display:none;':null; ?>">
+		  <div class="green-grid" style="margin-top:14px">
+			<div class="green-f">
+			  <label>视频封禁阈值</label>
+			  <input type="text" name="green_video_block" value="<?php echo htmlspecialchars(isset($conf['green_video_block']) && $conf['green_video_block']!==''?$conf['green_video_block']:'0.85', ENT_QUOTES, 'UTF-8'); ?>" class="form-control" placeholder="0.85"/>
+			  <p>单帧到这个分算「命中一帧」。</p>
+			</div>
+			<div class="green-f">
+			  <label>封禁所需命中帧数</label>
+			  <input type="text" name="green_video_hit" value="<?php echo htmlspecialchars(isset($conf['green_video_hit']) && $conf['green_video_hit']!==''?$conf['green_video_hit']:'2', ENT_QUOTES, 'UTF-8'); ?>" class="form-control" placeholder="2"/>
+			  <p><b>最要紧的一项。</b>转场、肤色、泳装剧照都可能让某帧飙到 0.9，只看最高分会误判到没法用。默认要 2 帧才封，命中 1 帧转人工；设成 1 等于按最高分一刀切。</p>
+			</div>
+			<div class="green-f">
+			  <label>视频转人工阈值</label>
+			  <input type="text" name="green_video_review" value="<?php echo htmlspecialchars(isset($conf['green_video_review']) && $conf['green_video_review']!==''?$conf['green_video_review']:'0.6', ENT_QUOTES, 'UTF-8'); ?>" class="form-control" placeholder="0.6"/>
+			  <p>最高帧落在两者之间的保持待审核。</p>
+			</div>
+			<div class="green-f">
+			  <label>抽帧间隔</label>
+			  <div class="input-group"><input type="text" name="green_video_interval" value="<?php echo htmlspecialchars(isset($conf['green_video_interval']) && $conf['green_video_interval']!==''?$conf['green_video_interval']:'5', ENT_QUOTES, 'UTF-8'); ?>" class="form-control" placeholder="5"/><span class="input-group-addon">秒</span></div>
+			  <p>调小查得细但慢，一帧在 CPU 上一两百毫秒。短视频建议 1~2 秒，否则只抽得到一帧。</p>
+			</div>
+			<div class="green-f">
+			  <label>最多抽取帧数</label>
+			  <input type="text" name="green_video_frames" value="<?php echo htmlspecialchars(isset($conf['green_video_frames']) && $conf['green_video_frames']!==''?$conf['green_video_frames']:'40', ENT_QUOTES, 'UTF-8'); ?>" class="form-control" placeholder="40"/>
+			  <p>封顶，长片按这个数全片均匀取。40 帧两套模型约 15~25 秒。</p>
+			</div>
+			<div class="green-f">
+			  <label>待检超时自动放行</label>
+			  <div class="input-group"><input type="text" name="green_video_timeout" value="<?php echo htmlspecialchars(isset($conf['green_video_timeout']) && $conf['green_video_timeout']!==''?$conf['green_video_timeout']:'30', ENT_QUOTES, 'UTF-8'); ?>" class="form-control" placeholder="30"/><span class="input-group-addon">分钟</span></div>
+			  <p><b class="text-danger">安全阀，别关。</b>视频先挂起再放行，检测服务挂了的话所有视频会永远卡在待审核。</p>
+			</div>
+			<div class="green-f">
+			  <label>跳过超长视频</label>
+			  <div class="input-group"><input type="text" name="green_video_maxlen" value="<?php echo htmlspecialchars(isset($conf['green_video_maxlen']) && $conf['green_video_maxlen']!==''?$conf['green_video_maxlen']:'7200', ENT_QUOTES, 'UTF-8'); ?>" class="form-control" placeholder="7200"/><span class="input-group-addon">秒</span></div>
+			  <p>超过不自动检测，直接<b>转人工</b>（不是放行）。</p>
+			</div>
+			<div class="green-f">
+			  <label>跳过超大视频</label>
+			  <div class="input-group"><input type="text" name="green_video_maxsize" value="<?php echo htmlspecialchars(isset($conf['green_video_maxsize']) && $conf['green_video_maxsize']!==''?$conf['green_video_maxsize']:'2048', ENT_QUOTES, 'UTF-8'); ?>" class="form-control" placeholder="2048"/><span class="input-group-addon">MB</span></div>
+			  <p>同上，0 为不限制。</p>
+			</div>
+			<div class="green-f">
+			  <label>保存证据帧</label>
+			  <select class="form-control" name="green_video_shot" default="<?php echo isset($conf['green_video_shot'])?$conf['green_video_shot']:1?>"><option value="1">开启</option><option value="0">关闭</option></select>
+			  <p>命中的那一帧存到 <b>data/greenshot/</b>，复核时在检测记录里直接看。</p>
+			</div>
+			<div class="green-f g-wide">
+			  <label>定时轮询（建议配到 crontab）</label>
+			  <input type="text" class="form-control" onclick="this.select()" readonly value="* * * * * curl -s '<?php echo htmlspecialchars($siteurl.'green_cb.php?poll=1&k='.green_poll_key(), ENT_QUOTES, 'UTF-8'); ?>' >/dev/null"/>
+			  <p>检测服务跑完会主动回调，但回调可能被反代或 CDN 拦掉，那样文件会一直卡在待审。加上这条就有了兜底。<b>套了 CDN 的话这条是必须的。</b></p>
+			</div>
+		  </div>
+		</div>
+	  </div>
 	</div>
-	<div id="green_qcloud" style="<?php echo $conf['green_check']!='2'?'display:none;':null; ?>">
-	<div class="form-group">
-	  <label class="col-sm-3 control-label">腾讯云SecretId</label>
-	  <div class="col-sm-9"><input type="text" name="qcloud_green_id" value="<?php echo $conf['qcloud_green_id']; ?>" class="form-control"/></div>
-	</div><br/>
-	<div class="form-group">
-	  <label class="col-sm-3 control-label">腾讯云SecretKey</label>
-	  <div class="col-sm-9"><input type="text" name="qcloud_green_key" value="<?php echo $conf['qcloud_green_key']; ?>" class="form-control"/></div>
-	</div><br/>
-	<div class="form-group">
-	  <label class="col-sm-3 control-label">图片检测接入区域</label>
-	  <div class="col-sm-9"><select class="form-control" name="green_check_region" default="<?php echo $conf['green_check_region']?>"><option value="ap-beijing">华北地区(北京)</option><option value="ap-shanghai">华东地区(上海)</option><option value="ap-guangzhou">华南地区(广州)</option><option value="ap-mumbai">亚太南部(孟买)</option><option value="ap-singapore">亚太东南(新加坡)</option><option value="eu-frankfurt">欧洲地区(法兰克福)</option><option value="na-ashburn">美国东部(弗吉尼亚)</option><option value="na-siliconvalley">美国西部(硅谷)</option></select><font color="green">你可以选择一个离本站服务器最近的以提升检测速度</font></div>
-	</div><br/>
-	</div>
-	<div class="form-group">
-	  <label class="col-sm-3 control-label">图片检测访问网址</label>
-	  <div class="col-sm-9"><input type="text" name="apiurl" value="<?php echo $conf['apiurl']; ?>" class="form-control" placeholder="不填写则默认使用当前网址"/><font color="green">此处是图片检测的时候阿里云访问本站的网址，不填写则默认使用当前网址，如果填写必需以http://开头，以/结尾</font></div>
-	</div><br/>
-	<div class="form-group">
-	  <div class="col-sm-offset-3 col-sm-9"><input type="submit" name="submit" value="修改" class="btn btn-primary form-control"/><br/>
-	 </div>
-	</div>
+
+	<div class="green-submit"><button type="submit" class="btn btn-primary">保存设置</button></div>
   </form>
 </div>
 <div class="panel-footer">
@@ -700,12 +765,21 @@ $(document).ready(function(){
 </div>
 </div>
 <script>
-$("select[name='green_check']").change(function(){
-	var v = $(this).val();
-	$("#green_aliyun").toggle(v == 1);
-	$("#green_qcloud").toggle(v == 2);
-	$("#green_self").toggle(v == 3);
-});
+function greenEngine(v){
+	var map = {1:'#green_aliyun', 2:'#green_qcloud', 3:'#green_self'};
+	for(var k in map){
+		var on = (String(k) === String(v));
+		/*
+		 * 隐藏的那一块要连同里面的表单控件一起禁用（禁用的控件不会被提交）。
+		 * 阿里云和腾讯云各有一个同名的 green_check_region，两个都提交的话后面那个
+		 * 会把前面的覆盖掉——选着阿里云保存一次，区域就变成腾讯云列表里的值了。
+		 */
+		$(map[k]).toggle(on).find('input,select,textarea').prop('disabled', !on);
+	}
+}
+$("select[name='green_check']").change(function(){ greenEngine($(this).val()); });
+//要等页面底部那段把 select[default] 的值套上去之后再算一次，所以放进 ready 里
+$(function(){ greenEngine($("select[name='green_check']").val()); });
 $("select[name='green_check_porn']").change(function(){
 	if($(this).val() == 1){
 		$("#green_check_porn_").show();
@@ -719,6 +793,26 @@ $("select[name='green_check_terrorism']").change(function(){
 	}else{
 		$("#green_check_terrorism_").hide();
 	}
+});
+$("select[name='green_video']").change(function(){
+	$("#green_video_").toggle($(this).val() == 1);
+});
+//问一次检测服务自己：模型加载了几个、有没有 ffmpeg。
+//视频检测依赖 ffmpeg，装没装从网站这边完全看不出来，只能问它
+$.getJSON("./ajax.php?act=greenhealth", function(r){
+	if(r.code != 0){
+		$("#greenhealth").html('<b style="color:#d9534f">检测服务连不上</b>：'+(r.msg||''));
+		return;
+	}
+	var s = '已加载 '+r.models+' 个模型，队列 '+r.queue;
+	if(r.video){
+		s += '，<b style="color:#5cb85c">视频检测可用</b>（ffmpeg '+r.ffmpeg+'）';
+	}else{
+		s += '，<b style="color:#d9534f">视频检测不可用</b>：服务端没有 ffmpeg，开了也不会工作';
+	}
+	$("#greenhealth").html(s);
+}).fail(function(){
+	$("#greenhealth").html('<span style="color:#d9534f">检测服务状态查不到</span>');
 });
 </script>
 <?php

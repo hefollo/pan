@@ -64,14 +64,22 @@ break;
 case 'setBlock':
 	$id=intval($_GET['id']);
 	$status=intval($_GET['status']);
-	$row=$DB->getRow("select * from pre_file where id='$id' limit 1");
-	$sql = "UPDATE pre_file SET `block`='$status' WHERE id='$id'";
-	if($DB->exec($sql)!==false){
-		if($row){
-			if($status == 1)add_violation_log($row);
-			elseif($status == 0)revoke_violation_log($id);
-		}
-		exit('{"code":0,"msg":"修改成功！"}');
+	/*
+	 * 文件只有这三种状态，别的一律不认：
+	 *   0 正常　1 封禁（前台不可下载，进违规公示）　2 待审核（前台同样不可下载，但不公示）
+	 * 原来是 intval 之后直接拼进 SQL，传个 5 进来 block 就真成了 5，
+	 * 前台那些 block>=1 / block==2 的判断会跟着乱套。
+	 */
+	$status_name = [0=>'正常', 1=>'封禁', 2=>'待审核'];
+	if(!isset($status_name[$status]))exit('{"code":-1,"msg":"状态值不合法"}');
+	$row=$DB->getRow("select * from pre_file where id=:id limit 1", [':id'=>$id]);
+	if(!$row)exit('{"code":-1,"msg":"当前文件不存在！"}');
+	if($DB->exec("UPDATE pre_file SET `block`=:block WHERE id=:id", [':block'=>$status, ':id'=>$id])!==false){
+		//只有「封禁」是确认违规，才留公示；改回正常或退回待审核都不是确认状态，
+		//把公示撤下来（is_show=0，记录本身保留，方便回头复查）
+		if($status == 1)add_violation_log($row);
+		else revoke_violation_log($id);
+		exit(json_encode(['code'=>0, 'msg'=>'已改为'.$status_name[$status]]));
 	}
 	else exit('{"code":-1,"msg":"修改失败['.$DB->error().']"}');
 break;

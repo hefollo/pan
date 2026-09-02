@@ -38,6 +38,27 @@ function update_conf($db, $k){
 	if(!$st || !$st->execute([':k'=>$k]))return '';
 	return (string)$st->fetchColumn();
 }
+
+/*
+ * 读一个升级脚本，读不到就当场停下。
+ *
+ * 下面写版本号那句是无条件执行的：少跑一个脚本却把版本标成最新，网站会认为升级完成，
+ * 然后所有依赖新表新字段的写入全部静默失败——「功能在跑、就是没有任何记录」，
+ * 这种没线索的坏法最难查。所以宁可在这里报错退出，也不能带着残缺的结构往下走。
+ */
+function read_sql($file){
+	if(!is_file($file) || !is_readable($file)){
+		exit('<p style="font:14px/1.7 system-ui;color:#d33;padding:24px">升级脚本 <b>'.htmlspecialchars($file, ENT_QUOTES, 'UTF-8')
+			.'</b> 不存在或读不了。<br>请把更新包里的 <b>install/</b> 目录完整上传后重试。<br>'
+			.'升级已中止，<b>版本号没有改动</b>，网站结构保持原样。</p>');
+	}
+	$sql = file_get_contents($file);
+	if($sql === false || trim($sql) === ''){
+		exit('<p style="font:14px/1.7 system-ui;color:#d33;padding:24px">升级脚本 <b>'.htmlspecialchars($file, ENT_QUOTES, 'UTF-8')
+			.'</b> 内容为空或读取失败。<br>升级已中止，<b>版本号没有改动</b>。</p>');
+	}
+	return explode(';', $sql);
+}
 $admin_user = update_conf($db, 'admin_user');
 $admin_pwd  = update_conf($db, 'admin_pwd');
 $auth_err = '';
@@ -78,60 +99,63 @@ if($rs = $db->query("SELECT v FROM pre_config WHERE k='version'")){
 }
 
 if($version<1009){
-	$sqls = file_get_contents('update.sql');
-	$sqls=explode(';', $sqls);
-	$sqls[]="REPLACE INTO `pre_config` VALUES ('version', '1019')";
+	$sqls = read_sql('update.sql');
+	$sqls[]="REPLACE INTO `pre_config` VALUES ('version', '1020')";
 	if(!$db->query("SELECT v FROM pre_config WHERE k='syskey'")->fetchColumn()){
 		$sqls[]="REPLACE INTO `pre_config` VALUES ('syskey', '".bin2hex(random_bytes(16))."')";
 	}
 }elseif($version<1010){
 	//1010：新增购买套餐（pre_plan）与订单（pre_order）两张表和支付宝当面付配置项
 	//update_1010.sql 的建表语句已经带上了后面版本加的字段，不用再执行 ALTER
-	$sqls = explode(';', file_get_contents('update_1010.sql'));
-	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1019')";
+	$sqls = read_sql('update_1010.sql');
+	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1020')";
 }elseif($version<1011){
 	//1011：套餐支持“每日数量在现有基础上增加”，套餐表和订单表各加一个 limit_mode 字段
 	//1012：套餐加分类字段，购买页按分类分区展示
-	$sqls = array_merge(explode(';', file_get_contents('update_1011.sql')), explode(';', file_get_contents('update_1012.sql')), explode(';', file_get_contents('update_1013.sql')));
-	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1019')";
+	$sqls = array_merge(read_sql('update_1011.sql'), read_sql('update_1012.sql'), read_sql('update_1013.sql'));
+	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1020')";
 }elseif($version<1012){
 	//1012：套餐加分类字段
 	//1013：订单记下支付方式，新增易支付
-	$sqls = array_merge(explode(';', file_get_contents('update_1012.sql')), explode(';', file_get_contents('update_1013.sql')), explode(';', file_get_contents('update_1014.sql')));
-	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1019')";
+	$sqls = array_merge(read_sql('update_1012.sql'), read_sql('update_1013.sql'), read_sql('update_1014.sql'));
+	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1020')";
 }elseif($version<1013){
 	//1013：订单加 pay_type 字段，新增易支付配置
 	//1014：商品名称可自定义、易支付参数编码可选
-	$sqls = array_merge(explode(';', file_get_contents('update_1013.sql')), explode(';', file_get_contents('update_1014.sql')), explode(';', file_get_contents('update_1015.sql')));
-	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1019')";
+	$sqls = array_merge(read_sql('update_1013.sql'), read_sql('update_1014.sql'), read_sql('update_1015.sql'));
+	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1020')";
 }elseif($version<1014){
 	//1014：商品名称可自定义、易支付参数编码可选
 	//1015：加量包额度单独记录，不再被时长套餐覆盖
-	$sqls = array_merge(explode(';', file_get_contents('update_1014.sql')), explode(';', file_get_contents('update_1015.sql')), explode(';', file_get_contents('update_1016.sql')));
-	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1019')";
+	$sqls = array_merge(read_sql('update_1014.sql'), read_sql('update_1015.sql'), read_sql('update_1016.sql'));
+	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1020')";
 }elseif($version<1015){
 	//1015：用户表加 bonus_limit
 	//1016：邮箱注册——用户表加 password、验证码表 pre_mailcode
-	$sqls = array_merge(explode(';', file_get_contents('update_1015.sql')), explode(';', file_get_contents('update_1016.sql')), explode(';', file_get_contents('update_1017.sql')));
-	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1019')";
+	$sqls = array_merge(read_sql('update_1015.sql'), read_sql('update_1016.sql'), read_sql('update_1017.sql'));
+	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1020')";
 }elseif($version<1016){
 	//1016：邮箱注册所需的表和字段
 	//1017：文件表加限流维度 ipkey，ip 字段加宽到能存 IPv6
-	$sqls = array_merge(explode(';', file_get_contents('update_1016.sql')), explode(';', file_get_contents('update_1017.sql')), explode(';', file_get_contents('update_1018.sql')));
-	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1019')";
+	$sqls = array_merge(read_sql('update_1016.sql'), read_sql('update_1017.sql'), read_sql('update_1018.sql'));
+	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1020')";
 }elseif($version<1017){
 	//1017：文件表加限流维度 ipkey
 	//1018：验证码表记下发送结果，后台可以查发信记录
-	$sqls = array_merge(explode(';', file_get_contents('update_1017.sql')), explode(';', file_get_contents('update_1018.sql')));
-	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1019')";
+	$sqls = array_merge(read_sql('update_1017.sql'), read_sql('update_1018.sql'));
+	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1020')";
 }elseif($version<1018){
 	//1018：验证码表加发送结果字段
-	$sqls = explode(';', file_get_contents('update_1018.sql'));
-	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1019')";
+	$sqls = read_sql('update_1018.sql');
+	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1020')";
 }elseif($version<1019){
 	//1019：新增图片检测记录表（建表语句在下面统一补）
 	$sqls = [];
-	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1019')";
+	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1020')";
+}elseif($version<1020){
+	//1020：视频检测——任务表 pre_greenjob，检测记录加抽帧字段（语句在下面统一补）
+	$sqls = [];
+	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1020')";
 }else{
 	exit('你的网站已经升级到最新版本了');
 }
@@ -141,7 +165,17 @@ if($version<1009){
  * 所以不用往上面每个 elseif 里各塞一遍，凡是还没到 1019 的统一在这里补。
  */
 if($version < 1019){
-	$sqls = array_merge($sqls, explode(';', file_get_contents('update_1019.sql')));
+	$sqls = array_merge($sqls, read_sql('update_1019.sql'));
+}
+
+/*
+ * 1020 同理：建表用 IF NOT EXISTS、配置项用 INSERT IGNORE，重复执行不会覆盖站长已经调过的值。
+ * 只有那三条 ALTER 是不可重入的，但每个站点这段最多跑一次（跑完 version 就到 1020 了），
+ * 万一真的重复执行，报的也只是「字段已存在」，上面的循环会跳过继续往下走。
+ * 必须排在 1019 后面：pre_greenlog 这张表可能就是上一段刚建出来的。
+ */
+if($version < 1020){
+	$sqls = array_merge($sqls, read_sql('update_1020.sql'));
 }
 
 $success=0;$error=0;$errorMsg=null;
@@ -156,9 +190,19 @@ foreach ($sqls as $value) {
 		$success++;
 	}
 }
-echo '成功执行SQL语句'.$success.'条！<br/>';
+echo '<p style="font:14px/1.7 system-ui;padding:24px 24px 0">成功执行 SQL 语句 '.$success.' 条'.($error ? '，<b style="color:#d33">失败 '.$error.' 条</b>' : '').'</p>';
+/*
+ * 报错原来是注释掉的，升级失败和成功长得一模一样。
+ * 「字段已存在」这类重复执行的报错无所谓，但建表失败必须让人看见——不然版本号写上去了、
+ * 结构却是残的，后面只会以「功能不工作但哪都不报错」的形式暴露出来。
+ */
 if($errorMsg){
-//echo '<div class="alert alert-danger text-center" role="alert">'.$errorMsg.'</div>';
+	echo '<div style="font:13px/1.7 system-ui;margin:0 24px;padding:14px;border:1px solid #f0c2c2;background:#fff5f5;border-radius:8px;color:#a33">'
+		.'<b>下面这些语句没执行成功：</b><br>'.$errorMsg
+		.'<br>其中「Duplicate column name」「already exists」属于重复执行，可以忽略；'
+		.'其它错误说明结构没升上去，请把错误信息连同数据库版本一起反馈。</div>';
+	echo '<p style="font:14px/1.7 system-ui;padding:16px 24px"><a href="../">返回首页</a></p>';
+	exit;
 }
 exit("<script language='javascript'>alert('网站数据库升级完成！');window.location.href='../';</script>");
 ?>

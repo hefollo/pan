@@ -9,6 +9,26 @@
   "max_fetch_bytes": 33554432,
   "fetch_timeout": 10,
 
+  "ffmpeg_path": "",
+  "video": {
+    "enabled": true,
+    "interval": 5,
+    "max_frames": 40,
+    "max_duration": 7200,
+    "hit_frames": 2,
+    "single_frame_block": 0.97,
+    "workers": 1,
+    "queue_size": 64,
+    "frame_width": 640,
+    "cache_max_bytes": 67108864,
+    "frame_timeout": 20,
+    "probe_timeout": 20,
+    "shot_max_size": 480,
+    "result_ttl": 3600,
+    "callback_timeout": 10,
+    "callback_retry": 3
+  },
+
   "models": [
     {
       "name": "anime",

@@ -331,6 +331,6 @@ if(typeof QRCode === 'undefined'){
 	document.write('<script src="https:\/\/cdn.jsdelivr.net\/npm\/qrcodejs@1.0.0\/qrcode.min.js"><\/script>');
 }
 </script>
-<script src="./assets/js/buy.js?v=<?php echo VERSION?>"></script>
+<script src="./assets/js/buy.js?v=<?php echo asset_ver('assets/js/buy.js')?>"></script>
 </body>
 </html>

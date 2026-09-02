@@ -19,7 +19,7 @@
   <link href="https://s4.zstatic.net/ajax/libs/bootstrap-material-design/0.5.10/css/bootstrap-material-design.min.css" rel="stylesheet">
   <link href="https://s4.zstatic.net/ajax/libs/bootstrap-material-design/0.5.10/css/ripples.min.css" rel="stylesheet">
   <?php if($is_file){?><link rel="stylesheet" href="https://s4.zstatic.net/ajax/libs/aplayer/1.10.1/APlayer.min.css"><link href="assets/css/ckplayer.css" rel="stylesheet"><?php }?>
-  <link href="assets/css/style.css?v=<?php echo VERSION?>" rel="stylesheet">
+  <link href="assets/css/style.css?v=<?php echo asset_ver('assets/css/style.css')?>" rel="stylesheet">
   <!--[if lt IE 9]>
     <script src="https://s4.zstatic.net/ajax/libs/html5shiv/3.7.3/html5shiv.min.js"></script>
     <script src="https://s4.zstatic.net/ajax/libs/respond.js/1.4.2/respond.min.js"></script>
@@ -55,12 +55,15 @@ if(in_array($site_theme, $layout_themes, true)){
         <ul class="nav navbar-nav">
           <li class="<?php echo checkIfActive('index,')?>"><a href="./"><i class="fa fa-list" aria-hidden="true"></i> 文件列表</a></li>
           <li class="<?php echo checkIfActive('upload')?>"><a href="./upload.php"><i class="fa fa-upload" aria-hidden="true"></i> 上传文件</a></li>
-          <?php //布局型外观用站内的赞助页，保持自己的导航布局；其它主题仍跳转原来的独立赞助页
-          if(in_array($site_theme, $layout_themes, true)){?>
+          <?php //赞助名单可以在「网站信息设置」里整个关掉，关了两种外观的入口都不出现
+          if(!isset($conf['sponsor_open']) || $conf['sponsor_open'] == 1){
+            //布局型外观用站内的赞助页，保持自己的导航布局；其它主题仍跳转原来的独立赞助页
+            if(in_array($site_theme, $layout_themes, true)){?>
           <li class="<?php echo checkIfActive('sponsor')?>"><a href="./sponsor.php"><i class="fa fa-money" aria-hidden="true"></i> 赞助名单</a></li>
           <?php }else{?>
           <li><a href="./includes/sponsor/"><i class="fa fa-money" aria-hidden="true"></i> 赞助名单</a></li>
-          <?php }?>
+          <?php }
+          }?>
           <?php //开启购买功能且配置完整时才显示入口
           if(function_exists('is_buy_open') && is_buy_open()){?>
           <li class="<?php echo checkIfActive('buy')?>"><a href="./buy.php"><i class="fa fa-shopping-cart" aria-hidden="true"></i> 购买权限</a></li>

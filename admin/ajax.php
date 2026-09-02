@@ -281,6 +281,24 @@ case 'delReplaceLog':
 	if($DB->exec("DELETE FROM pre_replace_log WHERE id=:id", [':id'=>$id]))exit('{"code":0,"msg":"删除成功！"}');
 	else exit('{"code":-1,"msg":"删除失败['.$DB->error().']"}');
 break;
+case 'greenhealth':
+	/*
+	 * 设置页上那行「检测服务：可用 / 不可用」。
+	 * 开关打得开、实际永远不工作是最难发现的一种坏法——尤其是视频，它依赖 ffmpeg，
+	 * 而 ffmpeg 装没装从网站这边一点都看不出来，所以专门问一次检测服务自己。
+	 */
+	$health = green_self_request('health', null, 4);
+	if(!is_array($health) || empty($health['ok'])){
+		exit(json_encode(['code'=>-1, 'msg'=>'连不上检测服务（'.htmlspecialchars(green_self_url('health'), ENT_QUOTES, 'UTF-8').'）']));
+	}
+	exit(json_encode([
+		'code' => 0,
+		'models' => isset($health['models']) ? count($health['models']) : 0,
+		'video' => !empty($health['video']),
+		'ffmpeg' => isset($health['ffmpeg']) ? $health['ffmpeg'] : '',
+		'queue' => isset($health['queue']) ? intval($health['queue']) : 0,
+	]));
+break;
 default:
 	exit('{"code":-4,"msg":"No Act"}');
 break;
