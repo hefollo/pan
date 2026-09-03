@@ -96,15 +96,25 @@ if($site_theme === 'portal' && !$kw && (!isset($_GET['m']) || $_GET['m'] !== 'mi
 $layout_key = (isset($layout_themes) && in_array($site_theme, $layout_themes, true)) ? $site_theme : '';
 $layout_is_mine = isset($_GET['m']) && $_GET['m'] === 'mine';
 $layout_counts = null;
-if($layout_key === 'console' || $layout_key === 'workspace'){
+if($layout_key === 'console' || $layout_key === 'workspace' || $layout_key === 'cockpit'){
     $layout_counts = layout_type_counts($DB, $sql_base);
+}
+//渐变仪表盘风的问候栏、额度卡、统计卡和右侧栏都要用这两个数，先算一次传下去
+$cockpit_today = 0;
+if($layout_key === 'cockpit'){
+    $cockpit_today = layout_today_total($DB, $sql_base);
 }
 $layout_base_query = '';
 if($layout_is_mine) $layout_base_query .= 'm=mine';
 if($kw) $layout_base_query .= ($layout_base_query === '' ? '' : '&').'kw='.urlencode($kw);
 ?>
 <div class="container">
-<?php if($layout_key === 'workspace'){?><div class="layout-shell"><?php }?>
+<?php if($layout_key === 'cockpit'){echo layout_render_cockpit_head($DB, $layout_counts['']);}?>
+<?php if($layout_key === 'workspace' || $layout_key === 'cockpit'){?><div class="layout-shell"><?php }?>
+<?php if($layout_key === 'cockpit'){?><div class="cockpit-main">
+<?php echo layout_render_cockpit_quota($DB, layout_storage_used($DB, $sql_base), $layout_counts[''], $cockpit_today);?>
+<?php echo layout_render_stats($layout_counts, $cockpit_today);?>
+<?php }?>
     <div class="well bs-component">
 <?php if($layout_key === 'workspace'){?>
         <div class="layout-crumb"><i class="fa fa-folder-o" aria-hidden="true"></i> <span>工作空间</span> <i class="fa fa-angle-right" aria-hidden="true"></i> <strong><?php echo $layout_is_mine ? '我的文件' : '全部文件'?></strong></div>
@@ -123,12 +133,14 @@ if($kw) $layout_base_query .= ($layout_base_query === '' ? '' : '&').'kw='.urlen
         <?php echo layout_render_stats($layout_counts, layout_today_total($DB, $sql_base));?>
 <?php }elseif($layout_key === 'portal'){?>
         <p class="layout-page-sub">浏览大家刚刚分享的文件，点文件名即可查看或下载。</p>
+<?php }elseif($layout_key === 'cockpit'){?>
+        <p class="layout-page-sub">按上传时间排序，点文件名即可查看、下载或复制外链。</p>
 <?php }elseif($layout_key === 'mac'){
         //macOS 窗口风：列表上方放一块拖拽提示区。搜索/筛选状态下不显示，
         //免得把用户刚查出来的结果顶到屏幕外面去
         if(!$kw && $ft === ''){echo layout_render_mac_drop();}
 }?>
-<?php if(($layout_key === 'console' || $layout_key === 'workspace') && $layout_counts){?>
+<?php if(($layout_key === 'console' || $layout_key === 'workspace' || $layout_key === 'cockpit') && $layout_counts){?>
         <?php echo layout_render_filters($layout_counts, $ft, $layout_base_query);?>
 <?php }?>
         <?php if(isset($_GET['m']) && $_GET['m']=='mine'){?>
@@ -256,6 +268,7 @@ echo '<li class="disabled"><a>尾页</a></li>';
 </div>
     </div>
 <?php if($layout_key === 'workspace'){echo layout_render_preview();?></div><?php }?>
+<?php if($layout_key === 'cockpit'){?></div><?php echo layout_render_cockpit_side($DB, $layout_counts, $sql_base);?></div><?php }?>
 <?php include SYSTEM_ROOT.'footer.php';?>
 <?php if($layout_key === 'workspace'){?>
 <script src="./assets/js/layout-workspace.js?v=<?php echo VERSION?>"></script>

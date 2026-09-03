@@ -5,7 +5,7 @@ if(!in_array($site_theme, site_theme_keys(), true)){
   $site_theme = default_site_theme();
 }
 //这三套是固定侧栏外观，竖着排菜单，能多放一级项
-$is_sidebar_admin = in_array($site_theme, ['console', 'dashboard', 'workspace'], true);
+$is_sidebar_admin = in_array($site_theme, ['console', 'dashboard', 'workspace', 'cockpit'], true);
 $green_log_top = !empty($conf['green_check']) && $is_sidebar_admin;
 $admin_body_class = !empty($islogin) ? 'admin-body' : 'admin-login-body';
 $admin_body_class .= ' admin-theme-' . $site_theme;

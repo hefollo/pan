@@ -31,8 +31,8 @@ $site_theme = isset($conf['site_theme']) ? $conf['site_theme'] : default_site_th
 if(!in_array($site_theme, site_theme_keys(), true)){
   $site_theme = default_site_theme();
 }
-//布局型外观（侧栏/门户/工作台/macOS 窗口）共用一套结构样式，统一挂 layout-theme
-$layout_themes = ['dashboard', 'console', 'portal', 'workspace', 'mac'];
+//布局型外观（侧栏/门户/工作台/macOS 窗口/仪表盘）共用一套结构样式，统一挂 layout-theme
+$layout_themes = ['dashboard', 'console', 'portal', 'workspace', 'mac', 'cockpit'];
 $body_class = 'theme-' . $site_theme;
 if(in_array($site_theme, $layout_themes, true)){
   $body_class .= ' layout-theme';

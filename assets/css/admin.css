@@ -1717,32 +1717,41 @@ body.admin-theme-workspace.admin-body:before{content:none;display:none}
 body.admin-theme-workspace.admin-body a{color:var(--admin-primary)}
 body.admin-theme-workspace.admin-body a:hover,body.admin-theme-workspace.admin-body a:focus{color:var(--admin-primary-dark)}
 
-/* 侧栏型后台（数据控制台风 / 深色工作台风）共用结构，颜色走各自的 --admin-* 变量 */
+/* 侧栏型后台（数据控制台风 / 渐变仪表盘风 / 深色工作台风）共用结构，颜色走各自的 --admin-* 变量 */
 body.admin-theme-console.admin-body .panel,body.admin-theme-console.admin-body .well,
+body.admin-theme-cockpit.admin-body .panel,body.admin-theme-cockpit.admin-body .well,
 body.admin-theme-workspace.admin-body .panel,body.admin-theme-workspace.admin-body .well{border:1px solid var(--admin-line);border-radius:16px;background:var(--admin-surface);box-shadow:var(--admin-shadow);color:var(--admin-text)}
 body.admin-theme-console.admin-body .panel-heading,
+body.admin-theme-cockpit.admin-body .panel-heading,
 body.admin-theme-workspace.admin-body .panel-heading{background:var(--admin-soft)!important;border-bottom:1px solid var(--admin-line)!important;color:var(--admin-text)!important}
 body.admin-theme-console.admin-body .panel-title,body.admin-theme-console.admin-body .panel-title i,
+body.admin-theme-cockpit.admin-body .panel-title,body.admin-theme-cockpit.admin-body .panel-title i,
 body.admin-theme-workspace.admin-body .panel-title,body.admin-theme-workspace.admin-body .panel-title i{color:var(--admin-text)}
 body.admin-theme-console.admin-body .panel-footer,
+body.admin-theme-cockpit.admin-body .panel-footer,
 body.admin-theme-workspace.admin-body .panel-footer{background:var(--admin-soft);border-top:1px solid var(--admin-line);color:var(--admin-muted)}
 body.admin-theme-console.admin-body .table,
+body.admin-theme-cockpit.admin-body .table,
 body.admin-theme-workspace.admin-body .table{background:transparent}
 body.admin-theme-console.admin-body .table>thead>tr>th,
+body.admin-theme-cockpit.admin-body .table>thead>tr>th,
 body.admin-theme-workspace.admin-body .table>thead>tr>th{background:var(--admin-soft)!important;border-bottom:1px solid var(--admin-line)!important;color:var(--admin-muted)}
 body.admin-theme-console.admin-body .table>tbody>tr>td,
+body.admin-theme-cockpit.admin-body .table>tbody>tr>td,
 body.admin-theme-workspace.admin-body .table>tbody>tr>td{border-top:1px solid var(--admin-line)!important;color:var(--admin-text)}
 body.admin-theme-console.admin-body .table-striped>tbody>tr:nth-of-type(odd){background:#fafbfd}
 body.admin-theme-workspace.admin-body .table-striped>tbody>tr:nth-of-type(odd){background:rgba(255,255,255,.012)}
 body.admin-theme-console.admin-body .table-hover>tbody>tr:hover{background:#fafbff}
 body.admin-theme-workspace.admin-body .table-hover>tbody>tr:hover{background:var(--admin-soft)}
 body.admin-theme-console.admin-body .form-control,
+body.admin-theme-cockpit.admin-body .form-control,
 body.admin-theme-workspace.admin-body .form-control{background:var(--admin-surface);border:1px solid var(--admin-line);border-radius:11px;color:var(--admin-text)}
 body.admin-theme-workspace.admin-body .form-control{background:var(--admin-soft)}
 body.admin-theme-console.admin-body .form-control:focus{border-color:#a8bcff;box-shadow:0 0 0 4px rgba(56,103,244,.12)}
 body.admin-theme-workspace.admin-body .form-control:focus{border-color:var(--admin-primary);box-shadow:0 0 0 4px rgba(244,201,93,.14)}
 body.admin-theme-workspace.admin-body .form-control::placeholder{color:#6f7889}
 body.admin-theme-console.admin-body .btn,
+body.admin-theme-cockpit.admin-body .btn,
 body.admin-theme-workspace.admin-body .btn{border-radius:11px}
 body.admin-theme-console.admin-body .btn-primary{background:var(--admin-primary);border-color:var(--admin-primary);color:#fff}
 body.admin-theme-console.admin-body .btn-primary:hover,body.admin-theme-console.admin-body .btn-primary:focus{background:var(--admin-primary-dark);border-color:var(--admin-primary-dark)}
@@ -1755,48 +1764,65 @@ body.admin-theme-workspace.admin-body .modal-header,body.admin-theme-workspace.a
 body.admin-theme-workspace.admin-body .close{color:var(--admin-text);opacity:.7}
 @media (min-width:768px){
 body.admin-theme-console.admin-body .navbar.navbar-default,
+body.admin-theme-cockpit.admin-body .navbar.navbar-default,
 body.admin-theme-workspace.admin-body .navbar.navbar-default{position:fixed;top:0;left:0;bottom:0;right:auto;z-index:1200;margin:0;width:var(--admin-sidebar-w);min-height:0;display:flex;background:var(--admin-surface);border:0;border-top:0;border-right:1px solid var(--admin-line);box-shadow:2px 0 24px rgba(0,0,0,.06);overflow-y:auto;overflow-x:hidden}
 body.admin-theme-console.admin-body .navbar .container,
+body.admin-theme-cockpit.admin-body .navbar .container,
 body.admin-theme-workspace.admin-body .navbar .container{width:100%;max-width:none;padding:0;margin:0;display:flex;flex-direction:column;height:100%;min-height:100%}
 body.admin-theme-console.admin-body .navbar-header,
+body.admin-theme-cockpit.admin-body .navbar-header,
 body.admin-theme-workspace.admin-body .navbar-header{float:none;width:100%;padding:18px 16px;border-bottom:1px solid var(--admin-line)}
 body.admin-theme-console.admin-body .navbar-brand,
+body.admin-theme-cockpit.admin-body .navbar-brand,
 body.admin-theme-workspace.admin-body .navbar-brand{float:none;display:flex;align-items:center;height:auto;padding:0;margin:0!important;color:var(--admin-text)!important;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 body.admin-theme-console.admin-body .navbar-collapse,
+body.admin-theme-cockpit.admin-body .navbar-collapse,
 body.admin-theme-workspace.admin-body .navbar-collapse{float:none;width:100%;flex:1;max-height:none!important;display:flex!important;flex-direction:column;padding:12px 10px;border:0;box-shadow:none;overflow:visible!important}
 body.admin-theme-console.admin-body .navbar-nav,
+body.admin-theme-cockpit.admin-body .navbar-nav,
 body.admin-theme-workspace.admin-body .navbar-nav{float:none!important;width:100%;margin:0!important;display:flex;flex-direction:column;gap:3px}
 body.admin-theme-console.admin-body .navbar-nav>li,
+body.admin-theme-cockpit.admin-body .navbar-nav>li,
 body.admin-theme-workspace.admin-body .navbar-nav>li{width:100%;float:none}
 body.admin-theme-console.admin-body .navbar-nav.navbar-right,
+body.admin-theme-cockpit.admin-body .navbar-nav.navbar-right,
 body.admin-theme-workspace.admin-body .navbar-nav.navbar-right{float:none!important;margin:0!important}
 body.admin-theme-console.admin-body .navbar-default .navbar-nav>li>a,
+body.admin-theme-cockpit.admin-body .navbar-default .navbar-nav>li>a,
 body.admin-theme-workspace.admin-body .navbar-default .navbar-nav>li>a{display:flex;align-items:center;gap:11px;margin:0;padding:10px 12px;border-radius:11px;color:var(--admin-muted)!important;font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 body.admin-theme-console.admin-body .navbar-default .navbar-nav>li>a i,
+body.admin-theme-cockpit.admin-body .navbar-default .navbar-nav>li>a i,
 body.admin-theme-workspace.admin-body .navbar-default .navbar-nav>li>a i{flex:0 0 17px;width:17px;margin:0;text-align:center;font-size:15px}
 body.admin-theme-console.admin-body .navbar-default .navbar-nav>li>a:hover,body.admin-theme-console.admin-body .navbar-default .navbar-nav>li>a:focus{background:#f4f6fa!important;color:#3d4557!important}
 body.admin-theme-workspace.admin-body .navbar-default .navbar-nav>li>a:hover,body.admin-theme-workspace.admin-body .navbar-default .navbar-nav>li>a:focus{background:var(--admin-soft)!important;color:var(--admin-text)!important}
 body.admin-theme-console.admin-body .navbar-default .navbar-nav>li.active>a{background:#eef2ff!important;color:var(--admin-primary)!important}
 body.admin-theme-workspace.admin-body .navbar-default .navbar-nav>li.active>a{background:rgba(244,201,93,.14)!important;color:var(--admin-primary)!important}
 body.admin-theme-console.admin-body .navbar-default .navbar-nav>li.active>a i,
+body.admin-theme-cockpit.admin-body .navbar-default .navbar-nav>li.active>a i,
 body.admin-theme-workspace.admin-body .navbar-default .navbar-nav>li.active>a i{color:var(--admin-primary)}
 body.admin-theme-console.admin-body .navbar-nav>li>.dropdown-menu,
+body.admin-theme-cockpit.admin-body .navbar-nav>li>.dropdown-menu,
 body.admin-theme-workspace.admin-body .navbar-nav>li>.dropdown-menu{display:block!important;position:static!important;float:none;width:100%;min-width:0;margin:3px 0 0;padding:4px;background:var(--admin-soft);border:1px solid var(--admin-line);border-radius:11px;box-shadow:none}
 body.admin-theme-console.admin-body .navbar-nav>li>a.dropdown-toggle,
+body.admin-theme-cockpit.admin-body .navbar-nav>li>a.dropdown-toggle,
 body.admin-theme-workspace.admin-body .navbar-nav>li>a.dropdown-toggle{pointer-events:none;cursor:default}
 body.admin-theme-console.admin-body .navbar-nav>li>a.dropdown-toggle .caret,
+body.admin-theme-cockpit.admin-body .navbar-nav>li>a.dropdown-toggle .caret,
 body.admin-theme-workspace.admin-body .navbar-nav>li>a.dropdown-toggle .caret{display:none}
 body.admin-theme-console.admin-body .navbar-nav>li>.dropdown-menu>li>a,
+body.admin-theme-cockpit.admin-body .navbar-nav>li>.dropdown-menu>li>a,
 body.admin-theme-workspace.admin-body .navbar-nav>li>.dropdown-menu>li>a{padding:8px 12px;border-radius:9px;color:var(--admin-muted)!important;font-size:13px;white-space:normal}
 body.admin-theme-console.admin-body .navbar-nav>li>.dropdown-menu>li>a:hover,body.admin-theme-console.admin-body .navbar-nav>li>.dropdown-menu>li>a:focus{background:#eef2ff!important;color:var(--admin-primary)!important}
 body.admin-theme-workspace.admin-body .navbar-nav>li>.dropdown-menu>li>a:hover,body.admin-theme-workspace.admin-body .navbar-nav>li>.dropdown-menu>li>a:focus{background:rgba(244,201,93,.14)!important;color:var(--admin-primary)!important}
 body.admin-theme-console.admin-body .navbar-nav>li>.dropdown-menu>li.active>a,body.admin-theme-console.admin-body .navbar-nav>li>.dropdown-menu>li.active>a:hover,body.admin-theme-console.admin-body .navbar-nav>li>.dropdown-menu>li.active>a:focus{background:#e2e8ff!important;color:var(--admin-primary-dark)!important;font-weight:750}
 body.admin-theme-workspace.admin-body .navbar-nav>li>.dropdown-menu>li.active>a,body.admin-theme-workspace.admin-body .navbar-nav>li>.dropdown-menu>li.active>a:hover,body.admin-theme-workspace.admin-body .navbar-nav>li>.dropdown-menu>li.active>a:focus{background:rgba(244,201,93,.22)!important;color:var(--admin-primary)!important;font-weight:750}
 body.admin-theme-console.admin-body>.container,body.admin-theme-console.admin-body>.container-fluid,
+body.admin-theme-cockpit.admin-body>.container,body.admin-theme-cockpit.admin-body>.container-fluid,
 body.admin-theme-workspace.admin-body>.container,body.admin-theme-workspace.admin-body>.container-fluid{width:auto!important;max-width:none!important;margin:0!important;padding-top:26px!important;padding-right:28px!important;padding-bottom:8px!important;padding-left:calc(var(--admin-sidebar-w) + 28px)!important}
 }
 @media (max-width:767px){
 body.admin-theme-console.admin-body .navbar-default .navbar-nav>li>a,
+body.admin-theme-cockpit.admin-body .navbar-default .navbar-nav>li>a,
 body.admin-theme-workspace.admin-body .navbar-default .navbar-nav>li>a{margin:2px 0;border-radius:9px}
 body.admin-theme-workspace.admin-body .navbar-collapse{background:var(--admin-surface);border-top:1px solid var(--admin-line)}
 }
@@ -2086,3 +2112,49 @@ body.admin-body .modal-header .close:hover{opacity:1}
 	.stor-card-desc{min-height:0}
 	.stor-submit .btn{width:100%}
 }
+
+/* ===== 渐变仪表盘风：后台配色（结构复用上面那套侧栏型后台） ===== */
+body.admin-theme-cockpit.admin-body,
+body.admin-theme-cockpit.admin-login-body{--admin-bg:#f3f4fa;--admin-surface:#ffffff;--admin-soft:#f6f7fc;--admin-text:#191d33;--admin-muted:#858ca6;--admin-line:#ecedf6;--admin-primary:#6d5df6;--admin-primary-dark:#5a48e0;--admin-green:#22c55e;--admin-yellow:#f59e0b;--admin-red:#ef4444;--admin-shadow:0 12px 34px rgba(46,44,92,.07);--admin-sidebar-w:236px}
+body.admin-theme-cockpit.admin-login-body{background:radial-gradient(900px 380px at 12% -10%,rgba(139,92,246,.16),transparent 60%),#f3f4fa fixed}
+body.admin-theme-cockpit.admin-body{background:radial-gradient(1100px 460px at 8% -12%,rgba(139,92,246,.13),transparent 62%),var(--admin-bg);background-attachment:fixed;color:var(--admin-text)}
+body.admin-theme-cockpit.admin-body:before{content:none;display:none}
+body.admin-theme-cockpit.admin-body a{color:var(--admin-primary)}
+body.admin-theme-cockpit.admin-body a:hover,body.admin-theme-cockpit.admin-body a:focus{color:var(--admin-primary-dark)}
+body.admin-theme-cockpit.admin-body .table-striped>tbody>tr:nth-of-type(odd){background:#fbfbfe}
+body.admin-theme-cockpit.admin-body .table-hover>tbody>tr:hover{background:var(--admin-soft)}
+body.admin-theme-cockpit.admin-body .form-control:focus{border-color:#b7abfb;box-shadow:0 0 0 4px rgba(109,93,246,.13)}
+body.admin-theme-cockpit.admin-body .btn-primary{background:var(--admin-primary);border-color:var(--admin-primary);color:#fff}
+body.admin-theme-cockpit.admin-body .btn-primary:hover,body.admin-theme-cockpit.admin-body .btn-primary:focus{background:var(--admin-primary-dark);border-color:var(--admin-primary-dark)}
+body.admin-theme-cockpit.admin-body .btn-default{background:var(--admin-soft);border:1px solid var(--admin-line);color:#5b6280}
+body.admin-theme-cockpit.admin-body .navbar-default .navbar-nav>li>a:hover,body.admin-theme-cockpit.admin-body .navbar-default .navbar-nav>li>a:focus{background:var(--admin-soft)!important;color:#3d4360!important}
+/* 侧栏当前项和前台一样用渐变块，一眼能认出是这套外观 */
+body.admin-theme-cockpit.admin-body .navbar-default .navbar-nav>li.active>a{background:linear-gradient(115deg,#6d5df6 0,#8b5cf6 46%,#b06ae8 100%)!important;color:#fff!important;box-shadow:0 10px 22px rgba(109,93,246,.28)}
+body.admin-theme-cockpit.admin-body .navbar-default .navbar-nav>li.active>a i{color:#fff!important}
+body.admin-theme-cockpit.admin-body .navbar-nav>li>.dropdown-menu>li>a:hover,body.admin-theme-cockpit.admin-body .navbar-nav>li>.dropdown-menu>li>a:focus{background:#f0edff!important;color:var(--admin-primary)!important}
+body.admin-theme-cockpit.admin-body .navbar-nav>li>.dropdown-menu>li.active>a,body.admin-theme-cockpit.admin-body .navbar-nav>li>.dropdown-menu>li.active>a:hover,body.admin-theme-cockpit.admin-body .navbar-nav>li>.dropdown-menu>li.active>a:focus{background:#e7e2ff!important;color:var(--admin-primary-dark)!important;font-weight:750}
+body.admin-theme-cockpit.admin-body .appearance-settings-panel{background:linear-gradient(180deg,#faf9ff 0,#f3f4fa 100%)!important;border-color:#e6e5f5!important}
+body.admin-theme-cockpit.admin-body .appearance-settings-panel>.panel-heading,
+body.admin-theme-cockpit.admin-body .appearance-settings-panel>.panel-heading .panel-title{color:#191d33!important}
+body.admin-theme-cockpit.admin-body .appearance-settings-body{color:#4a5169}
+body.admin-theme-cockpit.admin-body .appearance-card{background:rgba(255,255,255,.98);border-color:#e6e5f5;box-shadow:0 12px 28px rgba(46,44,92,.06)}
+body.admin-theme-cockpit.admin-body .appearance-card strong{color:#191d33}
+body.admin-theme-cockpit.admin-body .appearance-card small{color:#858ca6}
+body.admin-theme-cockpit.admin-body .appearance-preview{border-color:#e6e5f5;background:#fff}
+body.admin-theme-cockpit.admin-body .appearance-card.active,
+body.admin-theme-cockpit.admin-body .appearance-card:hover{border-color:#6d5df6;box-shadow:0 0 0 2px rgba(109,93,246,.12)}
+body.admin-theme-cockpit.admin-body .appearance-card.active:after{background:#6d5df6;box-shadow:0 8px 18px rgba(109,93,246,.32)}
+body.admin-theme-cockpit.admin-body .appearance-submit .btn{background:#fff!important;color:#191d33!important;border-color:#e6e5f5!important}
+body.admin-theme-cockpit.admin-body .appearance-submit .btn:hover,
+body.admin-theme-cockpit.admin-body .appearance-submit .btn:focus{background:#f6f7fc!important;color:#0f172a!important;border-color:#6d5df6!important}
+body.admin-theme-cockpit.admin-body .appearance-settings-footer{color:#4a5169!important;border-top-color:#e6e5f5!important}
+body.admin-theme-cockpit.admin-body .appearance-settings-footer .glyphicon{color:#4a5169!important}
+
+/* 外观设置里的缩略图：悬浮圆角图标条 + 渐变卡片 */
+.appearance-preview-cockpit{display:flex;gap:7px;padding:8px;background:#f3f4fa}
+.appearance-preview-cockpit .appearance-nav{display:block;height:auto;flex:0 0 13%;background:#ffffff;border:1px solid #ecedf6;border-radius:9px}
+.appearance-preview-cockpit .appearance-panel{flex:1;margin:0;padding:10px;border-radius:9px;background:#ffffff;border:1px solid #ecedf6;box-shadow:0 8px 20px rgba(46,44,92,.07)}
+.appearance-preview-cockpit .appearance-panel span{height:9px;margin-bottom:8px;background:#eceef7;border-radius:3px}
+.appearance-preview-cockpit .appearance-panel span:first-child{width:100%;height:22px;background:linear-gradient(115deg,#6d5df6 0,#8b5cf6 46%,#b06ae8 100%)}
+.appearance-preview-cockpit .appearance-panel span:nth-child(2){width:86%}
+.appearance-preview-cockpit .appearance-panel span:nth-child(3){width:62%}

@@ -145,6 +145,17 @@ sync_404_theme($site_theme);
 	    <strong>macOS 窗口风</strong>
 	    <small>整站套进一个 macOS 窗口：带红黄绿三颗灯的标题栏、底部状态栏，文件列表默认是访达式图标网格，可一键切回列表视图；后台和登录页同款窗口。</small>
 	  </label>
+	  <label class="appearance-card <?php echo $site_theme === 'cockpit' ? 'active' : null;?>">
+	    <input type="radio" name="site_theme" value="cockpit" <?php echo $site_theme === 'cockpit' ? 'checked' : null;?>>
+	    <span class="appearance-preview appearance-preview-cockpit">
+	      <span class="appearance-nav"></span>
+	      <span class="appearance-panel">
+	        <span></span><span></span><span></span>
+	      </span>
+	    </span>
+	    <strong>渐变仪表盘风</strong>
+	    <small>白色悬浮圆角侧栏（默认展开显示文字），文件列表页顶部是问候栏和紫色渐变额度卡，右侧多一列存储分布、最近上传和快捷入口面板。</small>
+	  </label>
 	</div>
 	</div>
 	<div class="appearance-group">

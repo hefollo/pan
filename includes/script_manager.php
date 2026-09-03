@@ -361,6 +361,13 @@ function mpimg_render_notice_html($conf){
 			'text' => '#1d1d1f',
 			'link' => '#0a84ff',
 		],
+		'cockpit' => [
+			'bg' => 'rgba(255,255,255,.96)',
+			'border' => '#ecedf6',
+			'shadow' => '0 12px 34px rgba(46,44,92,.08)',
+			'text' => '#191d33',
+			'link' => '#6d5df6',
+		],
 	];
 	if(!isset($theme_styles[$site_theme])){
 		$site_theme = default_site_theme();

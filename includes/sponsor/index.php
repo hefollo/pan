@@ -49,6 +49,7 @@ $sp_themes = [
 	'console'  => ['bg'=>'#f5f7fb','surface'=>'#ffffff','line'=>'#e7eaf0','text'=>'#151c2d','soft'=>'#2a3346','muted'=>'#7b8497','faint'=>'#9aa1b0','primary'=>'#3867f4','primary_dark'=>'#2a4fd0','on_primary'=>'#ffffff','amount'=>'#16a369'],
 	'portal'   => ['bg'=>'#f6f8f5','surface'=>'#ffffff','line'=>'#dfe7e2','text'=>'#17211d','soft'=>'#2b3833','muted'=>'#66716c','faint'=>'#8a948f','primary'=>'#0d7c57','primary_dark'=>'#0a5f42','on_primary'=>'#ffffff','amount'=>'#0d7c57'],
 	'mac'      => ['bg'=>'linear-gradient(155deg,#dfe4ee 0%,#e9eaee 46%,#e2e7f0 100%)','surface'=>'#ffffff','line'=>'#e6e6ea','text'=>'#1d1d1f','soft'=>'#3a3a3d','muted'=>'#6e6e73','faint'=>'#86868b','primary'=>'#0a84ff','primary_dark'=>'#0060df','on_primary'=>'#ffffff','amount'=>'#34c759'],
+	'cockpit'  => ['bg'=>'radial-gradient(900px 400px at 10% -10%,rgba(139,92,246,.16),transparent 60%),linear-gradient(135deg,#f6f6fc 0%,#f3f4fa 100%)','surface'=>'#ffffff','line'=>'#ecedf6','text'=>'#191d33','soft'=>'#2c3150','muted'=>'#858ca6','faint'=>'#a2a8c0','primary'=>'#6d5df6','primary_dark'=>'#5a48e0','on_primary'=>'#ffffff','amount'=>'#16a34a'],
 	'workspace'=> ['bg'=>'#10141b','surface'=>'#171c25','line'=>'#2a313d','text'=>'#edf1f7','soft'=>'#d5dce6','muted'=>'#8993a3','faint'=>'#6f7889','primary'=>'#f4c95d','primary_dark'=>'#d9ad3f','on_primary'=>'#221a05','amount'=>'#5ed6a0'],
 ];
 $sp_key = isset($conf['site_theme']) ? $conf['site_theme'] : default_site_theme();

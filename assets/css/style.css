@@ -2763,6 +2763,228 @@ body.theme-mac .well.bs-component>h2>.mac-viewtoggle,
 body.theme-mac .well.bs-component>h2>.searchbox+.mac-viewtoggle{margin-left:0}
 }
 
+
+/* ===== 渐变仪表盘风（布局型）：悬浮图标侧栏 + 问候栏 + 渐变额度卡 + 右侧数据面板 ===== */
+body.theme-cockpit{--page-bg:#f3f4fa;--surface:#ffffff;--surface-soft:#f6f7fc;--text:#191d33;--muted:#858ca6;--line:#ecedf6;--primary:#6d5df6;--primary-dark:#5a48e0;--accent:#22c55e;--danger:#ef4444;--tint:#f0edff;--drop-line:#d6d2f7;--drop-tint:#f8f6ff;--shadow:0 12px 34px rgba(46,44,92,.07);--btn-shadow:0 12px 26px rgba(109,93,246,.26);--rail-w:226px;--cockpit-grad:linear-gradient(115deg,#6d5df6 0,#8b5cf6 46%,#b06ae8 100%);background:radial-gradient(1100px 460px at 8% -12%,rgba(139,92,246,.13),transparent 62%),var(--page-bg);background-attachment:fixed;color:var(--text)}
+body.theme-cockpit a{color:var(--primary)}
+body.theme-cockpit a:hover,body.theme-cockpit a:focus{color:var(--primary-dark)}
+body.theme-cockpit .caret{display:none}
+
+/* 侧栏是一块悬浮的圆角面板，默认就展开显示文字（深色工作台风是收起的图标条，这套不收） */
+@media (min-width:768px){
+body.theme-cockpit .navbar.navbar-default{position:fixed;top:16px;left:16px;bottom:16px;z-index:1200;margin:0;width:var(--rail-w);display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:24px;box-shadow:var(--shadow);overflow:hidden}
+body.theme-cockpit .navbar .container{width:100%;max-width:none;padding:0;margin:0;display:flex;flex-direction:column;height:100%;min-height:100%}
+body.theme-cockpit .navbar-header{float:none;width:100%;padding:18px 0 14px}
+body.theme-cockpit .navbar-brand{float:none;display:flex;align-items:center;gap:12px;width:100%;height:auto;padding:0 16px;margin:0!important;color:var(--text)!important;font-size:15px;font-weight:800;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.theme-cockpit .navbar-brand:before{content:"\f1b2";flex:0 0 42px;width:42px;height:42px;border-radius:14px;background:var(--cockpit-grad);color:#fff;font:400 19px/42px FontAwesome;text-align:center;box-shadow:0 10px 22px rgba(109,93,246,.32)}
+body.theme-cockpit .navbar-collapse{float:none;width:100%;flex:1;display:flex!important;flex-direction:column;padding:6px 14px 14px;border:0;box-shadow:none;overflow-x:hidden;overflow-y:auto}
+body.theme-cockpit .navbar-nav{float:none!important;width:100%;margin:0!important;display:flex;flex-direction:column;gap:6px}
+body.theme-cockpit .navbar-nav>li{width:100%;float:none}
+body.theme-cockpit .navbar-nav.navbar-right{float:none!important;margin:auto 0 0!important;padding-top:12px;border-top:1px solid var(--line)}
+body.theme-cockpit .navbar-default .navbar-nav>li>a{display:flex;align-items:center;gap:13px;margin:0;padding:0 12px;height:46px;border-radius:15px;background:transparent!important;color:var(--muted)!important;font-size:13px;font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.theme-cockpit .navbar-default .navbar-nav>li>a i{flex:0 0 22px;width:22px;margin:0;text-align:center;font-size:17px}
+body.theme-cockpit .navbar-default .navbar-nav>li>a:hover,body.theme-cockpit .navbar-default .navbar-nav>li>a:focus{background:var(--surface-soft)!important;color:var(--text)!important}
+body.theme-cockpit .navbar-default .navbar-nav>li.active>a{background:var(--cockpit-grad)!important;color:#fff!important;box-shadow:0 10px 22px rgba(109,93,246,.3)}
+body.theme-cockpit .navbar-default .navbar-nav>li.active>a i{color:#fff}
+/* 侧栏本身可滚动，绝对定位的下拉菜单会被裁掉，改成静态展开 */
+body.theme-cockpit .navbar-nav .open>.dropdown-menu{position:static;float:none;width:100%;margin:4px 0 0;padding:4px;background:var(--surface-soft);border:1px solid var(--line);border-radius:14px;box-shadow:none}
+body.theme-cockpit .navbar-nav .open>.dropdown-menu>li>a{padding:9px 12px;border-radius:10px;color:var(--muted)!important;font-size:13px;white-space:normal}
+body.theme-cockpit .navbar-nav .open>.dropdown-menu>li>a:hover{background:var(--tint)!important;color:var(--primary)!important}
+body.theme-cockpit>.container{margin:0!important;max-width:none!important;width:auto!important;padding:20px 24px 6px calc(var(--rail-w) + 40px)}
+body.theme-cockpit>footer.footer{margin:0!important;padding-left:calc(var(--rail-w) + 40px)}
+body.theme-cockpit>footer.footer .container{width:auto;max-width:none}
+body.theme-cockpit .theme-announcement-bar{margin:0 0 18px calc(var(--rail-w) + 32px)!important;width:calc(100% - var(--rail-w) - 48px)!important;border-radius:16px!important}
+body.theme-cockpit .mpimg-link-band{margin-left:calc(var(--rail-w) + 32px)!important;width:calc(100% - var(--rail-w) - 48px)!important}
+}
+body.theme-cockpit .navbar-default .navbar-toggle{background:var(--surface-soft)!important;background-image:none!important;border:1px solid var(--line)!important;border-radius:12px}
+body.theme-cockpit .navbar-default .navbar-toggle .icon-bar{background:var(--primary)!important}
+body.theme-cockpit .footer,body.theme-cockpit .footer .text-muted{color:var(--muted);font-size:12px}
+
+/* 两栏：左边是列表主区，右边是数据面板；窄屏并成一栏 */
+body.theme-cockpit .layout-shell{display:grid;grid-template-columns:minmax(0,1fr) 316px;align-items:start;gap:18px}
+body.theme-cockpit .cockpit-main{min-width:0}
+
+/* 顶部问候栏 */
+body.theme-cockpit .cockpit-head{display:flex;flex-wrap:wrap;align-items:center;gap:14px;margin:0 0 18px}
+body.theme-cockpit .cockpit-hi h1{margin:0;color:var(--text);font-size:23px;font-weight:800;letter-spacing:-.03em}
+body.theme-cockpit .cockpit-hi p{margin:5px 0 0;color:var(--muted);font-size:13px;font-weight:650}
+body.theme-cockpit .cockpit-hi p b{color:var(--text);font-weight:800}
+body.theme-cockpit .cockpit-head-side{display:flex;align-items:center;gap:12px;margin-left:auto}
+body.theme-cockpit .cockpit-upload{display:inline-flex;align-items:center;gap:8px;padding:12px 19px;border-radius:14px;background:var(--cockpit-grad);color:#fff!important;font-size:13px;font-weight:800;text-decoration:none;box-shadow:var(--btn-shadow);transition:transform .18s ease,box-shadow .18s ease}
+body.theme-cockpit .cockpit-upload:hover,body.theme-cockpit .cockpit-upload:focus{color:#fff!important;text-decoration:none;transform:translateY(-1px);box-shadow:0 16px 30px rgba(109,93,246,.34)}
+body.theme-cockpit .cockpit-avatar{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#ffa26b,#f2705f);color:#fff!important;font-size:16px;font-weight:800;text-decoration:none}
+body.theme-cockpit .cockpit-avatar:hover{color:#fff!important;text-decoration:none;opacity:.92}
+body.theme-cockpit .cockpit-avatar-guest{background:var(--tint);color:var(--primary)!important}
+body.theme-cockpit .cockpit-avatar-guest:hover{color:var(--primary)!important}
+
+/* 渐变额度卡 */
+body.theme-cockpit .cockpit-quota{position:relative;display:flex;align-items:center;gap:24px;margin:0 0 16px;padding:26px 30px;border-radius:24px;background:var(--cockpit-grad);color:#fff;box-shadow:0 20px 42px rgba(109,93,246,.26);overflow:hidden}
+body.theme-cockpit .cockpit-quota:before{content:"";position:absolute;top:-90px;right:-50px;width:270px;height:270px;border-radius:50%;background:rgba(255,255,255,.1)}
+body.theme-cockpit .cockpit-quota-main{position:relative;z-index:1;flex:1 1 auto;min-width:0}
+body.theme-cockpit .cockpit-quota-label{display:inline-flex;align-items:center;gap:7px;color:rgba(255,255,255,.88);font-size:13px;font-weight:750}
+body.theme-cockpit .cockpit-quota-num{display:flex;align-items:baseline;gap:9px;margin:9px 0 0}
+body.theme-cockpit .cockpit-quota-num strong{font-size:42px;font-weight:800;line-height:1.1;letter-spacing:-.04em}
+body.theme-cockpit .cockpit-quota-num span{color:rgba(255,255,255,.84);font-size:16px;font-weight:750}
+body.theme-cockpit .cockpit-quota-sub{margin:9px 0 0;color:rgba(255,255,255,.8);font-size:13px;font-weight:650}
+body.theme-cockpit .cockpit-quota-pills{display:flex;flex-wrap:wrap;gap:8px;margin:17px 0 0}
+body.theme-cockpit .cockpit-quota-pills span{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:999px;background:rgba(255,255,255,.17);font-size:12px;font-weight:750}
+body.theme-cockpit .cockpit-ring{position:relative;flex:0 0 128px;width:128px;height:128px}
+body.theme-cockpit .cockpit-ring svg{display:block;width:128px;height:128px;transform:rotate(-90deg)}
+body.theme-cockpit .cockpit-ring circle{fill:none;stroke-width:11;stroke-linecap:round}
+body.theme-cockpit .cockpit-ring-bg{stroke:rgba(255,255,255,.24)}
+body.theme-cockpit .cockpit-ring-fg{stroke:#fff}
+body.theme-cockpit .cockpit-ring-text{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+body.theme-cockpit .cockpit-ring-text strong{font-size:22px;font-weight:800;letter-spacing:-.03em}
+body.theme-cockpit .cockpit-ring-text span{color:rgba(255,255,255,.82);font-size:11px;font-weight:750}
+
+/* 统计卡与类型筛选：结构走布局型外观的公共块，这里只改质感 */
+body.theme-cockpit .layout-stats{gap:14px;margin:0 0 16px}
+body.theme-cockpit .layout-stat{padding:18px;border-radius:18px;box-shadow:var(--shadow)}
+body.theme-cockpit .layout-stat-icon{border-radius:14px}
+body.theme-cockpit .layout-stat-image .layout-stat-icon{background:rgba(22,163,105,.12);color:#16a369}
+body.theme-cockpit .layout-stat-video .layout-stat-icon{background:rgba(240,123,47,.12);color:#f07b2f}
+body.theme-cockpit .layout-stat-today .layout-stat-icon{background:rgba(59,130,246,.12);color:#3b82f6}
+body.theme-cockpit .layout-filters{margin:0 0 14px}
+body.theme-cockpit .layout-filter{border-radius:999px;background:var(--surface-soft);font-size:12.5px}
+body.theme-cockpit .layout-filter:hover{background:var(--tint);color:var(--primary)!important}
+body.theme-cockpit .layout-filter.active{background:var(--cockpit-grad);color:#fff!important;box-shadow:0 8px 18px rgba(109,93,246,.26)}
+body.theme-cockpit .layout-page-sub{margin:0 0 16px}
+
+/* 右侧数据面板 */
+body.theme-cockpit .cockpit-side{position:sticky;top:20px;display:flex;flex-direction:column;gap:14px}
+body.theme-cockpit .cockpit-panel{padding:18px;background:var(--surface);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow)}
+body.theme-cockpit .cockpit-panel-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:0 0 14px}
+body.theme-cockpit .cockpit-panel-head strong{color:var(--text);font-size:15px;font-weight:800;letter-spacing:-.02em}
+body.theme-cockpit .cockpit-panel-head small{color:var(--muted);font-size:12px;font-weight:650}
+body.theme-cockpit .cockpit-dist-bar{display:flex;height:10px;border-radius:999px;background:var(--surface-soft);overflow:hidden}
+body.theme-cockpit .cockpit-seg{display:block;height:100%}
+body.theme-cockpit .cockpit-dot{flex:0 0 9px;width:9px;height:9px;border-radius:50%}
+/* 分类颜色和文件列表里的图标色块保持一致，两处对照着看才对得上 */
+body.theme-cockpit .cockpit-seg-image{background:#16a369}
+body.theme-cockpit .cockpit-seg-video{background:#f07b2f}
+body.theme-cockpit .cockpit-seg-doc{background:#ef5a55}
+body.theme-cockpit .cockpit-seg-archive{background:#9a6ae8}
+body.theme-cockpit .cockpit-seg-other{background:#94a3b8}
+body.theme-cockpit .cockpit-seg-empty{background:var(--line)}
+body.theme-cockpit .cockpit-dist-list{display:flex;flex-direction:column;gap:10px;margin:15px 0 0}
+body.theme-cockpit .cockpit-dist-row{display:flex;align-items:center;gap:9px;font-size:13px}
+body.theme-cockpit .cockpit-dist-row em{color:var(--muted);font-style:normal;font-weight:650}
+body.theme-cockpit .cockpit-dist-row b{margin-left:auto;color:var(--text);font-weight:800}
+body.theme-cockpit .cockpit-feed{display:flex;flex-direction:column;gap:2px}
+body.theme-cockpit .cockpit-feed-item{display:flex;align-items:center;gap:11px;padding:8px;border-radius:14px;text-decoration:none}
+body.theme-cockpit .cockpit-feed-item:hover,body.theme-cockpit .cockpit-feed-item:focus{background:var(--surface-soft);text-decoration:none}
+body.theme-cockpit .cockpit-feed-icon{flex:0 0 34px;width:34px;height:34px;border-radius:12px;background:var(--tint);color:var(--primary);font-size:14px;line-height:34px;text-align:center}
+body.theme-cockpit .cockpit-feed-item[data-group="image"] .cockpit-feed-icon{background:rgba(22,163,105,.12);color:#16a369}
+body.theme-cockpit .cockpit-feed-item[data-group="video"] .cockpit-feed-icon{background:rgba(240,123,47,.12);color:#f07b2f}
+body.theme-cockpit .cockpit-feed-item[data-group="doc"] .cockpit-feed-icon{background:rgba(239,90,85,.12);color:#ef5a55}
+body.theme-cockpit .cockpit-feed-item[data-group="archive"] .cockpit-feed-icon{background:rgba(154,106,232,.14);color:#9a6ae8}
+body.theme-cockpit .cockpit-feed-item[data-group="audio"] .cockpit-feed-icon{background:rgba(59,130,246,.12);color:#3b82f6}
+body.theme-cockpit .cockpit-feed-body{display:block;min-width:0}
+body.theme-cockpit .cockpit-feed-body b{display:block;color:var(--text);font-size:13px;font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.theme-cockpit .cockpit-feed-body em{display:block;margin-top:2px;color:var(--muted);font-size:11.5px;font-style:normal;font-weight:650}
+body.theme-cockpit .cockpit-empty{margin:0;padding:16px 4px;color:var(--muted);font-size:13px;text-align:center}
+body.theme-cockpit .cockpit-links{display:flex;flex-direction:column;gap:2px}
+body.theme-cockpit .cockpit-link{display:flex;align-items:center;gap:11px;padding:9px 8px;border-radius:14px;color:var(--text)!important;font-size:13px;font-weight:750;text-decoration:none}
+body.theme-cockpit .cockpit-link:hover,body.theme-cockpit .cockpit-link:focus{background:var(--surface-soft);text-decoration:none}
+body.theme-cockpit .cockpit-link>i:first-child{flex:0 0 32px;width:32px;height:32px;border-radius:11px;background:var(--tint);color:var(--primary);font-size:14px;line-height:32px;text-align:center}
+body.theme-cockpit .cockpit-link-arrow{flex:0 0 auto;margin-left:auto;background:none;color:var(--muted);font-size:16px;line-height:1}
+
+/* 内容卡片、表格、表单：和其它浅色布局型外观同一套，配色换成本外观的变量 */
+body.theme-cockpit .well,body.theme-cockpit .panel{background:var(--surface);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);color:var(--text)}
+body.theme-cockpit .well.bs-component{padding:20px 24px 22px}
+body.theme-cockpit .well.bs-component>h2{display:flex;flex-wrap:wrap;align-items:center;gap:14px;margin:0 0 14px;color:var(--text);font-size:19px;font-weight:800;letter-spacing:-.03em}
+body.theme-cockpit .well.bs-component>h2>.searchbox{margin-left:auto}
+body.theme-cockpit .well.bs-component>h2 .text-muted{color:var(--muted)!important;font-size:12px!important;font-weight:650}
+body.theme-cockpit .panel{overflow:hidden}
+body.theme-cockpit .panel-heading{background:var(--surface-soft)!important;border-bottom:1px solid var(--line)!important;color:var(--text)!important;font-weight:800}
+body.theme-cockpit .panel-title,body.theme-cockpit .panel-title i{color:var(--text)}
+body.theme-cockpit .panel-footer,body.theme-cockpit .tab-content,body.theme-cockpit .list-group-item{background:var(--surface);border-color:var(--line);color:var(--text)}
+body.theme-cockpit .dropdown-menu{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+body.theme-cockpit .dropdown-menu>li>a{color:#4a5169!important}
+body.theme-cockpit .dropdown-menu>li>a:hover,body.theme-cockpit .dropdown-menu>li>a:focus{background:var(--tint)!important;color:var(--primary)!important}
+body.theme-cockpit .searchbox .form-inline{display:flex;align-items:center;gap:8px}
+body.theme-cockpit .searchbox input.form-control[type="search"]{height:40px;min-width:230px;background:var(--surface-soft)!important;border:1px solid var(--line)!important;border-radius:13px!important;color:var(--text)!important;-webkit-text-fill-color:var(--text)!important;font-size:12.5px}
+body.theme-cockpit .searchbox .btn{height:40px;background:var(--surface-soft)!important;border:1px solid var(--line)!important;border-radius:13px!important;color:#5b6280!important;font-size:12.5px;font-weight:750}
+body.theme-cockpit .searchbox .btn:hover,body.theme-cockpit .searchbox .btn:focus{background:var(--primary)!important;border-color:var(--primary)!important;color:#fff!important}
+body.theme-cockpit .table-responsive{border:1px solid var(--line);border-radius:16px;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}
+body.theme-cockpit .table{margin:0;background:transparent}
+body.theme-cockpit .table>thead>tr>th{padding:12px 14px;background:var(--surface-soft)!important;border-bottom:1px solid var(--line)!important;color:var(--muted);font-size:11.5px;font-weight:750;letter-spacing:.05em}
+body.theme-cockpit .table>tbody>tr>td{padding:13px 14px;border-top:1px solid var(--line)!important;color:#454b66;font-size:13px;vertical-align:middle}
+body.theme-cockpit .table-striped>tbody>tr:nth-of-type(odd){background:transparent}
+body.theme-cockpit .table-hover>tbody>tr:hover{background:var(--surface-soft)}
+body.theme-cockpit .table-bordered,body.theme-cockpit .table-bordered>tbody>tr>td,body.theme-cockpit .table-bordered>thead>tr>th{border-color:var(--line)!important}
+body.theme-cockpit .filelist td a{color:var(--text);font-weight:750}
+body.theme-cockpit .filelist td a:hover{color:var(--primary)}
+body.theme-cockpit .file-type-badge{display:inline-flex;padding:4px 10px;border-radius:8px;background:var(--surface-soft);color:var(--muted);font-size:11px;font-weight:750}
+body.theme-cockpit .file-action{display:inline-flex!important;align-items:center;gap:5px;padding:5px 11px;border-radius:999px;background:var(--surface-soft);color:#5b6280!important;font-size:12px;font-weight:750}
+body.theme-cockpit .file-action-down{background:var(--tint);color:var(--primary)!important}
+body.theme-cockpit .file-action:hover{background:var(--primary);color:#fff!important}
+body.theme-cockpit .filelist-summary{color:var(--muted);font-size:12px}
+body.theme-cockpit .pagination>li>a,body.theme-cockpit .pagination>li>span{background:var(--surface-soft);border:1px solid var(--line);border-radius:11px!important;color:#5b6280}
+body.theme-cockpit .pagination>li>a:hover,body.theme-cockpit .pagination>.active>a,body.theme-cockpit .pagination>.active>a:hover{background:var(--primary)!important;border-color:var(--primary)!important;color:#fff!important}
+body.theme-cockpit .pagination>.disabled>a,body.theme-cockpit .pagination>.disabled>a:hover{background:var(--surface-soft);color:#b4b9cc}
+body.theme-cockpit .form-control{background:var(--surface-soft);border:1px solid var(--line);border-radius:13px;color:var(--text)}
+body.theme-cockpit .form-control:focus{background:var(--surface);border-color:#b7abfb;box-shadow:0 0 0 4px rgba(109,93,246,.13)}
+body.theme-cockpit .form-control::placeholder{color:#a2a8c0}
+body.theme-cockpit .input-group-addon{background:var(--surface-soft);border-color:var(--line);color:var(--muted)}
+body.theme-cockpit .help-block,body.theme-cockpit .text-muted{color:var(--muted)}
+body.theme-cockpit .btn{border-radius:13px!important;font-weight:750}
+body.theme-cockpit .btn-raised.btn-primary,body.theme-cockpit .btn-primary{background:var(--primary)!important;color:#fff!important}
+body.theme-cockpit .btn-raised.btn-primary:hover,body.theme-cockpit .btn-primary:hover{background:var(--primary-dark)!important;color:#fff!important}
+body.theme-cockpit .btn-raised.btn-info,body.theme-cockpit .btn-info{background:var(--accent)!important;color:#fff!important}
+body.theme-cockpit .btn-raised.btn-danger,body.theme-cockpit .btn-danger{background:var(--danger)!important;color:#fff!important}
+body.theme-cockpit .btn-default{background:var(--surface-soft)!important;border:1px solid var(--line)!important;color:#5b6280!important}
+body.theme-cockpit .nav-tabs{background:var(--surface);border-bottom:1px solid var(--line)}
+body.theme-cockpit .nav-tabs>li>a,body.theme-cockpit .nav-tabs>li>a:focus,body.theme-cockpit .nav-tabs>li>a:hover{background:transparent!important;border-color:transparent!important;color:var(--muted)!important}
+body.theme-cockpit .nav-tabs>li.active{background:var(--tint);border-bottom:2px solid var(--primary)}
+body.theme-cockpit .nav-tabs>li.active>a{color:var(--primary)!important}
+body.theme-cockpit .checkbox label,body.theme-cockpit .radio label{color:#4a5169}
+body.theme-cockpit #app .infobox{background:var(--surface)!important;box-shadow:var(--shadow)}
+body.theme-cockpit #fileInput #pwd{background:var(--surface-soft)!important;border-color:var(--line)!important;color:var(--text)!important;-webkit-text-fill-color:var(--text);border-radius:13px}
+body.theme-cockpit #fileInput .help-block{color:var(--muted)!important}
+body.theme-cockpit .view{background:var(--surface-soft);border-radius:20px}
+body.theme-cockpit .tubiao{background:var(--tint);color:var(--primary)}
+body.theme-cockpit .elsetext,body.theme-cockpit .filename{color:#4a5169}
+body.theme-cockpit .elsetext p:first-child{color:var(--text)}
+body.theme-cockpit .image_view,body.theme-cockpit .videoplayer{background:#191d33;border-radius:20px}
+body.theme-cockpit .fileinfo-table{background:var(--surface)}
+body.theme-cockpit .fileinfo-table th{background:var(--surface-soft);color:var(--muted)}
+body.theme-cockpit .progress{background:var(--surface-soft)}
+body.theme-cockpit .progress-bar{background:var(--cockpit-grad)}
+body.theme-cockpit .editor-toolbar{background:var(--surface-soft);border-color:var(--line);border-radius:13px}
+body.theme-cockpit #file_content{background:#191d33!important;color:#eceefb!important;border-color:#2c3150!important}
+body.theme-cockpit .upload-queue,body.theme-cockpit .upload-message{background:var(--surface);border-color:var(--line)}
+body.theme-cockpit .upload-link-btn{background:var(--surface-soft);border-color:var(--line);color:var(--primary)}
+body.theme-cockpit .upload-link-btn:hover{background:var(--primary);border-color:var(--primary);color:#fff}
+body.theme-cockpit .tab-content .input-group .form-control[readonly]{background:var(--surface-soft)!important;border-color:var(--line)!important;color:var(--text)!important;-webkit-text-fill-color:var(--text)}
+body.theme-cockpit .tab-content .input-group .form-control[readonly]:focus{background:var(--surface-soft)!important;border-color:#b7abfb!important;box-shadow:0 0 0 4px rgba(109,93,246,.13)!important}
+
+@media (max-width:1399px){
+/* 侧栏 226 + 右侧面板 316，再窄下去列表就只剩三百多像素了：数据面板落到列表下面，不再吸顶 */
+body.theme-cockpit .layout-shell{grid-template-columns:minmax(0,1fr)}
+body.theme-cockpit .cockpit-side{position:static}
+}
+@media (max-width:767px){
+body.theme-cockpit .navbar.navbar-default{position:static;width:auto;margin:12px 12px 0;border-radius:18px}
+body.theme-cockpit .navbar-header{display:flex;align-items:center;justify-content:space-between;padding:10px 12px}
+body.theme-cockpit .navbar-header .navbar-brand{order:1;min-width:0;flex:1}
+body.theme-cockpit .navbar-header .navbar-toggle{order:2;flex:none;margin:0}
+body.theme-cockpit .navbar-brand{display:flex!important;align-items:center;gap:10px;padding:0 4px!important;font-size:15px!important;font-weight:800;text-align:left}
+body.theme-cockpit .navbar-brand:before{width:36px;height:36px;border-radius:12px;font-size:17px;line-height:36px}
+body.theme-cockpit .navbar-collapse{padding:8px 10px 12px;background:var(--surface);border-top:1px solid var(--line)}
+body.theme-cockpit .navbar-default .navbar-nav>li>a{display:flex;align-items:center;gap:12px;margin:2px 0;padding:11px 12px;border-radius:12px;font-size:13px!important}
+body.theme-cockpit .navbar-default .navbar-nav>li>a i{flex:0 0 20px;width:20px;margin:0;text-align:center}
+body.theme-cockpit>.container{padding:16px 14px 6px!important}
+body.theme-cockpit .cockpit-head{gap:10px}
+body.theme-cockpit .cockpit-hi h1{font-size:20px}
+body.theme-cockpit .cockpit-head-side{width:100%;margin-left:0}
+body.theme-cockpit .cockpit-upload{flex:1;justify-content:center}
+body.theme-cockpit .cockpit-quota{flex-direction:column;align-items:flex-start;gap:16px;padding:22px 20px;border-radius:20px}
+body.theme-cockpit .cockpit-quota-num strong{font-size:34px}
+body.theme-cockpit .cockpit-ring{align-self:center}
+body.theme-cockpit .well.bs-component{padding:16px 14px 18px}
+body.theme-cockpit .well.bs-component>h2{font-size:17px}
+}
 /* ===== 放在最后：布局型外观的搜索框在窄屏要竖排 =====
    各外观自己写了 body.theme-xxx .searchbox .form-inline{display:flex}，
    和这里的选择器特异性相同（0,3,0），同分时靠源码顺序决定胜负，所以必须放在它们后面，

@@ -1291,14 +1291,14 @@ function default_site_theme(){
 function site_theme_keys(){
 	return ['cloud', 'night', 'neon', 'aurora', 'onefour', 'celadon', 'lilac', 'paper',
 		'blush', 'sky', 'mint', 'sunset', 'abyss', 'emerald', 'sakura',
-		'dashboard', 'console', 'portal', 'workspace', 'mac'];
+		'dashboard', 'console', 'portal', 'workspace', 'mac', 'cockpit'];
 }
 
 /*
  * 结构型（布局型）外观，body 上要额外挂 layout-theme
  */
 function layout_theme_keys(){
-	return ['dashboard', 'console', 'portal', 'workspace', 'mac'];
+	return ['dashboard', 'console', 'portal', 'workspace', 'mac', 'cockpit'];
 }
 
 /*
