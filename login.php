@@ -5,19 +5,40 @@ if(!$conf['userlogin']){
     @header('Content-Type: text/html; charset=UTF-8');
 	exit("<script language='javascript'>alert('未开启登录');window.location.href='./';</script>");
 }
+/*
+ * 绑定快捷登录用的是同一套 oauth 流程，而 lib\Oauth 把回调地址写死成了 login.php，
+ * 所以已登录的用户也必须能走到下面的 connect 和回调两个分支，否则会被"您已登录"挡回首页。
+ * 只放行这两步：请求跳转地址时要显式带 bind=1，回调时要有前一步种下的会话标记。
+ */
+$is_bind_flow = false;
+if($islogin2 == 1){
+	if(isset($_GET['act']) && $_GET['act'] == 'connect' && isset($_POST['bind']) && $_POST['bind'] == '1'){
+		$is_bind_flow = true;
+	}elseif(isset($_GET['code']) && isset($_GET['type']) && isset($_GET['state']) && !empty($_SESSION['oauth_bind'])){
+		$is_bind_flow = true;
+	}
+}
+
 if(isset($_GET['logout'])){
 	if(!checkRefererHost())exit();
 	unset($_SESSION['user_block']);
 	set_auth_cookie("user_token", "", time() - 1, '/');
 	@header('Content-Type: text/html; charset=UTF-8');
 	exit("<script language='javascript'>alert('您已成功注销本次登录！');window.location.href='./login.php';</script>");
-}elseif($islogin2==1){
+}elseif($islogin2==1 && !$is_bind_flow){
 	@header('Content-Type: text/html; charset=UTF-8');
 	exit("<script language='javascript'>alert('您已登录！');window.location.href='./';</script>");
 }elseif(isset($_GET['act']) && $_GET['act']=='connect'){
     @header('Content-Type: application/json; charset=UTF-8');
     $type = isset($_POST['type'])?$_POST['type']:exit('{"code":-1,"msg":"no type"}');
     if(!$conf['login_apiurl'] || !$conf['login_appid'] || !$conf['login_appkey'])exit('{"code":-1,"msg":"未配置好快捷登录接口信息"}');
+    //绑定标记只在这一步种下，回调用完立刻清掉，避免它一直留在会话里
+    //把之后某次正常的快捷登录也变成绑定
+    if($is_bind_flow){
+        $_SESSION['oauth_bind'] = 1;
+    }else{
+        unset($_SESSION['oauth_bind']);
+    }
     //接口连不通时每次点击都要等一次超时，还会占住 PHP 进程；失败后 60 秒内直接返回错误，不再去连
     $oauth_fail_file = sys_get_temp_dir().'/pan_oauthfail_'.substr(md5(SYS_KEY.'|oauthconnect'), 0, 16);
     if(is_file($oauth_fail_file) && filemtime($oauth_fail_file) + 60 > time()){
@@ -90,7 +111,9 @@ if(isset($_GET['logout'])){
 		$_SESSION['sendcode_time'] = time();
 		$_SESSION['sendcode_num'] = intval($_SESSION['sendcode_num']) + 1;
 		if(mail_domain_denied($email))exit('{"code":-1,"msg":"该邮箱域名不被支持，请换一个邮箱"}');
-		if($DB->getColumn("SELECT uid FROM pre_user WHERE type='mail' AND openid=:e LIMIT 1", [':e'=>$email])){
+		//主身份和绑定表都要查：邮箱也可能是某个快捷登录账号后来绑上去的，
+		//只查 pre_user 会让同一个邮箱落到两个账号上，被绑的那个就再也用邮箱登不进来了
+		if(identity_owner_uid('mail', $email)){
 			exit(json_encode(['code'=>-1, 'msg'=>'该邮箱已经注册过了，请直接登录']));
 		}
 		$res = send_mail_code($email, 'register');
@@ -115,7 +138,9 @@ if(isset($_GET['logout'])){
 		if($check['code'] != 0)exit(json_encode(['code'=>-1, 'msg'=>$check['msg']], JSON_UNESCAPED_UNICODE));
 
 		//验证码过了再查一次重复：中间可能已经有人用同一个邮箱注册了
-		if($DB->getColumn("SELECT uid FROM pre_user WHERE type='mail' AND openid=:e LIMIT 1", [':e'=>$email])){
+		//主身份和绑定表都要查：邮箱也可能是某个快捷登录账号后来绑上去的，
+		//只查 pre_user 会让同一个邮箱落到两个账号上，被绑的那个就再也用邮箱登不进来了
+		if(identity_owner_uid('mail', $email)){
 			exit(json_encode(['code'=>-1, 'msg'=>'该邮箱已经注册过了，请直接登录']));
 		}
 
@@ -156,7 +181,8 @@ if(isset($_GET['logout'])){
 		exit(json_encode(['code'=>-1, 'msg'=>'密码错误次数过多，请 '.$wait.' 分钟后再试']));
 	}
 
-	$row = $DB->getRow("SELECT * FROM pre_user WHERE type='mail' AND openid=:e LIMIT 1", [':e'=>$email]);
+	//主身份是邮箱的、以及快捷登录账号后来绑上邮箱的，都要能用这个邮箱登进来
+	$row = find_user_by_identity('mail', $email);
 	if(!$row || empty($row['password']) || !password_verify($pwd, $row['password'])){
 		$count = (is_array($fail) && intval($fail['time']) + 900 > time()) ? intval($fail['count']) + 1 : 1;
 		@file_put_contents($lock_file, json_encode(['count'=>$count, 'time'=>time()]));
@@ -192,7 +218,36 @@ if(isset($_GET['logout'])){
 		sysmsg('获取登录数据失败');
 	}
 
-    $userrow=$DB->find('user','*',['type'=>$type, 'openid'=>$openid], null, '1');
+    /*
+     * 从个人中心点"绑定"过来的：这一趟不是登录，是把这个社交身份挂到当前账号上。
+     * 标记用完立刻清掉，避免它留在会话里把之后某次正常登录也变成绑定。
+     */
+    if($is_bind_flow){
+        unset($_SESSION['oauth_bind']);
+        $owner = identity_owner_uid($type, $openid);
+        if($owner && $owner !== intval($uid)){
+            sysmsg('这个'.$typename.'已经绑定在另一个账号上了，请先在那个账号里解绑。');
+        }
+        if($owner === intval($uid)){
+            ob_clean();
+            exit("<script language='javascript'>alert('该".$typename."已经绑定过了');window.location.href='./user.php?tab=account';</script>");
+        }
+        //一个账号同种方式只留一个，换绑要先解绑
+        if(user_has_login_type($userrow, $type)){
+            sysmsg('当前账号已经绑定过'.$typename.'了，要换一个请先解绑。');
+        }
+        if(!$DB->insert('user_bind', [
+            'uid' => intval($uid),
+            'type' => $type,
+            'openid' => $openid,
+            'addtime' => 'NOW()',
+        ]))sysmsg('绑定失败 '.$DB->error());
+        ob_clean();
+        exit("<script language='javascript'>alert('".$typename."绑定成功');window.location.href='./user.php?tab=account';</script>");
+    }
+
+    //主身份和绑定表都要查：绑过来的 QQ/微信也得能直接登录
+    $userrow = find_user_by_identity($type, $openid);
 	if(!$userrow){
         if(!$DB->insert('user', [
             'type' => $type,
@@ -207,6 +262,7 @@ if(isset($_GET['logout'])){
         ]))sysmsg('用户注册失败 '.$DB->error());
         $uid = $DB->lastInsertId();
         unset($_SESSION['user_block']);
+        $userrow = $DB->getRow("SELECT * FROM pre_user WHERE uid=:u LIMIT 1", [':u'=>intval($uid)]);
 	}else{
         if($userrow['enable']==0){
             $_SESSION['user_block'] = true;
@@ -216,8 +272,12 @@ if(isset($_GET['logout'])){
         $uid = $userrow['uid'];
         $DB->update('user', ['loginip' => $clientip, 'lasttime'=>'NOW()'], ['uid'=>$uid]);
     }
-    //签发登录态、归属游客上传的文件，这段和邮箱登录共用一份实现
-    user_login_session($uid, ['type'=>$type, 'openid'=>$openid, 'password'=>'']);
+    /*
+     * 签发登录态要用 pre_user 里那一行本身：会话串只认主身份的 type/openid，
+     * 而且账号可能已经设过密码。原来这里是拿本次登录用的 type/openid 加空密码现拼一个数组，
+     * 现在从绑定的身份登进来、或者账号设过密码，那样拼出来的串和 common.php 校验时算的对不上。
+     */
+    user_login_session($uid, $userrow);
     ob_clean();
     exit("<script language='javascript'>window.location.href='./';</script>");
 }
@@ -240,7 +300,9 @@ if(!is_mail_reg_open() && !empty($conf['userlogin'])){
 	if(isset($_SESSION['has_mail_user']) && isset($_SESSION['has_mail_user_time']) && $_SESSION['has_mail_user_time'] + 300 > time()){
 		$has_mail_user = $_SESSION['has_mail_user'];
 	}else{
-		$has_mail_user = $DB->getColumn("SELECT uid FROM pre_user WHERE type='mail' LIMIT 1") ? true : false;
+		//绑定表里的邮箱同样要算：快捷登录账号绑了邮箱之后，也得留着邮箱登录入口给他用
+		$has_mail_user = ($DB->getColumn("SELECT uid FROM pre_user WHERE type='mail' LIMIT 1")
+			|| $DB->getColumn("SELECT uid FROM pre_user_bind WHERE type='mail' LIMIT 1")) ? true : false;
 		$_SESSION['has_mail_user'] = $has_mail_user;
 		$_SESSION['has_mail_user_time'] = time();
 	}

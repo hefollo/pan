@@ -332,13 +332,112 @@ function getSetting($k){
 /*
  * 登录态里的会话校验串。
  *
- * 邮箱账号要把密码哈希也算进去：这样改完密码，其它设备上的登录态立刻失效。
- * 快捷登录的账号没有密码，保持原来的算法不变，老 cookie 不会掉线。
+ * 有密码的账号要把密码哈希也算进去：这样改完密码，其它设备上的登录态立刻失效。
+ *
+ * 原来的条件是 type==='mail'，现在快捷登录的账号也能给自己设密码，改成"只要有密码就算进去"。
+ * 没设过密码的账号取到的仍然是空串，老 cookie 一个都不会掉线。
+ *
+ * 注意 $row 必须是 pre_user 里那一行本身（主身份）：一个账号可以绑多种登录方式，
+ * 但会话串只认主身份的 type/openid，用绑定表里的身份算会对不上。
  */
 function user_session_hash($row){
 	global $password_hash;
-	$pwd = (isset($row['type']) && $row['type'] === 'mail' && !empty($row['password'])) ? $row['password'] : '';
+	$pwd = !empty($row['password']) ? $row['password'] : '';
 	return md5($row['type'].$row['openid'].$pwd.$password_hash);
+}
+
+/*
+ * ===== 账号绑定 =====
+ *
+ * pre_user.type/openid 是注册时用的那套身份（主身份），后来绑上去的存在 pre_user_bind。
+ * 主身份不允许解绑：会话串是拿它算的，解掉等于把自己锁在门外，
+ * 也因此"至少保留一种登录方式"这条约束天然成立，不用另外判断。
+ */
+function bindable_login_types(){
+	global $conf;
+	//没配接口地址就不是"能绑"，判断口径和登录页的 $has_oauth 保持一致
+	if(empty($conf['login_apiurl']) || empty($conf['login_appid']) || empty($conf['login_appkey'])) return [];
+	$types = [];
+	if(!empty($conf['login_qq'])) $types['qq'] = 'QQ';
+	if(!empty($conf['login_wx'])) $types['wx'] = '微信';
+	return $types;
+}
+
+function login_type_name($type){
+	$names = ['qq'=>'QQ', 'wx'=>'微信', 'mail'=>'邮箱'];
+	return isset($names[$type]) ? $names[$type] : $type;
+}
+
+/*
+ * 按登录方式找账号：先查主身份，再查绑定表。登录入口都要走这里，
+ * 否则绑过去的身份登不进来。
+ */
+function find_user_by_identity($type, $openid){
+	global $DB;
+	$row = $DB->getRow("SELECT * FROM pre_user WHERE type=:t AND openid=:o LIMIT 1", [':t'=>$type, ':o'=>$openid]);
+	if($row)return $row;
+	$uid = $DB->getColumn("SELECT uid FROM pre_user_bind WHERE type=:t AND openid=:o LIMIT 1", [':t'=>$type, ':o'=>$openid]);
+	if(!$uid)return false;
+	$row = $DB->getRow("SELECT * FROM pre_user WHERE uid=:u LIMIT 1", [':u'=>intval($uid)]);
+	return $row ? $row : false;
+}
+
+/*
+ * 某个账号已绑定的身份列表（不含主身份）
+ */
+function user_bind_list($uid){
+	global $DB;
+	$rows = $DB->getAll("SELECT * FROM pre_user_bind WHERE uid=".intval($uid)." ORDER BY id ASC");
+	return is_array($rows) ? $rows : [];
+}
+
+/*
+ * 账号的全部登录方式，主身份排第一，统一成同一种结构给界面用
+ */
+function user_identities($row){
+	$list = [[
+		'type' => $row['type'],
+		'openid' => $row['openid'],
+		'primary' => true,
+		'addtime' => isset($row['addtime']) ? $row['addtime'] : '',
+	]];
+	foreach(user_bind_list($row['uid']) as $b){
+		$list[] = [
+			'type' => $b['type'],
+			'openid' => $b['openid'],
+			'primary' => false,
+			'addtime' => $b['addtime'],
+		];
+	}
+	return $list;
+}
+
+/*
+ * 这个账号有没有某种登录方式（主身份或绑定都算）
+ */
+function user_has_login_type($row, $type){
+	foreach(user_identities($row) as $i){
+		if($i['type'] === $type)return true;
+	}
+	return false;
+}
+
+/*
+ * 这个身份是不是已经被别人占了。$exclude_uid 传当前账号，
+ * 这样"我自己已经绑过了"和"被别人绑走了"能分开提示。
+ */
+function identity_owner_uid($type, $openid){
+	$row = find_user_by_identity($type, $openid);
+	return $row ? intval($row['uid']) : 0;
+}
+
+/*
+ * 账号被删掉时要把绑定行一起清掉：identity 上是唯一索引，
+ * 留着孤儿行会让那个 QQ / 邮箱以后再也绑不上任何账号。
+ */
+function delete_user_binds($uid){
+	global $DB;
+	return $DB->exec("DELETE FROM pre_user_bind WHERE uid=:u", [':u'=>intval($uid)]);
 }
 
 /*
@@ -432,7 +531,7 @@ function send_mail_code($email, $purpose, $uid = 0){
 	//同一用途的旧验证码先作废，避免用户拿着上一封的码来用
 	$DB->exec("UPDATE pre_mailcode SET used=1, status=3 WHERE email=:e AND purpose=:p AND used=0", [':e'=>$email, ':p'=>$purpose]);
 
-	$titles = ['register'=>'注册账号', 'reset'=>'找回密码', 'changemail'=>'更换邮箱'];
+	$titles = ['register'=>'注册账号', 'reset'=>'找回密码', 'changemail'=>'更换邮箱', 'bindmail'=>'绑定邮箱'];
 	$what = isset($titles[$purpose]) ? $titles[$purpose] : '验证邮箱';
 	$site = isset($conf['title']) ? $conf['title'] : '本站';
 	$subject = '【'.$site.'】'.$what.'验证码：'.$code;
@@ -1192,14 +1291,14 @@ function default_site_theme(){
 function site_theme_keys(){
 	return ['cloud', 'night', 'neon', 'aurora', 'onefour', 'celadon', 'lilac', 'paper',
 		'blush', 'sky', 'mint', 'sunset', 'abyss', 'emerald', 'sakura',
-		'dashboard', 'console', 'portal', 'workspace'];
+		'dashboard', 'console', 'portal', 'workspace', 'mac'];
 }
 
 /*
  * 结构型（布局型）外观，body 上要额外挂 layout-theme
  */
 function layout_theme_keys(){
-	return ['dashboard', 'console', 'portal', 'workspace'];
+	return ['dashboard', 'console', 'portal', 'workspace', 'mac'];
 }
 
 /*

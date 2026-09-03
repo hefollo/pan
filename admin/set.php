@@ -134,6 +134,17 @@ sync_404_theme($site_theme);
 	    <strong>深色工作台风</strong>
 	    <small>深色底 + 左侧图标导航条（鼠标移上去展开文字），内容为深色圆角面板，适合长时间浏览管理。</small>
 	  </label>
+	  <label class="appearance-card <?php echo $site_theme === 'mac' ? 'active' : null;?>">
+	    <input type="radio" name="site_theme" value="mac" <?php echo $site_theme === 'mac' ? 'checked' : null;?>>
+	    <span class="appearance-preview appearance-preview-mac">
+	      <span class="appearance-nav"></span>
+	      <span class="appearance-panel">
+	        <span></span><span></span><span></span>
+	      </span>
+	    </span>
+	    <strong>macOS 窗口风</strong>
+	    <small>整站套进一个 macOS 窗口：带红黄绿三颗灯的标题栏、底部状态栏，文件列表默认是访达式图标网格，可一键切回列表视图；后台和登录页同款窗口。</small>
+	  </label>
 	</div>
 	</div>
 	<div class="appearance-group">
@@ -316,7 +327,7 @@ sync_404_theme($site_theme);
 </div>
 <div class="panel-footer">
 <span class="glyphicon glyphicon-info-sign"></span>
-保存后前台页面会立即使用选中的外观。布局型外观会同时改变后台：“控制台侧栏风”“数据控制台风”“深色工作台风”把后台顶部导航变成左侧侧栏，“上传门户风”只换后台配色、保留顶部导航；配色型外观不影响后台布局。
+保存后前台页面会立即使用选中的外观。布局型外观会同时改变后台：“控制台侧栏风”“数据控制台风”“深色工作台风”把后台顶部导航变成左侧侧栏，“macOS 窗口风”把后台也套进同一个窗口（顶栏变标题栏、底部加状态栏），“上传门户风”只换后台配色、保留顶部导航；配色型外观不影响后台布局。
 </div>
 </div>
 <?php

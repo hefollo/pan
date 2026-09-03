@@ -7,6 +7,12 @@ include("./includes/common.php");
 $csrf_token = bin2hex(random_bytes(16));
 $_SESSION['csrf_token'] = $csrf_token;
 
+//老的 ?m=mine 链接（书签、外部引用）继续可用：已登录的转去个人中心，
+//那边才有重命名/删除/公开私密这些管理操作；游客没有账号，留在这里看浏览器缓存记录
+if(isset($_GET['m']) && $_GET['m']=='mine' && $islogin2){
+    header('Location: ./user.php?tab=files');
+    exit;
+}
 if(isset($_GET['m']) && $_GET['m']=='mine'){
     $title = '我的文件 - ' . $conf['title'];
     $htext = '我上传的文件';
@@ -110,14 +116,18 @@ if($kw) $layout_base_query .= ($layout_base_query === '' ? '' : '&').'kw='.urlen
 				<input name="kw" class="form-control" type="search" placeholder="请输入搜索关键字" value="<?php echo htmlspecialchars((string)$kw, ENT_QUOTES, 'UTF-8')?>" required="">
 				<button class="btn btn-default btn-raised btn-sm" type="submit"><i class="fa fa-search" aria-hidden="true"></i> 搜索</button>
 			</form>
-        </span><?php }?><?php if($layout_key === 'console' || $layout_key === 'workspace'){?><a class="layout-cta" href="./upload.php"><i class="fa fa-plus" aria-hidden="true"></i> <span>上传新文件</span></a><?php }?></h2>
+        </span><?php }?><?php if($layout_key === 'mac'){echo layout_render_mac_viewtoggle();}?><?php if($layout_key === 'console' || $layout_key === 'workspace' || $layout_key === 'mac'){?><a class="layout-cta" href="./upload.php"><i class="fa fa-plus" aria-hidden="true"></i> <span><?php echo $layout_key === 'mac' ? '上传文件' : '上传新文件'?></span></a><?php }?></h2>
 <?php echo render_permission_bar($DB, 'list');?>
 <?php if($layout_key === 'console'){?>
         <p class="layout-page-sub">管理、预览并分享你上传的所有内容。</p>
         <?php echo layout_render_stats($layout_counts, layout_today_total($DB, $sql_base));?>
 <?php }elseif($layout_key === 'portal'){?>
         <p class="layout-page-sub">浏览大家刚刚分享的文件，点文件名即可查看或下载。</p>
-<?php }?>
+<?php }elseif($layout_key === 'mac'){
+        //macOS 窗口风：列表上方放一块拖拽提示区。搜索/筛选状态下不显示，
+        //免得把用户刚查出来的结果顶到屏幕外面去
+        if(!$kw && $ft === ''){echo layout_render_mac_drop();}
+}?>
 <?php if(($layout_key === 'console' || $layout_key === 'workspace') && $layout_counts){?>
         <?php echo layout_render_filters($layout_counts, $ft, $layout_base_query);?>
 <?php }?>
@@ -249,6 +259,9 @@ echo '<li class="disabled"><a>尾页</a></li>';
 <?php include SYSTEM_ROOT.'footer.php';?>
 <?php if($layout_key === 'workspace'){?>
 <script src="./assets/js/layout-workspace.js?v=<?php echo VERSION?>"></script>
+<?php }?>
+<?php if($layout_key === 'mac'){?>
+<script src="./assets/js/layout-mac.js?v=<?php echo VERSION?>"></script>
 <?php }?>
 <?php if(isset($_GET['m']) && $_GET['m']=='mine'){?>
 <link rel="stylesheet" href="https://s4.zstatic.net/ajax/libs/layer/3.1.1/theme/default/layer.css">

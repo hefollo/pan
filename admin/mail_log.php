@@ -28,7 +28,7 @@ $status_text = [
 	2 => '<span class="label label-danger">发送失败</span>',
 	3 => '<span class="label label-default">已作废</span>',
 ];
-$purpose_text = ['register'=>'注册', 'reset'=>'找回密码', 'changemail'=>'换邮箱'];
+$purpose_text = ['register'=>'注册', 'reset'=>'找回密码', 'changemail'=>'换邮箱', 'bindmail'=>'绑定邮箱'];
 
 /*
  * 顶部概况。整页渲染和 AJAX 刷新共用，保证两边一致

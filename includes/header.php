@@ -31,8 +31,8 @@ $site_theme = isset($conf['site_theme']) ? $conf['site_theme'] : default_site_th
 if(!in_array($site_theme, site_theme_keys(), true)){
   $site_theme = default_site_theme();
 }
-//布局型外观（侧栏/门户/工作台）共用一套结构样式，统一挂 layout-theme
-$layout_themes = ['dashboard', 'console', 'portal', 'workspace'];
+//布局型外观（侧栏/门户/工作台/macOS 窗口）共用一套结构样式，统一挂 layout-theme
+$layout_themes = ['dashboard', 'console', 'portal', 'workspace', 'mac'];
 $body_class = 'theme-' . $site_theme;
 if(in_array($site_theme, $layout_themes, true)){
   $body_class .= ' layout-theme';
@@ -76,12 +76,19 @@ if(in_array($site_theme, $layout_themes, true)){
           <?php }?>
         </ul>
         <ul class="nav navbar-nav navbar-right">
+          <?php //登录用户的「我的文件」直接进个人中心的文件页，那里才有重命名/删除等管理操作；
+          //游客没有账号，只能看 $_SESSION['fileids'] 那套浏览器缓存记录，仍然走首页的 ?m=mine
+          if($islogin2){?>
+          <li class="<?php echo checkIfActive('user')?>"><a href="./user.php?tab=files"><i class="fa fa-folder-open" aria-hidden="true"></i> 我的文件</a></li>
+          <?php }else{?>
           <li class="<?php echo checkIfActive('mine')?>"><a href="./?m=mine"><i class="fa fa-folder-open" aria-hidden="true"></i> 我的文件</a></li>
+          <?php }?>
           <?php if($conf['userlogin']){?>
             <?php if($islogin2){?>
             <li class="dropdown">
               <a data-target="#" class="dropdown-toggle" data-toggle="dropdown"><i class="fa fa-<?php echo $userrow['type']=='qq'?'qq':($userrow['type']=='mail'?'envelope':'wechat');?>" aria-hidden="true"></i> <?php echo $userrow['nickname']?><b class="caret"></b></a>
               <ul class="dropdown-menu">
+                <li><a href="./user.php"><i class="fa fa-user-circle" aria-hidden="true"></i> 个人中心</a></li>
                 <li><a href="./login.php?logout=1" onclick="return confirm('是否确定退出登录？')"><i class="fa fa-sign-out" aria-hidden="true"></i> 退出登录</a></li>
               </ul>
             </li>

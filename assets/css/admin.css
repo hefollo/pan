@@ -1690,6 +1690,14 @@ body.admin-theme-dashboard.admin-body .navbar-default .navbar-nav>li>a{margin:2p
 .appearance-preview-workspace .appearance-panel span:first-child{width:46%;background:#f4c95d}
 .appearance-preview-workspace .appearance-panel span:nth-child(2){width:86%}
 .appearance-preview-workspace .appearance-panel span:nth-child(3){width:64%}
+/* macOS 窗口风：桌面底色上浮一个带三颗灯的窗口，窗口里是三张文件卡 */
+.appearance-preview-mac{padding:14px 12px 0;background:linear-gradient(155deg,#dfe4ee,#e9eaee 46%,#e2e7f0)}
+.appearance-preview-mac .appearance-nav{position:relative;height:22px;background:#f6f6f8;border:1px solid rgba(0,0,0,.11);border-bottom:0;border-radius:9px 9px 0 0}
+.appearance-preview-mac .appearance-nav:before{content:"";position:absolute;left:9px;top:8px;width:6px;height:6px;border-radius:50%;background:#ff5f57;box-shadow:9px 0 0 #febc2e,18px 0 0 #28c840}
+.appearance-preview-mac .appearance-panel{display:flex;gap:7px;height:78px;margin:0;padding:11px;background:#fff;border:1px solid rgba(0,0,0,.11);border-top:0;border-radius:0 0 9px 9px}
+.appearance-preview-mac .appearance-panel span{flex:1;height:auto;margin:0;border-radius:9px;background:#e8f0fe}
+.appearance-preview-mac .appearance-panel span:nth-child(2){background:#fdeaea}
+.appearance-preview-mac .appearance-panel span:nth-child(3){background:#eeeaff}
 
 /* ===== 数据控制台风：后台配色 + 左侧密集侧栏 ===== */
 body.admin-theme-console.admin-body,
@@ -1827,6 +1835,111 @@ body.admin-theme-portal.admin-body .btn-primary{background:var(--admin-primary);
 body.admin-theme-portal.admin-body .btn-primary:hover,body.admin-theme-portal.admin-body .btn-primary:focus{background:var(--admin-primary-dark);border-color:var(--admin-primary-dark)}
 body.admin-theme-portal.admin-body .btn-default{background:var(--admin-soft);border:1px solid var(--admin-line);color:#4f5b55}
 
+/* ===== macOS 窗口风：后台跟前台一样套进一个 macOS 窗口 =====
+   前台的窗口是「导航栏 + body>.container + footer」三段拼的，后台没有公共页脚
+   （只有几个早期的 set_*.php 引了 foot.php，其余页面连 </body> 都是各写各的），
+   所以底部状态栏改成内容区的 ::after，一条 CSS 就给所有后台页面补上，不用去动 16 个 php。
+   顶栏原本是 navbar-fixed-top（position:fixed），固定层会浮在窗口上方、
+   顶上那段桌面留白会被滚上来的内容穿帮，这里改成 position:sticky：
+   它占正常文档流，滚动时照样吸顶，留白也跟着自然滚走。 */
+body.admin-theme-mac.admin-body,
+body.admin-theme-mac.admin-login-body{--admin-bg:#e7e9ee;--admin-surface:#ffffff;--admin-soft:#f5f5f7;--admin-text:#1d1d1f;--admin-muted:#86868b;--admin-line:#e6e6ea;--admin-primary:#0a84ff;--admin-primary-dark:#0060df;--admin-green:#34c759;--admin-yellow:#ff9f0a;--admin-red:#ff3b30;--admin-shadow:0 1px 2px rgba(20,26,45,.05);--mac-w:min(1240px,calc(100% - 44px));--mac-edge:rgba(0,0,0,.11);--mac-side:-22px 0 46px -28px rgba(19,26,45,.5),22px 0 46px -28px rgba(19,26,45,.5)}
+body.admin-theme-mac.admin-body,
+body.admin-theme-mac.admin-login-body{background:linear-gradient(155deg,#dfe4ee 0,#e9eaee 46%,#e2e7f0 100%) fixed;color:var(--admin-text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+body.admin-theme-mac.admin-body:before{content:none;display:none}
+body.admin-theme-mac.admin-body a{color:var(--admin-primary)}
+body.admin-theme-mac.admin-body a:hover,body.admin-theme-mac.admin-body a:focus{color:var(--admin-primary-dark)}
+/* 窗口标题栏 */
+body.admin-theme-mac.admin-body .navbar.navbar-fixed-top{position:sticky;top:0;left:auto;right:auto;width:var(--mac-w);min-height:52px;margin:26px auto 0;background:rgba(246,246,248,.84);border:1px solid var(--mac-edge);border-bottom:1px solid rgba(0,0,0,.07);border-radius:12px 12px 0 0;box-shadow:0 -14px 40px -22px rgba(19,26,45,.55),var(--mac-side);backdrop-filter:saturate(180%) blur(20px)}
+body.admin-theme-mac.admin-body .navbar-fixed-top .container{width:100%;max-width:none;min-height:52px;padding:0 16px;margin:0;display:flex;align-items:center;gap:0 18px}
+body.admin-theme-mac.admin-body .navbar-header{float:none;display:flex;align-items:center;height:52px}
+body.admin-theme-mac.admin-body .navbar-default .navbar-brand{float:none;display:flex;align-items:center;height:auto;padding:0;margin:0!important;line-height:1.4;color:var(--admin-text)!important;font-size:14px;font-weight:700;letter-spacing:-.01em}
+/* 红黄绿三颗灯：一个圆点 + 两段 box-shadow 画出来，把原来那个 FontAwesome 图标顶掉 */
+body.admin-theme-mac.admin-body .navbar-default .navbar-brand:before{content:"";flex:0 0 12px;width:12px;height:12px;margin-right:56px;border-radius:50%;background:#ff5f57;box-shadow:20px 0 0 #febc2e,40px 0 0 #28c840;font-size:0}
+body.admin-theme-mac.admin-body .navbar-default .navbar-nav>li>a{margin:0;padding:6px 11px;border-radius:7px;background:none!important;color:#4b4b50!important;font-size:12.5px;font-weight:600;line-height:1.5}
+body.admin-theme-mac.admin-body .navbar-default .navbar-nav>li>a i{margin-right:5px;color:#8a8a8f}
+body.admin-theme-mac.admin-body .navbar-default .navbar-nav>li>a:hover,body.admin-theme-mac.admin-body .navbar-default .navbar-nav>li>a:focus{background:rgba(0,0,0,.055)!important;color:var(--admin-text)!important}
+body.admin-theme-mac.admin-body .navbar-default .navbar-nav>li>a:hover i{color:var(--admin-text)}
+body.admin-theme-mac.admin-body .navbar-default .navbar-nav>li.active>a{background:var(--admin-primary)!important;color:#fff!important}
+body.admin-theme-mac.admin-body .navbar-default .navbar-nav>li.active>a i{color:#fff}
+body.admin-theme-mac.admin-body .navbar-default .navbar-toggle{margin:0;background:rgba(0,0,0,.05)!important;background-image:none!important;border:0!important;border-radius:7px}
+body.admin-theme-mac.admin-body .navbar-default .navbar-toggle .icon-bar{background:#4b4b50!important;height:2px!important}
+body.admin-theme-mac.admin-body .dropdown-menu{margin-top:6px;background:rgba(250,250,252,.98);border:1px solid var(--mac-edge);border-radius:10px;box-shadow:0 14px 34px rgba(19,26,45,.18);backdrop-filter:saturate(180%) blur(20px)}
+body.admin-theme-mac.admin-body .dropdown-menu>li>a{padding:7px 14px;color:#3a3a3d!important;font-size:12.5px;font-weight:600}
+body.admin-theme-mac.admin-body .dropdown-menu>li>a:hover,body.admin-theme-mac.admin-body .dropdown-menu>li>a:focus{background:var(--admin-primary)!important;color:#fff!important}
+body.admin-theme-mac.admin-body .dropdown-menu>li.active>a{background:var(--admin-primary)!important;color:#fff!important}
+/* 顶栏菜单横排只在 >=1200px 生效。1200px 以下 top-nav-admin 会把菜单收成汉堡，
+   这里要是无条件写 display:flex!important，就会把那套折叠规则顶掉、菜单永远展开，
+   8 个一级项换成两行后正好压住页面内容 —— admin.css 上面那段注释说的就是这个坑 */
+@media (min-width:1200px){
+body.admin-theme-mac.admin-body .navbar-fixed-top .navbar-collapse{float:none;flex:1 1 auto;display:flex!important;align-items:center;padding:0;border:0;box-shadow:none}
+body.admin-theme-mac.admin-body .navbar-fixed-top .navbar-nav{float:none!important;display:flex;align-items:center;gap:2px;margin:0!important}
+body.admin-theme-mac.admin-body .navbar-fixed-top .navbar-nav.navbar-right{margin:0 0 0 auto!important}
+body.admin-theme-mac.admin-body .navbar-fixed-top .navbar-nav>li{float:none}
+}
+/* 1200px 以下：标题栏只剩三颗灯 + 站名 + 汉堡，展开的菜单竖排挂在标题栏下面。
+   这里一律不碰 display，折叠/展开继续交给 top-nav-admin 那套规则 */
+@media (max-width:1199px){
+body.admin-theme-mac.admin-body .navbar-fixed-top .container{flex-wrap:wrap}
+body.admin-theme-mac.admin-body .navbar-header{width:100%;justify-content:space-between}
+body.admin-theme-mac.admin-body .navbar-fixed-top .navbar-collapse{width:100%;padding:6px 0 10px;margin:0;border-top:1px solid var(--admin-line);box-shadow:none}
+body.admin-theme-mac.admin-body .navbar-fixed-top .navbar-nav{margin:0!important}
+body.admin-theme-mac.admin-body .navbar-default .navbar-nav>li>a{padding:10px 12px;border-radius:8px}
+body.admin-theme-mac.admin-body .navbar-fixed-top .navbar-nav .open .dropdown-menu{background:transparent;border:0;box-shadow:none;backdrop-filter:none}
+body.admin-theme-mac.admin-body .navbar-fixed-top .navbar-nav .open .dropdown-menu>li>a{color:#5b5b60!important}
+}
+/* 窗口内容区：各后台页面的容器行内写死了 padding-top:70px（给固定顶栏让位的），
+   顶栏改成 sticky 之后它自己占位了，这段留白就是多余的，用 !important 收回来 */
+body.admin-theme-mac.admin-body>.container,
+body.admin-theme-mac.admin-body>.container-fluid{width:var(--mac-w);max-width:none;margin:0 auto 40px;padding:22px 24px 0!important;background:var(--admin-surface);border:1px solid var(--mac-edge);border-top:0;border-radius:0 0 12px 12px;box-shadow:var(--mac-side)}
+/* 窗口底部状态栏：后台没有公共页脚，用内容区的 ::after 补一条，负边距让它铺到窗口边缘。
+   .container::after 在 Bootstrap 里本来是清除浮动的（content:" ";display:table;clear:both），
+   被这里占用后要把 clear:both 带回来，否则页面最后一个浮动子元素会撑不开容器 */
+body.admin-theme-mac.admin-body>.container:after,
+body.admin-theme-mac.admin-body>.container-fluid:after{content:"\5DF2\8FDE\63A5\0020\00B7\0020\7BA1\7406\4E2D\5FC3";display:block;margin:26px -24px 0;padding:0 16px 0 36px;background:radial-gradient(circle at 22px 50%,#34c759 0 3.5px,rgba(52,199,89,.2) 3.5px 7px,transparent 7px),rgba(246,246,248,.92);border-top:1px solid rgba(0,0,0,.07);border-radius:0 0 11px 11px;color:#6e6e73;font-size:12px;font-weight:500;line-height:34px;clear:both}
+/* 面板、表格、表单等公共控件 */
+body.admin-theme-mac.admin-body .panel,
+body.admin-theme-mac.admin-body .modal-content,
+body.admin-theme-mac.admin-body .fixed-table-container,
+body.admin-theme-mac.admin-body .well{border:1px solid var(--admin-line);border-radius:12px;background:var(--admin-surface);box-shadow:var(--admin-shadow)}
+body.admin-theme-mac.admin-body .panel-heading{background:var(--admin-soft)!important;border-bottom:1px solid var(--admin-line)!important;color:var(--admin-text)!important}
+body.admin-theme-mac.admin-body .panel-title,body.admin-theme-mac.admin-body .panel-title i{color:var(--admin-text)}
+body.admin-theme-mac.admin-body .panel-footer{background:var(--admin-soft);border-top:1px solid var(--admin-line);color:var(--admin-muted)}
+body.admin-theme-mac.admin-body .table{background:transparent}
+body.admin-theme-mac.admin-body .table>thead>tr>th{background:var(--admin-soft)!important;border-bottom:1px solid var(--admin-line)!important;color:var(--admin-muted);font-size:12px;font-weight:600}
+body.admin-theme-mac.admin-body .table>tbody>tr>td{border-top:1px solid var(--admin-line)!important;color:#3a3a3d}
+body.admin-theme-mac.admin-body .table-striped>tbody>tr:nth-of-type(odd){background:#fbfbfd}
+body.admin-theme-mac.admin-body .table-hover>tbody>tr:hover{background:#e9f2ff}
+body.admin-theme-mac.admin-body .form-control{background:#fff;border:1px solid #d8d8dd;border-radius:8px;color:var(--admin-text)}
+body.admin-theme-mac.admin-body .form-control:focus{border-color:#9ec5ff;box-shadow:0 0 0 3px rgba(10,132,255,.18)}
+body.admin-theme-mac.admin-body .input-group-addon{background:var(--admin-soft);border-color:#d8d8dd;color:var(--admin-muted)}
+body.admin-theme-mac.admin-body .btn{border-radius:8px;font-weight:600}
+body.admin-theme-mac.admin-body .btn-primary{background:var(--admin-primary);border-color:var(--admin-primary);color:#fff}
+body.admin-theme-mac.admin-body .btn-primary:hover,body.admin-theme-mac.admin-body .btn-primary:focus{background:var(--admin-primary-dark);border-color:var(--admin-primary-dark)}
+body.admin-theme-mac.admin-body .btn-default{background:rgba(120,120,128,.1);border:0;color:#3a3a3d}
+body.admin-theme-mac.admin-body .nav-tabs{border-bottom:1px solid var(--admin-line)}
+body.admin-theme-mac.admin-body .nav-tabs>li.active>a{color:var(--admin-primary)!important}
+body.admin-theme-mac.admin-body .pagination>li>a,body.admin-theme-mac.admin-body .pagination>li>span{border-radius:7px!important;background:rgba(120,120,128,.1);border:0;color:#4b4b50}
+body.admin-theme-mac.admin-body .pagination>.active>a,body.admin-theme-mac.admin-body .pagination>li>a:hover{background:var(--admin-primary);color:#fff}
+/* 登录页：把登录框本身做成一个小 macOS 窗口 */
+body.admin-theme-mac .admin-login-form{padding-top:64px;border:1px solid var(--mac-edge);border-radius:12px;box-shadow:0 30px 70px rgba(19,26,45,.22)}
+body.admin-theme-mac .admin-login-form:before{content:"";position:absolute;left:0;right:0;top:0;height:36px;background:rgba(246,246,248,.92);border-bottom:1px solid rgba(0,0,0,.07)}
+body.admin-theme-mac .admin-login-form:after{content:"";position:absolute;left:13px;top:14px;width:9px;height:9px;border-radius:50%;background:#ff5f57;box-shadow:15px 0 0 #febc2e,30px 0 0 #28c840}
+body.admin-theme-mac .admin-login-form .heading{font-size:22px;font-weight:700;letter-spacing:-.02em;margin:0 0 36px}
+body.admin-theme-mac .admin-login-form .btn{background:var(--admin-primary);border-radius:8px;color:#fff}
+body.admin-theme-mac .admin-login-form .btn:focus,body.admin-theme-mac .admin-login-form .btn:hover{background:var(--admin-primary-dark);color:#fff}
+@media (max-width:767px){
+/* 窄屏没有“窗口”的说法了：铺满屏幕，去掉圆角和左右边框，只保留配色 */
+body.admin-theme-mac.admin-body,body.admin-theme-mac.admin-login-body{--mac-w:100%}
+body.admin-theme-mac.admin-body .navbar.navbar-fixed-top{margin:0;border-left:0;border-right:0;border-top:0;border-radius:0;box-shadow:none}
+body.admin-theme-mac.admin-body .navbar-fixed-top .container{padding:0 14px}
+body.admin-theme-mac.admin-body .navbar-default .navbar-brand:before{margin-right:44px}
+body.admin-theme-mac.admin-body>.container,
+body.admin-theme-mac.admin-body>.container-fluid{margin:0;padding:16px 14px 0!important;border-left:0;border-right:0;border-bottom:0;border-radius:0;box-shadow:none}
+body.admin-theme-mac.admin-body>.container:after,
+body.admin-theme-mac.admin-body>.container-fluid:after{margin:20px -14px 0;border-radius:0}
+}
+
 /* 外观设置页在三套新外观下的可读性 */
 body.admin-theme-console.admin-body .appearance-settings-panel{background:linear-gradient(180deg,#fbfcfe 0,#f5f7fb 100%)!important;border-color:var(--admin-line)!important}
 body.admin-theme-console.admin-body .appearance-settings-panel>.panel-heading,
@@ -1856,6 +1969,20 @@ body.admin-theme-portal.admin-body .appearance-card.active:after{background:var(
 body.admin-theme-portal.admin-body .appearance-submit .btn{background:#fff!important;color:var(--admin-text)!important;border-color:var(--admin-line)!important}
 body.admin-theme-portal.admin-body .appearance-settings-footer{color:#3d4a44!important;border-top-color:var(--admin-line)!important}
 body.admin-theme-portal.admin-body .appearance-settings-footer .glyphicon{color:#3d4a44!important}
+body.admin-theme-mac.admin-body .appearance-settings-panel{background:linear-gradient(180deg,#fdfdfe 0,#f5f5f7 100%)!important;border-color:var(--admin-line)!important}
+body.admin-theme-mac.admin-body .appearance-settings-panel>.panel-heading,
+body.admin-theme-mac.admin-body .appearance-settings-panel>.panel-heading .panel-title{color:var(--admin-text)!important}
+body.admin-theme-mac.admin-body .appearance-settings-body{color:#4b4b50}
+body.admin-theme-mac.admin-body .appearance-card{background:#fff;border-color:var(--admin-line);box-shadow:0 1px 2px rgba(20,26,45,.05)}
+body.admin-theme-mac.admin-body .appearance-card strong{color:var(--admin-text)}
+body.admin-theme-mac.admin-body .appearance-card small{color:var(--admin-muted)}
+body.admin-theme-mac.admin-body .appearance-preview{border-color:var(--admin-line);background:#fff}
+body.admin-theme-mac.admin-body .appearance-card.active,
+body.admin-theme-mac.admin-body .appearance-card:hover{border-color:var(--admin-primary);box-shadow:0 0 0 2px rgba(10,132,255,.14)}
+body.admin-theme-mac.admin-body .appearance-card.active:after{background:var(--admin-primary);box-shadow:0 8px 18px rgba(10,132,255,.3)}
+body.admin-theme-mac.admin-body .appearance-submit .btn{background:#fff!important;color:var(--admin-text)!important;border-color:var(--admin-line)!important}
+body.admin-theme-mac.admin-body .appearance-settings-footer{color:#3a3a3d!important;border-top-color:var(--admin-line)!important}
+body.admin-theme-mac.admin-body .appearance-settings-footer .glyphicon{color:#3a3a3d!important}
 body.admin-theme-workspace.admin-body .appearance-settings-panel{background:linear-gradient(180deg,#1a202b 0,#141922 100%)!important;border-color:var(--admin-line)!important}
 body.admin-theme-workspace.admin-body .appearance-settings-panel>.panel-heading,
 body.admin-theme-workspace.admin-body .appearance-settings-panel>.panel-heading .panel-title{color:var(--admin-text)!important}

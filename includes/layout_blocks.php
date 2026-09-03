@@ -1,6 +1,6 @@
 <?php
 /**
- * 布局型外观（控制台侧栏风 / 数据控制台风 / 上传门户风 / 深色工作台风）额外用到的结构块。
+ * 布局型外观（控制台侧栏风 / 数据控制台风 / 上传门户风 / 深色工作台风 / macOS 窗口风）额外用到的结构块。
  * 这些外观在原型里有统计卡、类型筛选、右侧预览等，纯 CSS 做不出来，统一放在这里生成，
  * 其它外观完全不会输出这些标签，保持原样。
  */
@@ -268,6 +268,33 @@ function layout_render_filters($counts, $ft, $base_query){
 			.htmlspecialchars($label, ENT_QUOTES, 'UTF-8').' <em>'.$num.'</em></a>';
 	}
 	return $html.'</div>';
+}
+
+/**
+ * macOS 窗口风：列表上方的拖拽提示区。
+ * 真正的上传逻辑在 upload.php，这里只是个入口，点一下就跳过去，
+ * 所以用 <a> 而不是 <form>，不需要额外的 JS。
+ */
+function layout_render_mac_drop(){
+	$size = function_exists('get_effective_upload_size_limit') ? get_effective_upload_size_limit() : 0;
+	$hint = $size > 0 ? ('单个文件最大 '.$size.' MB · 支持图片 / 视频 / 音频 / 文档 / 压缩包')
+		: '不限制文件大小 · 支持图片 / 视频 / 音频 / 文档 / 压缩包';
+	return '<a class="mac-drop" href="./upload.php">'
+		.'<span class="mac-drop-icon"><i class="fa fa-cloud-upload" aria-hidden="true"></i></span>'
+		.'<strong>点击选择文件，或拖拽到此处</strong>'
+		.'<small>'.htmlspecialchars($hint, ENT_QUOTES, 'UTF-8').'</small></a>';
+}
+
+/**
+ * macOS 窗口风：文件列表的网格 / 列表视图切换。
+ * 没开 JS 时两个按钮点不动，列表保持默认的网格视图，不影响下载和查看，
+ * 所以这里直接输出 button，由 layout-mac.js 接管点击并把选择存进 localStorage。
+ */
+function layout_render_mac_viewtoggle(){
+	return '<span class="mac-viewtoggle" id="macViewToggle">'
+		.'<button type="button" class="active" data-mac-view="grid" title="网格视图" aria-label="网格视图"><i class="fa fa-th-large" aria-hidden="true"></i></button>'
+		.'<button type="button" data-mac-view="list" title="列表视图" aria-label="列表视图"><i class="fa fa-list" aria-hidden="true"></i></button>'
+		.'</span>';
 }
 
 /**

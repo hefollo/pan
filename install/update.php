@@ -98,9 +98,10 @@ if($rs = $db->query("SELECT v FROM pre_config WHERE k='version'")){
 	$version = $rs->fetchColumn();
 }
 
+$uptodate = false;
 if($version<1009){
 	$sqls = read_sql('update.sql');
-	$sqls[]="REPLACE INTO `pre_config` VALUES ('version', '1020')";
+	$sqls[]="REPLACE INTO `pre_config` VALUES ('version', '1021')";
 	if(!$db->query("SELECT v FROM pre_config WHERE k='syskey'")->fetchColumn()){
 		$sqls[]="REPLACE INTO `pre_config` VALUES ('syskey', '".bin2hex(random_bytes(16))."')";
 	}
@@ -108,56 +109,66 @@ if($version<1009){
 	//1010：新增购买套餐（pre_plan）与订单（pre_order）两张表和支付宝当面付配置项
 	//update_1010.sql 的建表语句已经带上了后面版本加的字段，不用再执行 ALTER
 	$sqls = read_sql('update_1010.sql');
-	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1020')";
+	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1021')";
 }elseif($version<1011){
 	//1011：套餐支持“每日数量在现有基础上增加”，套餐表和订单表各加一个 limit_mode 字段
 	//1012：套餐加分类字段，购买页按分类分区展示
 	$sqls = array_merge(read_sql('update_1011.sql'), read_sql('update_1012.sql'), read_sql('update_1013.sql'));
-	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1020')";
+	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1021')";
 }elseif($version<1012){
 	//1012：套餐加分类字段
 	//1013：订单记下支付方式，新增易支付
 	$sqls = array_merge(read_sql('update_1012.sql'), read_sql('update_1013.sql'), read_sql('update_1014.sql'));
-	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1020')";
+	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1021')";
 }elseif($version<1013){
 	//1013：订单加 pay_type 字段，新增易支付配置
 	//1014：商品名称可自定义、易支付参数编码可选
 	$sqls = array_merge(read_sql('update_1013.sql'), read_sql('update_1014.sql'), read_sql('update_1015.sql'));
-	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1020')";
+	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1021')";
 }elseif($version<1014){
 	//1014：商品名称可自定义、易支付参数编码可选
 	//1015：加量包额度单独记录，不再被时长套餐覆盖
 	$sqls = array_merge(read_sql('update_1014.sql'), read_sql('update_1015.sql'), read_sql('update_1016.sql'));
-	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1020')";
+	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1021')";
 }elseif($version<1015){
 	//1015：用户表加 bonus_limit
 	//1016：邮箱注册——用户表加 password、验证码表 pre_mailcode
 	$sqls = array_merge(read_sql('update_1015.sql'), read_sql('update_1016.sql'), read_sql('update_1017.sql'));
-	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1020')";
+	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1021')";
 }elseif($version<1016){
 	//1016：邮箱注册所需的表和字段
 	//1017：文件表加限流维度 ipkey，ip 字段加宽到能存 IPv6
 	$sqls = array_merge(read_sql('update_1016.sql'), read_sql('update_1017.sql'), read_sql('update_1018.sql'));
-	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1020')";
+	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1021')";
 }elseif($version<1017){
 	//1017：文件表加限流维度 ipkey
 	//1018：验证码表记下发送结果，后台可以查发信记录
 	$sqls = array_merge(read_sql('update_1017.sql'), read_sql('update_1018.sql'));
-	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1020')";
+	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1021')";
 }elseif($version<1018){
 	//1018：验证码表加发送结果字段
 	$sqls = read_sql('update_1018.sql');
-	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1020')";
+	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1021')";
 }elseif($version<1019){
 	//1019：新增图片检测记录表（建表语句在下面统一补）
 	$sqls = [];
-	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1020')";
+	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1021')";
 }elseif($version<1020){
 	//1020：视频检测——任务表 pre_greenjob，检测记录加抽帧字段（语句在下面统一补）
 	$sqls = [];
-	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1020')";
+	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1021')";
+}elseif($version<1021){
+	//1021：账号绑定表 pre_user_bind，一个账号可以有多种登录方式（语句在下面统一补）
+	$sqls = [];
+	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1021')";
 }else{
-	exit('你的网站已经升级到最新版本了');
+	/*
+	 * 版本号已经到位。这里不能直接 exit：万一之前某次升级把版本号写上去了、表却没建成功
+	 * （比如 .sql 漏传），退出就等于再也没有修复入口了——线上真出过这个情况。
+	 * 下面几段建表都是 CREATE TABLE IF NOT EXISTS，重复执行没有副作用，放它跑一遍当自检修复。
+	 */
+	$sqls = [];
+	$uptodate = true;
 }
 
 /*
@@ -177,6 +188,12 @@ if($version < 1019){
 if($version < 1020){
 	$sqls = array_merge($sqls, read_sql('update_1020.sql'));
 }
+
+/*
+ * 1021 账号绑定表，同样是独立新表 + IF NOT EXISTS。
+ * 不按版本判断、每次都跑：表被漏建时再点一次升级就能补回来。
+ */
+$sqls = array_merge($sqls, read_sql('update_1021.sql'));
 
 $success=0;$error=0;$errorMsg=null;
 foreach ($sqls as $value) {
@@ -204,5 +221,25 @@ if($errorMsg){
 	echo '<p style="font:14px/1.7 system-ui;padding:16px 24px"><a href="../">返回首页</a></p>';
 	exit;
 }
-exit("<script language='javascript'>alert('网站数据库升级完成！');window.location.href='../';</script>");
+/*
+ * 收尾自检：把这一版要求的表挨个查一遍。
+ * 出过"版本号写上去了、表却没建出来"的情况，页面还提示升级成功，
+ * 站长要等到用那个功能才会看见 1146 报错，这里提前说清楚。
+ */
+$need_tables = ['pre_greenlog', 'pre_greenjob', 'pre_user_bind'];
+$lost = [];
+foreach($need_tables as $t){
+	//ERRMODE_SILENT 下 query 出错会返回 false，不能直接往后链 fetchColumn
+	$q = $db->query("SHOW TABLES LIKE '".$t."'");
+	if(!$q || !$q->fetchColumn())$lost[] = $t;
+}
+if($lost){
+	echo '<div style="font:13px/1.7 system-ui;margin:0 24px;padding:14px;border:1px solid #f0c2c2;background:#fff5f5;border-radius:8px;color:#a33">'
+		.'<b>升级没有完成：</b>数据表 '.htmlspecialchars(implode('、', $lost), ENT_QUOTES, 'UTF-8').' 没有创建成功。<br>'
+		.'请确认 install 目录下的 .sql 文件已完整上传，以及数据库账号有建表权限，然后重新打开本页再升级一次。</div>';
+	echo '<p style="font:14px/1.7 system-ui;padding:16px 24px"><a href="../">返回首页</a></p>';
+	exit;
+}
+$done_msg = $uptodate ? '数据库结构已是最新，表结构校验通过！' : '网站数据库升级完成！';
+exit("<script language='javascript'>alert('".$done_msg."');window.location.href='../';</script>");
 ?>

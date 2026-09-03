@@ -116,8 +116,12 @@ case 'delUser':
 	if(!$row)
 		exit('{"code":-1,"msg":"当前用户不存在！"}');
 	$sql = "DELETE FROM pre_user WHERE uid='$uid'";
-	if($DB->exec($sql))exit('{"code":0,"msg":"删除文件成功！"}');
-	else exit('{"code":-1,"msg":"删除文件失败['.$DB->error().']"}');
+	if($DB->exec($sql)){
+		//绑定表的 (type,openid) 上是唯一索引，留着孤儿行会让那个 QQ / 邮箱以后再也绑不上任何账号
+		delete_user_binds($uid);
+		exit('{"code":0,"msg":"删除用户成功！"}');
+	}
+	else exit('{"code":-1,"msg":"删除用户失败['.$DB->error().']"}');
 break;
 case 'sponsorList':
 	$sql=" 1=1";

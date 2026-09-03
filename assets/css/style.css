@@ -2357,6 +2357,412 @@ body.theme-sunset .buy-plan-btn,body.theme-sunset .buy-plan-btn:hover{color:#3d0
 .buy-plan-price{font-size:30px}
 }
 
+/* ===== 个人中心：配色全部取自当前外观的变量，20 套外观通用 =====
+   只用各外观都一定定义了的那几个：--surface / --surface-soft / --text / --muted /
+   --line / --primary / --primary-dark / --accent / --danger / --shadow。
+   --tint 之类只有布局型外观才有，这里一律不用，否则 15 套配色型外观下会变透明。 */
+.usercenter .uc-head{display:flex;align-items:center;flex-wrap:wrap;gap:14px;margin:0 0 18px;padding:16px;border:1px solid var(--line);border-radius:14px;background:var(--surface-soft)}
+.uc-avatar{flex:none;display:flex;align-items:center;justify-content:center;width:52px;height:52px;border-radius:50%;overflow:hidden;background:var(--surface);border:1px solid var(--line);color:var(--primary);font-size:22px}
+.uc-avatar img{width:100%;height:100%;object-fit:cover}
+.uc-head-main{flex:1 1 200px;min-width:0}
+.uc-head-main strong{display:block;color:var(--text);font-size:17px;font-weight:800;letter-spacing:-.01em;word-break:break-all}
+.uc-head-main small{display:block;margin-top:3px;color:var(--muted);font-size:12px;word-break:break-all}
+.uc-tag{flex:none;padding:5px 11px;border-radius:999px;font-size:12px;font-weight:750;border:1px solid var(--line);background:var(--surface);color:var(--muted)}
+.uc-tag-ok{border-color:rgba(31,146,84,.35);color:#1f9254}
+.uc-tag-warn{border-color:rgba(214,158,46,.4);color:#b8860b}
+.uc-tag-expired{border-color:rgba(220,53,69,.35);color:var(--danger)}
+/* 页签 */
+.uc-tabs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 20px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+.uc-tab{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:10px;color:var(--muted)!important;font-size:13px;font-weight:700;text-decoration:none!important;transition:background .18s ease,color .18s ease}
+.uc-tab:hover{background:var(--surface-soft);color:var(--text)!important}
+.uc-tab.active{background:var(--primary);color:#fff!important}
+/* 概览的四张数字卡 */
+.uc-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:0 0 20px}
+.uc-card{display:flex;align-items:center;gap:12px;padding:16px;border:1px solid var(--line);border-radius:14px;background:var(--surface);box-shadow:var(--shadow)}
+.uc-card-icon{flex:none;display:flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:11px;background:var(--surface-soft);color:var(--primary);font-size:16px}
+/* 必须限定到 >div> 这一层：.uc-card span 会连 .uc-card-icon 一起命中，
+   而且 (0,1,1) 比 .uc-card-icon 的 (0,1,0) 高，图标会被改成灰色小字块 */
+.uc-card>div>strong{display:block;color:var(--text);font-size:19px;font-weight:800;letter-spacing:-.02em;word-break:break-all}
+.uc-card>div>span{display:block;margin-top:2px;color:var(--muted);font-size:12px}
+/* 分区 */
+.uc-section{margin:0 0 22px}
+.uc-section-title{margin:0 0 12px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+.uc-section-title span{color:var(--text);font-size:15px;font-weight:750}
+.uc-kv{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 24px;margin:0}
+.uc-kv>div{display:flex;align-items:baseline;gap:10px;padding:7px 0}
+.uc-kv dt{flex:none;width:84px;color:var(--muted);font-size:13px;font-weight:600}
+.uc-kv dd{margin:0;color:var(--text);font-size:13px;font-weight:650;word-break:break-all}
+.uc-dim{color:var(--muted);font-weight:400}
+/* dd 上的 word-break:break-all 是给长邮箱用的，会把 IP 从点号中间劈开
+   （95.181. / 191.*）。这里改回 normal 让 IP 整体换行；
+   不用 nowrap 是因为 IPv6 地址可能真的比一栏还宽，那样会把版面顶出去，
+   overflow-wrap 留一条"实在放不下才断"的后路 */
+.uc-kv dd .uc-dim{display:inline-block;word-break:normal;overflow-wrap:break-word}
+/* 类型分布条 */
+.uc-bars{display:flex;flex-direction:column;gap:9px}
+.uc-bar-row{display:flex;align-items:center;gap:12px}
+.uc-bar-row em{flex:none;width:52px;color:var(--muted);font-size:12px;font-style:normal}
+.uc-bar-row b{flex:none;width:52px;color:var(--text);font-size:12px;font-weight:700;text-align:right}
+.uc-bar{flex:1;height:8px;border-radius:999px;background:var(--surface-soft);overflow:hidden}
+.uc-bar>i{display:block;height:100%;border-radius:999px;background:var(--primary)}
+.uc-bar-image{background:#4285f4!important}
+.uc-bar-video{background:#f4544c!important}
+.uc-bar-audio{background:#2fb457!important}
+.uc-bar-doc{background:#e8971b!important}
+.uc-bar-archive{background:#7c5cff!important}
+.uc-bar-other{background:#8a8a8f!important}
+/* 按钮 / 输入框 */
+.uc-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--text)!important;font-size:13px;font-weight:700;text-decoration:none!important;cursor:pointer;transition:border-color .18s ease,background .18s ease}
+.uc-btn:hover{border-color:var(--primary);color:var(--primary)!important}
+.uc-btn-primary{background:var(--primary);border-color:var(--primary);color:#fff!important}
+.uc-btn-primary:hover{background:var(--primary-dark);border-color:var(--primary-dark);color:#fff!important}
+.uc-btn-danger{background:var(--danger);border-color:var(--danger);color:#fff!important}
+.uc-btn-danger:hover{opacity:.88;border-color:var(--danger);color:#fff!important}
+.uc-input{height:38px;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--text);font-size:13px}
+.uc-input:focus{outline:0;border-color:var(--primary)}
+.uc-form{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.uc-form .uc-input{flex:1 1 240px;max-width:340px}
+.uc-form-col{flex-direction:column;align-items:stretch;max-width:340px}
+/* .uc-form .uc-input 的 flex:1 1 240px 是按横排写的；竖排时主轴变成纵向，
+   240px 会当成高度用，三个输入框会被撑成大方块，这里必须收掉 */
+.uc-form-col .uc-input{flex:none}
+.uc-form-col .uc-input,.uc-form-col .uc-btn{max-width:none;width:100%}
+.uc-tip{margin:12px 0 0;color:var(--muted);font-size:12px;line-height:1.8}
+.uc-hint{display:flex;align-items:flex-start;gap:7px;margin:0 0 14px;padding:9px 12px;border:1px solid var(--line);border-left:3px solid var(--primary);border-radius:9px;background:var(--surface-soft)}
+.uc-hint>i{flex:none;margin-top:2px;color:var(--primary)}
+/* 登录方式绑定 */
+.uc-binds{display:flex;flex-direction:column;gap:10px}
+.uc-bind{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.uc-bind.is-empty{background:var(--surface-soft)}
+.uc-bind-icon{flex:none;display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:10px;background:var(--surface-soft);color:var(--muted);font-size:17px}
+.uc-bind.is-empty .uc-bind-icon{background:var(--surface)}
+.uc-bind-qq{color:#12b7f5}
+.uc-bind-wx{color:#07c160}
+.uc-bind-mail{color:#f0a020}
+.uc-bind-main{flex:1 1 auto;min-width:0}
+.uc-bind-main strong{display:block;color:var(--text);font-size:14px;font-weight:750}
+.uc-bind-main small{display:block;margin-top:2px;color:var(--muted);font-size:12px;word-break:break-all}
+.uc-bind-tag{margin-left:7px;padding:2px 7px;border-radius:6px;background:var(--surface-soft);color:var(--muted);font-size:11px;font-style:normal;font-weight:700}
+.uc-btn-sm{flex:none;padding:6px 12px;font-size:12px}
+/* “不可解绑”这几个字没有 flex 属性会被压缩换行，栏子一窄就特别明显 */
+.uc-bind .uc-dim{flex:none;font-size:12px;white-space:nowrap}
+/* 绑定邮箱的表单：验证码和按钮并排一行，其余各占一行 */
+.uc-bindmail-form{margin-top:14px}
+.uc-form-row{display:flex;gap:8px;width:100%}
+/* .uc-form-col 给输入框设了 width:100%，在这一行里会把按钮挤出去，收回 auto */
+.uc-form-row .uc-input{flex:1 1 auto;width:auto;min-width:0;max-width:none}
+.uc-form-row .uc-btn{flex:none;white-space:nowrap}
+/* 和 .uc-batchbar 同一个道理：.uc-form 的 display:flex 会把 [hidden] 顶掉 */
+.uc-form[hidden]{display:none}
+/* 账号设置的三栏布局。侧栏型外观下内容区能到 1600px 宽，
+   单栏铺开时右边会空掉一大半；auto-fit + minmax 宽屏三栏、中屏两栏、窄屏一栏 */
+/* 不写 align-items:start —— 让三张卡按最高的那张拉平，底边对齐；
+   否则内容多少不一时下沿参差，短的那两栏底下会空出一块 */
+.uc-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+.uc-col{padding:18px 18px 20px;border:1px solid var(--line);border-radius:14px;background:var(--surface);box-shadow:var(--shadow)}
+.uc-col .uc-section{margin:0}
+.uc-col .uc-section+.uc-section{margin-top:24px}
+/* 栏内宽度就那么点，键值对改成单列，表单也不用再卡 340px 了 */
+.uc-cols .uc-kv{grid-template-columns:minmax(0,1fr);gap:0}
+.uc-cols .uc-form .uc-input{max-width:none}
+.uc-cols .uc-form-col{max-width:none}
+.uc-cols .uc-tip{margin-top:10px}
+/* 自建输入弹窗（layer.prompt 不允许空值，改密码要留空取消，只能自己搭一个） */
+.uc-dialog{padding:16px 18px}
+.uc-dialog-tip{margin:0 0 10px;color:var(--muted);font-size:12px;line-height:1.7}
+.uc-dialog-input{width:100%}
+/* 文件页的工具条与筛选 */
+.uc-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:0 0 14px}
+.uc-search{flex:1 1 220px;max-width:320px;height:38px;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--text);font-size:13px}
+.uc-search:focus{outline:0;border-color:var(--primary)}
+.uc-toolbar .uc-btn-primary{margin-left:auto}
+.uc-filters{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 14px}
+.uc-filter{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:9px;color:var(--muted)!important;font-size:13px;font-weight:700;text-decoration:none!important}
+.uc-filter em{font-style:normal;font-size:11px;opacity:.75}
+.uc-filter:hover{background:var(--surface-soft);color:var(--text)!important}
+.uc-filter.active{background:var(--primary);color:#fff!important}
+.uc-filter.active em{opacity:.85}
+/* 批量操作条。display:flex 特异性比 [hidden] 的默认样式高，
+   不显式写这一条的话，JS 把 hidden 设回去也藏不住它 */
+.uc-batchbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:0 0 14px;padding:10px 14px;border:1px solid var(--primary);border-radius:11px;background:var(--surface-soft)}
+.uc-batchbar[hidden]{display:none}
+.uc-batchbar>span{color:var(--text);font-size:13px}
+.uc-batchbar b{color:var(--primary);font-weight:800}
+.uc-batchbar .uc-btn{padding:6px 12px;font-size:12px}
+/* 文件表格 */
+.uc-filelist{margin-bottom:0}
+.uc-filelist .uc-col-check{width:38px;text-align:center}
+/* 裸的 checkbox 在深色外观下几乎看不见，用 accent-color 跟着主色走 */
+.uc-filelist .uc-col-check input[type="checkbox"]{width:16px;height:16px;margin:0;accent-color:var(--primary);cursor:pointer;vertical-align:middle}
+.uc-filelist .uc-col-check input[type="checkbox"]:disabled{cursor:not-allowed;opacity:.45}
+.uc-filelist .uc-col-size{width:92px;white-space:nowrap}
+.uc-filelist .uc-col-state{width:170px}
+.uc-filelist .uc-col-time{width:158px;white-space:nowrap}
+.uc-filelist .uc-col-act{width:1%;white-space:nowrap}
+.uc-filelist tbody td{vertical-align:middle}
+.uc-filelist .uc-col-name{max-width:340px}
+.uc-filelist .uc-col-name .fa-fw{margin-right:8px;color:var(--primary)}
+.uc-name{display:inline-block;max-width:290px;overflow:hidden;color:var(--text);font-weight:700;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle}
+.uc-filelist tr.is-blocked .uc-name{opacity:.6;text-decoration:line-through}
+.uc-empty{padding:34px 0!important;color:var(--muted);text-align:center}
+.uc-badge{display:inline-flex;align-items:center;gap:4px;margin:2px 4px 2px 0;padding:3px 8px;border-radius:7px;border:1px solid var(--line);background:var(--surface-soft);color:var(--muted);font-size:11px;font-weight:700;white-space:nowrap}
+.uc-badge-ok{border-color:rgba(31,146,84,.3);color:#1f9254}
+.uc-badge-warn{border-color:rgba(214,158,46,.4);color:#b8860b}
+.uc-badge-danger{border-color:rgba(220,53,69,.35);color:var(--danger)}
+.uc-badge-muted{color:var(--muted)}
+/* 行内操作按钮 */
+.uc-acts{display:flex;align-items:center;gap:5px}
+.uc-act{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;padding:0;border:0;border-radius:8px;background:var(--surface-soft);color:var(--muted)!important;font-size:13px;text-decoration:none!important;cursor:pointer;transition:background .16s ease,color .16s ease}
+.uc-act:hover{background:var(--primary);color:#fff!important}
+.uc-act-danger:hover{background:var(--danger);color:#fff!important}
+/* 订单表格 */
+.uc-orderlist .uc-order-no{font-family:Consolas,Monaco,"Courier New",monospace;font-size:12px;color:var(--muted)}
+.uc-orderlist .uc-order-price{color:var(--text);font-weight:800;white-space:nowrap}
+/* 强调色偏浅的外观，实心按钮/页签上要用深色字，白字看不清 */
+body.theme-workspace .uc-tab.active,body.theme-workspace .uc-filter.active,body.theme-workspace .uc-btn-primary,body.theme-workspace .uc-btn-primary:hover,body.theme-workspace .uc-act:hover{color:#221a05!important}
+body.theme-neon .uc-tab.active,body.theme-neon .uc-filter.active,body.theme-neon .uc-btn-primary,body.theme-neon .uc-btn-primary:hover,body.theme-neon .uc-act:hover{color:#06101f!important}
+body.theme-onefour .uc-tab.active,body.theme-onefour .uc-filter.active,body.theme-onefour .uc-btn-primary,body.theme-onefour .uc-btn-primary:hover,body.theme-onefour .uc-act:hover{color:#050505!important}
+body.theme-aurora .uc-tab.active,body.theme-aurora .uc-filter.active,body.theme-aurora .uc-btn-primary,body.theme-aurora .uc-btn-primary:hover,body.theme-aurora .uc-act:hover{color:#10204a!important}
+body.theme-abyss .uc-tab.active,body.theme-abyss .uc-filter.active,body.theme-abyss .uc-btn-primary,body.theme-abyss .uc-btn-primary:hover,body.theme-abyss .uc-act:hover{color:#062434!important}
+body.theme-emerald .uc-tab.active,body.theme-emerald .uc-filter.active,body.theme-emerald .uc-btn-primary,body.theme-emerald .uc-btn-primary:hover,body.theme-emerald .uc-act:hover{color:#07301f!important}
+body.theme-sunset .uc-tab.active,body.theme-sunset .uc-filter.active,body.theme-sunset .uc-btn-primary,body.theme-sunset .uc-btn-primary:hover,body.theme-sunset .uc-act:hover{color:#3d0f2e!important}
+@media (max-width:991px){
+.uc-cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+.uc-kv{grid-template-columns:minmax(0,1fr)}
+/* 窄屏放不下这么多列：时间和状态先让位，文件名和操作必须留着 */
+.uc-filelist .uc-col-time{display:none}
+}
+@media (max-width:767px){
+/* 窄屏下 avatar(52) + 昵称(基准200) + 标签 三者加起来超过一行宽度，
+   标签会掉到第二行、左对齐贴在头像下面，看着很散。把头像和标签收小、
+   昵称基准压到 120px，三者就能并排 */
+.usercenter .uc-head{padding:13px;gap:10px}
+.uc-avatar{width:44px;height:44px;font-size:18px}
+.uc-head-main{flex:1 1 120px}
+.uc-head-main strong{font-size:16px}
+.uc-tag{padding:4px 9px;font-size:11px}
+.uc-tabs{overflow-x:auto;flex-wrap:nowrap;padding-bottom:8px}
+.uc-tab{flex:0 0 auto}
+.uc-filters{overflow-x:auto;flex-wrap:nowrap;padding-bottom:4px}
+.uc-filter{flex:0 0 auto}
+.uc-toolbar .uc-btn-primary{margin-left:0}
+.uc-search{max-width:none}
+.uc-filelist .uc-col-state,.uc-filelist .uc-col-size{display:none}
+.uc-name{max-width:160px}
+.uc-form .uc-input,.uc-form-col{max-width:none}
+}
+
+/* ===== macOS 窗口风（布局型）：整站套进一个 macOS 窗口，文件列表默认是访达式图标网格 =====
+   标题栏（.navbar）、内容区（body>.container）、状态栏（footer）是三个互不相干的兄弟元素，
+   要让它们看着像一个窗口，宽度和边框颜色必须完全一致，所以抽成 --mac-w / --mac-edge 两个变量；
+   阴影也不能三段各打一份（后面的元素会盖住前面那段的投影，接缝处会出现一道暗边），
+   改成上段只投上方、下段只投下方、三段共用同一份左右投影 --mac-side */
+body.theme-mac{--page-bg:#e7e9ee;--surface:#ffffff;--surface-soft:#f5f5f7;--text:#1d1d1f;--muted:#86868b;--line:#e6e6ea;--primary:#0a84ff;--primary-dark:#0060df;--accent:#34c759;--danger:#ff3b30;--tint:#e9f2ff;--drop-line:#c9d2e0;--drop-tint:#f8fafd;--shadow:0 10px 30px rgba(20,26,45,.08);--btn-shadow:0 4px 12px rgba(10,132,255,.26);--mac-w:min(1180px,calc(100% - 44px));--mac-edge:rgba(0,0,0,.11);--mac-side:-22px 0 46px -28px rgba(19,26,45,.5),22px 0 46px -28px rgba(19,26,45,.5);background:linear-gradient(155deg,#dfe4ee 0,#e9eaee 46%,#e2e7f0 100%) fixed;color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+body.theme-mac a{color:var(--primary)}
+body.theme-mac a:hover,body.theme-mac a:focus{color:var(--primary-dark)}
+/* 窗口标题栏 */
+body.theme-mac .navbar.navbar-default{width:var(--mac-w);min-height:52px;margin:26px auto 0;background:rgba(246,246,248,.84);border:1px solid var(--mac-edge);border-bottom:1px solid rgba(0,0,0,.07);border-radius:12px 12px 0 0;box-shadow:0 -14px 40px -22px rgba(19,26,45,.55),var(--mac-side);backdrop-filter:saturate(180%) blur(20px)}
+body.theme-mac .navbar .container{width:100%;max-width:none;min-height:52px;padding:0 16px;margin:0;display:flex;align-items:center;gap:0 18px}
+body.theme-mac .navbar-header{float:none;display:flex;align-items:center;height:52px}
+body.theme-mac .navbar-brand{float:none;display:flex;align-items:center;height:auto;padding:0;margin:0!important;line-height:1.4;color:var(--text)!important;font-size:14px;font-weight:700;letter-spacing:-.01em}
+/* 红黄绿三颗灯：一个圆点 + 两段 box-shadow 画出来，不额外加标签 */
+body.theme-mac .navbar-brand:before{content:"";flex:0 0 12px;width:12px;height:12px;margin-right:56px;border-radius:50%;background:#ff5f57;box-shadow:20px 0 0 #febc2e,40px 0 0 #28c840;font-size:0}
+body.theme-mac .navbar-collapse{float:none;flex:1 1 auto;display:flex!important;align-items:center;padding:0;border:0;box-shadow:none}
+body.theme-mac .navbar-nav{float:none!important;display:flex;align-items:center;gap:2px;margin:0!important}
+body.theme-mac .navbar-nav>li{float:none}
+body.theme-mac .navbar-default .navbar-nav>li>a{margin:0;padding:6px 11px;border-radius:7px;background:none!important;color:#4b4b50!important;font-size:12.5px;font-weight:600;line-height:1.5}
+body.theme-mac .navbar-default .navbar-nav>li>a i{margin-right:5px;color:#8a8a8f}
+body.theme-mac .navbar-default .navbar-nav>li>a:hover,body.theme-mac .navbar-default .navbar-nav>li>a:focus{background:rgba(0,0,0,.055)!important;color:var(--text)!important}
+body.theme-mac .navbar-default .navbar-nav>li>a:hover i{color:var(--text)}
+body.theme-mac .navbar-default .navbar-nav>li.active>a{background:var(--primary)!important;color:#fff!important}
+body.theme-mac .navbar-default .navbar-nav>li.active>a i{color:#fff}
+body.theme-mac .navbar-nav.navbar-right{float:none!important;margin:0 0 0 auto!important}
+body.theme-mac .navbar-default .navbar-toggle{margin:0;background:rgba(0,0,0,.05)!important;background-image:none!important;border:0!important;border-radius:7px}
+body.theme-mac .navbar-default .navbar-toggle .icon-bar{background:#4b4b50!important;height:2px!important}
+body.theme-mac .navbar-default .navbar-toggle:hover,body.theme-mac .navbar-default .navbar-toggle:focus{background:rgba(0,0,0,.09)!important;box-shadow:none!important}
+body.theme-mac .dropdown-menu{margin-top:6px;background:rgba(250,250,252,.98);border:1px solid var(--mac-edge);border-radius:10px;box-shadow:0 14px 34px rgba(19,26,45,.18);backdrop-filter:saturate(180%) blur(20px)}
+body.theme-mac .dropdown-menu>li>a{padding:7px 14px;color:#3a3a3d!important;font-size:12.5px;font-weight:600}
+body.theme-mac .dropdown-menu>li>a:hover,body.theme-mac .dropdown-menu>li>a:focus{background:var(--primary)!important;color:#fff!important}
+/* 窗口内容区：所有页面的 body>.container 都是窗口的“肚子”，只留左右边框把上下两段连起来 */
+body.theme-mac>.container{width:var(--mac-w);max-width:none;margin:0 auto;padding:22px 24px 26px;background:var(--surface);border-left:1px solid var(--mac-edge);border-right:1px solid var(--mac-edge);box-shadow:var(--mac-side)}
+/* 公告条和广告位是带行内样式的整行块，会顶破窗口宽度，收回窗口里 */
+body.theme-mac .theme-announcement-bar,body.theme-mac .mpimg-link-band{width:var(--mac-w)!important;margin:0 auto!important;border-left:1px solid var(--mac-edge)!important;border-right:1px solid var(--mac-edge)!important;border-radius:0!important;box-shadow:none!important}
+/* 窗口底部状态栏 */
+body.theme-mac>footer.footer{width:var(--mac-w);margin:0 auto 40px;padding:0;background:rgba(246,246,248,.92);border:1px solid var(--mac-edge);border-top:1px solid rgba(0,0,0,.07);border-radius:0 0 12px 12px;box-shadow:0 16px 40px -22px rgba(19,26,45,.55),var(--mac-side);backdrop-filter:saturate(180%) blur(20px)}
+body.theme-mac .footer .container{width:100%;max-width:none;padding:0 16px}
+body.theme-mac .footer p.text-muted{display:flex;align-items:center;justify-content:center;gap:8px;min-height:34px;margin:0;color:#6e6e73;font-size:12px;font-weight:500}
+body.theme-mac .footer p.text-muted:before{content:"";flex:0 0 7px;width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px rgba(52,199,89,.18)}
+body.theme-mac .footer a{color:#6e6e73}
+body.theme-mac .footer a:hover{color:var(--primary)}
+/* 内容区里的卡片：窗口本身已经是一张卡了，.well 一律拍平，.panel 保留浅描边 */
+body.theme-mac .well,body.theme-mac .well.bs-component{padding:0;margin:0;background:transparent;border:0;border-radius:0;box-shadow:none}
+body.theme-mac .panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 1px 2px rgba(20,26,45,.05)}
+body.theme-mac .panel-heading{background:var(--surface-soft)!important;border-bottom:1px solid var(--line)!important;color:var(--text)!important;font-weight:650}
+body.theme-mac .panel-title,body.theme-mac .panel-title i{color:var(--text)}
+body.theme-mac .panel-footer,body.theme-mac .tab-content,body.theme-mac .list-group-item{background:var(--surface);border-color:var(--line);color:#4b4b50}
+/* 工具条：标题 + 搜索 + 视图切换 + 上传按钮 */
+body.theme-mac .well.bs-component>h2{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:0 0 18px;padding:0 0 15px;border-bottom:1px solid var(--line);color:var(--text);font-size:20px;font-weight:700;letter-spacing:-.02em}
+body.theme-mac .well.bs-component>h2 .text-muted{color:var(--muted);font-size:12px!important;font-weight:500}
+/* 工具条右侧那一组：有搜索框时由它顶开，没开搜索功能时换视图切换来顶，
+   免得按钮贴在标题后面 */
+body.theme-mac .well.bs-component>h2>.searchbox,
+body.theme-mac .well.bs-component>h2>.mac-viewtoggle{margin-left:auto}
+body.theme-mac .well.bs-component>h2>.searchbox+.mac-viewtoggle{margin-left:0}
+body.theme-mac .layout-page-sub{margin:-8px 0 16px;color:var(--muted);font-size:13px}
+body.theme-mac .searchbox .form-inline{display:flex;align-items:center;gap:8px}
+body.theme-mac .searchbox input.form-control[type="search"]{height:30px;min-width:200px;padding:0 12px;background:rgba(0,0,0,.045)!important;border:1px solid transparent!important;border-radius:8px!important;color:var(--text)!important;font-size:12.5px}
+body.theme-mac .searchbox input.form-control[type="search"]:focus{background:#fff!important;border-color:#9ec5ff!important;box-shadow:0 0 0 3px rgba(10,132,255,.18)!important}
+body.theme-mac .searchbox .btn{height:30px;padding:0 12px;background:rgba(0,0,0,.045)!important;border:0!important;border-radius:8px!important;color:#4b4b50!important;font-size:12.5px;font-weight:600}
+body.theme-mac .searchbox .btn:hover,body.theme-mac .searchbox .btn:focus{background:var(--primary)!important;color:#fff!important}
+/* 网格 / 列表切换：macOS 的分段控件 */
+body.theme-mac .mac-viewtoggle{display:inline-flex;gap:2px;padding:2px;background:rgba(0,0,0,.055);border-radius:9px}
+body.theme-mac .mac-viewtoggle button{width:34px;height:26px;padding:0;border:0;border-radius:7px;background:transparent;color:#5b5b60;font-size:13px;line-height:1;cursor:pointer;transition:background .15s ease,color .15s ease}
+body.theme-mac .mac-viewtoggle button:hover{color:var(--text)}
+body.theme-mac .mac-viewtoggle button.active{background:#fff;color:var(--primary);box-shadow:0 1px 2px rgba(19,26,45,.16)}
+body.theme-mac .layout-cta{height:30px;padding:0 14px;border-radius:8px;font-size:12.5px;font-weight:650;box-shadow:none}
+body.theme-mac .layout-cta:hover,body.theme-mac .layout-cta:focus{transform:none;box-shadow:var(--btn-shadow)}
+/* 拖拽提示区（首页列表上方，点一下进上传页） */
+body.theme-mac .mac-drop{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:190px;margin:0 0 20px;padding:26px;background:var(--drop-tint);border:2px dashed var(--drop-line);border-radius:14px;color:var(--text);text-align:center;text-decoration:none;transition:border-color .18s ease,background .18s ease}
+body.theme-mac .mac-drop:hover,body.theme-mac .mac-drop:focus{background:var(--tint);border-color:var(--primary);color:var(--text);text-decoration:none}
+body.theme-mac .mac-drop-icon{color:var(--primary);font-size:34px;line-height:1}
+body.theme-mac .mac-drop strong{margin:16px 0 7px;font-size:16px;font-weight:650;letter-spacing:-.01em}
+body.theme-mac .mac-drop small{color:var(--muted);font-size:12.5px}
+/* 权限条 */
+body.theme-mac .perm-bar{padding:10px 14px;background:var(--surface-soft);border:1px solid var(--line);border-radius:10px;font-size:12.5px}
+body.theme-mac .perm-item,body.theme-mac .perm-buy{font-size:12.5px}
+/* ===== 文件列表：默认访达式图标网格 ===== */
+body.theme-mac .table-responsive{border:0}
+body.theme-mac .filelist-main{display:block;width:100%;background:transparent;border:0}
+body.theme-mac .filelist-main>thead{display:none}
+body.theme-mac .filelist-main>tbody{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
+body.theme-mac .filelist-main>tbody>tr{display:flex;flex-direction:column;align-items:center;padding:18px 12px 14px;background:var(--surface);border:1px solid var(--line);border-radius:14px;text-align:center;transition:border-color .18s ease,box-shadow .18s ease,background .18s ease}
+body.theme-mac .filelist-main>tbody>tr:hover{background:#fbfcfe;border-color:#c9d8f0;box-shadow:0 8px 22px rgba(20,26,45,.09)}
+body.theme-mac .filelist-main>tbody>tr>td{display:block;max-width:100%;padding:0!important;border:0!important;background:transparent;color:var(--text);white-space:normal;overflow:hidden;text-overflow:clip}
+/* 序号、格式、上传时间、上传者IP 在卡片上没有意义，只在列表视图里显示 */
+body.theme-mac .filelist-main>tbody>tr>td:nth-child(1),
+body.theme-mac .filelist-main>tbody>tr>td:nth-child(5),
+body.theme-mac .filelist-main>tbody>tr>td:nth-child(6),
+body.theme-mac .filelist-main>tbody>tr>td:nth-child(7){display:none}
+/* 文件名格：图标块在上、文件名在下。文件名是裸文本节点，没法单独做行数截断，
+   给整格定高再裁掉溢出，效果就是最多两行 */
+body.theme-mac .filelist-main>tbody>tr>td:nth-child(3){order:1;width:100%;height:104px;font-size:13px;font-weight:600;line-height:1.4;word-break:break-all}
+body.theme-mac .filelist-main>tbody>tr>td:nth-child(3) .fa-fw{display:flex;width:52px;height:52px;margin:0 auto 12px;border-radius:15px;font-size:22px}
+body.theme-mac .filelist-main>tbody>tr>td:nth-child(4){order:2;color:var(--muted);font-size:12px;font-weight:500}
+/* 大小后面补一句中文类型，跟原型里的“8.6 MB · 图片”对齐；分组由 index.php 写在 data-group 上 */
+body.theme-mac .filelist-main>tbody>tr[data-group="image"]>td:nth-child(4):after{content:" \B7 \0020\56FE\7247"}
+body.theme-mac .filelist-main>tbody>tr[data-group="video"]>td:nth-child(4):after{content:" \B7 \0020\89C6\9891"}
+body.theme-mac .filelist-main>tbody>tr[data-group="audio"]>td:nth-child(4):after{content:" \B7 \0020\97F3\9891"}
+body.theme-mac .filelist-main>tbody>tr[data-group="doc"]>td:nth-child(4):after{content:" \B7 \0020\6587\6863"}
+body.theme-mac .filelist-main>tbody>tr[data-group="archive"]>td:nth-child(4):after{content:" \B7 \0020\538B\7F29\5305"}
+body.theme-mac .filelist-main>tbody>tr[data-group="other"]>td:nth-child(4):after{content:" \B7 \0020\6587\4EF6"}
+/* 文件名不是链接，下载/查看只能走操作列，卡片上必须留着，缩成一排图标按钮 */
+body.theme-mac .filelist-main>tbody>tr>td:nth-child(2){order:3;width:100%;margin-top:12px}
+body.theme-mac .filelist-main>tbody>tr>td:nth-child(2) .file-actions{justify-content:center;gap:6px}
+body.theme-mac .filelist-main>tbody>tr>td:nth-child(2) .file-action{width:28px;height:28px;padding:0;justify-content:center}
+body.theme-mac .filelist-main>tbody>tr>td:nth-child(2) .file-action-label{display:none}
+/* 空列表那一行要横跨整个网格 */
+body.theme-mac .filelist-main>tbody>tr>td[colspan]{display:block;order:0;width:100%;height:auto;padding:34px 0!important;color:var(--muted);font-size:13px}
+body.theme-mac .filelist-main>tbody>tr:has(td[colspan]){grid-column:1/-1;padding:0;border-style:dashed;background:transparent}
+body.theme-mac .filelist-main>tbody>tr:has(td[colspan]):hover{background:transparent;border-color:var(--line);box-shadow:none}
+/* 图标块配色：跟原型一致，浅底 + 同色系图标 */
+body.theme-mac .filelist tbody td .fa-fw{background:rgba(120,120,128,.12);color:#6e6e73}
+body.theme-mac .filelist tbody tr[data-group="image"] td .fa-fw{background:#e8f0fe;color:#4285f4}
+body.theme-mac .filelist tbody tr[data-group="video"] td .fa-fw{background:#fdeaea;color:#f4544c}
+body.theme-mac .filelist tbody tr[data-group="audio"] td .fa-fw{background:#e6f6ec;color:#2fb457}
+body.theme-mac .filelist tbody tr[data-group="doc"] td .fa-fw{background:#fdf1e0;color:#e8971b}
+body.theme-mac .filelist tbody tr[data-group="archive"] td .fa-fw{background:#eeeaff;color:#7c5cff}
+body.theme-mac .file-action{padding:4px 9px;border-radius:8px;background:rgba(120,120,128,.1);color:#4b4b50!important;font-size:12px;font-weight:600}
+body.theme-mac .file-action-down{background:var(--tint);color:var(--primary)!important}
+body.theme-mac .file-action:hover{background:var(--primary);color:#fff!important}
+body.theme-mac .file-type-badge{min-width:0;padding:3px 8px;border-radius:6px;background:rgba(120,120,128,.12);color:#4b4b50;font-size:11px;font-weight:600}
+body.theme-mac .filelist-lock{color:#e8971b}
+/* ===== 列表视图：JS 给表格加 .mac-list-view，把上面那套网格还原成普通表格 ===== */
+body.theme-mac .filelist-main.mac-list-view{display:table;border:0}
+body.theme-mac .filelist-main.mac-list-view>thead{display:table-header-group}
+body.theme-mac .filelist-main.mac-list-view>tbody{display:table-row-group;gap:0}
+body.theme-mac .filelist-main.mac-list-view>tbody>tr{display:table-row;padding:0;background:transparent;border:0;border-radius:0;box-shadow:none;text-align:left}
+body.theme-mac .filelist-main.mac-list-view>tbody>tr:hover{background:var(--tint);border:0;box-shadow:none}
+body.theme-mac .filelist-main.mac-list-view>tbody>tr>td,
+body.theme-mac .filelist-main.mac-list-view>tbody>tr>td:nth-child(1),
+body.theme-mac .filelist-main.mac-list-view>tbody>tr>td:nth-child(2),
+body.theme-mac .filelist-main.mac-list-view>tbody>tr>td:nth-child(3),
+body.theme-mac .filelist-main.mac-list-view>tbody>tr>td:nth-child(4),
+body.theme-mac .filelist-main.mac-list-view>tbody>tr>td:nth-child(5),
+body.theme-mac .filelist-main.mac-list-view>tbody>tr>td:nth-child(6),
+body.theme-mac .filelist-main.mac-list-view>tbody>tr>td:nth-child(7){display:table-cell;order:0;width:auto;height:auto;max-width:360px;margin:0;padding:11px 12px!important;border-top:1px solid var(--line)!important;color:#3a3a3d;font-size:13px;font-weight:500;line-height:1.6;text-align:left;vertical-align:middle;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.theme-mac .filelist-main.mac-list-view>thead>tr>th{height:auto;padding:10px 12px;background:var(--surface-soft)!important;border-bottom:1px solid var(--line)!important;color:var(--muted);font-size:12px;font-weight:600}
+body.theme-mac .filelist-main.mac-list-view>tbody>tr>td:nth-child(3){font-weight:600;color:var(--text)}
+body.theme-mac .filelist-main.mac-list-view>tbody>tr>td:nth-child(3) .fa-fw{display:inline-flex;width:28px;height:28px;margin:0 10px 0 0;border-radius:8px;font-size:13px;vertical-align:middle}
+body.theme-mac .filelist-main.mac-list-view>tbody>tr>td:nth-child(4):after{content:none}
+body.theme-mac .filelist-main.mac-list-view>tbody>tr>td:nth-child(2){white-space:nowrap;overflow:visible}
+body.theme-mac .filelist-main.mac-list-view .file-actions{justify-content:flex-start}
+body.theme-mac .filelist-main.mac-list-view .file-action{width:auto;height:auto;padding:4px 9px}
+body.theme-mac .filelist-main.mac-list-view .file-action-label{display:inline}
+body.theme-mac .filelist-main.mac-list-view>tbody>tr>td[colspan]{display:table-cell;padding:26px 0!important;text-align:center}
+/* 列表底部：文件数 + 翻页，做成访达底部那条信息栏 */
+body.theme-mac .filelist-footer{margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}
+body.theme-mac .filelist-summary{color:var(--muted);font-size:12px}
+body.theme-mac .pagination>li>a,body.theme-mac .pagination>li>span{background:rgba(120,120,128,.1);border:0;border-radius:7px!important;color:#4b4b50;font-size:12px}
+body.theme-mac .pagination>li>a:hover,body.theme-mac .pagination>.active>a,body.theme-mac .pagination>.active>a:hover{background:var(--primary);color:#fff}
+body.theme-mac .pagination>.disabled>a,body.theme-mac .pagination>.disabled>a:hover{background:rgba(120,120,128,.06);color:#b4b4b8}
+/* 表单、按钮、标签页等公共控件 */
+body.theme-mac .form-control{background:#fff;border:1px solid #d8d8dd;border-radius:8px;color:var(--text)}
+body.theme-mac .form-control:focus{border-color:#9ec5ff;box-shadow:0 0 0 3px rgba(10,132,255,.18)}
+body.theme-mac .input-group-addon{background:var(--surface-soft);border-color:#d8d8dd;color:var(--muted)}
+body.theme-mac .btn{border-radius:8px!important;font-weight:650}
+body.theme-mac .btn-raised.btn-primary,body.theme-mac .btn-primary{background:var(--primary)!important;color:#fff!important}
+body.theme-mac .btn-raised.btn-primary:hover,body.theme-mac .btn-primary:hover{background:var(--primary-dark)!important}
+body.theme-mac .btn-raised.btn-info,body.theme-mac .btn-info{background:#5e5ce6!important;color:#fff!important}
+body.theme-mac .btn-raised.btn-danger,body.theme-mac .btn-danger{background:var(--danger)!important;color:#fff!important}
+body.theme-mac .btn-default{background:rgba(120,120,128,.1)!important;border:0!important;color:#3a3a3d!important}
+body.theme-mac .nav-tabs{background:transparent;border-bottom:1px solid var(--line)}
+body.theme-mac .nav-tabs>li>a,body.theme-mac .nav-tabs>li>a:focus,body.theme-mac .nav-tabs>li>a:hover{color:#4b4b50!important;font-weight:600}
+body.theme-mac .nav-tabs>li.active{background:transparent;border-bottom:2px solid var(--primary)}
+body.theme-mac .nav-tabs>li.active>a{color:var(--primary)!important}
+body.theme-mac .table{background:transparent}
+body.theme-mac .table>thead>tr>th{height:auto;padding:10px 12px;background:var(--surface-soft)!important;border-bottom:1px solid var(--line)!important;color:var(--muted);font-size:12px;font-weight:600}
+body.theme-mac .table>tbody>tr>td{border-top:1px solid var(--line)!important;color:#3a3a3d}
+body.theme-mac .table-striped>tbody>tr:nth-of-type(odd){background:transparent}
+body.theme-mac .table-hover>tbody>tr:hover{background:var(--tint)}
+body.theme-mac .table-bordered,body.theme-mac .table-bordered>tbody>tr>td,body.theme-mac .table-bordered>thead>tr>th{border-color:var(--line)!important}
+/* 上传页 / 文件查看页 */
+body.theme-mac #app .infobox{background:var(--drop-tint)!important;border-radius:14px;box-shadow:none}
+body.theme-mac #app .infobox:hover{box-shadow:none;transform:none}
+body.theme-mac .view{background:var(--surface-soft);border-radius:14px}
+body.theme-mac .tubiao{background:var(--tint);color:var(--primary)}
+body.theme-mac .elsetext,body.theme-mac .filename{color:#4b4b50}
+body.theme-mac .elsetext p:first-child{color:var(--text)}
+body.theme-mac .image_view,body.theme-mac .videoplayer{background:#1d1d1f;border-radius:14px}
+body.theme-mac .fileinfo-table{background:var(--surface)}
+body.theme-mac .fileinfo-table th{background:var(--surface-soft);color:#4b4b50}
+body.theme-mac .progress{background:rgba(120,120,128,.14)}
+body.theme-mac .progress-bar{background:linear-gradient(90deg,var(--primary),#5e5ce6)}
+body.theme-mac .editor-toolbar{background:var(--surface-soft);border-color:var(--line);border-radius:10px}
+body.theme-mac #file_content{background:#1d1d1f!important;color:#f2f2f7!important;border-color:#3a3a3d!important}
+@media (max-width:767px){
+/* 窄屏没有“窗口”的说法了：铺满屏幕，去掉圆角和左右边框，只保留配色 */
+body.theme-mac{--mac-w:100%}
+body.theme-mac .navbar.navbar-default{margin:0;border-left:0;border-right:0;border-top:0;border-radius:0;box-shadow:none}
+body.theme-mac .navbar .container{padding:0 14px;flex-wrap:wrap}
+body.theme-mac .navbar-header{width:100%;justify-content:space-between}
+body.theme-mac .navbar-brand:before{margin-right:44px}
+body.theme-mac .navbar-collapse{width:100%;flex-direction:column;align-items:stretch;padding:6px 0 10px;border-top:1px solid var(--line)}
+body.theme-mac .navbar-nav{flex-direction:column;align-items:stretch;gap:0}
+body.theme-mac .navbar-default .navbar-nav>li>a{padding:10px 12px;border-radius:8px}
+body.theme-mac .navbar-nav.navbar-right{margin:0!important}
+body.theme-mac>.container{padding:16px 14px 20px;border-left:0;border-right:0;box-shadow:none}
+body.theme-mac .theme-announcement-bar,body.theme-mac .mpimg-link-band{border-left:0!important;border-right:0!important}
+body.theme-mac>footer.footer{margin:0;border-left:0;border-right:0;border-bottom:0;border-radius:0;box-shadow:none}
+body.theme-mac .well.bs-component>h2{font-size:18px}
+body.theme-mac .filelist-main>tbody{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+body.theme-mac .filelist-main>tbody>tr{padding:14px 8px 12px}
+body.theme-mac .filelist-main>tbody>tr>td:nth-child(3){height:96px;font-size:12.5px}
+body.theme-mac .filelist-main>tbody>tr>td:nth-child(3) .fa-fw{width:44px;height:44px;margin-bottom:10px;border-radius:13px;font-size:19px}
+body.theme-mac .mac-drop{min-height:150px;padding:20px}
+body.theme-mac .well.bs-component>h2>.mac-viewtoggle,
+body.theme-mac .well.bs-component>h2>.searchbox+.mac-viewtoggle{margin-left:0}
+}
+
 /* ===== 放在最后：布局型外观的搜索框在窄屏要竖排 =====
    各外观自己写了 body.theme-xxx .searchbox .form-inline{display:flex}，
    和这里的选择器特异性相同（0,3,0），同分时靠源码顺序决定胜负，所以必须放在它们后面，
