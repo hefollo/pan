@@ -171,7 +171,8 @@ if($is_ajax){
 include './head.php';
 if($islogin==1){}else exit("<script language='javascript'>window.location.href='./login.php';</script>");
 ?>
-<div class="container" style="padding-top:70px;">
+<div class="container">
+<div class="admin-page-wide">
 
 <div class="panel panel-primary">
 <div class="panel-heading"><h3 class="panel-title">发信概况</h3></div>
@@ -203,6 +204,7 @@ if($islogin==1){}else exit("<script language='javascript'>window.location.href='
 </div>
 
 </div>
+</div>
 <style>
 .maillog-stats{margin:0 -6px}
 .maillog-stats>div{padding:0 6px 12px}
@@ -222,7 +224,6 @@ if($islogin==1){}else exit("<script language='javascript'>window.location.href='
 }
 .maillog-loading{opacity:.45;transition:opacity .15s}
 </style>
-<script src="https://s4.zstatic.net/ajax/libs/layer/3.1.1/layer.js"></script>
 <script>
 /*
  * 筛选、搜索、翻页、清理全部就地刷新：服务端把统计、筛选条、表格、分页四块 HTML

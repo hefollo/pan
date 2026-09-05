@@ -63,8 +63,8 @@ unset($v);
 		</div>
 	</div>
 </div>
-  <div class="container" style="padding-top:70px;">
-    <div class="col-xs-12 center-block" style="float: none;">
+  <div class="container">
+    <div class="admin-page-wide">
 		<div class="panel panel-default">
 			<div class="panel-heading"><h3 class="panel-title">赞助页收款码设置</h3></div>
 			<div class="panel-body">
@@ -106,8 +106,6 @@ unset($v);
 	  	</table>
     </div>
   </div>
-<link rel="stylesheet" href="https://s4.zstatic.net/ajax/libs/layer/3.1.1/theme/default/layer.min.css">
-<script src="https://s4.zstatic.net/ajax/libs/layer/3.1.1/layer.min.js"></script>
 <script src="https://s4.zstatic.net/ajax/libs/bootstrap-table/1.21.4/bootstrap-table.min.js"></script>
 <script src="https://s4.zstatic.net/ajax/libs/bootstrap-table/1.21.4/extensions/page-jump-to/bootstrap-table-page-jump-to.min.js"></script>
 <script src="../assets/js/custom.js"></script>

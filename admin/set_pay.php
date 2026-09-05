@@ -163,7 +163,8 @@ $pay_names = implode('、', $pay_names);
 $pay_tab = (empty($conf['alipay_open']) && !empty($conf['epay_open'])) ? 'epay' : 'alipay';
 if(isset($_GET['tab']) && $_GET['tab'] === 'epay')$pay_tab = 'epay';
 ?>
-<div class="container" style="padding-top:70px;">
+<div class="container">
+<div class="admin-page-wide">
 <?php if($msg){?>
 <div class="alert alert-<?php echo $msgtype?>"><?php echo htmlspecialchars($msg, ENT_QUOTES, 'UTF-8')?></div>
 <?php }?>
@@ -383,6 +384,7 @@ if(isset($_GET['tab']) && $_GET['tab'] === 'epay')$pay_tab = 'epay';
 </div>
 </div>
 </div>
+</div>
 
 <style>
 .pay-common{padding-bottom:6px;margin-bottom:14px;border-bottom:1px solid #eee}
@@ -401,7 +403,6 @@ if(isset($_GET['tab']) && $_GET['tab'] === 'epay')$pay_tab = 'epay';
 .plan-form .plan-editing{margin-left:10px;color:#8a94a6;font-size:13px}
 .plan-row.plan-row-active>td{background:#eef3ff !important}
 </style>
-<script src="https://s4.zstatic.net/ajax/libs/layer/3.1.1/layer.js"></script>
 <script>
 /*
  * 购买套餐设置整页都是就地加载：
@@ -541,25 +542,6 @@ if(isset($_GET['tab']) && $_GET['tab'] === 'epay')$pay_tab = 'epay';
 })();
 </script>
 <script>
-function saveSetting(obj){
-	var ii = layer.load(2, {shade:[0.1,'#fff']});
-	$.ajax({
-		type : 'POST',
-		url : 'ajax.php?act=set',
-		data : $(obj).serialize(),
-		dataType : 'json',
-		success : function(data) {
-			layer.close(ii);
-			if(data.code == 0){
-				layer.alert('设置保存成功！', {icon:1, closeBtn:false}, function(){ window.location.reload(); });
-			}else{
-				layer.alert(data.msg, {icon:2});
-			}
-		},
-		error:function(){ layer.close(ii); layer.msg('服务器错误'); }
-	});
-	return false;
-}
 $(function(){
 	$('select[default]').each(function(){ $(this).val($(this).attr('default')); });
 	//保存设置会刷新页面，这里记一下当前停在哪个支付标签页，刷新回来还在原处

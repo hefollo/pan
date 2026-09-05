@@ -58,7 +58,6 @@ $file_reward_title = isset($conf['file_reward_title']) && $conf['file_reward_tit
 $file_reward_image = isset($conf['file_reward_image']) && $conf['file_reward_image'] !== '' ? $conf['file_reward_image'] : 'includes/sponsor/images/zhifubaohb.jpg';
 ?>
 <style>
-.script-settings-page{padding-top:70px}
 .script-settings-shell{float:none}
 .script-settings-form{display:block}
 .script-settings-panel{border-radius:18px!important;overflow:hidden}
@@ -166,7 +165,6 @@ body.admin-theme-emerald.admin-body .script-ad-table-wrap,
 body.admin-theme-sakura.admin-body .script-ad-table-wrap,
 body.admin-theme-onefour.admin-body .script-ad-table-wrap{border-color:rgba(148,163,184,.18)}
 @media (max-width:767px){
-	.script-settings-page{padding-top:64px}
 	.script-settings-panel>.panel-body{padding:16px}
 	.script-settings-panel>.panel-heading{padding:16px!important}
 	.script-settings-panel .form-group{padding:14px 0}
@@ -179,7 +177,7 @@ body.admin-theme-onefour.admin-body .script-ad-table-wrap{border-color:rgba(148,
 }
 </style>
 <div class="container script-settings-page">
-  <div class="col-xs-12 col-sm-11 col-lg-10 center-block script-settings-shell">
+  <div class="admin-page script-settings-shell">
 	<?php if($saved){?>
 	<div class="alert alert-success">&#35774;&#32622;&#20445;&#23384;&#25104;&#21151;&#65292;&#21069;&#21488;&#21047;&#26032;&#21518;&#20250;&#31435;&#21363;&#35835;&#21462;&#26032;&#30340;&#20869;&#23481;&#12290;</div>
 	<?php }?>

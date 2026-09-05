@@ -48,7 +48,8 @@ $paid_total = $DB->getColumn("SELECT IFNULL(SUM(price),0) FROM pre_order WHERE s
 $paid_count = intval($DB->getColumn("SELECT count(*) FROM pre_order WHERE status=1"));
 $status_text = [0=>'<span class="label label-warning">待支付</span>', 1=>'<span class="label label-success">已支付</span>', 2=>'<span class="label label-default">已关闭</span>'];
 ?>
-<div class="container" style="padding-top:70px;">
+<div class="container">
+<div class="admin-page-wide">
 <?php if($msg){?><div class="alert alert-info"><?php echo htmlspecialchars($msg, ENT_QUOTES, 'UTF-8')?></div><?php }?>
 
 <div class="panel panel-primary">
@@ -116,6 +117,7 @@ $status_text = [0=>'<span class="label label-warning">待支付</span>', 1=>'<sp
 <?php if($page < $pages){?><a class="btn btn-xs btn-default" href="./order.php?page=<?php echo $page+1 . $link?>">下一页</a><?php }?>
   </span>
 <?php }?>
+</div>
 </div>
 </div>
 </div>

@@ -8,11 +8,13 @@ $title='系统设置';
 include './head.php';
 if($islogin==1){}else exit("<script language='javascript'>window.location.href='./login.php';</script>");
 ?>
-  <div class="container" style="padding-top:70px;">
-    <div class="col-xs-12 col-sm-10 col-lg-8 center-block" style="float: none;">
 <?php
 $mod=isset($_GET['mod'])?$_GET['mod']:null;
+//外观设置是一排排的外观卡片，21 套排下来要横向空间，用宽版；其余都是设置表单，收窄看着才不散
+$set_shell = ($mod === 'appearance') ? 'admin-page-wide' : 'admin-page';
 ?>
+  <div class="container">
+    <div class="<?php echo $set_shell?>">
 <?php
 if($mod=='site'){
 ?>
@@ -842,8 +844,6 @@ $.getJSON("./ajax.php?act=greenhealth", function(r){
 ?>
     </div>
   </div>
-<link rel="stylesheet" href="https://s4.zstatic.net/ajax/libs/layer/2.3/skin/layer.css">
-<script src="https://s4.zstatic.net/ajax/libs/layer/2.3/layer.js"></script>
 <script>
 var items = $("select[default]");
 for (i = 0; i < items.length; i++) {
@@ -861,31 +861,4 @@ $("#online_edit_mode").on('change', function(){
 	}
 });
 
-function saveSetting(obj){
-	var ii = layer.load(2, {shade:[0.1,'#fff']});
-	$.ajax({
-		type : 'POST',
-		url : 'ajax.php?act=set',
-		data : $(obj).serialize(),
-		dataType : 'json',
-		success : function(data) {
-			layer.close(ii);
-			if(data.code == 0){
-				layer.alert('设置保存成功！', {
-					icon: 1,
-					closeBtn: false
-				}, function(){
-				  window.location.reload()
-				});
-			}else{
-				layer.alert(data.msg, {icon: 2})
-			}
-		},
-		error:function(data){
-			layer.msg('服务器错误');
-			return false;
-		}
-	});
-	return false;
-}
 </script>

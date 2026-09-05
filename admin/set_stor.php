@@ -231,7 +231,8 @@ function stor_field($f){
 	return $html;
 }
 ?>
-<div class="container stor-page" style="padding-top:70px;">
+<div class="container stor-page">
+<div class="admin-page">
 
 <?php if(isset($_GET['onedrive'])){
 	$od = $_GET['onedrive'];
@@ -378,8 +379,7 @@ $cap_now = $stor_caps[$storage];
 </div>
 
 </div>
-<link rel="stylesheet" href="https://s4.zstatic.net/ajax/libs/layer/2.3/skin/layer.css">
-<script src="https://s4.zstatic.net/ajax/libs/layer/2.3/layer.js"></script>
+</div>
 <script>
 var storCaps = <?php echo json_encode($stor_caps, JSON_UNESCAPED_UNICODE)?>;
 var currentStor = <?php echo json_encode($storage)?>;

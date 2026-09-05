@@ -43,7 +43,8 @@ foreach(mailer()->senders() as $sender){
 }
 $mail_names = implode('、', $mail_names);
 ?>
-<div class="container" style="padding-top:70px;">
+<div class="container">
+<div class="admin-page">
 
 <div class="panel panel-primary">
 <div class="panel-heading"><h3 class="panel-title">发件人设置</h3></div>
@@ -256,6 +257,7 @@ $mail_names = implode('、', $mail_names);
 </div>
 
 </div>
+</div>
 
 <style>
 /* 单位不用 Bootstrap 的 input-group：后台几套皮肤各自改了 .form-control 的高度和圆角，
@@ -274,27 +276,7 @@ $mail_names = implode('、', $mail_names);
 .mail-attempt b{display:block;margin-bottom:2px}
 .mail-attempt pre{margin:8px 0 0;padding:8px;max-height:180px;overflow:auto;background:rgba(0,0,0,.05);border:0;border-radius:6px;font-size:12px;line-height:1.6;color:#444}
 </style>
-<script src="https://s4.zstatic.net/ajax/libs/layer/3.1.1/layer.js"></script>
 <script>
-function saveSetting(obj){
-	var ii = layer.load(2, {shade:[0.1,'#fff']});
-	$.ajax({
-		type : 'POST',
-		url : 'ajax.php?act=set',
-		data : $(obj).serialize(),
-		dataType : 'json',
-		success : function(data) {
-			layer.close(ii);
-			if(data.code == 0){
-				layer.alert('设置保存成功！', {icon:1, closeBtn:false}, function(){ window.location.reload(); });
-			}else{
-				layer.alert(data.msg, {icon:2});
-			}
-		},
-		error:function(){ layer.close(ii); layer.msg('服务器错误'); }
-	});
-	return false;
-}
 
 //测试发信：把每个通道的尝试结果原样显示出来，不然失败了只能靠猜
 function sendTest(form){

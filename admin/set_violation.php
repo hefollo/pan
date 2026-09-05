@@ -52,8 +52,8 @@ if($islogin==1){}else exit("<script language='javascript'>window.location.href='
 		</div>
 	</div>
 </div>
-  <div class="container" style="padding-top:70px;">
-    <div class="col-xs-12 center-block" style="float: none;">
+  <div class="container">
+    <div class="admin-page-wide">
 		<div class="alert alert-info">在文件管理里<b>封禁</b>文件会自动生成公示记录，<b>解封</b>会自动撤下公示；图片自动检测命中的记录默认<b>不公示</b>，请人工确认后再放出。公示页只展示脱敏后的文件名和IP。</div>
 	    <form onsubmit="return searchSubmit()" method="GET" class="form-inline" id="searchToolbar">
 	        <div class="form-group">
@@ -83,8 +83,6 @@ if($islogin==1){}else exit("<script language='javascript'>window.location.href='
 	  	</table>
     </div>
   </div>
-<link rel="stylesheet" href="https://s4.zstatic.net/ajax/libs/layer/3.1.1/theme/default/layer.min.css">
-<script src="https://s4.zstatic.net/ajax/libs/layer/3.1.1/layer.min.js"></script>
 <script src="https://s4.zstatic.net/ajax/libs/bootstrap-table/1.21.4/bootstrap-table.min.js"></script>
 <script src="https://s4.zstatic.net/ajax/libs/bootstrap-table/1.21.4/extensions/page-jump-to/bootstrap-table-page-jump-to.min.js"></script>
 <script src="../assets/js/custom.js"></script>

@@ -291,7 +291,8 @@ if($islogin==1){}else exit("<script language='javascript'>window.location.href='
 
 $green_off = !isset($conf['green_check']) || $conf['green_check'] == 0;
 ?>
-<div class="container" style="padding-top:70px;">
+<div class="container">
+<div class="admin-page-wide">
 
 <?php
 $schema_missing = green_schema_missing();
@@ -374,6 +375,7 @@ if(!$schema_missing && $numrows == 0){
 </div>
 
 </div>
+</div>
 
 <style>
 .greenlog-stats{margin:0 -6px}
@@ -405,8 +407,6 @@ if(!$schema_missing && $numrows == 0){
 .greenlog-score i{display:block;height:3px;margin-top:3px;border-radius:2px;background:var(--admin-primary);opacity:.55}
 .greenlog-loading{opacity:.45;transition:opacity .15s}
 </style>
-<link rel="stylesheet" href="https://s4.zstatic.net/ajax/libs/layer/2.3/skin/layer.css">
-<script src="https://s4.zstatic.net/ajax/libs/layer/2.3/layer.js"></script>
 <script>
 var greenlogState = {page: <?php echo $page?>, verdict: <?php echo json_encode($verdict_filter)?>, kw: <?php echo json_encode($kw)?>, etype: <?php echo json_encode($etype)?>};
 

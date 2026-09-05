@@ -17,11 +17,91 @@ body.admin-body a:hover,body.admin-body a:focus{color:var(--admin-primary-dark);
 /* Bootstrap 给选中项写死了 #337ab7。这里不用实心底色——有的主题 --admin-primary 是白色（如暗黑科技风），
    实心底会变成白底白字；改成左侧强调条+强调色文字，16 套主题都读得清 */
 .dropdown-menu>.active>a,.dropdown-menu>.active>a:hover,.dropdown-menu>.active>a:focus{background-color:transparent;color:var(--admin-primary);font-weight:700;box-shadow:inset 3px 0 0 var(--admin-primary)}
+/* 菜单里的分组标题：Bootstrap 自带的 dropdown-header 是 12px 灰字，夹在菜单项里根本看不出是标题 */
+.dropdown-menu .dropdown-header{padding:10px 16px 4px;color:var(--admin-muted);font-size:11px;font-weight:800;letter-spacing:.08em}
+.dropdown-menu .divider{margin:5px 0;background:var(--admin-line)}
+.dropdown-menu>li>a i.fa-fw{width:16px;margin-right:8px;color:var(--admin-muted)}
+.dropdown-menu>li>a:hover i.fa-fw,.dropdown-menu>.active>a i.fa-fw{color:var(--admin-primary)}
+/* 设置菜单有 14 项 5 个分组，笔记本屏幕竖着排会顶到屏幕外，给个上限让它自己滚 */
+.admin-settings-menu{min-width:214px;max-height:calc(100vh - 96px);overflow-y:auto}
 .container{max-width:1220px}
-body.admin-body>.container,body.admin-body>.container-fluid{max-width:none;width:100%;padding-left:28px;padding-right:28px}
+/* ===== 后台页面外壳 =====
+   顶栏是 fixed 的，内容要给它让出高度。这行 padding 原来是 14 个页面各写一份行内样式，
+   改一次得改 14 个文件，侧栏和 macOS 外观还得用 !important 才盖得住，统一收到这里。 */
+body.admin-body>.container,body.admin-body>.container-fluid{max-width:none;width:100%;padding:70px 28px 0}
+/* 内容宽度只有两档：设置表单类收窄居中，记录表格类放宽。
+   原来每个页面自己写 col-sm-10 / col-lg-8 / col-xs-12 / container-fluid，宽度全不一样，
+   而上面那条又把外层拉满，等于表单在宽屏上被抻到两千多像素、标签和输入框隔了半个屏幕。 */
+body.admin-body .admin-page,body.admin-body .admin-page-wide{width:100%!important;float:none;margin-left:auto;margin-right:auto;padding-left:0;padding-right:0}
+body.admin-body .admin-page{max-width:1080px}
+body.admin-body .admin-page-wide{max-width:1560px}
+/* 带鱼屏（3440 这类超宽屏）上，固定上限的内容两边会空出一大片。
+   试过把内容锁到侧栏左边，结果右边空一大块，比居中更难看——空白挪个位置解决不了问题。
+   现在的做法是让能用宽度的内容真正用起来：表格类页面上限放宽到 2400，
+   外观设置那种卡片网格改成按卡片宽度自动排列（见 .appearance-options），
+   设置表单则在 2000px 以上排成两列。所有页面一律居中，空白左右对称，看着才像是有意为之。 */
+@media (min-width:1900px){
+body.admin-body .admin-page-wide{max-width:2400px}
+}
+/* ===== 超宽屏：设置表单排成两列 =====
+   带鱼屏上单列表单只占屏幕三分之一，右边整片是空的。够宽的时候把设置项排成两列，
+   长文本域和提交按钮跨整行，一整页设置基本一屏能看完，滚动少一半。
+
+   页面选择器用 :has() 挑出「确实是左右两栏表单」的页面。这样做有个额外好处：
+   不支持 :has() 的老浏览器会把整条规则当作无效丢掉，自动退回现在的单列，
+   而不是排出一堆半宽格子。弹窗里的表单不在 .panel-body 下，一律不参与。 */
+@media (min-width:2000px){
+body.admin-body .admin-page:has(.panel-body .form-horizontal>.form-group){max-width:1840px}
+body.admin-body .admin-page:has(.panel-body .form-horizontal>.form-group) .panel-body .form-horizontal{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;column-gap:44px}
+/* 跨整行的几类：长文本域（公告、统计代码这种本来就要宽）、提交按钮行、表单里的说明条 */
+body.admin-body .admin-page:has(.panel-body .form-horizontal>.form-group) .panel-body .form-horizontal>.form-group:has(textarea),
+body.admin-body .admin-page:has(.panel-body .form-horizontal>.form-group) .panel-body .form-horizontal>.form-group:has([class*="col-sm-offset"]),
+body.admin-body .admin-page:has(.panel-body .form-horizontal>.form-group) .panel-body .form-horizontal>.alert{grid-column:1/-1}
+/* 两列时第一行是两个格子，上边框都得去掉 */
+body.admin-body .admin-page:has(.panel-body .form-horizontal>.form-group) .panel-body .form-horizontal>.form-group:nth-child(-n+2){border-top:0;padding-top:4px}
+}
+/* 宽度类只能挂在容器内部的那层 div 上，不能直接挂到 .container：侧栏外观给 .container
+   写了 max-width:none!important（它要靠 padding-left 给固定侧栏让位），挂在同一个元素上
+   会被盖掉，页面又变回满屏拉伸。 */
+
+/* ===== 设置表单的排版 =====
+   这些表单都是 Bootstrap 的 form-horizontal，输入框宽度跟着栏宽走。页面宽度没收之前
+   一个「网站标题」能占一千多像素；提交按钮又带着 .form-control，被拉成一条满宽的蓝条。
+   这里统一收一下，页面里一行 HTML 都不用动。 */
+body.admin-body .form-horizontal .form-control{max-width:640px}
+body.admin-body .form-horizontal textarea.form-control{max-width:820px}
+body.admin-body .form-horizontal .input-group{max-width:640px}
+body.admin-body .form-horizontal .input-group .form-control{max-width:none}
+/* 提交按钮：.form-control 让它撑满整行，收成正常按钮的宽度并靠左 */
+body.admin-body .form-horizontal input[type="submit"].form-control,
+body.admin-body .form-horizontal button[type="submit"].form-control{display:inline-block;width:auto;min-width:160px;padding-left:30px;padding-right:30px}
+/* 每个 form-group 后面还跟着一个 <br/>，行距忽大忽小，统一交给下面的 padding 管 */
+body.admin-body .form-horizontal>br{display:none}
+/* 设置行统一成「固定宽度标签 + 自适应控件」。
+   页面里写的标签列宽本来就有两套：网站信息 / 管理账号 / 用户IP 是 col-sm-2，
+   文件上传 / 上传API / 用户登录 是 col-sm-3，邮件、支付、存储又各写各的；
+   而且百分比列宽还会跟着面板宽度变，在菜单之间点来点去，标签和输入框的分界线一直在跳。
+   这里不看页面写的是几列，一律按 190px 对齐，所有设置页落在同一条线上。
+   只认表单的直接子元素：套餐表单那种「本身就是栅格列的 form-group」不在此列，不会被拆。 */
+body.admin-body .form-horizontal>.form-group{display:flex;flex-wrap:wrap;align-items:flex-start}
+body.admin-body .form-horizontal>.form-group>.control-label{flex:0 0 190px;width:190px;text-align:right;font-weight:600;line-height:1.5}
+body.admin-body .form-horizontal>.form-group>div[class*="col-"]{flex:1 1 0;width:auto;min-width:0;float:none}
+body.admin-body .form-horizontal>.form-group>[class*="col-sm-offset"]{margin-left:190px}
+/* 行与行之间用一条细线分隔，比原来靠 <br/> 撑出来的大片留白好扫得多 */
+body.admin-body .panel-body .form-horizontal>.form-group{margin-bottom:0;padding:13px 0;border-top:1px solid var(--admin-line)}
+body.admin-body .panel-body .form-horizontal>.form-group:first-child{border-top:0;padding-top:4px}
+@media (max-width:767px){
+/* 窄屏回到上下堆叠：标签占一整行、左对齐 */
+body.admin-body .form-horizontal>.form-group{display:block}
+body.admin-body .form-horizontal>.form-group>.control-label{width:100%;padding-bottom:6px;text-align:left}
+body.admin-body .form-horizontal>.form-group>[class*="col-sm-offset"]{margin-left:0}
+}
+/* 提示文字有两种写法：.help-block（灰）和 <font color="green">（绿），同一个表单里两种都有，
+   看着像两套页面拼起来的。统一按 .help-block 的样子显示 */
+body.admin-body .form-horizontal font[color="green"]{display:block;margin-top:7px;color:var(--admin-muted)!important;font-size:13px;line-height:1.7}
+body.admin-body .form-horizontal .help-block{margin-top:7px;color:var(--admin-muted);font-size:13px;line-height:1.7}
+/* 老的 .center-block 写法只剩没接进菜单的旧页面还在用，保持它们不塌 */
 body.admin-body>.container>.center-block,body.admin-body>.container-fluid>.center-block{max-width:none;width:100%!important;padding-left:0;padding-right:0}
-.admin-file-page{max-width:none;width:100%;padding-left:28px;padding-right:28px}
-.admin-file-page>.center-block{max-width:none;width:100%;padding-left:0;padding-right:0}
 .panel,.modal-content,.fixed-table-container{border:0;border-radius:8px;background:var(--admin-surface);box-shadow:var(--admin-shadow)}
 .panel{overflow:hidden}
 .panel-heading{border-bottom:1px solid var(--admin-line)!important;background:#fff!important;color:#111827!important;padding:14px 18px}
@@ -173,13 +253,17 @@ body.admin-body .admin-block-opts>a.on.v2,body.admin-body .admin-block-opts>a.on
 .admin-action-buttons .btn{display:inline-block;width:48px;min-width:48px;margin:0!important;padding:5px 0;line-height:1.25;text-align:center}
 .layui-layer{border-radius:8px!important;overflow:hidden}
 #showimg{display:flex;align-items:center;justify-content:center;background:#0f172a;border-radius:8px;overflow:hidden}
-/* 顶部导航的后台外观：菜单项排满时会换行，而各页面内容区是写死的 padding-top:70px，
-   导航一换成两行，内容就被固定导航压住（页面看着像"塌了"）。
-   ≥1200px 收紧项间距保证一行放得下；1200px 以下直接收成汉堡菜单
-   —— Bootstrap 3 默认 768px 才收，768~1199 这一段在菜单项 7 个时就已经会换行了。 */
+/* 顶部导航的后台外观：菜单项排满时会换行，导航一换成两行，内容就被固定导航压住
+   （页面看着像"塌了"）。一级项收成 5 个之后已经宽松了，这两条仍留着当保险；
+   1200px 以下直接收成汉堡菜单 —— Bootstrap 3 默认 768px 才收，768~1199 这一段
+   在菜单项多的时候就已经会换行了。 */
 @media (min-width:1200px){
 .top-nav-admin .navbar-default .navbar-nav>li>a{padding-left:11px;padding-right:11px}
 .top-nav-admin .navbar-default .navbar-nav>li>a i{margin-right:4px}
+/* 悬停即展开：文件管理、用户管理这些天天点的页面收进分组后本来要多点一下，
+   鼠标扫过就展开，实际操作还是一步到位。只给横排的顶栏用，
+   侧栏外观的菜单本来就是常驻展开的，汉堡菜单也不该被 hover 触发 */
+.top-nav-admin .navbar-nav>li:hover>.dropdown-menu{display:block}
 }
 @media (max-width:1199px){
 .top-nav-admin .navbar-header{float:none}
@@ -193,8 +277,21 @@ body.admin-body .admin-block-opts>a.on.v2,body.admin-body .admin-block-opts>a.on
 .top-nav-admin .navbar-nav .open .dropdown-menu{position:static;float:none;width:auto;margin-top:0;background:transparent;border:0;box-shadow:none}
 .top-nav-admin .navbar-nav .open .dropdown-menu>li>a{padding:8px 15px 8px 32px}
 }
-@media (max-width:991px){.navbar-default .navbar-nav>li>a{padding-top:14px;padding-bottom:14px}.container[style*="padding-top"]{padding-top:82px!important}#searchToolbar .btn-group{margin-left:0}}
+/* 窄屏导航项变高，顶栏也跟着高一截，内容要多让出一点（原来这条靠 [style*="padding-top"]
+   命中页面的行内样式，行内样式统一收进 .admin-body>.container 之后就改成直接写选择器了） */
+@media (max-width:991px){.navbar-default .navbar-nav>li>a{padding-top:14px;padding-bottom:14px}body.admin-body>.container,body.admin-body>.container-fluid{padding-top:82px}#searchToolbar .btn-group{margin-left:0}}
 @media (max-width:767px){body.admin-body{background:#fff}.navbar.navbar-default{min-height:56px}.navbar-default .navbar-brand{height:56px;line-height:28px}.container{width:100%}.panel,.modal-content,.fixed-table-container{border-radius:0;box-shadow:none}#searchToolbar{border-left:0;border-right:0;border-radius:0;box-shadow:none}.form-inline .form-control{width:100%}.form-inline .form-group,#searchToolbar .btn-group,#searchToolbar .btn{width:100%;margin-right:0}.admin-file-name{max-width:210px}.admin-file-thumb{width:58px;height:44px;flex-basis:58px}.admin-file-icon{width:44px;height:44px;flex-basis:44px}.huge{font-size:32px}.stat-panel .fa-5x{font-size:46px}.stat-panel .huge{font-size:30px}.stat-panel>.panel-heading>.row>.col-xs-3{flex-basis:34%;width:34%}.stat-panel>.panel-heading>.row>.col-xs-9{flex-basis:66%;width:66%}}
+/* 窄屏的搜索栏：页面里「搜索」这个标签和后面的下拉框写在同一个 form-group 里，
+   而窄屏下控件要占满整行，flex 行里控件一满宽就把标签挤成一个字一行（“搜”“索”竖着排）。
+   让这一格允许换行、标签独占一行；file.php 里 UID 那个框还写死了 width:100px，
+   窄屏上别的框都满宽就它是窄的，一并拉齐（行内样式要 !important 才盖得住）。
+   搜索/重置两个按钮平分一行，「批量操作」不在 form-group 里，仍然独占一行。 */
+@media (max-width:767px){
+#searchToolbar .form-group{flex-wrap:wrap;gap:8px}
+#searchToolbar label{flex:0 0 100%;width:100%;margin:0;line-height:1.8}
+#searchToolbar .form-control{width:100%!important}
+#searchToolbar .form-group .btn{flex:1 1 0;width:auto;min-width:0}
+}
 
 :root{--admin-bg:#f4f3ec;--admin-surface:#fffefa;--admin-soft:#f8f8f1;--admin-text:#171c18;--admin-muted:#64706a;--admin-line:#d8ddd0;--admin-primary:#119a8f;--admin-primary-dark:#0b7770;--admin-green:#119a8f;--admin-yellow:#d97706;--admin-red:#d9463e;--admin-shadow:none}
 body.admin-body{background:linear-gradient(90deg,rgba(218,221,207,.34) 0,rgba(255,255,255,0) 14%,rgba(255,255,255,0) 86%,rgba(218,221,207,.34) 100%),var(--admin-bg);color:var(--admin-text)}
@@ -317,7 +414,10 @@ body.admin-body>.container,body.admin-body>.container-fluid{padding-left:32px;pa
 .appearance-group-head{margin:0 0 14px;padding-left:11px;border-left:3px solid var(--admin-primary)}
 .appearance-group-head strong{display:block;color:inherit;font-size:15px;font-weight:800;line-height:1.4}
 .appearance-group-head small{display:block;margin-top:3px;color:inherit;opacity:.7;font-size:13px;line-height:1.6}
-.appearance-options{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px;margin-bottom:22px}
+/* 外观卡片按卡片宽度自动排：原来写死 4 列，屏幕再宽也只排 4 个，
+   每张卡在带鱼屏上被拉到 600 多像素，页面右边却空着一大片。
+   改成 auto-fill 之后，1280 的屏排 4 张、1920 排 6 张、3440 排 8 张，宽度自己填满 */
+.appearance-options{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:18px;margin-bottom:22px}
 .appearance-group .appearance-options{margin-bottom:0}
 @media (max-width:1199px){.appearance-options{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media (max-width:991px){.appearance-options{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -1896,7 +1996,7 @@ body.admin-theme-mac.admin-body .dropdown-menu>li>a:hover,body.admin-theme-mac.a
 body.admin-theme-mac.admin-body .dropdown-menu>li.active>a{background:var(--admin-primary)!important;color:#fff!important}
 /* 顶栏菜单横排只在 >=1200px 生效。1200px 以下 top-nav-admin 会把菜单收成汉堡，
    这里要是无条件写 display:flex!important，就会把那套折叠规则顶掉、菜单永远展开，
-   8 个一级项换成两行后正好压住页面内容 —— admin.css 上面那段注释说的就是这个坑 */
+   项目一多换成两行后正好压住页面内容 —— admin.css 上面那段注释说的就是这个坑 */
 @media (min-width:1200px){
 body.admin-theme-mac.admin-body .navbar-fixed-top .navbar-collapse{float:none;flex:1 1 auto;display:flex!important;align-items:center;padding:0;border:0;box-shadow:none}
 body.admin-theme-mac.admin-body .navbar-fixed-top .navbar-nav{float:none!important;display:flex;align-items:center;gap:2px;margin:0!important}
@@ -1914,7 +2014,7 @@ body.admin-theme-mac.admin-body .navbar-default .navbar-nav>li>a{padding:10px 12
 body.admin-theme-mac.admin-body .navbar-fixed-top .navbar-nav .open .dropdown-menu{background:transparent;border:0;box-shadow:none;backdrop-filter:none}
 body.admin-theme-mac.admin-body .navbar-fixed-top .navbar-nav .open .dropdown-menu>li>a{color:#5b5b60!important}
 }
-/* 窗口内容区：各后台页面的容器行内写死了 padding-top:70px（给固定顶栏让位的），
+/* 窗口内容区：公共样式给容器留了 padding-top:70px（给固定顶栏让位的），
    顶栏改成 sticky 之后它自己占位了，这段留白就是多余的，用 !important 收回来 */
 body.admin-theme-mac.admin-body>.container,
 body.admin-theme-mac.admin-body>.container-fluid{width:var(--mac-w);max-width:none;margin:0 auto 40px;padding:22px 24px 0!important;background:var(--admin-surface);border:1px solid var(--mac-edge);border-top:0;border-radius:0 0 12px 12px;box-shadow:var(--mac-side)}
@@ -2158,3 +2258,27 @@ body.admin-theme-cockpit.admin-body .appearance-settings-footer .glyphicon{color
 .appearance-preview-cockpit .appearance-panel span:first-child{width:100%;height:22px;background:linear-gradient(115deg,#6d5df6 0,#8b5cf6 46%,#b06ae8 100%)}
 .appearance-preview-cockpit .appearance-panel span:nth-child(2){width:86%}
 .appearance-preview-cockpit .appearance-panel span:nth-child(3){width:62%}
+
+/* ===== 分组菜单在两种形态下的收尾 =====
+   侧栏外观（控制台侧栏风 / 数据控制台风 / 深色工作台风 / 渐变仪表盘风）把下拉改成了常驻展开的
+   静态块，所以「文件 / 用户 / 设置」看起来就是三个分组；组里的小标题和分隔线得跟着侧栏的
+   尺寸走，另外侧栏本身已经可以滚动了，设置菜单不能再套一层自己的滚动区。 */
+body.admin-theme-dashboard.admin-body .navbar-nav>li>.dropdown-menu .dropdown-header,
+body.admin-theme-console.admin-body .navbar-nav>li>.dropdown-menu .dropdown-header,
+body.admin-theme-cockpit.admin-body .navbar-nav>li>.dropdown-menu .dropdown-header,
+body.admin-theme-workspace.admin-body .navbar-nav>li>.dropdown-menu .dropdown-header{padding:9px 12px 3px;color:var(--admin-muted);font-size:10.5px;font-weight:800;letter-spacing:.1em}
+body.admin-theme-dashboard.admin-body .navbar-nav>li>.dropdown-menu .divider,
+body.admin-theme-console.admin-body .navbar-nav>li>.dropdown-menu .divider,
+body.admin-theme-cockpit.admin-body .navbar-nav>li>.dropdown-menu .divider,
+body.admin-theme-workspace.admin-body .navbar-nav>li>.dropdown-menu .divider{margin:5px 8px;background:var(--admin-line)}
+body.admin-theme-dashboard.admin-body .admin-settings-menu,
+body.admin-theme-console.admin-body .admin-settings-menu,
+body.admin-theme-cockpit.admin-body .admin-settings-menu,
+body.admin-theme-workspace.admin-body .admin-settings-menu{max-height:none;overflow:visible}
+/* 顶栏外观在 1200px 以下收成汉堡菜单，展开的菜单本身就在可滚动的 navbar-collapse 里，
+   同理不再给设置菜单套第二层滚动条 */
+@media (max-width:1199px){
+.top-nav-admin .admin-settings-menu{max-height:none;overflow:visible}
+.top-nav-admin .navbar-nav .open .dropdown-menu .dropdown-header{padding-left:32px}
+.top-nav-admin .navbar-nav .open .dropdown-menu .divider{margin-left:15px;margin-right:15px}
+}

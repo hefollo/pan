@@ -14,8 +14,8 @@ $mysqlversion=$DB->getColumn("select VERSION()");
  * 本项目是二开分支，版本号和上游不是一套，检查结果也没有参考意义，直接去掉。
  */
 ?>
-<div class="container" style="padding-top:70px;">
-<div class="col-md-12 col-lg-10 center-block" style="float: none;">
+<div class="container">
+<div class="admin-page">
 <div id="browser-notice"></div>
 <div class="row">
                 <div class="col-lg-3 col-md-6">
