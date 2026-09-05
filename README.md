@@ -5,6 +5,12 @@
 - 本项目开源地址：<https://github.com/hefollo/pan>
 - 原开源项目地址：<https://github.com/netcccyun/pan>
 
+## 开源许可
+
+本项目采用 [MIT 许可证](LICENSE)。原项目 [netcccyun/pan](https://github.com/netcccyun/pan) 同样采用 [MIT 许可证](https://github.com/netcccyun/pan/blob/main/LICENSE)，本项目保留原作者版权声明及二次开发作者署名。
+
+MIT 许可允许使用、修改、分发和商用；分发软件副本或实质性部分时，须保留版权声明及许可声明。第三方依赖和素材如有独立许可证，按各自许可证执行。
+
 ![数据控制台风](https://raw.githubusercontent.com/hefollo/pan/main/img/%E6%95%B0%E6%8D%AE%E6%8E%A7%E5%88%B6%E5%8F%B0%E9%A3%8E.png)
 ![上传门户风](https://raw.githubusercontent.com/hefollo/pan/main/img/%E4%B8%8A%E4%BC%A0%E9%97%A8%E6%88%B7%E9%A3%8E.png)
 ![深色工作台风](https://raw.githubusercontent.com/hefollo/pan/main/img/%E6%B7%B1%E8%89%B2%E5%B7%A5%E4%BD%9C%E5%8F%B0%E9%A3%8E.png)
@@ -502,3 +508,7 @@ http(s)://你的域名/install/update.php
 ## 致谢
 
 感谢原开源项目 [netcccyun/pan](https://github.com/netcccyun/pan) 的作者提供基础程序支持。
+
+## 交流社区
+
+[LINUX DO](https://linux.do/)：真诚、友善、团结、专业的技术社区。
