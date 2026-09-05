@@ -5,10 +5,10 @@
 - 本项目开源地址：<https://github.com/hefollo/pan>
 - 原开源项目地址：<https://github.com/netcccyun/pan>
 
-![数据控制台风](img/数据控制台风.png)
-![上传门户风](img/上传门户风.png)
-![深色工作台风](img/深色工作台风.png)
-![渐变仪表盘风](img/渐变仪表盘风.png)
+![数据控制台风](https://raw.githubusercontent.com/hefollo/pan/main/img/%E6%95%B0%E6%8D%AE%E6%8E%A7%E5%88%B6%E5%8F%B0%E9%A3%8E.png)
+![上传门户风](https://raw.githubusercontent.com/hefollo/pan/main/img/%E4%B8%8A%E4%BC%A0%E9%97%A8%E6%88%B7%E9%A3%8E.png)
+![深色工作台风](https://raw.githubusercontent.com/hefollo/pan/main/img/%E6%B7%B1%E8%89%B2%E5%B7%A5%E4%BD%9C%E5%8F%B0%E9%A3%8E.png)
+![渐变仪表盘风](https://raw.githubusercontent.com/hefollo/pan/main/img/%E6%B8%90%E5%8F%98%E4%BB%AA%E8%A1%A8%E7%9B%98%E9%A3%8E.png)
 
 ![项目预览](https://mpimg.cn/view.php/2841008ec06283dcd8378d7045992dcf.png)
 ![项目预览](https://mpimg.cn/view.php/b551758ecaff4aae424f0b4b22fdcabb.png)
@@ -81,76 +81,80 @@
 
 **登录与注册**
 
-![登录界面](img/前端截图/登录界面.png)
-![注册界面](img/前端截图/注册界面.png)
+![登录界面](https://raw.githubusercontent.com/hefollo/pan/main/img/%E5%89%8D%E7%AB%AF%E6%88%AA%E5%9B%BE/%E7%99%BB%E5%BD%95%E7%95%8C%E9%9D%A2.png)
+![注册界面](https://raw.githubusercontent.com/hefollo/pan/main/img/%E5%89%8D%E7%AB%AF%E6%88%AA%E5%9B%BE/%E6%B3%A8%E5%86%8C%E7%95%8C%E9%9D%A2.png)
 
 **购买权限页**
 
-![购买权限页](img/buy-page.png)
+![购买权限页](https://raw.githubusercontent.com/hefollo/pan/main/img/buy-page.png)
 
 **个人中心**
 
-![个人中心-概览](img/前端截图/个人中心-概览.png)
-![个人中心-我的文件](img/前端截图/个人中心-我的文件.png)
-![个人中心-订单记录](img/前端截图/个人中心-订单记录.png)
-![个人中心-账号设置](img/前端截图/个人中心-账号设置.png)
+![个人中心-概览](https://raw.githubusercontent.com/hefollo/pan/main/img/%E5%89%8D%E7%AB%AF%E6%88%AA%E5%9B%BE/%E4%B8%AA%E4%BA%BA%E4%B8%AD%E5%BF%83-%E6%A6%82%E8%A7%88.png)
+![个人中心-我的文件](https://raw.githubusercontent.com/hefollo/pan/main/img/%E5%89%8D%E7%AB%AF%E6%88%AA%E5%9B%BE/%E4%B8%AA%E4%BA%BA%E4%B8%AD%E5%BF%83-%E6%88%91%E7%9A%84%E6%96%87%E4%BB%B6.png)
+![个人中心-订单记录](https://raw.githubusercontent.com/hefollo/pan/main/img/%E5%89%8D%E7%AB%AF%E6%88%AA%E5%9B%BE/%E4%B8%AA%E4%BA%BA%E4%B8%AD%E5%BF%83-%E8%AE%A2%E5%8D%95%E8%AE%B0%E5%BD%95.png)
+![个人中心-账号设置](https://raw.githubusercontent.com/hefollo/pan/main/img/%E5%89%8D%E7%AB%AF%E6%88%AA%E5%9B%BE/%E4%B8%AA%E4%BA%BA%E4%B8%AD%E5%BF%83-%E8%B4%A6%E5%8F%B7%E8%AE%BE%E7%BD%AE.png)
 
 ### 后台
 
+一级菜单收成「首页 / 文件 / 用户 / 设置 / 退出」五项，「设置」下拉再按「站点 / 上传与存储 /
+用户与付费 / 安全与合规 / 其它」分组，不用在十几个二级页面里翻找。侧栏型外观（控制台侧栏风 /
+数据控制台风 / 深色工作台风 / 渐变仪表盘风）下这些分组是常驻展开的静态列表，不需要点开。
+
 **后台首页**
 
-![后台首页](img/后台截图/后台首页.png)
+![后台首页](https://raw.githubusercontent.com/hefollo/pan/main/img/%E5%90%8E%E5%8F%B0%E6%88%AA%E5%9B%BE/%E5%90%8E%E5%8F%B0%E9%A6%96%E9%A1%B5.png)
 
 **文件管理**
 
-![文件管理](img/后台截图/文件管理.png)
+![文件管理](https://raw.githubusercontent.com/hefollo/pan/main/img/%E5%90%8E%E5%8F%B0%E6%88%AA%E5%9B%BE/%E6%96%87%E4%BB%B6%E7%AE%A1%E7%90%86.png)
 
 **用户管理**
 
-![用户管理](img/后台截图/用户管理.png)
+![用户管理](https://raw.githubusercontent.com/hefollo/pan/main/img/%E5%90%8E%E5%8F%B0%E6%88%AA%E5%9B%BE/%E7%94%A8%E6%88%B7%E7%AE%A1%E7%90%86.png)
 
 **覆盖记录**
 
-![覆盖记录](img/后台截图/覆盖记录.png)
+![覆盖记录](https://raw.githubusercontent.com/hefollo/pan/main/img/%E5%90%8E%E5%8F%B0%E6%88%AA%E5%9B%BE/%E8%A6%86%E7%9B%96%E8%AE%B0%E5%BD%95.png)
 
 **存储类型设置**
 
-![存储类型设置](img/后台截图/存储类型设置.png)
+![存储类型设置](https://raw.githubusercontent.com/hefollo/pan/main/img/%E5%90%8E%E5%8F%B0%E6%88%AA%E5%9B%BE/%E5%AD%98%E5%82%A8%E7%B1%BB%E5%9E%8B%E8%AE%BE%E7%BD%AE.png)
 
 **内容检测设置**
 
-![内容检测设置](img/后台截图/内容检测设置.png)
+![内容检测设置](https://raw.githubusercontent.com/hefollo/pan/main/img/%E5%90%8E%E5%8F%B0%E6%88%AA%E5%9B%BE/%E5%86%85%E5%AE%B9%E6%A3%80%E6%B5%8B%E8%AE%BE%E7%BD%AE.png)
 
 **内容检测记录**
 
-![内容检测记录](img/后台截图/内容检测记录.png)
+![内容检测记录](https://raw.githubusercontent.com/hefollo/pan/main/img/%E5%90%8E%E5%8F%B0%E6%88%AA%E5%9B%BE/%E5%86%85%E5%AE%B9%E6%A3%80%E6%B5%8B%E8%AE%B0%E5%BD%95.png)
 
 **外观设置**
 
-![外观设置](img/后台截图/外观设置.png)
+![外观设置](https://raw.githubusercontent.com/hefollo/pan/main/img/%E5%90%8E%E5%8F%B0%E6%88%AA%E5%9B%BE/%E5%A4%96%E8%A7%82%E8%AE%BE%E7%BD%AE.png)
 
 **购买套餐设置**
 
-![购买套餐设置一](img/后台截图/购买套餐设置1.png)
-![购买套餐设置二](img/后台截图/购买套餐设置2.png)
+![购买套餐设置一](https://raw.githubusercontent.com/hefollo/pan/main/img/%E5%90%8E%E5%8F%B0%E6%88%AA%E5%9B%BE/%E8%B4%AD%E4%B9%B0%E5%A5%97%E9%A4%90%E8%AE%BE%E7%BD%AE1.png)
+![购买套餐设置二](https://raw.githubusercontent.com/hefollo/pan/main/img/%E5%90%8E%E5%8F%B0%E6%88%AA%E5%9B%BE/%E8%B4%AD%E4%B9%B0%E5%A5%97%E9%A4%90%E8%AE%BE%E7%BD%AE2.png)
 
 **订单记录**
 
-![订单记录](img/后台截图/订单记录.png)
+![订单记录](https://raw.githubusercontent.com/hefollo/pan/main/img/%E5%90%8E%E5%8F%B0%E6%88%AA%E5%9B%BE/%E8%AE%A2%E5%8D%95%E8%AE%B0%E5%BD%95.png)
 
 **邮件发信设置**
 
-![邮件发信设置一](img/后台截图/邮件发信设置1.png)
-![邮件发信设置二](img/后台截图/邮件发信设置2.png)
-![邮件发信设置三](img/后台截图/邮件发信设置3.png)
+![邮件发信设置一](https://raw.githubusercontent.com/hefollo/pan/main/img/%E5%90%8E%E5%8F%B0%E6%88%AA%E5%9B%BE/%E9%82%AE%E4%BB%B6%E5%8F%91%E4%BF%A1%E8%AE%BE%E7%BD%AE1.png)
+![邮件发信设置二](https://raw.githubusercontent.com/hefollo/pan/main/img/%E5%90%8E%E5%8F%B0%E6%88%AA%E5%9B%BE/%E9%82%AE%E4%BB%B6%E5%8F%91%E4%BF%A1%E8%AE%BE%E7%BD%AE2.png)
+![邮件发信设置三](https://raw.githubusercontent.com/hefollo/pan/main/img/%E5%90%8E%E5%8F%B0%E6%88%AA%E5%9B%BE/%E9%82%AE%E4%BB%B6%E5%8F%91%E4%BF%A1%E8%AE%BE%E7%BD%AE3.png)
 
 **发信记录**
 
-![发信记录](img/后台截图/发信记录.png)
+![发信记录](https://raw.githubusercontent.com/hefollo/pan/main/img/%E5%90%8E%E5%8F%B0%E6%88%AA%E5%9B%BE/%E5%8F%91%E4%BF%A1%E8%AE%B0%E5%BD%95.png)
 
 **用户 IP 地址获取设置**
 
-![用户IP地址获取设置](img/后台截图/用户IP地址获取设置.png)
+![用户IP地址获取设置](https://raw.githubusercontent.com/hefollo/pan/main/img/%E5%90%8E%E5%8F%B0%E6%88%AA%E5%9B%BE/%E7%94%A8%E6%88%B7IP%E5%9C%B0%E5%9D%80%E8%8E%B7%E5%8F%96%E8%AE%BE%E7%BD%AE.png)
 
 ## 外观主题
 
@@ -267,7 +271,7 @@
 | 支付宝当面付 | 页面内直接出二维码，扫码付款 | 应用 ID、支付宝公钥、商户应用私钥 |
 | 易支付 | 点「立即购买」后弹窗选支付宝 / 微信 / QQ钱包，跳转到收银台 | 接口地址、商户 ID(PID)、商户密钥(KEY) |
 
-![支付方式设置](img/admin-pay-setting.png)
+![支付方式设置](https://raw.githubusercontent.com/hefollo/pan/main/img/admin-pay-setting.png)
 
 还可以设置付款时显示的商品名称、易支付开放哪几个支付通道，以及购买页顶部的公告文字。
 
@@ -275,7 +279,7 @@
 
 套餐在后台自由增删改，支持按分类分区展示。程序内置一套 24 个推荐套餐，点「一键导入推荐套餐」即可导入（同名自动跳过），导入后价格和额度随便改。
 
-![套餐列表](img/admin-plan-list.png)
+![套餐列表](https://raw.githubusercontent.com/hefollo/pan/main/img/admin-plan-list.png)
 
 每个套餐可以单独设置每日上传数量、单文件大小和有效期，组合出四类套餐：
 
