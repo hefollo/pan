@@ -5,7 +5,7 @@ if(!in_array($site_theme, site_theme_keys(), true)){
   $site_theme = default_site_theme();
 }
 //这四套是固定侧栏外观，菜单竖着排；其余都是顶部横向导航
-$is_sidebar_admin = in_array($site_theme, ['console', 'dashboard', 'workspace', 'cockpit'], true);
+$is_sidebar_admin = in_array($site_theme, ['console', 'dashboard', 'workspace', 'cockpit', 'studio', 'nebula', 'royal', 'crisp', 'azure', 'neo'], true);
 //内容检测没开的话，检测记录整项不显示（设置页仍在「安全与合规」组里，用来开它）
 $green_log_on = !empty($conf['green_check']);
 $admin_body_class = !empty($islogin) ? 'admin-body' : 'admin-login-body';
@@ -36,6 +36,9 @@ if(!function_exists('admin_sub_active')){
            同一个后台里弹窗长相不一样。版本以 3.1.1 为准，各页不再自己引 */ ?>
   <link href="https://s4.zstatic.net/ajax/libs/layer/3.1.1/theme/default/layer.min.css" rel="stylesheet"/>
   <link href="../assets/css/admin.css?v=<?php echo asset_ver('assets/css/admin.css')?>" rel="stylesheet"/>
+  <?php //外观设置里给这套外观单独配过颜色才有输出，没配就都是空的（后台在子目录里，路径要退一级） ?>
+  <?php echo theme_recolor_tag($site_theme, 'admin', '../');?>
+  <?php echo theme_gradient_style($site_theme, 'admin');?>
   <script src="https://s4.zstatic.net/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
   <script src="https://s4.zstatic.net/ajax/libs/twitter-bootstrap/3.4.1/js/bootstrap.min.js"></script>
   <script src="https://s4.zstatic.net/ajax/libs/layer/3.1.1/layer.min.js"></script>

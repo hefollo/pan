@@ -52,6 +52,9 @@ Thumbs.db
 Desktop.ini
 $RECYCLE.BIN/
 
+# 外观自定义配色生成的样式（保存外观时自动重建，不入库）
+/assets/css/custom/
+
 # 打包产物（上传替换包等）
 *.zip
 

@@ -27,6 +27,10 @@ case 'set':
 	if(isset($_POST['green_label_terrorism'])){
 		$_POST['green_label_terrorism'] = implode(',',$_POST['green_label_terrorism']);
 	}
+	//外观渐变是前端拼好的 JSON，落库前先按主题表洗一遍：认识的外观、合法的颜色角度才留
+	if(isset($_POST['theme_gradient'])){
+		$_POST['theme_gradient'] = normalize_theme_gradient($_POST['theme_gradient']);
+	}
 	//只写白名单里的配置键，其余一律丢弃（admin_user/admin_pwd 走账号页自己的表单）
 	$skipped = [];
 	foreach($_POST as $k=>$v){
@@ -35,6 +39,8 @@ case 'set':
 			continue;
 		}
 		saveSetting($k, $v);
+		//内存里的 $conf 跟着更新：下面同步 404 页要用刚存进去的渐变配置，不能读旧值
+		$conf[$k] = $v;
 	}
 	//静态的 404.html 读不到数据库配置，外观一改就把主题类名写进去
 	if(isset($_POST['site_theme']))sync_404_theme($_POST['site_theme']);

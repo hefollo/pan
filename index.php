@@ -58,6 +58,14 @@ if($ft !== ''){
     $sql .= layout_type_filter_sql($ft);
     $link .= '&ft='.urlencode($ft);
 }
+//排序：蓝白工作台风的列表上方有排序下拉，其它外观没有入口但参数照样认。
+//只认白名单里的四种，直接拼进 ORDER BY 的字符串全部是常量
+$sort_map = ['new'=>'id DESC', 'old'=>'id ASC', 'big'=>'size DESC', 'small'=>'size ASC'];
+$sort = (isset($_GET['sort']) && is_string($_GET['sort']) && isset($sort_map[$_GET['sort']])) ? $_GET['sort'] : 'new';
+$order_sql = $sort_map[$sort];
+if($sort !== 'new'){
+    $link .= '&sort='.$sort;
+}
 
 include_once SYSTEM_ROOT.'script_manager.php';
 include SYSTEM_ROOT.'header.php';
@@ -96,7 +104,7 @@ if($site_theme === 'portal' && !$kw && (!isset($_GET['m']) || $_GET['m'] !== 'mi
 $layout_key = (isset($layout_themes) && in_array($site_theme, $layout_themes, true)) ? $site_theme : '';
 $layout_is_mine = isset($_GET['m']) && $_GET['m'] === 'mine';
 $layout_counts = null;
-if($layout_key === 'console' || $layout_key === 'workspace' || $layout_key === 'cockpit'){
+if($layout_key === 'console' || $layout_key === 'workspace' || $layout_key === 'cockpit' || in_array($layout_key, studio_family_keys(), true)){
     $layout_counts = layout_type_counts($DB, $sql_base);
 }
 //渐变仪表盘风的问候栏、额度卡、统计卡和右侧栏都要用这两个数，先算一次传下去
@@ -110,10 +118,17 @@ if($kw) $layout_base_query .= ($layout_base_query === '' ? '' : '&').'kw='.urlen
 ?>
 <div class="container">
 <?php if($layout_key === 'cockpit'){echo layout_render_cockpit_head($DB, $layout_counts['']);}?>
-<?php if($layout_key === 'workspace' || $layout_key === 'cockpit'){?><div class="layout-shell"><?php }?>
+<?php if($layout_key === 'workspace' || $layout_key === 'cockpit' || in_array($layout_key, studio_family_keys(), true)){?><div class="layout-shell"><?php }?>
 <?php if($layout_key === 'cockpit'){?><div class="cockpit-main">
 <?php echo layout_render_cockpit_quota($DB, layout_storage_used($DB, $sql_base), $layout_counts[''], $cockpit_today);?>
 <?php echo layout_render_stats($layout_counts, $cockpit_today);?>
+<?php }?>
+<?php //蓝白工作台风：主视觉横幅 + 四张统计卡，都在左边这一列里
+if(in_array($layout_key, studio_family_keys(), true)){?><div class="studio-main">
+<?php echo layout_render_studio_hero($layout_counts[''], $layout_is_mine);?>
+<?php //清爽极简风和蓝天白云风的原型是五张统计卡，各自多一张文档 / 音频
+$studio_extra = in_array($layout_key, ['crisp', 'neo'], true) ? 'doc' : (($layout_key === 'azure') ? 'audio' : '');
+echo layout_render_stats($layout_counts, layout_today_total($DB, $sql_base), $studio_extra);?>
 <?php }?>
     <div class="well bs-component">
 <?php if($layout_key === 'workspace'){?>
@@ -140,8 +155,11 @@ if($kw) $layout_base_query .= ($layout_base_query === '' ? '' : '&').'kw='.urlen
         //免得把用户刚查出来的结果顶到屏幕外面去
         if(!$kw && $ft === ''){echo layout_render_mac_drop();}
 }?>
-<?php if(($layout_key === 'console' || $layout_key === 'workspace' || $layout_key === 'cockpit') && $layout_counts){?>
+<?php if(($layout_key === 'console' || $layout_key === 'workspace' || $layout_key === 'cockpit' || in_array($layout_key, studio_family_keys(), true)) && $layout_counts){?>
+        <div class="studio-filterbar">
         <?php echo layout_render_filters($layout_counts, $ft, $layout_base_query);?>
+        <?php if(in_array($layout_key, studio_family_keys(), true)){echo layout_render_studio_tools($sort, $layout_base_query);}?>
+        </div>
 <?php }?>
         <?php if(isset($_GET['m']) && $_GET['m']=='mine'){?>
         <input type="file" id="replaceFileInput" style="display:none">
@@ -151,12 +169,14 @@ if($kw) $layout_base_query .= ($layout_base_query === '' ? '' : '&').'kw='.urlen
             <thead>
                 <tr>
                     <th>#</th>
-                    <th>操作</th>
+                    <?php //工作台家族把操作列放到最右边，和这几套外观的原型一致；其余外观保持原来的第二列
+                    if(!in_array($layout_key, studio_family_keys(), true)){?><th>操作</th><?php }?>
                     <th>文件名</th>
                     <th>文件大小</th>
                     <th>文件格式</th>
                     <th>上传时间</th>
                     <th>上传者IP</th>
+                    <?php if(in_array($layout_key, studio_family_keys(), true)){?><th>操作</th><?php }?>
                 </tr>
             </thead>
             <tbody>
@@ -167,7 +187,7 @@ $pages=ceil($numrows/$pagesize);
 $page=isset($_GET['page'])?intval($_GET['page']):1;
 $offset=$pagesize*($page - 1);
 
-$rs=$DB->query("SELECT * FROM pre_file WHERE{$sql} ORDER BY id DESC LIMIT $offset,$pagesize");
+$rs=$DB->query("SELECT * FROM pre_file WHERE{$sql} ORDER BY {$order_sql} LIMIT $offset,$pagesize");
 $i=1;
 while($res = $rs->fetch())
 {
@@ -219,7 +239,11 @@ while($res = $rs->fetch())
 		.' data-view="'.htmlspecialchars($viewurl, ENT_QUOTES, 'UTF-8').'"'
 		.' data-icon="'.type_to_icon($res['type']).'"'
 		.' data-lock="'.(!empty($res['pwd']) ? '1' : '').'"';
-echo '<tr'.$row_attr.'><td><b>'.$i++.'</b></td><td class="filelist-actions-cell">'.$actions.'</td><td><i class="fa '.type_to_icon($res['type']).' fa-fw"></i>'.$res['name'].$lock_icon.'</td><td>'.size_format($res['size']).'</td><td><span class="file-type-badge">'.htmlspecialchars($type_text).'</span></td><td>'.$res['addtime'].'</td><td>'.$row_ip.'</td></tr>';
+$cell_action = '<td class="filelist-actions-cell">'.$actions.'</td>';
+$cell_rest = '<td><i class="fa '.type_to_icon($res['type']).' fa-fw"></i>'.$res['name'].$lock_icon.'</td><td>'.size_format($res['size']).'</td><td><span class="file-type-badge">'.htmlspecialchars($type_text).'</span></td><td>'.$res['addtime'].'</td><td>'.$row_ip.'</td>';
+//操作列的位置跟着表头走：蓝白工作台风在最右，其余外观在第二列
+echo '<tr'.$row_attr.'><td><b>'.$i++.'</b></td>'
+	.(in_array($layout_key, studio_family_keys(), true) ? $cell_rest.$cell_action : $cell_action.$cell_rest).'</tr>';
 }
 if($numrows == 0) echo '<tr><td colspan="7" align="center">还没上传过任何文件</td></tr>';
 ?>
@@ -269,6 +293,8 @@ echo '<li class="disabled"><a>尾页</a></li>';
     </div>
 <?php if($layout_key === 'workspace'){echo layout_render_preview();?></div><?php }?>
 <?php if($layout_key === 'cockpit'){?></div><?php echo layout_render_cockpit_side($DB, $layout_counts, $sql_base);?></div><?php }?>
+<?php //工作台家族：列表下面可能还有一条推广横幅，再收掉左列、输出右侧数据列
+if(in_array($layout_key, studio_family_keys(), true)){echo layout_render_studio_promo();?></div><?php echo layout_render_studio_side($DB, $sql_base, $layout_counts['']);?></div><?php }?>
 <?php include SYSTEM_ROOT.'footer.php';?>
 <?php if($layout_key === 'workspace'){?>
 <script src="./assets/js/layout-workspace.js?v=<?php echo VERSION?>"></script>

@@ -176,6 +176,7 @@ function layout_type_filters(){
 		'' => '全部',
 		'image' => '图片',
 		'video' => '视频',
+		'audio' => '音频',
 		'doc' => '文档',
 		'archive' => '压缩包',
 	];
@@ -199,7 +200,7 @@ function layout_type_filter_sql($ft){
  * 按分组统计当前列表里的文件数：一次 GROUP BY 查完，不为每个标签单独查一遍
  */
 function layout_type_counts($DB, $where_sql){
-	$counts = ['' => 0, 'image' => 0, 'video' => 0, 'doc' => 0, 'archive' => 0];
+	$counts = ['' => 0, 'image' => 0, 'video' => 0, 'audio' => 0, 'doc' => 0, 'archive' => 0];
 	//GROUP BY type 在没有 type 索引的大表上是全表扫描，缓存 5 分钟
 	$cache_key = 'counts|'.$where_sql;
 	$hit = layout_cache_get($cache_key, 300);
@@ -240,13 +241,16 @@ function layout_type_group($type){
 /**
  * 数据控制台风的统计卡
  */
-function layout_render_stats($counts, $today_count){
+function layout_render_stats($counts, $today_count, $extra = ''){
 	$cards = [
 		['fa-files-o', 'all', number_format($counts['']), '全部文件'],
 		['fa-picture-o', 'image', number_format($counts['image']), '图片文件'],
 		['fa-video-camera', 'video', number_format($counts['video']), '视频文件'],
-		['fa-clock-o', 'today', number_format($today_count), '今日上传'],
 	];
+	//有的外观排 5 张卡，中间插一张文档或音频；不传就还是原来的 4 张
+	if($extra === 'doc')  $cards[] = ['fa-file-text-o', 'doc', number_format(isset($counts['doc']) ? $counts['doc'] : 0), '文档文件'];
+	if($extra === 'audio')$cards[] = ['fa-music', 'audio', number_format(isset($counts['audio']) ? $counts['audio'] : 0), '音频文件'];
+	$cards[] = ['fa-clock-o', 'today', number_format($today_count), '今日上传'];
 	$html = '<div class="layout-stats">';
 	foreach($cards as $c){
 		$html .= '<div class="layout-stat layout-stat-'.$c[1].'">'
@@ -555,4 +559,385 @@ function layout_render_cockpit_side($DB, $counts, $where_sql){
 		.'<section class="cockpit-panel"><div class="cockpit-panel-head"><strong>快捷入口</strong></div>'
 		.'<div class="cockpit-links">'.$link_html.'</div></section>'
 		.'</aside>';
+}
+
+/* ===================== 蓝白工作台风（studio） =====================
+ * 结构：左侧白色侧栏（分组导航 + 底部升级卡）、顶部搜索条、内容区是
+ * 主视觉横幅 + 四张统计卡 + 文件面板，右侧再挂一列数据面板。
+ * 侧栏和顶栏在每个页面都有，所以顶栏由 header.php 输出；
+ * 横幅、统计卡、右侧栏只在文件列表页出现，由 index.php 调用。
+ */
+
+/**
+ * 顶部条：搜索框 + 上传按钮 + 头像。
+ * 搜索走首页那套 kw 参数，和「文件列表」页里的搜索是同一个入口；
+ * 站点关掉了文件搜索就不显示搜索框，只留右边的按钮。
+ */
+function layout_render_studio_topbar(){
+	global $conf, $islogin2, $userrow;
+	$kw = isset($_GET['kw']) && is_string($_GET['kw']) ? $_GET['kw'] : '';
+	$html = '<header class="studio-topbar">';
+	if(!empty($conf['filesearch'])){
+		$html .= '<form class="studio-search" action="./" method="GET" role="search">'
+			.'<i class="fa fa-search" aria-hidden="true"></i>'
+			.'<input type="search" name="kw" id="studioSearch" autocomplete="off" placeholder="搜索文件名、格式、标签…" value="'.htmlspecialchars($kw, ENT_QUOTES, 'UTF-8').'" required>'
+			//快捷键由 layout-studio.js 接管，没开 JS 时它就只是个说明标签
+			.'<kbd class="studio-kbd">Ctrl K</kbd></form>';
+	}else{
+		$html .= '<div class="studio-search studio-search-off"><i class="fa fa-folder-open-o" aria-hidden="true"></i><span>'
+			.htmlspecialchars($conf['title'], ENT_QUOTES, 'UTF-8').'</span></div>';
+	}
+	$html .= '<div class="studio-topbar-side">'
+		.'<a class="studio-upload" href="./upload.php"><i class="fa fa-cloud-upload" aria-hidden="true"></i> 上传文件</a>';
+	if(!empty($islogin2)){
+		$name = !empty($userrow['nickname']) ? $userrow['nickname'] : '我';
+		$name_safe = htmlspecialchars($name, ENT_QUOTES, 'UTF-8');
+		$initial = layout_name_initial($name);
+		$html .= '<a class="studio-avatar" href="./user.php" title="'.$name_safe.'">'
+			.($initial !== '' ? htmlspecialchars($initial, ENT_QUOTES, 'UTF-8') : '<i class="fa fa-user" aria-hidden="true"></i>')
+			.'</a>';
+	}else{
+		$html .= '<a class="studio-avatar studio-avatar-guest" href="./login.php" title="登录"><i class="fa fa-user-o" aria-hidden="true"></i></a>';
+	}
+	return $html.'</div></header>';
+}
+
+/**
+ * 侧栏底部的升级卡。购买功能没开就整块不显示（这个站根本卖不了权限，
+ * 挂个买不了的入口只会误导人）；开着的话文案按登录状态和买没买过分别写。
+ */
+function layout_render_studio_upsell(){
+	global $DB, $islogin2;
+	if(!function_exists('is_buy_open') || !is_buy_open())return '';
+	$plan = (!empty($islogin2) && function_exists('layout_user_plan')) ? layout_user_plan($DB) : null;
+	$bought = ($plan && !empty($plan['bought']));
+	$title = $bought ? '续费 / 升级权限' : '升级获取更多权限';
+	$btn = $bought ? '续费权限' : '购买权限';
+	return '<div class="studio-upsell">'
+		.'<span class="studio-upsell-icon"><i class="fa fa-diamond" aria-hidden="true"></i></span>'
+		.'<strong>'.$title.'</strong>'
+		.'<p>更大的存储空间<br>更稳定的高速下载体验</p>'
+		.'<a class="studio-upsell-btn" href="./buy.php">'.$btn.' <i class="fa fa-angle-right" aria-hidden="true"></i></a>'
+		.'</div>';
+}
+
+/**
+ * 文件列表页顶部的主视觉横幅：左边标题文案，右边一张纯 SVG 画的文件夹插画
+ * （不引外部图片，跟着外观配色走）
+ */
+function layout_render_studio_hero($total_files, $is_mine){
+	global $conf, $site_theme, $islogin2;
+	$site = htmlspecialchars($conf['title'], ENT_QUOTES, 'UTF-8');
+	//五套外观共用同一块横幅结构，差别在于文案、手写标语和多出来的那几行卖点
+	$c = [
+		'kicker'=>'', 'title'=>'', 'sub'=>'', 'tags'=>'', 'slogan'=>'让文件分享<br>更简单高效！',
+		'feats'=>[], 'checks'=>[], 'cta'=>false, 'badge'=>true, 'search'=>false,
+	];
+	switch($site_theme){
+		case 'nebula':
+			$c['kicker'] = '高效 · 安全 · 无限可能';
+			$c['title'] = $site;
+			$c['sub'] = '让文件分享更简单、更安全、更高效';
+			$c['slogan'] = '好的分享<br>让世界更近';
+			$c['badge'] = false;
+			$c['feats'] = [
+				['fa-bolt', 'blue', '极速上传', '全球加速节点'],
+				['fa-shield', 'violet', '安全可靠', '多重数据保护'],
+				['fa-share-alt', 'green', '随时分享', '一键生成外链'],
+			];
+			break;
+		case 'royal':
+			$c['kicker'] = '欢迎使用';
+			$c['title'] = $site;
+			$c['sub'] = '让文件分享更简单高效';
+			$c['tags'] = '安全存储 · 极速上传 · 随时随地访问';
+			$c['slogan'] = '好文件<br>值得被分享';
+			$c['badge'] = false;
+			break;
+		case 'crisp':
+			$c['title'] = '高效存储 · 自由分享';
+			$c['sub'] = $site.'，让文件传输更简单、更安全、更高效。';
+			$c['slogan'] = '分享创造价值<br>让数据触手可及！';
+			$c['badge'] = false;
+			$c['checks'] = ['高速上传下载', '多格式在线预览', '永久外链分享', '企业级安全防护'];
+			$c['cta'] = true;
+			break;
+		case 'azure':
+			$c['title'] = $site.'<br><span>让文件分享更简单</span>';
+			$c['sub'] = '安全存储 · 高速下载 · 永久分享';
+			$c['slogan'] = '你的文件<br>触手可达！';
+			$c['badge'] = false;
+			$c['feats'] = [
+				['fa-download', 'blue', '高速下载', ''],
+				['fa-lock', 'violet', '安全加密', ''],
+				['fa-refresh', 'green', '多端同步', ''],
+			];
+			break;
+		case 'skyline':
+			$c['title'] = '云端存储，随时随地';
+			$c['sub'] = '大容量 · 高速上传下载 · 安全加密 · 永久存储';
+			$c['slogan'] = '让文件随心<br>去到任何地方';
+			$c['badge'] = false;
+			$c['search'] = true;   //这套外观的搜索框在横幅里，不在顶栏
+			break;
+		case 'neo':
+			$c['title'] = '让分享更有态度';
+			$c['sub'] = '高效的文件管理与分享平台，简单 · 安全 · 永久可用';
+			$c['slogan'] = '文件不止存储<br>更是连接世界的方式！';
+			$c['badge'] = false;
+			$c['cta'] = true;
+			break;
+		default:
+			//蓝白工作台风：横幅就是当前列表的标题
+			$c['title'] = $is_mine ? '我的文件' : '文件列表';
+			$c['sub'] = $is_mine ? '这里是你上传过的全部文件，可随时下载或复制外链。' : '管理、预览并分享你上传的所有内容。';
+	}
+
+	$body = '';
+	if($c['kicker'] !== '')$body .= '<span class="studio-hero-kicker">'.$c['kicker'].'</span>';
+	$body .= '<h1>'.$c['title'].'</h1>';
+	if($c['sub'] !== '')$body .= '<p>'.$c['sub'].'</p>';
+	if($c['tags'] !== '')$body .= '<p class="studio-hero-tags">'.$c['tags'].'</p>';
+	if($c['checks']){
+		$body .= '<div class="studio-hero-checks">';
+		foreach($c['checks'] as $t){
+			$body .= '<span><i class="fa fa-check-circle" aria-hidden="true"></i> '.$t.'</span>';
+		}
+		$body .= '</div>';
+	}
+	if($c['cta']){
+		//两个按钮都指向站里真有的页面，没有的功能不摆空按钮
+		$mine = !empty($islogin2) ? './user.php?tab=files' : './?m=mine';
+		$up_text = ($site_theme === 'neo') ? '立即上传' : '上传文件';
+		$body .= '<div class="studio-hero-cta">'
+			.'<a class="studio-hero-btn primary" href="./upload.php"><i class="fa fa-upload" aria-hidden="true"></i> '.$up_text.'</a>'
+			.'<a class="studio-hero-btn" href="'.$mine.'"><i class="fa fa-link" aria-hidden="true"></i> 我的文件</a></div>';
+	}
+	//横幅里的大搜索框：走首页那套 kw 参数，站点关掉搜索功能就不出现
+	if($c['search'] && !empty($conf['filesearch'])){
+		$kw = isset($_GET['kw']) && is_string($_GET['kw']) ? $_GET['kw'] : '';
+		$body .= '<form class="studio-hero-search" action="./" method="GET" role="search">'
+			.'<i class="fa fa-search" aria-hidden="true"></i>'
+			.'<input type="search" name="kw" autocomplete="off" placeholder="搜索文件名、格式、标签等…" value="'.htmlspecialchars($kw, ENT_QUOTES, 'UTF-8').'" required>'
+			.'<button type="submit"><i class="fa fa-search" aria-hidden="true"></i> 搜索</button></form>';
+	}
+	if($c['feats']){
+		$body .= '<div class="studio-hero-feats">';
+		foreach($c['feats'] as $f){
+			$body .= '<span class="studio-feat"><i class="fa '.$f[0].' studio-feat-'.$f[1].'" aria-hidden="true"></i>'
+				.'<b>'.$f[2].'</b>'.($f[3] !== '' ? '<em>'.$f[3].'</em>' : '').'</span>';
+		}
+		$body .= '</div>';
+	}
+
+	$html = '<section class="studio-hero"><div class="studio-hero-main">';
+	if($c['badge'])$html .= '<span class="studio-hero-badge"><i class="fa fa-folder-open" aria-hidden="true"></i></span>';
+	$html .= '<div class="studio-hero-copy">'.$body.'</div></div>'
+		.'<span class="studio-hero-slogan">'.$c['slogan'].'</span>'
+		.'<span class="studio-hero-art" aria-hidden="true">'.layout_studio_art().'</span>'
+		.'</section>';
+	return $html;
+}
+
+/**
+ * 列表下面那条推广横幅（紫韵会员风 / 蓝天白云风才有）。
+ * 卖点文案是固定的，但「立即升级」按钮只有真开了购买功能才出现。
+ */
+function layout_render_studio_promo(){
+	global $site_theme;
+	if(!in_array($site_theme, ['royal', 'azure'], true))return '';
+	$buy = function_exists('is_buy_open') && is_buy_open();
+	if($site_theme === 'azure' && !$buy)return '';   //这条本身就是升级广告，买不了就别出现
+	$title = $site_theme === 'azure' ? '升级会员，解锁更多强大功能' : '安全、快速、无限可能';
+	$sub = $site_theme === 'azure' ? '更大的存储空间 · 更稳定的高速下载 · 专属高级功能' : '让数据创造更多价值';
+	$chips = $site_theme === 'azure'
+		? [['fa-database', '大容量存储'], ['fa-download', '高速下载通道'], ['fa-clock-o', '文件永久保存'], ['fa-headphones', '专属客服支持']]
+		: [['fa-lock', '多重安全加密'], ['fa-rocket', '高速稳定传输'], ['fa-globe', '全球内容分发'], ['fa-magic', '简单高效易用']];
+	$html = '<section class="studio-promo"><div class="studio-promo-main">'
+		.'<h3>'.$title.'</h3><p>'.$sub.'</p><div class="studio-promo-chips">';
+	foreach($chips as $ch){
+		$html .= '<span><i class="fa '.$ch[0].'" aria-hidden="true"></i> '.$ch[1].'</span>';
+	}
+	$html .= '</div></div>';
+	$html .= '<span class="studio-promo-slogan">'.($site_theme === 'azure' ? '不只是存储<br>更是无限可能！' : '存储美好<br>分享精彩').'</span>';
+	if($buy)$html .= '<a class="studio-promo-btn" href="./buy.php"><i class="fa fa-diamond" aria-hidden="true"></i> 立即升级 <i class="fa fa-angle-right" aria-hidden="true"></i></a>';
+	return $html.'</section>';
+}
+
+//横幅右侧那张插画：文件夹 + 云，纯 SVG，颜色用外观变量，换主色时跟着变
+function layout_studio_art(){
+	return '<svg viewBox="0 0 240 170" xmlns="http://www.w3.org/2000/svg">'
+		.'<defs>'
+		.'<linearGradient id="studioArtA" x1="0" y1="0" x2="1" y2="1">'
+		.'<stop offset="0" stop-color="#c9dcff"/><stop offset="1" stop-color="#7ba4fb"/></linearGradient>'
+		.'<linearGradient id="studioArtB" x1="0" y1="0" x2="0" y2="1">'
+		.'<stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#dbe7ff"/></linearGradient>'
+		.'</defs>'
+		.'<ellipse cx="128" cy="148" rx="86" ry="12" fill="#dfe8fb"/>'
+		//文件夹后板
+		.'<path d="M46 52a12 12 0 0 1 12-12h38l14 16h60a12 12 0 0 1 12 12v62a12 12 0 0 1-12 12H58a12 12 0 0 1-12-12z" fill="url(#studioArtA)"/>'
+		//里面露出的纸张
+		.'<rect x="66" y="52" width="120" height="56" rx="8" fill="url(#studioArtB)"/>'
+		.'<rect x="80" y="68" width="62" height="7" rx="3.5" fill="#c3d5f7"/>'
+		.'<rect x="80" y="83" width="40" height="7" rx="3.5" fill="#dbe6fb"/>'
+		//文件夹前板
+		.'<path d="M40 76h156a10 10 0 0 1 9.8 12l-10 54a12 12 0 0 1-11.8 9.7H52A12 12 0 0 1 40.2 142l-10-54A10 10 0 0 1 40 76z" fill="#9dbdfd" opacity=".95"/>'
+		//云
+		.'<g transform="translate(150 18)">'
+		.'<path d="M18 34a15 15 0 0 1 1.8-29.9A21 21 0 0 1 58 12a13 13 0 0 1-2 26z" fill="#ffffff"/>'
+		.'<path d="M18 34a15 15 0 0 1 1.8-29.9A21 21 0 0 1 58 12a13 13 0 0 1-2 26z" fill="none" stroke="#dbe7ff" stroke-width="2"/>'
+		.'</g>'
+		.'</svg>';
+}
+
+/**
+ * 文件面板顶部的工具条：排序 + 列表/网格切换。
+ * 排序是真的（index.php 按白名单拼 ORDER BY），视图切换由 layout-studio.js 存 localStorage。
+ */
+function layout_render_studio_tools($sort, $base_query){
+	$opts = ['new'=>'上传时间 ↓', 'old'=>'上传时间 ↑', 'big'=>'文件大小 ↓', 'small'=>'文件大小 ↑'];
+	if(!isset($opts[$sort]))$sort = 'new';
+	$html = '<div class="studio-tools"><div class="studio-sort"><label for="studioSort" class="sr-only">排序方式</label>'
+		.'<select id="studioSort" class="studio-sort-sel" data-base="'.htmlspecialchars($base_query, ENT_QUOTES, 'UTF-8').'">';
+	foreach($opts as $k => $label){
+		$html .= '<option value="'.$k.'"'.($sort === $k ? ' selected' : '').'>'.$label.'</option>';
+	}
+	$html .= '</select><i class="fa fa-angle-down" aria-hidden="true"></i></div>'
+		.'<span class="studio-viewtoggle" id="studioViewToggle">'
+		.'<button type="button" class="active" data-studio-view="list" title="列表视图" aria-label="列表视图"><i class="fa fa-list" aria-hidden="true"></i></button>'
+		.'<button type="button" data-studio-view="grid" title="网格视图" aria-label="网格视图"><i class="fa fa-th-large" aria-hidden="true"></i></button>'
+		.'</span></div>';
+	return $html;
+}
+
+/**
+ * 右侧一列面板：今日上传（环形进度）、我的权限、快捷操作、最近动态。
+ * 数据都来自已有的统计函数，不额外查库（最近动态那一次带缓存）。
+ */
+function layout_render_studio_side($DB, $where_sql, $total_files = 0){
+	global $conf, $islogin2, $userrow, $site_theme;
+	$limit = function_exists('get_effective_upload_count_limit') ? get_effective_upload_count_limit() : 0;
+	$size_limit = function_exists('get_effective_upload_size_limit') ? get_effective_upload_size_limit() : 0;
+	$today = function_exists('layout_today_upload_count') ? layout_today_upload_count($DB) : 0;
+	$percent = $limit > 0 ? min(100, round($today / $limit * 100)) : 0;
+	//圆环半径 42，周长 2πr ≈ 263.9
+	$dash = round(263.9 * $percent / 100, 1);
+
+	//今日上传
+	$p_today = '<section class="studio-panel">'
+		.'<div class="studio-panel-head"><strong>今日上传</strong><span class="studio-panel-num">'.intval($today).' 个</span></div>'
+		.'<div class="studio-quota">'
+		.'<div class="studio-ring"><svg viewBox="0 0 100 100" aria-hidden="true">'
+		.'<circle class="studio-ring-bg" cx="50" cy="50" r="42"></circle>'
+		.'<circle class="studio-ring-fg" cx="50" cy="50" r="42" stroke-dasharray="'.$dash.' 263.9"></circle>'
+		.'</svg><b>'.$percent.'%</b></div>'
+		.'<div class="studio-quota-info">'
+		.'<p>今日已上传 <b>'.intval($today).'</b> 个文件</p>'
+		.'<p class="studio-quota-label">今日上传额度</p>'
+		.'<span class="studio-quota-bar"><i style="width:'.($limit > 0 ? $percent : 100).'%"></i></span>'
+		.'<em>'.intval($today).' / '.($limit > 0 ? intval($limit) : '不限制').'</em>'
+		.'</div></div></section>';
+
+	//我的权限
+	$badge = '';
+	if(!empty($islogin2)){
+		$expire = isset($userrow['expiretime']) ? $userrow['expiretime'] : '';
+		if(empty($expire)) $badge = '<span class="studio-badge ok">永久有效</span>';
+		elseif(function_exists('is_user_permission_active') && !is_user_permission_active()) $badge = '<span class="studio-badge bad">已过期</span>';
+		else $badge = '<span class="studio-badge ok">剩 '.max(1, ceil((strtotime($expire) - time()) / 86400)).' 天</span>';
+	}else{
+		$badge = '<span class="studio-badge">未登录</span>';
+	}
+	$rows = [
+		['fa-cloud-upload', 'blue', '每日上传', $limit > 0 ? ($limit.' 个') : '不限制'],
+		['fa-file-o', 'indigo', '单文件大小', $size_limit > 0 ? ($size_limit.' MB') : '不限制'],
+		['fa-bolt', 'amber', '下载速度', '不限制'],
+	];
+	//深空科技风的原型里多一行，凑够四条
+	if($site_theme === 'nebula') $rows[] = ['fa-clone', 'cyan', '同时下载数', '不限制'];
+	$p_right = '<section class="studio-panel studio-panel-rights">'
+		.'<div class="studio-panel-head"><strong>我的权限</strong>'.$badge.'</div><div class="studio-rights">';
+	foreach($rows as $r){
+		$p_right .= '<div class="studio-right-row"><span class="studio-right-icon studio-ico-'.$r[1].'">'
+			.'<i class="fa '.$r[0].'" aria-hidden="true"></i></span><em>'.$r[2].'</em><b>'
+			.htmlspecialchars($r[3], ENT_QUOTES, 'UTF-8').'</b></div>';
+	}
+	$p_right .= '</div>';
+	//紫韵会员风把升级入口直接做进权限卡里
+	if($site_theme === 'royal' && function_exists('is_buy_open') && is_buy_open()){
+		$p_right .= '<a class="studio-vip-btn" href="./buy.php"><i class="fa fa-diamond" aria-hidden="true"></i> 升级会员 <i class="fa fa-angle-right" aria-hidden="true"></i></a>';
+	}
+	$p_right .= '</section>';
+
+	//云端门户风右上角那张蓝色上传卡：点了就去上传页，不做半吊子的拖拽假象
+	$p_drop = '';
+	if($site_theme === 'skyline'){
+		$size = function_exists('get_effective_upload_size_limit') ? get_effective_upload_size_limit() : 0;
+		$p_drop = '<a class="studio-drop" href="./upload.php">'
+			.'<span class="studio-drop-icon"><i class="fa fa-cloud-upload" aria-hidden="true"></i></span>'
+			.'<strong>把文件交给云端</strong><em>点下面的按钮选择文件，或到上传页拖拽</em>'
+			.'<span class="studio-drop-btn"><i class="fa fa-upload" aria-hidden="true"></i> 选择文件</span>'
+			.'<span class="studio-drop-feats">'
+			.'<i><b class="fa fa-bolt" aria-hidden="true"></b> 高速上传</i>'
+			.'<i><b class="fa fa-shield" aria-hidden="true"></b> 安全加密</i>'
+			.'<i><b class="fa fa-infinity fa-clock-o" aria-hidden="true"></b> '.($size > 0 ? ('单文件 '.$size.' MB') : '不限大小').'</i>'
+			.'</span></a>';
+	}
+
+	//存储空间：只有清爽极简风、蓝天白云风和云端门户风的原型里有这块。
+	//程序本身没有"总容量"这个概念（只限每日个数和单文件大小），所以只报已用量，不编一个假的总量
+	$p_store = '';
+	if(in_array($site_theme, ['crisp', 'azure', 'skyline'], true)){
+		$used = function_exists('layout_storage_used') ? layout_storage_used($DB, $where_sql) : 0;
+		$p_store = '<section class="studio-panel"><div class="studio-panel-head"><strong>存储空间</strong>'
+			.'<span class="studio-panel-num">'.htmlspecialchars(size_format($used ? $used : 0), ENT_QUOTES, 'UTF-8').'</span></div>'
+			.'<div class="studio-rights">'
+			.'<div class="studio-right-row"><span class="studio-right-icon studio-ico-blue"><i class="fa fa-database" aria-hidden="true"></i></span><em>已用空间</em><b>'
+			.htmlspecialchars(size_format($used ? $used : 0), ENT_QUOTES, 'UTF-8').'</b></div>'
+			.'<div class="studio-right-row"><span class="studio-right-icon studio-ico-indigo"><i class="fa fa-files-o" aria-hidden="true"></i></span><em>文件数量</em><b>'
+			.number_format($total_files).' 个</b></div>'
+			.'<div class="studio-right-row"><span class="studio-right-icon studio-ico-amber"><i class="fa fa-file-o" aria-hidden="true"></i></span><em>单文件上限</em><b>'
+			.($size_limit > 0 ? ($size_limit.' MB') : '不限制').'</b></div>'
+			.'</div></section>';
+	}
+
+	//快捷操作：只放这个站真的开着的入口
+	$acts = [];
+	$acts[] = ['./upload.php', 'fa-cloud-upload', '上传文件', ' primary'];
+	$acts[] = [!empty($islogin2) ? './user.php?tab=files' : './?m=mine', 'fa-folder-open', '我的文件', ''];
+	if(function_exists('is_buy_open') && is_buy_open()) $acts[] = ['./buy.php', 'fa-shopping-cart', '购买权限', ''];
+	if(!isset($conf['sponsor_open']) || $conf['sponsor_open'] == 1) $acts[] = ['./sponsor.php', 'fa-money', '赞助名单', ''];
+	if(!isset($conf['violation_open']) || $conf['violation_open'] == 1) $acts[] = ['./violation.php', 'fa-gavel', '违规公示', ''];
+	//关掉的功能不占格子；一个都没开时至少留个上传入口，别出现空面板
+	if(count($acts) < 3) $acts[] = ['./upload.php', 'fa-link', '生成外链', ''];
+	//最多摆四个，多了换行反而乱
+	$acts = array_slice($acts, 0, 4);
+	$p_acts = '<section class="studio-panel"><div class="studio-panel-head"><strong>快捷操作</strong></div><div class="studio-acts">';
+	foreach($acts as $a){
+		$p_acts .= '<a class="studio-act'.$a[3].'" href="'.$a[0].'"><i class="fa '.$a[1].'" aria-hidden="true"></i><span>'.$a[2].'</span></a>';
+	}
+	$p_acts .= '</div></section>';
+
+	//最近动态
+	$feed = '';
+	foreach(layout_recent_uploads($DB, $where_sql, 5) as $row){
+		$name = htmlspecialchars($row['name'], ENT_QUOTES, 'UTF-8');
+		$icon = function_exists('type_to_icon') ? type_to_icon($row['type']) : 'fa-file-o';
+		$feed .= '<a class="studio-feed-item" href="./file.php?hash='.urlencode($row['token']).'" title="'.$name.'">'
+			.'<span class="studio-feed-icon" data-group="'.layout_type_group($row['type']).'"><i class="fa '.$icon.'" aria-hidden="true"></i></span>'
+			.'<span class="studio-feed-body"><b>上传了文件 '.$name.'</b><em>'.htmlspecialchars($row['addtime'], ENT_QUOTES, 'UTF-8').'</em></span></a>';
+	}
+	if($feed === '') $feed = '<p class="studio-empty">还没有上传记录。</p>';
+	$p_feed = '<section class="studio-panel"><div class="studio-panel-head"><strong>最近动态</strong>'
+		.'<a class="studio-panel-more" href="./">全部 <i class="fa fa-angle-right" aria-hidden="true"></i></a></div>'
+		.'<div class="studio-feed">'.$feed.'</div></section>';
+
+	//面板顺序按各套外观的原型排：会员风把权限卡放最上，极简风和白云风先放存储空间
+	if($site_theme === 'royal')      $order = [$p_right, $p_today, $p_acts, $p_feed];
+	elseif($site_theme === 'crisp')  $order = [$p_store, $p_today, $p_right, $p_feed];
+	elseif($site_theme === 'azure')  $order = [$p_today, $p_right, $p_acts, $p_feed, $p_store];
+	elseif($site_theme === 'skyline')$order = [$p_drop, $p_store, $p_feed, $p_acts, $p_right];
+	else                             $order = [$p_today, $p_right, $p_acts, $p_feed];
+
+	return '<aside class="studio-side">'.implode('', $order).'</aside>';
 }

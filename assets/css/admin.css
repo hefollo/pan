@@ -1802,11 +1802,28 @@ body.admin-theme-dashboard.admin-body .navbar-default .navbar-nav>li>a{margin:2p
 /* ===== 数据控制台风：后台配色 + 左侧密集侧栏 ===== */
 body.admin-theme-console.admin-body,
 body.admin-theme-console.admin-login-body{--admin-bg:#f5f7fb;--admin-surface:#ffffff;--admin-soft:#f8f9fb;--admin-text:#151c2d;--admin-muted:#7b8497;--admin-line:#e7eaf0;--admin-primary:#3867f4;--admin-primary-dark:#2a4fd0;--admin-green:#16a369;--admin-yellow:#f07b2f;--admin-red:#ef5a55;--admin-shadow:0 7px 28px rgba(31,43,70,.06);--admin-sidebar-w:236px}
+/* ===== 数据控制台风：后台配色 + 左侧密集侧栏 ===== */
+body.admin-theme-studio.admin-body,body.admin-theme-studio.admin-login-body{--admin-bg:#f5f7fb;--admin-surface:#ffffff;--admin-soft:#f8f9fb;--admin-text:#151c2d;--admin-muted:#7b8497;--admin-line:#e7eaf0;--admin-primary:#3867f4;--admin-primary-dark:#2a4fd0;--admin-green:#16a369;--admin-yellow:#f07b2f;--admin-red:#ef5a55;--admin-shadow:0 7px 28px rgba(31,43,70,.06);--admin-sidebar-w:236px}
 body.admin-theme-console.admin-login-body{background:linear-gradient(135deg,#eef2ff 0,#f5f7fb 50%,#e9edfa 100%) fixed}
+body.admin-theme-nebula.admin-login-body,body.admin-theme-royal.admin-login-body,body.admin-theme-crisp.admin-login-body,body.admin-theme-azure.admin-login-body{background:linear-gradient(135deg,#eef2ff 0,#f5f7fb 50%,#e9edfa 100%) fixed}
+body.admin-theme-nebula.admin-login-body,body.admin-theme-royal.admin-login-body,body.admin-theme-crisp.admin-login-body,body.admin-theme-azure.admin-login-body{background:linear-gradient(135deg,#eef2ff 0,#f5f7fb 50%,#e9edfa 100%) fixed}
+body.admin-theme-studio.admin-login-body{background:linear-gradient(135deg,#eef2ff 0,#f5f7fb 50%,#e9edfa 100%) fixed}
 body.admin-theme-console.admin-body{background:var(--admin-bg);color:var(--admin-text)}
+body.admin-theme-nebula.admin-body,body.admin-theme-royal.admin-body,body.admin-theme-crisp.admin-body,body.admin-theme-azure.admin-body{background:var(--admin-bg);color:var(--admin-text)}
+body.admin-theme-nebula.admin-body,body.admin-theme-royal.admin-body,body.admin-theme-crisp.admin-body,body.admin-theme-azure.admin-body{background:var(--admin-bg);color:var(--admin-text)}
+body.admin-theme-studio.admin-body{background:var(--admin-bg);color:var(--admin-text)}
 body.admin-theme-console.admin-body:before{content:none;display:none}
+body.admin-theme-nebula.admin-body:before,body.admin-theme-royal.admin-body:before,body.admin-theme-crisp.admin-body:before,body.admin-theme-azure.admin-body:before{content:none;display:none}
+body.admin-theme-nebula.admin-body:before,body.admin-theme-royal.admin-body:before,body.admin-theme-crisp.admin-body:before,body.admin-theme-azure.admin-body:before{content:none;display:none}
+body.admin-theme-studio.admin-body:before{content:none;display:none}
 body.admin-theme-console.admin-body a{color:var(--admin-primary)}
+body.admin-theme-nebula.admin-body a,body.admin-theme-royal.admin-body a,body.admin-theme-crisp.admin-body a,body.admin-theme-azure.admin-body a{color:var(--admin-primary)}
+body.admin-theme-nebula.admin-body a,body.admin-theme-royal.admin-body a,body.admin-theme-crisp.admin-body a,body.admin-theme-azure.admin-body a{color:var(--admin-primary)}
+body.admin-theme-studio.admin-body a{color:var(--admin-primary)}
 body.admin-theme-console.admin-body a:hover,body.admin-theme-console.admin-body a:focus{color:var(--admin-primary-dark)}
+body.admin-theme-nebula.admin-body a:hover,body.admin-theme-nebula.admin-body a:focus,body.admin-theme-royal.admin-body a:hover,body.admin-theme-royal.admin-body a:focus,body.admin-theme-crisp.admin-body a:hover,body.admin-theme-crisp.admin-body a:focus,body.admin-theme-azure.admin-body a:hover,body.admin-theme-azure.admin-body a:focus{color:var(--admin-primary-dark)}
+body.admin-theme-nebula.admin-body a:hover,body.admin-theme-nebula.admin-body a:focus,body.admin-theme-royal.admin-body a:hover,body.admin-theme-royal.admin-body a:focus,body.admin-theme-crisp.admin-body a:hover,body.admin-theme-crisp.admin-body a:focus,body.admin-theme-azure.admin-body a:hover,body.admin-theme-azure.admin-body a:focus{color:var(--admin-primary-dark)}
+body.admin-theme-studio.admin-body a:hover,body.admin-theme-studio.admin-body a:focus{color:var(--admin-primary-dark)}
 
 /* ===== 深色工作台风：后台深色配色 + 左侧侧栏 ===== */
 body.admin-theme-workspace.admin-body,
@@ -1821,43 +1838,97 @@ body.admin-theme-workspace.admin-body a:hover,body.admin-theme-workspace.admin-b
 body.admin-theme-console.admin-body .panel,body.admin-theme-console.admin-body .well,
 body.admin-theme-cockpit.admin-body .panel,body.admin-theme-cockpit.admin-body .well,
 body.admin-theme-workspace.admin-body .panel,body.admin-theme-workspace.admin-body .well{border:1px solid var(--admin-line);border-radius:16px;background:var(--admin-surface);box-shadow:var(--admin-shadow);color:var(--admin-text)}
+/* 侧栏型后台（数据控制台风 / 渐变仪表盘风 / 深色工作台风）共用结构，颜色走各自的 --admin-* 变量 */
+body.admin-theme-nebula.admin-body .panel,body.admin-theme-nebula.admin-body .well,/* 侧栏型后台（数据控制台风 / 渐变仪表盘风 / 深色工作台风）共用结构，颜色走各自的 --admin-* 变量 */
+body.admin-theme-royal.admin-body .panel,body.admin-theme-royal.admin-body .well,/* 侧栏型后台（数据控制台风 / 渐变仪表盘风 / 深色工作台风）共用结构，颜色走各自的 --admin-* 变量 */
+body.admin-theme-crisp.admin-body .panel,body.admin-theme-crisp.admin-body .well,/* 侧栏型后台（数据控制台风 / 渐变仪表盘风 / 深色工作台风）共用结构，颜色走各自的 --admin-* 变量 */
+body.admin-theme-azure.admin-body .panel,body.admin-theme-azure.admin-body .well{border:1px solid var(--admin-line);border-radius:16px;background:var(--admin-surface);box-shadow:var(--admin-shadow);color:var(--admin-text)}
+/* 侧栏型后台（数据控制台风 / 渐变仪表盘风 / 深色工作台风）共用结构，颜色走各自的 --admin-* 变量 */
+body.admin-theme-nebula.admin-body .panel,body.admin-theme-nebula.admin-body .well,/* 侧栏型后台（数据控制台风 / 渐变仪表盘风 / 深色工作台风）共用结构，颜色走各自的 --admin-* 变量 */
+body.admin-theme-royal.admin-body .panel,body.admin-theme-royal.admin-body .well,/* 侧栏型后台（数据控制台风 / 渐变仪表盘风 / 深色工作台风）共用结构，颜色走各自的 --admin-* 变量 */
+body.admin-theme-crisp.admin-body .panel,body.admin-theme-crisp.admin-body .well,/* 侧栏型后台（数据控制台风 / 渐变仪表盘风 / 深色工作台风）共用结构，颜色走各自的 --admin-* 变量 */
+body.admin-theme-azure.admin-body .panel,body.admin-theme-azure.admin-body .well{border:1px solid var(--admin-line);border-radius:16px;background:var(--admin-surface);box-shadow:var(--admin-shadow);color:var(--admin-text)}
+/* 侧栏型后台（数据控制台风 / 渐变仪表盘风 / 深色工作台风）共用结构，颜色走各自的 --admin-* 变量 */
+body.admin-theme-studio.admin-body .panel,body.admin-theme-studio.admin-body .well{border:1px solid var(--admin-line);border-radius:16px;background:var(--admin-surface);box-shadow:var(--admin-shadow);color:var(--admin-text)}
 body.admin-theme-console.admin-body .panel-heading,
 body.admin-theme-cockpit.admin-body .panel-heading,
 body.admin-theme-workspace.admin-body .panel-heading{background:var(--admin-soft)!important;border-bottom:1px solid var(--admin-line)!important;color:var(--admin-text)!important}
+body.admin-theme-nebula.admin-body .panel-heading,body.admin-theme-royal.admin-body .panel-heading,body.admin-theme-crisp.admin-body .panel-heading,body.admin-theme-azure.admin-body .panel-heading{background:var(--admin-soft)!important;border-bottom:1px solid var(--admin-line)!important;color:var(--admin-text)!important}
+body.admin-theme-nebula.admin-body .panel-heading,body.admin-theme-royal.admin-body .panel-heading,body.admin-theme-crisp.admin-body .panel-heading,body.admin-theme-azure.admin-body .panel-heading{background:var(--admin-soft)!important;border-bottom:1px solid var(--admin-line)!important;color:var(--admin-text)!important}
+body.admin-theme-studio.admin-body .panel-heading{background:var(--admin-soft)!important;border-bottom:1px solid var(--admin-line)!important;color:var(--admin-text)!important}
 body.admin-theme-console.admin-body .panel-title,body.admin-theme-console.admin-body .panel-title i,
 body.admin-theme-cockpit.admin-body .panel-title,body.admin-theme-cockpit.admin-body .panel-title i,
 body.admin-theme-workspace.admin-body .panel-title,body.admin-theme-workspace.admin-body .panel-title i{color:var(--admin-text)}
+body.admin-theme-nebula.admin-body .panel-title,body.admin-theme-nebula.admin-body .panel-title i,body.admin-theme-royal.admin-body .panel-title,body.admin-theme-royal.admin-body .panel-title i,body.admin-theme-crisp.admin-body .panel-title,body.admin-theme-crisp.admin-body .panel-title i,body.admin-theme-azure.admin-body .panel-title,body.admin-theme-azure.admin-body .panel-title i{color:var(--admin-text)}
+body.admin-theme-nebula.admin-body .panel-title,body.admin-theme-nebula.admin-body .panel-title i,body.admin-theme-royal.admin-body .panel-title,body.admin-theme-royal.admin-body .panel-title i,body.admin-theme-crisp.admin-body .panel-title,body.admin-theme-crisp.admin-body .panel-title i,body.admin-theme-azure.admin-body .panel-title,body.admin-theme-azure.admin-body .panel-title i{color:var(--admin-text)}
+body.admin-theme-studio.admin-body .panel-title,body.admin-theme-studio.admin-body .panel-title i{color:var(--admin-text)}
 body.admin-theme-console.admin-body .panel-footer,
 body.admin-theme-cockpit.admin-body .panel-footer,
 body.admin-theme-workspace.admin-body .panel-footer{background:var(--admin-soft);border-top:1px solid var(--admin-line);color:var(--admin-muted)}
+body.admin-theme-nebula.admin-body .panel-footer,body.admin-theme-royal.admin-body .panel-footer,body.admin-theme-crisp.admin-body .panel-footer,body.admin-theme-azure.admin-body .panel-footer{background:var(--admin-soft);border-top:1px solid var(--admin-line);color:var(--admin-muted)}
+body.admin-theme-nebula.admin-body .panel-footer,body.admin-theme-royal.admin-body .panel-footer,body.admin-theme-crisp.admin-body .panel-footer,body.admin-theme-azure.admin-body .panel-footer{background:var(--admin-soft);border-top:1px solid var(--admin-line);color:var(--admin-muted)}
+body.admin-theme-studio.admin-body .panel-footer{background:var(--admin-soft);border-top:1px solid var(--admin-line);color:var(--admin-muted)}
 body.admin-theme-console.admin-body .table,
 body.admin-theme-cockpit.admin-body .table,
 body.admin-theme-workspace.admin-body .table{background:transparent}
+body.admin-theme-nebula.admin-body .table,body.admin-theme-royal.admin-body .table,body.admin-theme-crisp.admin-body .table,body.admin-theme-azure.admin-body .table{background:transparent}
+body.admin-theme-nebula.admin-body .table,body.admin-theme-royal.admin-body .table,body.admin-theme-crisp.admin-body .table,body.admin-theme-azure.admin-body .table{background:transparent}
+body.admin-theme-studio.admin-body .table{background:transparent}
 body.admin-theme-console.admin-body .table>thead>tr>th,
 body.admin-theme-cockpit.admin-body .table>thead>tr>th,
 body.admin-theme-workspace.admin-body .table>thead>tr>th{background:var(--admin-soft)!important;border-bottom:1px solid var(--admin-line)!important;color:var(--admin-muted)}
+body.admin-theme-nebula.admin-body .table>thead>tr>th,body.admin-theme-royal.admin-body .table>thead>tr>th,body.admin-theme-crisp.admin-body .table>thead>tr>th,body.admin-theme-azure.admin-body .table>thead>tr>th{background:var(--admin-soft)!important;border-bottom:1px solid var(--admin-line)!important;color:var(--admin-muted)}
+body.admin-theme-nebula.admin-body .table>thead>tr>th,body.admin-theme-royal.admin-body .table>thead>tr>th,body.admin-theme-crisp.admin-body .table>thead>tr>th,body.admin-theme-azure.admin-body .table>thead>tr>th{background:var(--admin-soft)!important;border-bottom:1px solid var(--admin-line)!important;color:var(--admin-muted)}
+body.admin-theme-studio.admin-body .table>thead>tr>th{background:var(--admin-soft)!important;border-bottom:1px solid var(--admin-line)!important;color:var(--admin-muted)}
 body.admin-theme-console.admin-body .table>tbody>tr>td,
 body.admin-theme-cockpit.admin-body .table>tbody>tr>td,
 body.admin-theme-workspace.admin-body .table>tbody>tr>td{border-top:1px solid var(--admin-line)!important;color:var(--admin-text)}
+body.admin-theme-nebula.admin-body .table>tbody>tr>td,body.admin-theme-royal.admin-body .table>tbody>tr>td,body.admin-theme-crisp.admin-body .table>tbody>tr>td,body.admin-theme-azure.admin-body .table>tbody>tr>td{border-top:1px solid var(--admin-line)!important;color:var(--admin-text)}
+body.admin-theme-nebula.admin-body .table>tbody>tr>td,body.admin-theme-royal.admin-body .table>tbody>tr>td,body.admin-theme-crisp.admin-body .table>tbody>tr>td,body.admin-theme-azure.admin-body .table>tbody>tr>td{border-top:1px solid var(--admin-line)!important;color:var(--admin-text)}
+body.admin-theme-studio.admin-body .table>tbody>tr>td{border-top:1px solid var(--admin-line)!important;color:var(--admin-text)}
 body.admin-theme-console.admin-body .table-striped>tbody>tr:nth-of-type(odd){background:#fafbfd}
+body.admin-theme-nebula.admin-body .table-striped>tbody>tr:nth-of-type(odd),body.admin-theme-royal.admin-body .table-striped>tbody>tr:nth-of-type(odd),body.admin-theme-crisp.admin-body .table-striped>tbody>tr:nth-of-type(odd),body.admin-theme-azure.admin-body .table-striped>tbody>tr:nth-of-type(odd){background:#fafbfd}
+body.admin-theme-nebula.admin-body .table-striped>tbody>tr:nth-of-type(odd),body.admin-theme-royal.admin-body .table-striped>tbody>tr:nth-of-type(odd),body.admin-theme-crisp.admin-body .table-striped>tbody>tr:nth-of-type(odd),body.admin-theme-azure.admin-body .table-striped>tbody>tr:nth-of-type(odd){background:#fafbfd}
+body.admin-theme-studio.admin-body .table-striped>tbody>tr:nth-of-type(odd){background:#fafbfd}
 body.admin-theme-workspace.admin-body .table-striped>tbody>tr:nth-of-type(odd){background:rgba(255,255,255,.012)}
 body.admin-theme-console.admin-body .table-hover>tbody>tr:hover{background:#fafbff}
+body.admin-theme-nebula.admin-body .table-hover>tbody>tr:hover,body.admin-theme-royal.admin-body .table-hover>tbody>tr:hover,body.admin-theme-crisp.admin-body .table-hover>tbody>tr:hover,body.admin-theme-azure.admin-body .table-hover>tbody>tr:hover{background:#fafbff}
+body.admin-theme-nebula.admin-body .table-hover>tbody>tr:hover,body.admin-theme-royal.admin-body .table-hover>tbody>tr:hover,body.admin-theme-crisp.admin-body .table-hover>tbody>tr:hover,body.admin-theme-azure.admin-body .table-hover>tbody>tr:hover{background:#fafbff}
+body.admin-theme-studio.admin-body .table-hover>tbody>tr:hover{background:#fafbff}
 body.admin-theme-workspace.admin-body .table-hover>tbody>tr:hover{background:var(--admin-soft)}
 body.admin-theme-console.admin-body .form-control,
 body.admin-theme-cockpit.admin-body .form-control,
 body.admin-theme-workspace.admin-body .form-control{background:var(--admin-surface);border:1px solid var(--admin-line);border-radius:11px;color:var(--admin-text)}
+body.admin-theme-nebula.admin-body .form-control,body.admin-theme-royal.admin-body .form-control,body.admin-theme-crisp.admin-body .form-control,body.admin-theme-azure.admin-body .form-control{background:var(--admin-surface);border:1px solid var(--admin-line);border-radius:11px;color:var(--admin-text)}
+body.admin-theme-nebula.admin-body .form-control,body.admin-theme-royal.admin-body .form-control,body.admin-theme-crisp.admin-body .form-control,body.admin-theme-azure.admin-body .form-control{background:var(--admin-surface);border:1px solid var(--admin-line);border-radius:11px;color:var(--admin-text)}
+body.admin-theme-studio.admin-body .form-control{background:var(--admin-surface);border:1px solid var(--admin-line);border-radius:11px;color:var(--admin-text)}
 body.admin-theme-workspace.admin-body .form-control{background:var(--admin-soft)}
 body.admin-theme-console.admin-body .form-control:focus{border-color:#a8bcff;box-shadow:0 0 0 4px rgba(56,103,244,.12)}
+body.admin-theme-nebula.admin-body .form-control:focus,body.admin-theme-royal.admin-body .form-control:focus,body.admin-theme-crisp.admin-body .form-control:focus,body.admin-theme-azure.admin-body .form-control:focus{border-color:#a8bcff;box-shadow:0 0 0 4px rgba(56,103,244,.12)}
+body.admin-theme-nebula.admin-body .form-control:focus,body.admin-theme-royal.admin-body .form-control:focus,body.admin-theme-crisp.admin-body .form-control:focus,body.admin-theme-azure.admin-body .form-control:focus{border-color:#a8bcff;box-shadow:0 0 0 4px rgba(56,103,244,.12)}
+body.admin-theme-studio.admin-body .form-control:focus{border-color:#a8bcff;box-shadow:0 0 0 4px rgba(56,103,244,.12)}
 body.admin-theme-workspace.admin-body .form-control:focus{border-color:var(--admin-primary);box-shadow:0 0 0 4px rgba(244,201,93,.14)}
 body.admin-theme-workspace.admin-body .form-control::placeholder{color:#6f7889}
 body.admin-theme-console.admin-body .btn,
 body.admin-theme-cockpit.admin-body .btn,
 body.admin-theme-workspace.admin-body .btn{border-radius:11px}
+body.admin-theme-nebula.admin-body .btn,body.admin-theme-royal.admin-body .btn,body.admin-theme-crisp.admin-body .btn,body.admin-theme-azure.admin-body .btn{border-radius:11px}
+body.admin-theme-nebula.admin-body .btn,body.admin-theme-royal.admin-body .btn,body.admin-theme-crisp.admin-body .btn,body.admin-theme-azure.admin-body .btn{border-radius:11px}
+body.admin-theme-studio.admin-body .btn{border-radius:11px}
 body.admin-theme-console.admin-body .btn-primary{background:var(--admin-primary);border-color:var(--admin-primary);color:#fff}
+body.admin-theme-nebula.admin-body .btn-primary,body.admin-theme-royal.admin-body .btn-primary,body.admin-theme-crisp.admin-body .btn-primary,body.admin-theme-azure.admin-body .btn-primary{background:var(--admin-primary);border-color:var(--admin-primary);color:#fff}
+body.admin-theme-nebula.admin-body .btn-primary,body.admin-theme-royal.admin-body .btn-primary,body.admin-theme-crisp.admin-body .btn-primary,body.admin-theme-azure.admin-body .btn-primary{background:var(--admin-primary);border-color:var(--admin-primary);color:#fff}
+body.admin-theme-studio.admin-body .btn-primary{background:var(--admin-primary);border-color:var(--admin-primary);color:#fff}
 body.admin-theme-console.admin-body .btn-primary:hover,body.admin-theme-console.admin-body .btn-primary:focus{background:var(--admin-primary-dark);border-color:var(--admin-primary-dark)}
+body.admin-theme-nebula.admin-body .btn-primary:hover,body.admin-theme-nebula.admin-body .btn-primary:focus,body.admin-theme-royal.admin-body .btn-primary:hover,body.admin-theme-royal.admin-body .btn-primary:focus,body.admin-theme-crisp.admin-body .btn-primary:hover,body.admin-theme-crisp.admin-body .btn-primary:focus,body.admin-theme-azure.admin-body .btn-primary:hover,body.admin-theme-azure.admin-body .btn-primary:focus{background:var(--admin-primary-dark);border-color:var(--admin-primary-dark)}
+body.admin-theme-nebula.admin-body .btn-primary:hover,body.admin-theme-nebula.admin-body .btn-primary:focus,body.admin-theme-royal.admin-body .btn-primary:hover,body.admin-theme-royal.admin-body .btn-primary:focus,body.admin-theme-crisp.admin-body .btn-primary:hover,body.admin-theme-crisp.admin-body .btn-primary:focus,body.admin-theme-azure.admin-body .btn-primary:hover,body.admin-theme-azure.admin-body .btn-primary:focus{background:var(--admin-primary-dark);border-color:var(--admin-primary-dark)}
+body.admin-theme-studio.admin-body .btn-primary:hover,body.admin-theme-studio.admin-body .btn-primary:focus{background:var(--admin-primary-dark);border-color:var(--admin-primary-dark)}
 body.admin-theme-workspace.admin-body .btn-primary{background:var(--admin-primary);border-color:var(--admin-primary);color:#221a05}
 body.admin-theme-workspace.admin-body .btn-primary:hover,body.admin-theme-workspace.admin-body .btn-primary:focus{background:var(--admin-primary-dark);border-color:var(--admin-primary-dark);color:#221a05}
 body.admin-theme-console.admin-body .btn-default{background:var(--admin-soft);border:1px solid var(--admin-line);color:#6f788b}
+body.admin-theme-nebula.admin-body .btn-default,body.admin-theme-royal.admin-body .btn-default,body.admin-theme-crisp.admin-body .btn-default,body.admin-theme-azure.admin-body .btn-default{background:var(--admin-soft);border:1px solid var(--admin-line);color:#6f788b}
+body.admin-theme-nebula.admin-body .btn-default,body.admin-theme-royal.admin-body .btn-default,body.admin-theme-crisp.admin-body .btn-default,body.admin-theme-azure.admin-body .btn-default{background:var(--admin-soft);border:1px solid var(--admin-line);color:#6f788b}
+body.admin-theme-studio.admin-body .btn-default{background:var(--admin-soft);border:1px solid var(--admin-line);color:#6f788b}
 body.admin-theme-workspace.admin-body .btn-default{background:var(--admin-soft);border:1px solid var(--admin-line);color:#c2cad6}
 body.admin-theme-workspace.admin-body .modal-content,body.admin-theme-workspace.admin-body .dropdown-menu{background:var(--admin-surface);border-color:var(--admin-line);color:var(--admin-text)}
 body.admin-theme-workspace.admin-body .modal-header,body.admin-theme-workspace.admin-body .modal-footer{border-color:var(--admin-line)}
@@ -2068,19 +2139,64 @@ body.admin-theme-mac.admin-body>.container-fluid:after{margin:20px -14px 0;borde
 
 /* 外观设置页在三套新外观下的可读性 */
 body.admin-theme-console.admin-body .appearance-settings-panel{background:linear-gradient(180deg,#fbfcfe 0,#f5f7fb 100%)!important;border-color:var(--admin-line)!important}
+/* 外观设置页在三套新外观下的可读性 */
+body.admin-theme-nebula.admin-body .appearance-settings-panel,/* 外观设置页在三套新外观下的可读性 */
+body.admin-theme-royal.admin-body .appearance-settings-panel,/* 外观设置页在三套新外观下的可读性 */
+body.admin-theme-crisp.admin-body .appearance-settings-panel,/* 外观设置页在三套新外观下的可读性 */
+body.admin-theme-azure.admin-body .appearance-settings-panel{background:linear-gradient(180deg,#fbfcfe 0,#f5f7fb 100%)!important;border-color:var(--admin-line)!important}
+/* 外观设置页在三套新外观下的可读性 */
+body.admin-theme-nebula.admin-body .appearance-settings-panel,/* 外观设置页在三套新外观下的可读性 */
+body.admin-theme-royal.admin-body .appearance-settings-panel,/* 外观设置页在三套新外观下的可读性 */
+body.admin-theme-crisp.admin-body .appearance-settings-panel,/* 外观设置页在三套新外观下的可读性 */
+body.admin-theme-azure.admin-body .appearance-settings-panel{background:linear-gradient(180deg,#fbfcfe 0,#f5f7fb 100%)!important;border-color:var(--admin-line)!important}
+/* 外观设置页在三套新外观下的可读性 */
+body.admin-theme-studio.admin-body .appearance-settings-panel{background:linear-gradient(180deg,#fbfcfe 0,#f5f7fb 100%)!important;border-color:var(--admin-line)!important}
 body.admin-theme-console.admin-body .appearance-settings-panel>.panel-heading,
 body.admin-theme-console.admin-body .appearance-settings-panel>.panel-heading .panel-title{color:var(--admin-text)!important}
+body.admin-theme-nebula.admin-body .appearance-settings-panel>.panel-heading,body.admin-theme-nebula.admin-body .appearance-settings-panel>.panel-heading .panel-title,body.admin-theme-royal.admin-body .appearance-settings-panel>.panel-heading,body.admin-theme-royal.admin-body .appearance-settings-panel>.panel-heading .panel-title,body.admin-theme-crisp.admin-body .appearance-settings-panel>.panel-heading,body.admin-theme-crisp.admin-body .appearance-settings-panel>.panel-heading .panel-title,body.admin-theme-azure.admin-body .appearance-settings-panel>.panel-heading,body.admin-theme-azure.admin-body .appearance-settings-panel>.panel-heading .panel-title{color:var(--admin-text)!important}
+body.admin-theme-nebula.admin-body .appearance-settings-panel>.panel-heading,body.admin-theme-nebula.admin-body .appearance-settings-panel>.panel-heading .panel-title,body.admin-theme-royal.admin-body .appearance-settings-panel>.panel-heading,body.admin-theme-royal.admin-body .appearance-settings-panel>.panel-heading .panel-title,body.admin-theme-crisp.admin-body .appearance-settings-panel>.panel-heading,body.admin-theme-crisp.admin-body .appearance-settings-panel>.panel-heading .panel-title,body.admin-theme-azure.admin-body .appearance-settings-panel>.panel-heading,body.admin-theme-azure.admin-body .appearance-settings-panel>.panel-heading .panel-title{color:var(--admin-text)!important}
+body.admin-theme-studio.admin-body .appearance-settings-panel>.panel-heading,body.admin-theme-studio.admin-body .appearance-settings-panel>.panel-heading .panel-title{color:var(--admin-text)!important}
 body.admin-theme-console.admin-body .appearance-settings-body{color:#4b5261}
+body.admin-theme-nebula.admin-body .appearance-settings-body,body.admin-theme-royal.admin-body .appearance-settings-body,body.admin-theme-crisp.admin-body .appearance-settings-body,body.admin-theme-azure.admin-body .appearance-settings-body{color:#4b5261}
+body.admin-theme-nebula.admin-body .appearance-settings-body,body.admin-theme-royal.admin-body .appearance-settings-body,body.admin-theme-crisp.admin-body .appearance-settings-body,body.admin-theme-azure.admin-body .appearance-settings-body{color:#4b5261}
+body.admin-theme-studio.admin-body .appearance-settings-body{color:#4b5261}
 body.admin-theme-console.admin-body .appearance-card{background:#fff;border-color:var(--admin-line);box-shadow:0 12px 28px rgba(31,43,70,.06)}
+body.admin-theme-nebula.admin-body .appearance-card,body.admin-theme-royal.admin-body .appearance-card,body.admin-theme-crisp.admin-body .appearance-card,body.admin-theme-azure.admin-body .appearance-card{background:#fff;border-color:var(--admin-line);box-shadow:0 12px 28px rgba(31,43,70,.06)}
+body.admin-theme-nebula.admin-body .appearance-card,body.admin-theme-royal.admin-body .appearance-card,body.admin-theme-crisp.admin-body .appearance-card,body.admin-theme-azure.admin-body .appearance-card{background:#fff;border-color:var(--admin-line);box-shadow:0 12px 28px rgba(31,43,70,.06)}
+body.admin-theme-studio.admin-body .appearance-card{background:#fff;border-color:var(--admin-line);box-shadow:0 12px 28px rgba(31,43,70,.06)}
 body.admin-theme-console.admin-body .appearance-card strong{color:var(--admin-text)}
+body.admin-theme-nebula.admin-body .appearance-card strong,body.admin-theme-royal.admin-body .appearance-card strong,body.admin-theme-crisp.admin-body .appearance-card strong,body.admin-theme-azure.admin-body .appearance-card strong{color:var(--admin-text)}
+body.admin-theme-nebula.admin-body .appearance-card strong,body.admin-theme-royal.admin-body .appearance-card strong,body.admin-theme-crisp.admin-body .appearance-card strong,body.admin-theme-azure.admin-body .appearance-card strong{color:var(--admin-text)}
+body.admin-theme-studio.admin-body .appearance-card strong{color:var(--admin-text)}
 body.admin-theme-console.admin-body .appearance-card small{color:var(--admin-muted)}
+body.admin-theme-nebula.admin-body .appearance-card small,body.admin-theme-royal.admin-body .appearance-card small,body.admin-theme-crisp.admin-body .appearance-card small,body.admin-theme-azure.admin-body .appearance-card small{color:var(--admin-muted)}
+body.admin-theme-nebula.admin-body .appearance-card small,body.admin-theme-royal.admin-body .appearance-card small,body.admin-theme-crisp.admin-body .appearance-card small,body.admin-theme-azure.admin-body .appearance-card small{color:var(--admin-muted)}
+body.admin-theme-studio.admin-body .appearance-card small{color:var(--admin-muted)}
 body.admin-theme-console.admin-body .appearance-preview{border-color:var(--admin-line);background:#fff}
+body.admin-theme-nebula.admin-body .appearance-preview,body.admin-theme-royal.admin-body .appearance-preview,body.admin-theme-crisp.admin-body .appearance-preview,body.admin-theme-azure.admin-body .appearance-preview{border-color:var(--admin-line);background:#fff}
+body.admin-theme-nebula.admin-body .appearance-preview,body.admin-theme-royal.admin-body .appearance-preview,body.admin-theme-crisp.admin-body .appearance-preview,body.admin-theme-azure.admin-body .appearance-preview{border-color:var(--admin-line);background:#fff}
+body.admin-theme-studio.admin-body .appearance-preview{border-color:var(--admin-line);background:#fff}
 body.admin-theme-console.admin-body .appearance-card.active,
 body.admin-theme-console.admin-body .appearance-card:hover{border-color:var(--admin-primary);box-shadow:0 0 0 2px rgba(56,103,244,.12)}
+body.admin-theme-nebula.admin-body .appearance-card.active,body.admin-theme-nebula.admin-body .appearance-card:hover,body.admin-theme-royal.admin-body .appearance-card.active,body.admin-theme-royal.admin-body .appearance-card:hover,body.admin-theme-crisp.admin-body .appearance-card.active,body.admin-theme-crisp.admin-body .appearance-card:hover,body.admin-theme-azure.admin-body .appearance-card.active,body.admin-theme-azure.admin-body .appearance-card:hover{border-color:var(--admin-primary);box-shadow:0 0 0 2px rgba(56,103,244,.12)}
+body.admin-theme-nebula.admin-body .appearance-card.active,body.admin-theme-nebula.admin-body .appearance-card:hover,body.admin-theme-royal.admin-body .appearance-card.active,body.admin-theme-royal.admin-body .appearance-card:hover,body.admin-theme-crisp.admin-body .appearance-card.active,body.admin-theme-crisp.admin-body .appearance-card:hover,body.admin-theme-azure.admin-body .appearance-card.active,body.admin-theme-azure.admin-body .appearance-card:hover{border-color:var(--admin-primary);box-shadow:0 0 0 2px rgba(56,103,244,.12)}
+body.admin-theme-studio.admin-body .appearance-card.active,body.admin-theme-studio.admin-body .appearance-card:hover{border-color:var(--admin-primary);box-shadow:0 0 0 2px rgba(56,103,244,.12)}
 body.admin-theme-console.admin-body .appearance-card.active:after{background:var(--admin-primary);box-shadow:0 8px 18px rgba(56,103,244,.3)}
+body.admin-theme-nebula.admin-body .appearance-card.active:after,body.admin-theme-royal.admin-body .appearance-card.active:after,body.admin-theme-crisp.admin-body .appearance-card.active:after,body.admin-theme-azure.admin-body .appearance-card.active:after{background:var(--admin-primary);box-shadow:0 8px 18px rgba(56,103,244,.3)}
+body.admin-theme-nebula.admin-body .appearance-card.active:after,body.admin-theme-royal.admin-body .appearance-card.active:after,body.admin-theme-crisp.admin-body .appearance-card.active:after,body.admin-theme-azure.admin-body .appearance-card.active:after{background:var(--admin-primary);box-shadow:0 8px 18px rgba(56,103,244,.3)}
+body.admin-theme-studio.admin-body .appearance-card.active:after{background:var(--admin-primary);box-shadow:0 8px 18px rgba(56,103,244,.3)}
 body.admin-theme-console.admin-body .appearance-submit .btn{background:#fff!important;color:var(--admin-text)!important;border-color:var(--admin-line)!important}
+body.admin-theme-nebula.admin-body .appearance-submit .btn,body.admin-theme-royal.admin-body .appearance-submit .btn,body.admin-theme-crisp.admin-body .appearance-submit .btn,body.admin-theme-azure.admin-body .appearance-submit .btn{background:#fff!important;color:var(--admin-text)!important;border-color:var(--admin-line)!important}
+body.admin-theme-nebula.admin-body .appearance-submit .btn,body.admin-theme-royal.admin-body .appearance-submit .btn,body.admin-theme-crisp.admin-body .appearance-submit .btn,body.admin-theme-azure.admin-body .appearance-submit .btn{background:#fff!important;color:var(--admin-text)!important;border-color:var(--admin-line)!important}
+body.admin-theme-studio.admin-body .appearance-submit .btn{background:#fff!important;color:var(--admin-text)!important;border-color:var(--admin-line)!important}
 body.admin-theme-console.admin-body .appearance-settings-footer{color:#3f4656!important;border-top-color:var(--admin-line)!important}
+body.admin-theme-nebula.admin-body .appearance-settings-footer,body.admin-theme-royal.admin-body .appearance-settings-footer,body.admin-theme-crisp.admin-body .appearance-settings-footer,body.admin-theme-azure.admin-body .appearance-settings-footer{color:#3f4656!important;border-top-color:var(--admin-line)!important}
+body.admin-theme-nebula.admin-body .appearance-settings-footer,body.admin-theme-royal.admin-body .appearance-settings-footer,body.admin-theme-crisp.admin-body .appearance-settings-footer,body.admin-theme-azure.admin-body .appearance-settings-footer{color:#3f4656!important;border-top-color:var(--admin-line)!important}
+body.admin-theme-studio.admin-body .appearance-settings-footer{color:#3f4656!important;border-top-color:var(--admin-line)!important}
 body.admin-theme-console.admin-body .appearance-settings-footer .glyphicon{color:#3f4656!important}
+body.admin-theme-nebula.admin-body .appearance-settings-footer .glyphicon,body.admin-theme-royal.admin-body .appearance-settings-footer .glyphicon,body.admin-theme-crisp.admin-body .appearance-settings-footer .glyphicon,body.admin-theme-azure.admin-body .appearance-settings-footer .glyphicon{color:#3f4656!important}
+body.admin-theme-nebula.admin-body .appearance-settings-footer .glyphicon,body.admin-theme-royal.admin-body .appearance-settings-footer .glyphicon,body.admin-theme-crisp.admin-body .appearance-settings-footer .glyphicon,body.admin-theme-azure.admin-body .appearance-settings-footer .glyphicon{color:#3f4656!important}
+body.admin-theme-studio.admin-body .appearance-settings-footer .glyphicon{color:#3f4656!important}
 body.admin-theme-portal.admin-body .appearance-settings-panel{background:linear-gradient(180deg,#fcfdfc 0,#f6f8f5 100%)!important;border-color:var(--admin-line)!important}
 body.admin-theme-portal.admin-body .appearance-settings-panel>.panel-heading,
 body.admin-theme-portal.admin-body .appearance-settings-panel>.panel-heading .panel-title{color:var(--admin-text)!important}
@@ -2267,18 +2383,304 @@ body.admin-theme-dashboard.admin-body .navbar-nav>li>.dropdown-menu .dropdown-he
 body.admin-theme-console.admin-body .navbar-nav>li>.dropdown-menu .dropdown-header,
 body.admin-theme-cockpit.admin-body .navbar-nav>li>.dropdown-menu .dropdown-header,
 body.admin-theme-workspace.admin-body .navbar-nav>li>.dropdown-menu .dropdown-header{padding:9px 12px 3px;color:var(--admin-muted);font-size:10.5px;font-weight:800;letter-spacing:.1em}
+body.admin-theme-nebula.admin-body .navbar-nav>li>.dropdown-menu .dropdown-header,body.admin-theme-royal.admin-body .navbar-nav>li>.dropdown-menu .dropdown-header,body.admin-theme-crisp.admin-body .navbar-nav>li>.dropdown-menu .dropdown-header,body.admin-theme-azure.admin-body .navbar-nav>li>.dropdown-menu .dropdown-header{padding:9px 12px 3px;color:var(--admin-muted);font-size:10.5px;font-weight:800;letter-spacing:.1em}
+body.admin-theme-nebula.admin-body .navbar-nav>li>.dropdown-menu .dropdown-header,body.admin-theme-royal.admin-body .navbar-nav>li>.dropdown-menu .dropdown-header,body.admin-theme-crisp.admin-body .navbar-nav>li>.dropdown-menu .dropdown-header,body.admin-theme-azure.admin-body .navbar-nav>li>.dropdown-menu .dropdown-header{padding:9px 12px 3px;color:var(--admin-muted);font-size:10.5px;font-weight:800;letter-spacing:.1em}
+body.admin-theme-studio.admin-body .navbar-nav>li>.dropdown-menu .dropdown-header{padding:9px 12px 3px;color:var(--admin-muted);font-size:10.5px;font-weight:800;letter-spacing:.1em}
 body.admin-theme-dashboard.admin-body .navbar-nav>li>.dropdown-menu .divider,
 body.admin-theme-console.admin-body .navbar-nav>li>.dropdown-menu .divider,
 body.admin-theme-cockpit.admin-body .navbar-nav>li>.dropdown-menu .divider,
 body.admin-theme-workspace.admin-body .navbar-nav>li>.dropdown-menu .divider{margin:5px 8px;background:var(--admin-line)}
+body.admin-theme-nebula.admin-body .navbar-nav>li>.dropdown-menu .divider,body.admin-theme-royal.admin-body .navbar-nav>li>.dropdown-menu .divider,body.admin-theme-crisp.admin-body .navbar-nav>li>.dropdown-menu .divider,body.admin-theme-azure.admin-body .navbar-nav>li>.dropdown-menu .divider{margin:5px 8px;background:var(--admin-line)}
+body.admin-theme-nebula.admin-body .navbar-nav>li>.dropdown-menu .divider,body.admin-theme-royal.admin-body .navbar-nav>li>.dropdown-menu .divider,body.admin-theme-crisp.admin-body .navbar-nav>li>.dropdown-menu .divider,body.admin-theme-azure.admin-body .navbar-nav>li>.dropdown-menu .divider{margin:5px 8px;background:var(--admin-line)}
+body.admin-theme-studio.admin-body .navbar-nav>li>.dropdown-menu .divider{margin:5px 8px;background:var(--admin-line)}
 body.admin-theme-dashboard.admin-body .admin-settings-menu,
 body.admin-theme-console.admin-body .admin-settings-menu,
 body.admin-theme-cockpit.admin-body .admin-settings-menu,
 body.admin-theme-workspace.admin-body .admin-settings-menu{max-height:none;overflow:visible}
+body.admin-theme-nebula.admin-body .admin-settings-menu,body.admin-theme-royal.admin-body .admin-settings-menu,body.admin-theme-crisp.admin-body .admin-settings-menu,body.admin-theme-azure.admin-body .admin-settings-menu{max-height:none;overflow:visible}
+body.admin-theme-nebula.admin-body .admin-settings-menu,body.admin-theme-royal.admin-body .admin-settings-menu,body.admin-theme-crisp.admin-body .admin-settings-menu,body.admin-theme-azure.admin-body .admin-settings-menu{max-height:none;overflow:visible}
+body.admin-theme-studio.admin-body .admin-settings-menu{max-height:none;overflow:visible}
 /* 顶栏外观在 1200px 以下收成汉堡菜单，展开的菜单本身就在可滚动的 navbar-collapse 里，
    同理不再给设置菜单套第二层滚动条 */
 @media (max-width:1199px){
 .top-nav-admin .admin-settings-menu{max-height:none;overflow:visible}
 .top-nav-admin .navbar-nav .open .dropdown-menu .dropdown-header{padding-left:32px}
 .top-nav-admin .navbar-nav .open .dropdown-menu .divider{margin-left:15px;margin-right:15px}
+}
+
+/* ===== 外观设置里的「渐变配色」工具条 =====
+   整块 sticky 吸在内容区顶部，21 张外观卡片从它下面滚过去，翻到最底下
+   也能直接改渐变、点保存。颜色一律用 --admin-* 变量和 inherit，
+   深色后台外观下不用再单独写一遍 */
+.appearance-form{display:block}
+.theme-grad-group{position:sticky;top:14px;z-index:20;margin-bottom:16px}
+/* 顶栏型后台的导航是 fixed 的，要多让出一截；侧栏型后台顶上没东西，贴近点就行 */
+.top-nav-admin .theme-grad-group{top:72px}
+@media (max-width:991px){.top-nav-admin .theme-grad-group{top:84px}}
+/* 窄屏上吸顶太占地方，老老实实跟着页面滚 */
+@media (max-width:767px){.theme-grad-group{position:static}}
+.theme-grad{border:1px solid var(--admin-line);border-radius:16px;background:var(--admin-surface);box-shadow:var(--admin-shadow);overflow:hidden}
+.theme-grad-bar{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:12px 16px;background:var(--admin-soft)}
+.theme-grad-title{padding-left:10px;border-left:3px solid var(--admin-primary);color:inherit;font-size:15px;font-weight:800}
+.theme-grad-bar label{margin:0 0 0 6px;color:inherit;font-size:13px;font-weight:700;opacity:.75}
+.theme-grad-bar .form-control{width:auto;min-width:190px;height:32px;padding:4px 10px;font-size:13px}
+.theme-grad-state{padding:3px 10px;border-radius:999px;border:1px solid var(--admin-line);color:inherit;font-size:12px;font-weight:700;opacity:.7}
+.theme-grad-state.on{border-color:transparent;background:var(--admin-primary);color:#fff;opacity:1}
+.theme-grad-btns{display:flex;align-items:center;gap:8px;margin-left:auto}
+.theme-grad-save{display:inline-flex;margin:0;max-width:none}
+.theme-grad-save .btn{height:34px;min-width:110px;padding:5px 16px;border-radius:10px;font-weight:700}
+.theme-grad-body{padding:14px 16px 16px;border-top:1px solid var(--admin-line)}
+.theme-grad-tip{margin-bottom:12px;color:inherit;font-size:12px;line-height:1.6;opacity:.7}
+.theme-grad-cols{display:grid;grid-template-columns:minmax(0,1fr) 240px;gap:18px}
+@media (max-width:1199px){.theme-grad-cols{grid-template-columns:minmax(0,1fr)}}
+/* 字段横着铺，宽屏一行放三组，别把吸顶条撑得太高 */
+.theme-grad-fields,.theme-grad-subgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(226px,1fr));gap:8px 18px;align-content:start}
+.theme-grad-row{display:flex;align-items:center;gap:8px;min-height:34px}
+.theme-grad-name{flex:0 0 66px;color:inherit;font-size:13px;font-weight:650;opacity:.8}
+.theme-grad-row em{color:inherit;font-size:12px;font-style:normal;opacity:.6}
+.theme-grad-row .tg-color{width:42px;height:30px;padding:2px;border:1px solid var(--admin-line);border-radius:8px;background:transparent;cursor:pointer}
+.theme-grad-row .tg-hex{width:100px;height:30px;padding:4px 8px;font-family:Consolas,Monaco,monospace;font-size:13px}
+.theme-grad-row .tg-deg{flex:1 1 auto;min-width:70px}
+.theme-grad-row .tg-degnum{width:70px;height:30px;padding:4px 8px;font-size:13px}
+.theme-grad-sub{grid-column:1/-1;margin-top:4px;padding-top:10px;border-top:1px dashed var(--admin-line)}
+.theme-grad-subhead{margin-bottom:8px;color:inherit;font-size:13px;font-weight:750;opacity:.8}
+/* 右边的示意预览：外框铺整页背景渐变，里面一张卡片放按钮和进度条 */
+.theme-grad-preview{display:flex;flex-direction:column;justify-content:center;gap:8px;padding:14px;border:1px solid var(--admin-line);border-radius:14px}
+.tg-preview-card{padding:12px;border-radius:12px;background:rgba(255,255,255,.92);box-shadow:0 10px 26px rgba(15,23,42,.14)}
+.tg-preview-line{height:8px;border-radius:999px;background:rgba(15,23,42,.14)}
+.tg-preview-line.short{width:62%;margin-top:7px}
+.tg-preview-bar{height:8px;margin-top:12px;border-radius:999px;background:rgba(15,23,42,.1);overflow:hidden}
+.tg-preview-bar i{display:block;width:64%;height:100%;border-radius:inherit}
+.tg-preview-foot{display:flex;align-items:center;gap:10px;margin-top:12px}
+.tg-preview-btn{padding:5px 13px;border-radius:999px;color:#fff;font-size:12px;font-weight:700}
+.tg-preview-chip{width:22px;height:22px;border-radius:50%;color:#fff;font-size:12px;font-weight:700;line-height:22px;text-align:center}
+.tg-preview-note{color:inherit;font-size:12px;text-align:center;opacity:.65}
+
+/* ===== 蓝白工作台风：后台 =====
+   侧栏结构直接复用「数据控制台风」那一套（选择器已并进去），这里只给它自己的一套颜色 */
+body.admin-theme-studio.admin-body,
+body.admin-theme-studio.admin-login-body{--admin-bg:#f2f5fb;--admin-surface:#ffffff;--admin-soft:#f7f9fe;--admin-text:#1f2a44;--admin-muted:#7c89a3;--admin-line:#e8edf7;--admin-primary:#3b7dfb;--admin-primary-dark:#2d68e0;--admin-green:#16a34a;--admin-yellow:#f59e0b;--admin-red:#ef4444;--admin-shadow:0 10px 30px rgba(38,60,105,.06);--admin-sidebar-w:250px}
+body.admin-theme-studio.admin-login-body{background:linear-gradient(135deg,#eaf1ff 0,#f5f8ff 50%,#e6eeff 100%) fixed}
+body.admin-theme-studio.admin-body .btn-primary{background:linear-gradient(135deg,#3b7dfb,#6f8dfd);border-color:transparent;color:#fff}
+body.admin-theme-studio.admin-body .btn-primary:hover,body.admin-theme-studio.admin-body .btn-primary:focus{background:linear-gradient(135deg,#2d68e0,#3b7dfb);color:#fff}
+
+/* 外观卡片上的缩略图：左边分组侧栏、顶部搜索条、右边横幅和统计卡 */
+.appearance-preview-studio{display:flex;gap:7px;padding:8px;background:#f2f5fb}
+.appearance-preview-studio .appearance-nav{display:block;height:auto;flex:0 0 24%;background:#ffffff;border:1px solid #e8edf7;border-radius:8px}
+.appearance-preview-studio .appearance-panel{flex:1;display:flex;flex-direction:column;gap:6px;margin:0;padding:0;background:transparent;border:0}
+.appearance-preview-studio .appearance-panel span{margin:0;border-radius:7px}
+.appearance-preview-studio .appearance-panel span:first-child{height:14px;background:#ffffff;border:1px solid #e8edf7}
+.appearance-preview-studio .appearance-panel span:nth-child(2){height:38px;background:linear-gradient(120deg,#eaf1ff,#f4f8ff 46%,#e8f0ff)}
+.appearance-preview-studio .appearance-panel span:nth-child(3){flex:1;background:#ffffff;border:1px solid #e8edf7;box-shadow:0 8px 20px rgba(38,60,105,.07)}
+
+/* ===== 工作台家族的另外四套：后台配色 + 外观卡缩略图 =====
+   后台侧栏结构和「数据控制台风」同一套（选择器已并入），这里只给各自的颜色 */
+body.admin-theme-nebula.admin-body,
+body.admin-theme-nebula.admin-login-body{--admin-bg:#050c1f;--admin-surface:#0b1730;--admin-soft:#0f1e3d;--admin-text:#dce8ff;--admin-muted:#8ba0c8;--admin-line:#1b2c50;--admin-primary:#2f7bff;--admin-primary-dark:#5b9bff;--admin-green:#34d399;--admin-yellow:#fbbf24;--admin-red:#ff5d73;--admin-shadow:0 14px 40px rgba(0,0,0,.45);--admin-sidebar-w:250px}
+body.admin-theme-nebula.admin-login-body{background:radial-gradient(900px 460px at 80% 0,rgba(47,123,255,.22),transparent 60%),linear-gradient(160deg,#04091a 0,#071433 50%,#050c1f 100%) fixed}
+body.admin-theme-nebula.admin-body{background:radial-gradient(1100px 520px at 82% -6%,rgba(47,123,255,.16),transparent 60%),linear-gradient(160deg,#04091a 0,#071433 48%,#050c1f 100%)}
+body.admin-theme-royal.admin-body,
+body.admin-theme-royal.admin-login-body{--admin-bg:#eef1fd;--admin-surface:#ffffff;--admin-soft:#f6f5ff;--admin-text:#231d48;--admin-muted:#7c78a3;--admin-line:#e6e6fa;--admin-primary:#6366f1;--admin-primary-dark:#4f46e5;--admin-green:#16a34a;--admin-yellow:#f59e0b;--admin-red:#ef4444;--admin-shadow:0 12px 32px rgba(70,60,140,.08);--admin-sidebar-w:250px}
+body.admin-theme-royal.admin-login-body{background:linear-gradient(135deg,#e6ecff 0,#f2effd 50%,#e4f0ff 100%) fixed}
+body.admin-theme-crisp.admin-body,
+body.admin-theme-crisp.admin-login-body{--admin-bg:#f7f9fc;--admin-surface:#ffffff;--admin-soft:#f4f7fc;--admin-text:#0f172a;--admin-muted:#64748b;--admin-line:#e9eef6;--admin-primary:#2563eb;--admin-primary-dark:#1d4ed8;--admin-green:#16a34a;--admin-yellow:#f59e0b;--admin-red:#ef4444;--admin-shadow:0 8px 24px rgba(15,23,42,.05);--admin-sidebar-w:240px}
+body.admin-theme-crisp.admin-login-body{background:linear-gradient(135deg,#eef3fb 0,#f8fafd 50%,#e9f0fa 100%) fixed}
+body.admin-theme-azure.admin-body,
+body.admin-theme-azure.admin-login-body{--admin-bg:#eef6ff;--admin-surface:#ffffff;--admin-soft:#f4f9ff;--admin-text:#14314f;--admin-muted:#6b88a8;--admin-line:#dfeafc;--admin-primary:#3b82f6;--admin-primary-dark:#2563eb;--admin-green:#16a34a;--admin-yellow:#f59e0b;--admin-red:#ef4444;--admin-shadow:0 12px 30px rgba(28,80,140,.07);--admin-sidebar-w:250px}
+body.admin-theme-azure.admin-login-body{background:linear-gradient(135deg,#dceeff 0,#f2f9ff 50%,#e6f4ff 100%) fixed}
+body.admin-theme-nebula.admin-body .btn-primary,body.admin-theme-royal.admin-body .btn-primary,
+body.admin-theme-crisp.admin-body .btn-primary,body.admin-theme-azure.admin-body .btn-primary{background:linear-gradient(135deg,var(--admin-primary),var(--admin-primary-dark));border-color:transparent;color:#fff}
+
+/* 外观卡缩略图：左侧栏 + 顶栏 + 横幅 + 列表，四套只有配色不同 */
+.appearance-preview-nebula,.appearance-preview-royal,.appearance-preview-crisp,.appearance-preview-azure{display:flex;gap:7px;padding:8px}
+.appearance-preview-nebula .appearance-nav,.appearance-preview-royal .appearance-nav,
+.appearance-preview-crisp .appearance-nav,.appearance-preview-azure .appearance-nav{display:block;height:auto;flex:0 0 24%;border-radius:8px}
+.appearance-preview-nebula .appearance-panel,.appearance-preview-royal .appearance-panel,
+.appearance-preview-crisp .appearance-panel,.appearance-preview-azure .appearance-panel{flex:1;display:flex;flex-direction:column;gap:6px;margin:0;padding:0;background:transparent;border:0}
+.appearance-preview-nebula .appearance-panel span,.appearance-preview-royal .appearance-panel span,
+.appearance-preview-crisp .appearance-panel span,.appearance-preview-azure .appearance-panel span{margin:0;border-radius:7px}
+.appearance-preview-nebula{background:linear-gradient(160deg,#04091a,#071433)}
+.appearance-preview-nebula .appearance-nav{background:#0b1730;border:1px solid #1b2c50}
+.appearance-preview-nebula .appearance-panel span:first-child{height:14px;background:#0b1730;border:1px solid #1b2c50}
+.appearance-preview-nebula .appearance-panel span:nth-child(2){height:38px;background:radial-gradient(120px 60px at 70% 30%,rgba(47,123,255,.5),transparent 70%),linear-gradient(160deg,#0d1c3a,#071433)}
+.appearance-preview-nebula .appearance-panel span:nth-child(3){flex:1;background:#0b1730;border:1px solid #1b2c50}
+.appearance-preview-royal{background:#eef1fd}
+.appearance-preview-royal .appearance-nav{background:#fff;border:1px solid #e6e6fa}
+.appearance-preview-royal .appearance-panel span:first-child{height:14px;background:#fff;border:1px solid #e6e6fa}
+.appearance-preview-royal .appearance-panel span:nth-child(2){height:38px;background:linear-gradient(120deg,#dbe6ff,#e9e3ff 42%,#dcefff)}
+.appearance-preview-royal .appearance-panel span:nth-child(3){flex:1;background:#fff;border:1px solid #e6e6fa}
+.appearance-preview-crisp{background:#f7f9fc}
+.appearance-preview-crisp .appearance-nav{background:#fff;border:1px solid #e9eef6}
+.appearance-preview-crisp .appearance-panel span:first-child{height:14px;background:#fff;border:1px solid #e9eef6}
+.appearance-preview-crisp .appearance-panel span:nth-child(2){height:34px;background:transparent;border-bottom:1px solid #e9eef6}
+.appearance-preview-crisp .appearance-panel span:nth-child(3){flex:1;background:#fff;border:1px solid #e9eef6}
+.appearance-preview-azure{background:#eef6ff}
+.appearance-preview-azure .appearance-nav{background:#fff;border:1px solid #dfeafc}
+.appearance-preview-azure .appearance-panel span:first-child{height:14px;background:#fff;border:1px solid #dfeafc}
+.appearance-preview-azure .appearance-panel span:nth-child(2){height:38px;background:linear-gradient(160deg,#cfe6ff,#e6f3ff 46%,#f2f9ff)}
+.appearance-preview-azure .appearance-panel span:nth-child(3){flex:1;background:#fff;border:1px solid #dfeafc}
+
+/* ===== 深空科技风：后台配色 =====
+ 结构沿用「数据控制台风」的侧栏（前面已并入选择器），配色从「黑夜风格」整体克隆过来，
+ 追加在最后压住那批浅色值；末尾再把自己的调色板落一遍，变量以它为准 */
+body.admin-theme-nebula.admin-body .appearance-settings-panel{border-color:rgba(255,255,255,.1)!important}
+body.admin-theme-nebula.admin-body .appearance-settings-panel>.panel-heading,body.admin-theme-nebula.admin-body .appearance-settings-panel>.panel-heading .panel-title{color:#f8fbff!important}
+body.admin-theme-nebula.admin-body .appearance-settings-footer{color:#eaf3ff!important;border-top-color:rgba(255,255,255,.1)!important}
+body.admin-theme-nebula.admin-body .appearance-settings-footer .glyphicon{color:#eaf3ff!important}
+body.admin-theme-nebula.admin-body .appearance-card.active,body.admin-theme-nebula.admin-body .appearance-card:hover{border-color:#79a7ff;box-shadow:0 0 0 2px rgba(79,141,255,.18)}
+body.admin-theme-nebula.admin-body .appearance-card.active:after{background:#79a7ff;box-shadow:0 8px 18px rgba(79,141,255,.32)}
+body.admin-theme-nebula.admin-body .appearance-settings-panel{background:linear-gradient(180deg,rgba(16,25,38,.98),rgba(12,21,34,.98))!important}
+body.admin-theme-nebula.admin-body .appearance-settings-body{color:#d7e3f4}
+body.admin-theme-nebula.admin-body .appearance-card{background:rgba(13,21,34,.96);border-color:#1b2c50;box-shadow:0 18px 36px rgba(0,0,0,.24)}
+body.admin-theme-nebula.admin-body .appearance-card strong{color:#eaf3ff}
+body.admin-theme-nebula.admin-body .appearance-card small{color:#9fb2cf}
+body.admin-theme-nebula.admin-login-body{background:radial-gradient(circle at top right,rgba(48,99,255,.18),transparent 35%),linear-gradient(135deg,#07101d,#0e1728 55%,#121f35) fixed}
+body.admin-theme-nebula.admin-body{background:radial-gradient(circle at top right,rgba(48,99,255,.12),transparent 30%),linear-gradient(180deg,#050c1f 0,#0a1220 100%);color:var(--admin-text)}
+body.admin-theme-nebula.admin-body:before{content:"";position:fixed;inset:64px 0 0;z-index:-1;pointer-events:none;background:linear-gradient(90deg,rgba(79,141,255,.08),transparent 18%,transparent 82%,rgba(79,141,255,.08))}
+body.admin-theme-nebula.admin-body .navbar.navbar-default{background:rgba(12,20,33,.92);border-bottom:1px solid var(--admin-line);box-shadow:0 14px 34px rgba(0,0,0,.28);backdrop-filter:blur(10px)}
+body.admin-theme-nebula.admin-body .navbar-default .navbar-brand{color:#eaf3ff}
+body.admin-theme-nebula.admin-body .navbar-default .navbar-nav>li>a{color:#b8c8dd}
+body.admin-theme-nebula.admin-body .navbar-default .navbar-nav>li>a i{color:#89a0c0}
+body.admin-theme-nebula.admin-body .navbar-default .navbar-nav>li.active>a,body.admin-theme-nebula.admin-body .navbar-default .navbar-nav>li>a:hover,body.admin-theme-nebula.admin-body .navbar-default .navbar-nav>li>a:focus{background:#132136;color:#79a7ff}
+body.admin-theme-nebula.admin-body .navbar-default .navbar-nav>li.active>a i,body.admin-theme-nebula.admin-body .navbar-default .navbar-nav>li>a:hover i{color:#79a7ff}
+body.admin-theme-nebula.admin-body .dropdown-menu{background:#101926;border:1px solid var(--admin-line);box-shadow:var(--admin-shadow)}
+body.admin-theme-nebula.admin-body .dropdown-menu>li>a{color:#c8d6e8}
+body.admin-theme-nebula.admin-body .dropdown-menu>li>a:hover{background:#132136;color:#79a7ff}
+body.admin-theme-nebula.admin-body .panel,body.admin-theme-nebula.admin-body .modal-content,body.admin-theme-nebula.admin-body .fixed-table-container{background:var(--admin-surface);border:1px solid var(--admin-line);box-shadow:var(--admin-shadow)}
+body.admin-theme-nebula.admin-body .panel-heading,body.admin-theme-nebula.admin-body .modal-header{background:var(--admin-soft)!important;border-color:var(--admin-line)!important;color:#eaf3ff!important}
+body.admin-theme-nebula.admin-body .panel-footer,body.admin-theme-nebula.admin-body .modal-footer{background:#0d1522;border-color:var(--admin-line)}
+body.admin-theme-nebula.admin-body .list-group-item,body.admin-theme-nebula.admin-body .table{background:var(--admin-surface);color:#d7e3f4}
+body.admin-theme-nebula.admin-body .table>thead>tr>th{background:#152132!important;color:#b8c8dd;border-bottom:1px solid var(--admin-line)!important}
+body.admin-theme-nebula.admin-body .table>tbody>tr>td{border-top:1px solid #1c2940!important;color:#d7e3f4}
+body.admin-theme-nebula.admin-body .table-striped>tbody>tr:nth-of-type(odd){background:#0d1522}
+body.admin-theme-nebula.admin-body .table-hover>tbody>tr:hover{background:#132136}
+body.admin-theme-nebula.admin-body .form-control{background:#0d1522;border-color:var(--admin-line);color:#eaf3ff}
+body.admin-theme-nebula.admin-body .form-control:focus{border-color:#5b9bff;box-shadow:0 0 0 3px rgba(79,141,255,.18)}
+body.admin-theme-nebula.admin-body #searchToolbar{background:var(--admin-surface);border-color:var(--admin-line)}
+body.admin-theme-nebula.admin-body .btn-default,body.admin-theme-nebula.admin-body .btn-white{background:#12294f;color:#d7e3f4}
+body.admin-theme-nebula.admin-body .pagination>li>a,body.admin-theme-nebula.admin-body .pagination>li>span{background:#12294f;color:#b8c8dd}
+body.admin-theme-nebula.admin-body .pagination>li>a:hover,body.admin-theme-nebula.admin-body .pagination>.active>a,body.admin-theme-nebula.admin-body .pagination>.active>a:hover{background:var(--admin-primary);color:#fff}
+body.admin-theme-nebula.admin-body .admin-file-name{color:#eaf3ff}
+body.admin-theme-nebula.admin-body .admin-file-sub{color:#8fa2bd}
+body.admin-theme-nebula.admin-body .admin-file-thumb{background:#0d1522;border-color:var(--admin-line)}
+body.admin-theme-nebula.admin-body .admin-file-icon{background:#132136;color:#79a7ff}
+body.admin-theme-nebula.admin-body #showimg{background:#050a12}
+body.admin-theme-nebula.admin-body .layui-layer-setwin a{filter:invert(1) brightness(1.7)}
+body.admin-theme-nebula.admin-body,body.admin-theme-nebula.admin-login-body{--admin-bg:#050c1f;--admin-surface:#0b1730;--admin-soft:#0f1e3d;--admin-text:#dce8ff;--admin-muted:#8ba0c8;--admin-line:#1b2c50;--admin-primary:#2f7bff;--admin-primary-dark:#5b9bff;--admin-green:#34d399;--admin-yellow:#fbbf24;--admin-red:#ff5d73;--admin-shadow:0 14px 40px rgba(0,0,0,.45);--admin-sidebar-w:250px}
+body.admin-theme-nebula.admin-body{background:radial-gradient(1100px 520px at 82% -6%,rgba(47,123,255,.16),transparent 60%),linear-gradient(160deg,#04091a 0,#071433 48%,#050c1f 100%);color:var(--admin-text)}
+body.admin-theme-nebula.admin-login-body{background:radial-gradient(900px 460px at 80% 0,rgba(47,123,255,.22),transparent 60%),linear-gradient(160deg,#04091a 0,#071433 50%,#050c1f 100%) fixed}
+body.admin-theme-nebula.admin-body .navbar.navbar-default{background:rgba(8,19,42,.92);border-right-color:var(--admin-line)}
+body.admin-theme-nebula.admin-body .btn-primary{background:linear-gradient(135deg,#2f7bff,#22d3ee);border-color:transparent;color:#fff}
+body.admin-theme-nebula.admin-body .btn-primary:hover,body.admin-theme-nebula.admin-body .btn-primary:focus{background:linear-gradient(135deg,#5b9bff,#2f7bff);color:#fff}
+/* 黑夜风格没写、深空后台又用得到的两类：状态标签和提示框 */
+body.admin-theme-nebula.admin-body .label-default{background:var(--admin-soft);color:#b7c8e6}
+body.admin-theme-nebula.admin-body .label-info{background:rgba(47,123,255,.2);color:#8cbcff}
+body.admin-theme-nebula.admin-body .label-success{background:rgba(52,211,153,.18);color:#6ee7b7}
+body.admin-theme-nebula.admin-body .label-warning{background:rgba(251,191,36,.18);color:#fcd77a}
+body.admin-theme-nebula.admin-body .label-danger{background:rgba(255,93,115,.18);color:#ff9aa8}
+body.admin-theme-nebula.admin-body .alert{background:var(--admin-soft);border-color:var(--admin-line);color:var(--admin-text)}
+body.admin-theme-nebula.admin-body .alert-info{background:rgba(47,123,255,.14);border-color:rgba(47,123,255,.3)}
+body.admin-theme-nebula.admin-body .alert-success{background:rgba(52,211,153,.14);border-color:rgba(52,211,153,.3);color:#6ee7b7}
+body.admin-theme-nebula.admin-body .alert-warning{background:rgba(251,191,36,.14);border-color:rgba(251,191,36,.3);color:#fcd77a}
+body.admin-theme-nebula.admin-body .alert-danger{background:rgba(255,93,115,.14);border-color:rgba(255,93,115,.3);color:#ff9aa8}
+body.admin-theme-nebula.admin-body .help-block,body.admin-theme-nebula.admin-body .text-muted{color:var(--admin-muted)!important}
+
+/* ===== 补：工作台家族后台侧栏的结构规则 =====
+ 这些规则在 admin.css 里是写在 @media (min-width:768px) 内的，
+ 之前按顶层规则克隆时整块被跳过，导致五套新外观的后台没有侧栏布局。
+ 这里按同样的媒体查询外壳补齐；颜色仍走各自的 --admin-* 变量 */
+@media (min-width:768px){body.admin-theme-studio.admin-body .navbar.navbar-default,body.admin-theme-nebula.admin-body .navbar.navbar-default,body.admin-theme-royal.admin-body .navbar.navbar-default,body.admin-theme-crisp.admin-body .navbar.navbar-default,body.admin-theme-azure.admin-body .navbar.navbar-default{position:fixed;top:0;left:0;bottom:0;right:auto;z-index:1200;margin:0;width:var(--admin-sidebar-w);min-height:0;display:flex;background:var(--admin-surface);border:0;border-top:0;border-right:1px solid var(--admin-line);box-shadow:2px 0 24px rgba(0,0,0,.06);overflow-y:auto;overflow-x:hidden}body.admin-theme-studio.admin-body .navbar .container,body.admin-theme-nebula.admin-body .navbar .container,body.admin-theme-royal.admin-body .navbar .container,body.admin-theme-crisp.admin-body .navbar .container,body.admin-theme-azure.admin-body .navbar .container{width:100%;max-width:none;padding:0;margin:0;display:flex;flex-direction:column;height:100%;min-height:100%}body.admin-theme-studio.admin-body .navbar-header,body.admin-theme-nebula.admin-body .navbar-header,body.admin-theme-royal.admin-body .navbar-header,body.admin-theme-crisp.admin-body .navbar-header,body.admin-theme-azure.admin-body .navbar-header{float:none;width:100%;padding:18px 16px;border-bottom:1px solid var(--admin-line)}body.admin-theme-studio.admin-body .navbar-brand,body.admin-theme-nebula.admin-body .navbar-brand,body.admin-theme-royal.admin-body .navbar-brand,body.admin-theme-crisp.admin-body .navbar-brand,body.admin-theme-azure.admin-body .navbar-brand{float:none;display:flex;align-items:center;height:auto;padding:0;margin:0!important;color:var(--admin-text)!important;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}body.admin-theme-studio.admin-body .navbar-collapse,body.admin-theme-nebula.admin-body .navbar-collapse,body.admin-theme-royal.admin-body .navbar-collapse,body.admin-theme-crisp.admin-body .navbar-collapse,body.admin-theme-azure.admin-body .navbar-collapse{float:none;width:100%;flex:1;max-height:none!important;display:flex!important;flex-direction:column;padding:12px 10px;border:0;box-shadow:none;overflow:visible!important}body.admin-theme-studio.admin-body .navbar-nav,body.admin-theme-nebula.admin-body .navbar-nav,body.admin-theme-royal.admin-body .navbar-nav,body.admin-theme-crisp.admin-body .navbar-nav,body.admin-theme-azure.admin-body .navbar-nav{float:none!important;width:100%;margin:0!important;display:flex;flex-direction:column;gap:3px}body.admin-theme-studio.admin-body .navbar-nav>li,body.admin-theme-nebula.admin-body .navbar-nav>li,body.admin-theme-royal.admin-body .navbar-nav>li,body.admin-theme-crisp.admin-body .navbar-nav>li,body.admin-theme-azure.admin-body .navbar-nav>li{width:100%;float:none}body.admin-theme-studio.admin-body .navbar-nav.navbar-right,body.admin-theme-nebula.admin-body .navbar-nav.navbar-right,body.admin-theme-royal.admin-body .navbar-nav.navbar-right,body.admin-theme-crisp.admin-body .navbar-nav.navbar-right,body.admin-theme-azure.admin-body .navbar-nav.navbar-right{float:none!important;margin:0!important}body.admin-theme-studio.admin-body .navbar-default .navbar-nav>li>a,body.admin-theme-nebula.admin-body .navbar-default .navbar-nav>li>a,body.admin-theme-royal.admin-body .navbar-default .navbar-nav>li>a,body.admin-theme-crisp.admin-body .navbar-default .navbar-nav>li>a,body.admin-theme-azure.admin-body .navbar-default .navbar-nav>li>a{display:flex;align-items:center;gap:11px;margin:0;padding:10px 12px;border-radius:11px;color:var(--admin-muted)!important;font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}body.admin-theme-studio.admin-body .navbar-default .navbar-nav>li>a i,body.admin-theme-nebula.admin-body .navbar-default .navbar-nav>li>a i,body.admin-theme-royal.admin-body .navbar-default .navbar-nav>li>a i,body.admin-theme-crisp.admin-body .navbar-default .navbar-nav>li>a i,body.admin-theme-azure.admin-body .navbar-default .navbar-nav>li>a i{flex:0 0 17px;width:17px;margin:0;text-align:center;font-size:15px}body.admin-theme-studio.admin-body .navbar-default .navbar-nav>li>a:hover,body.admin-theme-studio.admin-body .navbar-default .navbar-nav>li>a:focus,body.admin-theme-nebula.admin-body .navbar-default .navbar-nav>li>a:hover,body.admin-theme-nebula.admin-body .navbar-default .navbar-nav>li>a:focus,body.admin-theme-royal.admin-body .navbar-default .navbar-nav>li>a:hover,body.admin-theme-royal.admin-body .navbar-default .navbar-nav>li>a:focus,body.admin-theme-crisp.admin-body .navbar-default .navbar-nav>li>a:hover,body.admin-theme-crisp.admin-body .navbar-default .navbar-nav>li>a:focus,body.admin-theme-azure.admin-body .navbar-default .navbar-nav>li>a:hover,body.admin-theme-azure.admin-body .navbar-default .navbar-nav>li>a:focus{background:#f4f6fa!important;color:#3d4557!important}body.admin-theme-studio.admin-body .navbar-default .navbar-nav>li.active>a,body.admin-theme-nebula.admin-body .navbar-default .navbar-nav>li.active>a,body.admin-theme-royal.admin-body .navbar-default .navbar-nav>li.active>a,body.admin-theme-crisp.admin-body .navbar-default .navbar-nav>li.active>a,body.admin-theme-azure.admin-body .navbar-default .navbar-nav>li.active>a{background:#eef2ff!important;color:var(--admin-primary)!important}body.admin-theme-studio.admin-body .navbar-default .navbar-nav>li.active>a i,body.admin-theme-nebula.admin-body .navbar-default .navbar-nav>li.active>a i,body.admin-theme-royal.admin-body .navbar-default .navbar-nav>li.active>a i,body.admin-theme-crisp.admin-body .navbar-default .navbar-nav>li.active>a i,body.admin-theme-azure.admin-body .navbar-default .navbar-nav>li.active>a i{color:var(--admin-primary)}body.admin-theme-studio.admin-body .navbar-nav>li>.dropdown-menu,body.admin-theme-nebula.admin-body .navbar-nav>li>.dropdown-menu,body.admin-theme-royal.admin-body .navbar-nav>li>.dropdown-menu,body.admin-theme-crisp.admin-body .navbar-nav>li>.dropdown-menu,body.admin-theme-azure.admin-body .navbar-nav>li>.dropdown-menu{display:block!important;position:static!important;float:none;width:100%;min-width:0;margin:3px 0 0;padding:4px;background:var(--admin-soft);border:1px solid var(--admin-line);border-radius:11px;box-shadow:none}body.admin-theme-studio.admin-body .navbar-nav>li>a.dropdown-toggle,body.admin-theme-nebula.admin-body .navbar-nav>li>a.dropdown-toggle,body.admin-theme-royal.admin-body .navbar-nav>li>a.dropdown-toggle,body.admin-theme-crisp.admin-body .navbar-nav>li>a.dropdown-toggle,body.admin-theme-azure.admin-body .navbar-nav>li>a.dropdown-toggle{pointer-events:none;cursor:default}body.admin-theme-studio.admin-body .navbar-nav>li>a.dropdown-toggle .caret,body.admin-theme-nebula.admin-body .navbar-nav>li>a.dropdown-toggle .caret,body.admin-theme-royal.admin-body .navbar-nav>li>a.dropdown-toggle .caret,body.admin-theme-crisp.admin-body .navbar-nav>li>a.dropdown-toggle .caret,body.admin-theme-azure.admin-body .navbar-nav>li>a.dropdown-toggle .caret{display:none}body.admin-theme-studio.admin-body .navbar-nav>li>.dropdown-menu>li>a,body.admin-theme-nebula.admin-body .navbar-nav>li>.dropdown-menu>li>a,body.admin-theme-royal.admin-body .navbar-nav>li>.dropdown-menu>li>a,body.admin-theme-crisp.admin-body .navbar-nav>li>.dropdown-menu>li>a,body.admin-theme-azure.admin-body .navbar-nav>li>.dropdown-menu>li>a{padding:8px 12px;border-radius:9px;color:var(--admin-muted)!important;font-size:13px;white-space:normal}body.admin-theme-studio.admin-body .navbar-nav>li>.dropdown-menu>li>a:hover,body.admin-theme-studio.admin-body .navbar-nav>li>.dropdown-menu>li>a:focus,body.admin-theme-nebula.admin-body .navbar-nav>li>.dropdown-menu>li>a:hover,body.admin-theme-nebula.admin-body .navbar-nav>li>.dropdown-menu>li>a:focus,body.admin-theme-royal.admin-body .navbar-nav>li>.dropdown-menu>li>a:hover,body.admin-theme-royal.admin-body .navbar-nav>li>.dropdown-menu>li>a:focus,body.admin-theme-crisp.admin-body .navbar-nav>li>.dropdown-menu>li>a:hover,body.admin-theme-crisp.admin-body .navbar-nav>li>.dropdown-menu>li>a:focus,body.admin-theme-azure.admin-body .navbar-nav>li>.dropdown-menu>li>a:hover,body.admin-theme-azure.admin-body .navbar-nav>li>.dropdown-menu>li>a:focus{background:#eef2ff!important;color:var(--admin-primary)!important}body.admin-theme-studio.admin-body .navbar-nav>li>.dropdown-menu>li.active>a,body.admin-theme-studio.admin-body .navbar-nav>li>.dropdown-menu>li.active>a:hover,body.admin-theme-studio.admin-body .navbar-nav>li>.dropdown-menu>li.active>a:focus,body.admin-theme-nebula.admin-body .navbar-nav>li>.dropdown-menu>li.active>a,body.admin-theme-nebula.admin-body .navbar-nav>li>.dropdown-menu>li.active>a:hover,body.admin-theme-nebula.admin-body .navbar-nav>li>.dropdown-menu>li.active>a:focus,body.admin-theme-royal.admin-body .navbar-nav>li>.dropdown-menu>li.active>a,body.admin-theme-royal.admin-body .navbar-nav>li>.dropdown-menu>li.active>a:hover,body.admin-theme-royal.admin-body .navbar-nav>li>.dropdown-menu>li.active>a:focus,body.admin-theme-crisp.admin-body .navbar-nav>li>.dropdown-menu>li.active>a,body.admin-theme-crisp.admin-body .navbar-nav>li>.dropdown-menu>li.active>a:hover,body.admin-theme-crisp.admin-body .navbar-nav>li>.dropdown-menu>li.active>a:focus,body.admin-theme-azure.admin-body .navbar-nav>li>.dropdown-menu>li.active>a,body.admin-theme-azure.admin-body .navbar-nav>li>.dropdown-menu>li.active>a:hover,body.admin-theme-azure.admin-body .navbar-nav>li>.dropdown-menu>li.active>a:focus{background:#e2e8ff!important;color:var(--admin-primary-dark)!important;font-weight:750}body.admin-theme-studio.admin-body>.container,body.admin-theme-studio.admin-body>.container-fluid,body.admin-theme-nebula.admin-body>.container,body.admin-theme-nebula.admin-body>.container-fluid,body.admin-theme-royal.admin-body>.container,body.admin-theme-royal.admin-body>.container-fluid,body.admin-theme-crisp.admin-body>.container,body.admin-theme-crisp.admin-body>.container-fluid,body.admin-theme-azure.admin-body>.container,body.admin-theme-azure.admin-body>.container-fluid{width:auto!important;max-width:none!important;margin:0!important;padding-top:26px!important;padding-right:28px!important;padding-bottom:8px!important;padding-left:calc(var(--admin-sidebar-w) + 28px)!important}}
+@media (max-width:767px){body.admin-theme-studio.admin-body .navbar-default .navbar-nav>li>a,body.admin-theme-nebula.admin-body .navbar-default .navbar-nav>li>a,body.admin-theme-royal.admin-body .navbar-default .navbar-nav>li>a,body.admin-theme-crisp.admin-body .navbar-default .navbar-nav>li>a,body.admin-theme-azure.admin-body .navbar-default .navbar-nav>li>a{margin:2px 0;border-radius:9px}}
+/* 深色那套的侧栏底色单独压一下，结构规则里的 --admin-surface 偏亮一点 */
+@media (min-width:768px){body.admin-theme-nebula.admin-body .navbar.navbar-default{background:rgba(8,19,42,.92);border-right:1px solid var(--admin-line)}}
+
+/* ===== 潮酷涂鸦风：后台 ===== */
+body.admin-theme-neo.admin-body,
+body.admin-theme-neo.admin-login-body{--admin-bg:#f7f2e8;--admin-surface:#fffdf8;--admin-soft:#f3ede1;--admin-text:#141414;--admin-muted:#6b6255;--admin-line:#111111;--admin-primary:#ff6b2c;--admin-primary-dark:#e5551a;--admin-green:#3fae63;--admin-yellow:#d99a00;--admin-red:#e8384f;--admin-shadow:4px 4px 0 #111111;--admin-sidebar-w:250px}
+body.admin-theme-neo.admin-login-body{background:#f7f2e8 fixed}
+body.admin-theme-neo.admin-body{background:var(--admin-bg);color:var(--admin-text)}
+body.admin-theme-neo.admin-body .navbar.navbar-default{background:#141414!important;border-right:2px solid #111111!important}
+body.admin-theme-neo.admin-body .navbar-brand{color:#fff!important;font-weight:900}
+body.admin-theme-neo.admin-body .navbar-default .navbar-nav>li>a{border-radius:0;color:#d8d2c6!important;font-weight:800}
+body.admin-theme-neo.admin-body .navbar-default .navbar-nav>li>a:hover,body.admin-theme-neo.admin-body .navbar-default .navbar-nav>li>a:focus{background:#232323!important;color:#fff!important}
+body.admin-theme-neo.admin-body .navbar-default .navbar-nav>li.active>a{background:var(--admin-primary)!important;color:#fff!important;font-weight:900}
+body.admin-theme-neo.admin-body .navbar-nav .dropdown-header{color:#8b8071!important}
+body.admin-theme-neo.admin-body .panel,body.admin-theme-neo.admin-body .modal-content{border:2px solid #111111;border-radius:12px;box-shadow:var(--admin-shadow)}
+body.admin-theme-neo.admin-body .panel-heading{border-bottom:2px solid #111111!important;background:var(--admin-soft)!important;color:#141414!important}
+body.admin-theme-neo.admin-body .panel-title{font-weight:900}
+body.admin-theme-neo.admin-body .form-control{border:2px solid #111111!important;border-radius:9px;background:#fff!important;color:#141414!important;box-shadow:none!important;font-weight:600}
+body.admin-theme-neo.admin-body .btn-primary{border:2px solid #111111;border-radius:10px;background:var(--admin-primary);color:#fff;font-weight:900;box-shadow:var(--admin-shadow)}
+body.admin-theme-neo.admin-body .btn-primary:hover,body.admin-theme-neo.admin-body .btn-primary:focus{background:var(--admin-primary-dark);color:#fff;box-shadow:2px 2px 0 #111111}
+body.admin-theme-neo.admin-body .btn-default{border:2px solid #111111;border-radius:10px;background:#fff;color:#141414;font-weight:800}
+body.admin-theme-neo.admin-body .table>thead>tr>th{background:var(--admin-soft)!important;border-bottom:2px solid #111111!important;color:#141414!important;font-weight:900}
+body.admin-theme-neo.admin-body .table>tbody>tr>td{border-top:1px solid #ded5c4!important;color:var(--admin-text)}
+body.admin-theme-neo.admin-body .label{border:1px solid #141414;border-radius:6px;font-weight:800}
+body.admin-theme-neo.admin-body .alert{border:2px solid #111111;border-radius:10px}
+
+/* 外观卡缩略图：黑侧栏 + 橙块 + 米色内容区 */
+.appearance-preview-neo{display:flex;gap:7px;padding:8px;background:#f7f2e8}
+.appearance-preview-neo .appearance-nav{display:block;height:auto;flex:0 0 24%;background:#141414;border:2px solid #111;border-radius:8px}
+.appearance-preview-neo .appearance-panel{flex:1;display:flex;flex-direction:column;gap:6px;margin:0;padding:0;background:transparent;border:0}
+.appearance-preview-neo .appearance-panel span{margin:0;border:2px solid #111;border-radius:7px}
+.appearance-preview-neo .appearance-panel span:first-child{height:14px;background:#fffdf8}
+.appearance-preview-neo .appearance-panel span:nth-child(2){height:38px;background:#f3ede1;box-shadow:3px 3px 0 #111}
+.appearance-preview-neo .appearance-panel span:nth-child(3){flex:1;background:#ff6b2c;box-shadow:3px 3px 0 #111}
+
+/* ===== 补：潮酷涂鸦风后台侧栏的结构规则 =====
+ 这些规则在 admin.css 里是写在 @media (min-width:768px) 内的，
+ 之前按顶层规则克隆时整块被跳过，导致五套新外观的后台没有侧栏布局。
+ 这里按同样的媒体查询外壳补齐；颜色仍走各自的 --admin-* 变量 */
+@media (min-width:768px){body.admin-theme-neo.admin-body .navbar.navbar-default{position:fixed;top:0;left:0;bottom:0;right:auto;z-index:1200;margin:0;width:var(--admin-sidebar-w);min-height:0;display:flex;background:var(--admin-surface);border:0;border-top:0;border-right:1px solid var(--admin-line);box-shadow:2px 0 24px rgba(0,0,0,.06);overflow-y:auto;overflow-x:hidden}body.admin-theme-neo.admin-body .navbar .container{width:100%;max-width:none;padding:0;margin:0;display:flex;flex-direction:column;height:100%;min-height:100%}body.admin-theme-neo.admin-body .navbar-header{float:none;width:100%;padding:18px 16px;border-bottom:1px solid var(--admin-line)}body.admin-theme-neo.admin-body .navbar-brand{float:none;display:flex;align-items:center;height:auto;padding:0;margin:0!important;color:var(--admin-text)!important;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}body.admin-theme-neo.admin-body .navbar-collapse{float:none;width:100%;flex:1;max-height:none!important;display:flex!important;flex-direction:column;padding:12px 10px;border:0;box-shadow:none;overflow:visible!important}body.admin-theme-neo.admin-body .navbar-nav{float:none!important;width:100%;margin:0!important;display:flex;flex-direction:column;gap:3px}body.admin-theme-neo.admin-body .navbar-nav>li{width:100%;float:none}body.admin-theme-neo.admin-body .navbar-nav.navbar-right{float:none!important;margin:0!important}body.admin-theme-neo.admin-body .navbar-default .navbar-nav>li>a{display:flex;align-items:center;gap:11px;margin:0;padding:10px 12px;border-radius:11px;color:var(--admin-muted)!important;font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}body.admin-theme-neo.admin-body .navbar-default .navbar-nav>li>a i{flex:0 0 17px;width:17px;margin:0;text-align:center;font-size:15px}body.admin-theme-neo.admin-body .navbar-default .navbar-nav>li>a:hover,body.admin-theme-neo.admin-body .navbar-default .navbar-nav>li>a:focus{background:#f4f6fa!important;color:#3d4557!important}body.admin-theme-neo.admin-body .navbar-default .navbar-nav>li.active>a{background:#eef2ff!important;color:var(--admin-primary)!important}body.admin-theme-neo.admin-body .navbar-default .navbar-nav>li.active>a i{color:var(--admin-primary)}body.admin-theme-neo.admin-body .navbar-nav>li>.dropdown-menu{display:block!important;position:static!important;float:none;width:100%;min-width:0;margin:3px 0 0;padding:4px;background:var(--admin-soft);border:1px solid var(--admin-line);border-radius:11px;box-shadow:none}body.admin-theme-neo.admin-body .navbar-nav>li>a.dropdown-toggle{pointer-events:none;cursor:default}body.admin-theme-neo.admin-body .navbar-nav>li>a.dropdown-toggle .caret{display:none}body.admin-theme-neo.admin-body .navbar-nav>li>.dropdown-menu>li>a{padding:8px 12px;border-radius:9px;color:var(--admin-muted)!important;font-size:13px;white-space:normal}body.admin-theme-neo.admin-body .navbar-nav>li>.dropdown-menu>li>a:hover,body.admin-theme-neo.admin-body .navbar-nav>li>.dropdown-menu>li>a:focus{background:#eef2ff!important;color:var(--admin-primary)!important}body.admin-theme-neo.admin-body .navbar-nav>li>.dropdown-menu>li.active>a,body.admin-theme-neo.admin-body .navbar-nav>li>.dropdown-menu>li.active>a:hover,body.admin-theme-neo.admin-body .navbar-nav>li>.dropdown-menu>li.active>a:focus{background:#e2e8ff!important;color:var(--admin-primary-dark)!important;font-weight:750}body.admin-theme-neo.admin-body>.container,body.admin-theme-neo.admin-body>.container-fluid{width:auto!important;max-width:none!important;margin:0!important;padding-top:26px!important;padding-right:28px!important;padding-bottom:8px!important;padding-left:calc(var(--admin-sidebar-w) + 28px)!important}}
+@media (max-width:767px){body.admin-theme-neo.admin-body .navbar-default .navbar-nav>li>a{margin:2px 0;border-radius:9px}}
+/* 潮酷涂鸦风的侧栏是纯黑，结构规则里的 --admin-surface 会把它刷浅，单独压回去 */
+@media (min-width:768px){body.admin-theme-neo.admin-body .navbar.navbar-default{background:#141414;border-right:2px solid #111111}}
+
+/* ===== 云端门户风：后台 =====
+   前台是顶部横向导航，后台就沿用默认的顶栏布局（不进 $is_sidebar_admin 名单），这里只给配色 */
+body.admin-theme-skyline.admin-body,
+body.admin-theme-skyline.admin-login-body{--admin-bg:#f4f7fc;--admin-surface:#ffffff;--admin-soft:#f5f8fd;--admin-text:#1a2540;--admin-muted:#6f7f9b;--admin-line:#e6ecf6;--admin-primary:#2563eb;--admin-primary-dark:#1d4ed8;--admin-green:#16a34a;--admin-yellow:#f59e0b;--admin-red:#ef4444;--admin-shadow:0 10px 30px rgba(26,37,64,.06);--admin-sidebar-w:250px}
+body.admin-theme-skyline.admin-login-body{background:linear-gradient(180deg,#bfe0f7 0,#dceefb 45%,#f4f7fc 100%) fixed}
+body.admin-theme-skyline.admin-body{background:var(--admin-bg);color:var(--admin-text)}
+body.admin-theme-skyline.admin-body .panel{border-color:var(--admin-line);border-radius:16px;box-shadow:var(--admin-shadow)}
+body.admin-theme-skyline.admin-body .panel-heading{background:var(--admin-surface)!important;border-bottom:1px solid var(--admin-line)!important;color:var(--admin-text)!important}
+body.admin-theme-skyline.admin-body .btn-primary{background:linear-gradient(135deg,#2563eb,#38bdf8);border-color:transparent;color:#fff}
+body.admin-theme-skyline.admin-body .btn-primary:hover,body.admin-theme-skyline.admin-body .btn-primary:focus{background:linear-gradient(135deg,#1d4ed8,#2563eb);color:#fff}
+body.admin-theme-skyline.admin-body .table>thead>tr>th{background:var(--admin-soft)!important;border-bottom:1px solid var(--admin-line)!important;color:var(--admin-muted)}
+body.admin-theme-skyline.admin-body .table>tbody>tr>td{border-top:1px solid var(--admin-line)!important;color:var(--admin-text)}
+
+/* 外观卡缩略图：顶栏 + 天空色横幅 + 白列表 */
+.appearance-preview-skyline{display:flex;flex-direction:column;gap:6px;padding:8px;background:#f4f7fc}
+.appearance-preview-skyline .appearance-nav{display:block;height:14px;background:#fff;border:1px solid #e6ecf6;border-radius:7px}
+.appearance-preview-skyline .appearance-panel{flex:1;display:flex;flex-direction:column;gap:6px;margin:0;padding:0;background:transparent;border:0}
+.appearance-preview-skyline .appearance-panel span{margin:0;border-radius:7px}
+.appearance-preview-skyline .appearance-panel span:first-child{height:44px;background:linear-gradient(180deg,#bfe0f7,#dceefb 45%,#eef6fd)}
+.appearance-preview-skyline .appearance-panel span:nth-child(2){height:14px;background:#fff;border:1px solid #e6ecf6}
+.appearance-preview-skyline .appearance-panel span:nth-child(3){flex:1;background:#fff;border:1px solid #e6ecf6;box-shadow:0 8px 20px rgba(26,37,64,.07)}
+
+/* ===== 修：潮酷涂鸦风后台侧栏黑白混色 =====
+   侧栏的结构规则是从「数据控制台风」克隆的，那批规则写在 @media (min-width:768px) 里，
+   排在前面那批深色规则之后，于是品牌名、导航文字、展开的子菜单又被刷回了浅色，
+   出现上半黑、下半米色的割裂。这里在同一个媒体查询里按黑侧栏重写一遍。 */
+@media (min-width:768px){
+body.admin-theme-neo.admin-body .navbar.navbar-default{background:#141414!important;border-right:2px solid #111111!important;box-shadow:none}
+body.admin-theme-neo.admin-body .navbar-header{background:#ff6b2c;border-bottom:2px solid #111111!important;padding:16px 18px}
+body.admin-theme-neo.admin-body .navbar-brand{color:#fff!important;font-weight:900}
+body.admin-theme-neo.admin-body .navbar-collapse{background:#141414}
+body.admin-theme-neo.admin-body .navbar-default .navbar-nav>li>a{border-radius:0;color:#d8d2c6!important;font-weight:800}
+body.admin-theme-neo.admin-body .navbar-default .navbar-nav>li>a i{color:#8b8071}
+body.admin-theme-neo.admin-body .navbar-default .navbar-nav>li>a:hover,
+body.admin-theme-neo.admin-body .navbar-default .navbar-nav>li>a:focus{background:#232323!important;color:#fff!important}
+body.admin-theme-neo.admin-body .navbar-default .navbar-nav>li.active>a{background:#ff6b2c!important;color:#fff!important;font-weight:900}
+body.admin-theme-neo.admin-body .navbar-default .navbar-nav>li.active>a i{color:#fff}
+/* 常驻展开的子菜单：底色跟侧栏一致，只用一条左侧竖线区分层级 */
+body.admin-theme-neo.admin-body .navbar-nav>li>.dropdown-menu{background:#1b1b1b!important;border:0!important;border-left:2px solid #2f2f2f!important;border-radius:0;margin-left:18px;box-shadow:none}
+body.admin-theme-neo.admin-body .navbar-nav>li>.dropdown-menu>li>a{border-radius:0;color:#b9b2a5!important;font-weight:700}
+body.admin-theme-neo.admin-body .navbar-nav>li>.dropdown-menu>li>a:hover,
+body.admin-theme-neo.admin-body .navbar-nav>li>.dropdown-menu>li>a:focus{background:#2a2a2a!important;color:#fff!important}
+body.admin-theme-neo.admin-body .navbar-nav>li>.dropdown-menu>li.active>a,
+body.admin-theme-neo.admin-body .navbar-nav>li>.dropdown-menu>li.active>a:hover,
+body.admin-theme-neo.admin-body .navbar-nav>li>.dropdown-menu>li.active>a:focus{background:#ff6b2c!important;color:#fff!important;font-weight:900}
+body.admin-theme-neo.admin-body .navbar-nav .dropdown-header{color:#8b8071!important;font-weight:800}
+body.admin-theme-neo.admin-body .navbar-nav .divider{background:#2f2f2f!important}
+body.admin-theme-neo.admin-body .navbar-nav>li>.dropdown-menu>li>a i{color:#8b8071}
 }

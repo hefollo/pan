@@ -368,6 +368,56 @@ function mpimg_render_notice_html($conf){
 			'text' => '#191d33',
 			'link' => '#6d5df6',
 		],
+		//工作台家族五套
+		'studio' => [
+			'bg' => 'rgba(255,255,255,.96)',
+			'border' => '#e8edf7',
+			'shadow' => '0 10px 30px rgba(38,60,105,.07)',
+			'text' => '#1f2a44',
+			'link' => '#3b7dfb',
+		],
+		'nebula' => [
+			'bg' => 'rgba(11,23,48,.94)',
+			'border' => '#1b2c50',
+			'shadow' => '0 14px 40px rgba(0,0,0,.45)',
+			'text' => '#dce8ff',
+			'link' => '#7fb0ff',
+		],
+		'royal' => [
+			'bg' => 'rgba(255,255,255,.96)',
+			'border' => '#e6e6fa',
+			'shadow' => '0 12px 32px rgba(70,60,140,.09)',
+			'text' => '#231d48',
+			'link' => '#6366f1',
+		],
+		'crisp' => [
+			'bg' => 'rgba(255,255,255,.97)',
+			'border' => '#e9eef6',
+			'shadow' => '0 8px 24px rgba(15,23,42,.06)',
+			'text' => '#0f172a',
+			'link' => '#2563eb',
+		],
+		'azure' => [
+			'bg' => 'rgba(255,255,255,.96)',
+			'border' => '#dfeafc',
+			'shadow' => '0 12px 30px rgba(28,80,140,.08)',
+			'text' => '#14314f',
+			'link' => '#3b82f6',
+		],
+		'neo' => [
+			'bg' => '#fffdf8',
+			'border' => '#111111',
+			'shadow' => '0 4px 0 #111111',
+			'text' => '#141414',
+			'link' => '#ff6b2c',
+		],
+		'skyline' => [
+			'bg' => 'rgba(255,255,255,.97)',
+			'border' => '#e6ecf6',
+			'shadow' => '0 10px 28px rgba(26,37,64,.07)',
+			'text' => '#1a2540',
+			'link' => '#2563eb',
+		],
 	];
 	if(!isset($theme_styles[$site_theme])){
 		$site_theme = default_site_theme();
@@ -593,6 +643,17 @@ function insertIntoPage(element) {
 }
 
 function insertAfterNavbar(element) {
+  // 工作台家族的导航是左侧栏，顶部另有一条搜索条紧跟在它后面；
+  // 插在侧栏后面会把公告条顶到搜索条上方去，所以这几套改成插在搜索条后面
+  var topbar = document.querySelector('.studio-topbar');
+  if (topbar && topbar.parentNode) {
+    if (topbar.nextSibling) {
+      topbar.parentNode.insertBefore(element, topbar.nextSibling);
+    } else {
+      topbar.parentNode.appendChild(element);
+    }
+    return;
+  }
   var navbar = document.querySelector('.navbar.navbar-default');
   if (navbar && navbar.parentNode) {
     if (navbar.nextSibling) {

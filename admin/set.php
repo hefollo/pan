@@ -10,7 +10,7 @@ if($islogin==1){}else exit("<script language='javascript'>window.location.href='
 ?>
 <?php
 $mod=isset($_GET['mod'])?$_GET['mod']:null;
-//外观设置是一排排的外观卡片，21 套排下来要横向空间，用宽版；其余都是设置表单，收窄看着才不散
+//外观设置是一排排的外观卡片，28 套排下来要横向空间，用宽版；其余都是设置表单，收窄看着才不散
 $set_shell = ($mod === 'appearance') ? 'admin-page-wide' : 'admin-page';
 ?>
   <div class="container">
@@ -82,10 +82,13 @@ if(!in_array($site_theme, site_theme_keys(), true)){
 //顺手同步一次静态 404 页的外观：已经设置好外观的站点不用再点一次保存
 sync_404_theme($site_theme);
 ?>
+<?php /* 表单包住整块：渐变工具条吸在顶部，外观卡片面板从它下面滚过去，
+        两边的值一起提交，翻到最底下也不用回头找保存按钮 */ ?>
+<form onsubmit="return saveSetting(this)" method="post" role="form" class="appearance-form">
+<?php include './set_appearance_grad.php';?>
 <div class="panel panel-primary">
 <div class="panel-heading"><h3 class="panel-title">外观设置</h3></div>
 <div class="panel-body">
-  <form onsubmit="return saveSetting(this)" method="post" role="form">
 	<div class="appearance-group">
 	  <div class="appearance-group-head">
 	    <strong>布局型外观</strong>
@@ -157,6 +160,83 @@ sync_404_theme($site_theme);
 	    </span>
 	    <strong>渐变仪表盘风</strong>
 	    <small>白色悬浮圆角侧栏（默认展开显示文字），文件列表页顶部是问候栏和紫色渐变额度卡，右侧多一列存储分布、最近上传和快捷入口面板。</small>
+	  </label>
+	  <label class="appearance-card <?php echo $site_theme === 'studio' ? 'active' : null;?>">
+	    <input type="radio" name="site_theme" value="studio" <?php echo $site_theme === 'studio' ? 'checked' : null;?>>
+	    <span class="appearance-preview appearance-preview-studio">
+	      <span class="appearance-nav"></span>
+	      <span class="appearance-panel">
+	        <span></span><span></span><span></span>
+	      </span>
+	    </span>
+	    <strong>蓝白工作台风</strong>
+	    <small>白色分组侧栏（工作空间 / 个人中心，底部带升级卡）+ 顶部搜索条，文件列表页是蓝白横幅、四张统计卡、带筛选和排序的文件面板，右侧一列今日上传、我的权限、快捷操作和最近动态。</small>
+	  </label>
+	  <label class="appearance-card <?php echo $site_theme === 'nebula' ? 'active' : null;?>">
+	    <input type="radio" name="site_theme" value="nebula" <?php echo $site_theme === 'nebula' ? 'checked' : null;?>>
+	    <span class="appearance-preview appearance-preview-nebula">
+	      <span class="appearance-nav"></span>
+	      <span class="appearance-panel">
+	        <span></span><span></span><span></span>
+	      </span>
+	    </span>
+	    <strong>深空科技风</strong>
+	    <small>蓝白工作台的深色版：深蓝星空底配发光描边，横幅是大标题加三个卖点，统计卡带彩色辉光，适合长时间浏览的深色站点。</small>
+	  </label>
+	  <label class="appearance-card <?php echo $site_theme === 'royal' ? 'active' : null;?>">
+	    <input type="radio" name="site_theme" value="royal" <?php echo $site_theme === 'royal' ? 'checked' : null;?>>
+	    <span class="appearance-preview appearance-preview-royal">
+	      <span class="appearance-nav"></span>
+	      <span class="appearance-panel">
+	        <span></span><span></span><span></span>
+	      </span>
+	    </span>
+	    <strong>紫韵会员风</strong>
+	    <small>蓝紫渐变横幅配彩色统计卡，右侧第一块是金色会员权限卡带升级入口，列表下方还有一条卖点推广横幅。</small>
+	  </label>
+	  <label class="appearance-card <?php echo $site_theme === 'crisp' ? 'active' : null;?>">
+	    <input type="radio" name="site_theme" value="crisp" <?php echo $site_theme === 'crisp' ? 'checked' : null;?>>
+	    <span class="appearance-preview appearance-preview-crisp">
+	      <span class="appearance-nav"></span>
+	      <span class="appearance-panel">
+	        <span></span><span></span><span></span>
+	      </span>
+	    </span>
+	    <strong>清爽极简风</strong>
+	    <small>近乎纯白的底色，横幅不做卡片、直接铺在页面上，四条勾选卖点加两个大按钮，五张统计卡，右侧最近动态是时间轴样式。</small>
+	  </label>
+	  <label class="appearance-card <?php echo $site_theme === 'azure' ? 'active' : null;?>">
+	    <input type="radio" name="site_theme" value="azure" <?php echo $site_theme === 'azure' ? 'checked' : null;?>>
+	    <span class="appearance-preview appearance-preview-azure">
+	      <span class="appearance-nav"></span>
+	      <span class="appearance-panel">
+	        <span></span><span></span><span></span>
+	      </span>
+	    </span>
+	    <strong>蓝天白云风</strong>
+	    <small>天蓝渐变横幅，右上角三枚浮标卖点，五张统计卡，列表下方是会员升级横幅，整体明亮通透。</small>
+	  </label>
+	  <label class="appearance-card <?php echo $site_theme === 'neo' ? 'active' : null;?>">
+	    <input type="radio" name="site_theme" value="neo" <?php echo $site_theme === 'neo' ? 'checked' : null;?>>
+	    <span class="appearance-preview appearance-preview-neo">
+	      <span class="appearance-nav"></span>
+	      <span class="appearance-panel">
+	        <span></span><span></span><span></span>
+	      </span>
+	    </span>
+	    <strong>潮酷涂鸦风</strong>
+	    <small>粗黑描边加不带模糊的硬投影，米色底配橙黑撞色：黑色侧栏、橙色选中项，横幅是超大标题加手写标语，五张统计卡各一个高饱和颜色。</small>
+	  </label>
+	  <label class="appearance-card <?php echo $site_theme === 'skyline' ? 'active' : null;?>">
+	    <input type="radio" name="site_theme" value="skyline" <?php echo $site_theme === 'skyline' ? 'checked' : null;?>>
+	    <span class="appearance-preview appearance-preview-skyline">
+	      <span class="appearance-nav"></span>
+	      <span class="appearance-panel">
+	        <span></span><span></span><span></span>
+	      </span>
+	    </span>
+	    <strong>云端门户风</strong>
+	    <small>家族里唯一一套顶部横向导航：天空渐变的大横幅带远山和居中大搜索框，下面是浅色统计卡和文件面板，右侧一列蓝色上传卡、存储空间、最近上传。后台保持顶栏布局。</small>
 	  </label>
 	</div>
 	</div>
@@ -333,16 +413,13 @@ sync_404_theme($site_theme);
 	  </label>
 	</div>
 	</div>
-	<div class="form-group appearance-submit">
-	  <input type="submit" name="submit" value="保存外观" class="btn btn-primary form-control"/>
-	</div>
-  </form>
 </div>
 <div class="panel-footer">
 <span class="glyphicon glyphicon-info-sign"></span>
-保存后前台页面会立即使用选中的外观。布局型外观会同时改变后台：“控制台侧栏风”“数据控制台风”“深色工作台风”把后台顶部导航变成左侧侧栏，“macOS 窗口风”把后台也套进同一个窗口（顶栏变标题栏、底部加状态栏），“上传门户风”只换后台配色、保留顶部导航；配色型外观不影响后台布局。
+保存后前台页面会立即使用选中的外观。布局型外观会同时改变后台：“控制台侧栏风”“数据控制台风”“深色工作台风”把后台顶部导航变成左侧侧栏，“macOS 窗口风”把后台也套进同一个窗口（顶栏变标题栏、底部加状态栏），“上传门户风”只换后台配色、保留顶部导航；配色型外观不影响后台布局。外观配色按外观分别保存：主色/副色会把该外观的整套颜色一起重算（前台和后台一起变），只对改过的那几套生成覆盖样式，没动过的外观仍然是原配色。
 </div>
 </div>
+</form>
 <?php
 }elseif($mod=='api'){
 $scriptpath=str_replace('\\','/',$_SERVER['SCRIPT_NAME']);

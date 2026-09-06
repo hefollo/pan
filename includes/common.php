@@ -48,6 +48,7 @@ exit();
 }
 
 include_once(SYSTEM_ROOT."functions.php");
+include_once(SYSTEM_ROOT."theme_recolor.php");
 
 $conf=getAllSetting();
 define('SYS_KEY', $conf['syskey']);

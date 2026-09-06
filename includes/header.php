@@ -1,5 +1,10 @@
 <?php
 @header('Content-Type: text/html; charset=UTF-8');
+//当前外观：<head> 里要用它输出自定义渐变，<body> 上要用它挂主题类名，算一次两处共用
+$site_theme = isset($conf['site_theme']) ? $conf['site_theme'] : default_site_theme();
+if(!in_array($site_theme, site_theme_keys(), true)){
+  $site_theme = default_site_theme();
+}
 ?><!DOCTYPE html>
 <html>
 <head>
@@ -20,6 +25,10 @@
   <link href="https://s4.zstatic.net/ajax/libs/bootstrap-material-design/0.5.10/css/ripples.min.css" rel="stylesheet">
   <?php if($is_file){?><link rel="stylesheet" href="https://s4.zstatic.net/ajax/libs/aplayer/1.10.1/APlayer.min.css"><link href="assets/css/ckplayer.css" rel="stylesheet"><?php }?>
   <link href="assets/css/style.css?v=<?php echo asset_ver('assets/css/style.css')?>" rel="stylesheet">
+  <?php //外观设置里给当前外观单独配过颜色才有输出，没配就都是空的：
+  //先是整套换色（把这套外观用到的颜色全部按新主色重算），再是渐变角度等细节覆盖
+  echo theme_recolor_tag($site_theme);
+  echo theme_gradient_style($site_theme);?>
   <!--[if lt IE 9]>
     <script src="https://s4.zstatic.net/ajax/libs/html5shiv/3.7.3/html5shiv.min.js"></script>
     <script src="https://s4.zstatic.net/ajax/libs/respond.js/1.4.2/respond.min.js"></script>
@@ -27,13 +36,12 @@
   <script type="text/javascript" src="https://s4.zstatic.net/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
 </head>
 <?php
-$site_theme = isset($conf['site_theme']) ? $conf['site_theme'] : default_site_theme();
-if(!in_array($site_theme, site_theme_keys(), true)){
-  $site_theme = default_site_theme();
-}
 //布局型外观（侧栏/门户/工作台/macOS 窗口/渐变仪表盘）共用一套结构样式，统一挂 layout-theme
-$layout_themes = ['dashboard', 'console', 'portal', 'workspace', 'mac', 'cockpit'];
+$layout_themes = layout_theme_keys();
 $body_class = 'theme-' . $site_theme;
+//「工作台家族」的五套外观共用同一套结构样式（侧栏 + 顶栏 + 横幅 + 右侧数据列），
+//区别只在配色和横幅表现，所以再挂一个公共类，结构 CSS 只写一份
+if(in_array($site_theme, studio_family_keys(), true))$body_class .= ' studio-layout';
 if(in_array($site_theme, $layout_themes, true)){
   $body_class .= ' layout-theme';
   include_once SYSTEM_ROOT.'layout_blocks.php';
@@ -101,6 +109,10 @@ if(in_array($site_theme, $layout_themes, true)){
         //侧栏型外观（数据控制台风/深色工作台风）在侧栏底部补一张今日上传统计卡，对应原型里的存储条
         //这三套是固定侧栏布局，底部放得下卡片；上传门户风和配色型外观是顶部导航，
         //改在文件列表页和上传页顶部显示一条权限条（见 render_permission_bar）
+        //蓝白工作台风的侧栏底部放的是升级卡，不是统计卡
+        if(in_array($site_theme, studio_family_keys(), true)){
+          echo layout_render_studio_upsell();
+        }
         if($site_theme === 'console' || $site_theme === 'workspace' || $site_theme === 'dashboard'){
           $side_limit = function_exists('get_effective_upload_count_limit') ? get_effective_upload_count_limit() : 0;
           //统计走会话缓存，pre_file 上没有 ip/addtime 索引，不能每次打开页面都扫一遍
@@ -149,5 +161,7 @@ if(in_array($site_theme, $layout_themes, true)){
       </div>
     </div>
   </div>
+<?php //蓝白工作台风的顶部搜索条：每个页面都有，所以放在这里而不是各页面自己输出
+if(in_array($site_theme, studio_family_keys(), true)){echo layout_render_studio_topbar();}?>
 
   <script src="includes/ads.php?v=<?php echo VERSION?>"></script>

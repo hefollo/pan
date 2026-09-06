@@ -1291,20 +1291,252 @@ function default_site_theme(){
 function site_theme_keys(){
 	return ['cloud', 'night', 'neon', 'aurora', 'onefour', 'celadon', 'lilac', 'paper',
 		'blush', 'sky', 'mint', 'sunset', 'abyss', 'emerald', 'sakura',
-		'dashboard', 'console', 'portal', 'workspace', 'mac', 'cockpit'];
+		'dashboard', 'console', 'portal', 'workspace', 'mac', 'cockpit', 'studio', 'nebula', 'royal', 'crisp', 'azure', 'neo', 'skyline'];
+}
+
+/*
+ * 「工作台家族」：蓝白工作台风和它的四个变体（深空科技风 / 紫韵会员风 / 清爽极简风 / 蓝天白云风）。
+ * 五套共用同一套结构（分组侧栏 + 顶部搜索条 + 横幅 + 统计卡 + 文件面板 + 右侧数据列），
+ * 区别只在配色、横幅表现和几块可选内容，所以 body 上统一挂 studio-layout，结构样式只写一份。
+ */
+function studio_family_keys(){
+	return ['studio', 'nebula', 'royal', 'crisp', 'azure', 'neo', 'skyline'];
 }
 
 /*
  * 结构型（布局型）外观，body 上要额外挂 layout-theme
  */
 function layout_theme_keys(){
-	return ['dashboard', 'console', 'portal', 'workspace', 'mac', 'cockpit'];
+	return ['dashboard', 'console', 'portal', 'workspace', 'mac', 'cockpit', 'studio', 'nebula', 'royal', 'crisp', 'azure', 'neo', 'skyline'];
+}
+
+/*
+ * 每套外观自带的颜色：a=主色，b=副色，deg=渐变角度，
+ * mid=三段渐变的中间色（只有渐变仪表盘风的额度卡用），
+ * pg/sf/tx/ln=页面底色 / 面板底色 / 正文色 / 边框色，也就是 --page-bg、--surface、
+ *   --text、--line 这四个变量的原值：这几个是灰白系，不跟着主色的色相走，单独给出来让人改，
+ * bg=整页背景渐变的色标 + 角度（只有本来就铺满渐变背景的外观才有），
+ * glass=1 表示这套外观的导航条和大标题本来就是渐变的，跟着一起换。
+ * 这里的值全部取自 assets/css/style.css 里各外观现用的颜色，
+ * 后台“恢复默认”就是回到这张表，改这里等于改默认落点。
+ */
+function theme_gradient_specs(){
+	return [
+		'cloud'     => ['a'=>'#2f86ff', 'b'=>'#6e9eff', 'deg'=>135, 'pg'=>'#eef7ff', 'sf'=>'#ffffff', 'tx'=>'#19304f', 'ln'=>'#e3edf8'],
+		'night'     => ['a'=>'#2f86ff', 'b'=>'#7c5cff', 'deg'=>135, 'pg'=>'#070d16', 'sf'=>'#0f1724', 'tx'=>'#dbe8ff', 'ln'=>'#26354f', 'bg'=>['#0b1320', '#060b12'], 'bgdeg'=>180],
+		'neon'      => ['a'=>'#2f86ff', 'b'=>'#7b3dff', 'deg'=>135, 'pg'=>'#050917', 'sf'=>'#0b1427', 'tx'=>'#e7efff', 'ln'=>'#24406f', 'bg'=>['#071024', '#050917'], 'bgdeg'=>180, 'glass'=>1],
+		'aurora'    => ['a'=>'#5fe7ff', 'b'=>'#b872ff', 'deg'=>135, 'pg'=>'#1a2772', 'sf'=>'#ffffff', 'tx'=>'#eef5ff', 'ln'=>'#ffffff', 'bg'=>['#183d86', '#332980', '#561a82'], 'bgdeg'=>135, 'glass'=>1],
+		'onefour'   => ['a'=>'#f5f6f8', 'b'=>'#aeb3bd', 'deg'=>90, 'pg'=>'#040404', 'sf'=>'#070709', 'tx'=>'#e7e8ec', 'ln'=>'#ffffff'],
+		'celadon'   => ['a'=>'#2b9c9c', 'b'=>'#1f8080', 'deg'=>135, 'pg'=>'#eef6f5', 'sf'=>'#ffffff', 'tx'=>'#123234', 'ln'=>'#187878'],
+		'lilac'     => ['a'=>'#6d5dd3', 'b'=>'#574ab5', 'deg'=>135, 'pg'=>'#f4f3fb', 'sf'=>'#ffffff', 'tx'=>'#211c3d', 'ln'=>'#6052be'],
+		'paper'     => ['a'=>'#3f3f3d', 'b'=>'#242423', 'deg'=>135, 'pg'=>'#faf9f6', 'sf'=>'#ffffff', 'tx'=>'#1c1b18', 'ln'=>'#787262'],
+		'blush'     => ['a'=>'#e0648a', 'b'=>'#c44f74', 'deg'=>135, 'pg'=>'#fdf4f6', 'sf'=>'#ffffff', 'tx'=>'#3a1c25', 'ln'=>'#be6e87'],
+		'sky'       => ['a'=>'#0ea5e9', 'b'=>'#0284c7', 'deg'=>135, 'pg'=>'#eff8fd', 'sf'=>'#ffffff', 'tx'=>'#0b2637', 'ln'=>'#0e78b4'],
+		'mint'      => ['a'=>'#22b573', 'b'=>'#17945c', 'deg'=>135, 'pg'=>'#f0faf4', 'sf'=>'#ffffff', 'tx'=>'#0e2c1b', 'ln'=>'#1e9664'],
+		'sunset'    => ['a'=>'#ffb057', 'b'=>'#ff6b9d', 'deg'=>135, 'pg'=>'#4a1136', 'sf'=>'#ffffff', 'tx'=>'#fff3ea', 'ln'=>'#ffffff', 'bg'=>['#5a1030', '#96241f', '#c2410c'], 'bgdeg'=>135, 'glass'=>1],
+		'abyss'     => ['a'=>'#38e0d8', 'b'=>'#7dd3fc', 'deg'=>135, 'pg'=>'#07293a', 'sf'=>'#ffffff', 'tx'=>'#e8fbff', 'ln'=>'#ffffff', 'bg'=>['#062a3d', '#0b4152', '#0a5f63'], 'bgdeg'=>135, 'glass'=>1],
+		'emerald'   => ['a'=>'#4ade80', 'b'=>'#5eead4', 'deg'=>135, 'pg'=>'#083826', 'sf'=>'#ffffff', 'tx'=>'#eafff3', 'ln'=>'#ffffff', 'bg'=>['#07361f', '#0b5137', '#0f6b57'], 'bgdeg'=>135, 'glass'=>1],
+		'sakura'    => ['a'=>'#e0648a', 'b'=>'#8b5cf6', 'deg'=>135, 'pg'=>'#fdf2f8', 'sf'=>'#ffffff', 'tx'=>'#3d2030', 'ln'=>'#ffffff', 'bg'=>['#ffe4ef', '#f0e7ff', '#dff1fe'], 'bgdeg'=>135, 'glass'=>1],
+		'dashboard' => ['a'=>'#4f6bff', 'b'=>'#22c55e', 'deg'=>90, 'pg'=>'#eef1f8', 'sf'=>'#ffffff', 'tx'=>'#1f2430', 'ln'=>'#e7eaf1'],
+		'console'   => ['a'=>'#3867f4', 'b'=>'#7b61ff', 'deg'=>90, 'pg'=>'#f5f7fb', 'sf'=>'#ffffff', 'tx'=>'#151c2d', 'ln'=>'#e7eaf0'],
+		'portal'    => ['a'=>'#0d7c57', 'b'=>'#2aa773', 'deg'=>90, 'pg'=>'#f6f8f5', 'sf'=>'#ffffff', 'tx'=>'#17211d', 'ln'=>'#dfe7e2'],
+		'workspace' => ['a'=>'#f4c95d', 'b'=>'#5ed6a0', 'deg'=>90, 'pg'=>'#10141b', 'sf'=>'#171c25', 'tx'=>'#edf1f7', 'ln'=>'#2a313d'],
+		'mac'       => ['a'=>'#0a84ff', 'b'=>'#5e5ce6', 'deg'=>90, 'pg'=>'#e7e9ee', 'sf'=>'#ffffff', 'tx'=>'#1d1d1f', 'ln'=>'#e6e6ea'],
+		'cockpit'   => ['a'=>'#6d5df6', 'b'=>'#b06ae8', 'mid'=>'#8b5cf6', 'deg'=>115, 'pg'=>'#f3f4fa', 'sf'=>'#ffffff', 'tx'=>'#191d33', 'ln'=>'#ecedf6'],
+		'studio'    => ['a'=>'#3b7dfb', 'b'=>'#6f8dfd', 'deg'=>135, 'pg'=>'#f2f5fb', 'sf'=>'#ffffff', 'tx'=>'#1f2a44', 'ln'=>'#e8edf7'],
+		'nebula'    => ['a'=>'#2f7bff', 'b'=>'#22d3ee', 'deg'=>135, 'pg'=>'#050c1f', 'sf'=>'#0b1730', 'tx'=>'#dce8ff', 'ln'=>'#1b2c50', 'bg'=>['#04091a', '#071433', '#050c1f'], 'bgdeg'=>160, 'glass'=>1],
+		'royal'     => ['a'=>'#6366f1', 'b'=>'#a78bfa', 'deg'=>135, 'pg'=>'#eef1fd', 'sf'=>'#ffffff', 'tx'=>'#231d48', 'ln'=>'#e6e6fa'],
+		'crisp'     => ['a'=>'#2563eb', 'b'=>'#60a5fa', 'deg'=>135, 'pg'=>'#f7f9fc', 'sf'=>'#ffffff', 'tx'=>'#0f172a', 'ln'=>'#e9eef6'],
+		'azure'     => ['a'=>'#3b82f6', 'b'=>'#7dd3fc', 'deg'=>135, 'pg'=>'#eef6ff', 'sf'=>'#ffffff', 'tx'=>'#14314f', 'ln'=>'#dfeafc'],
+		//潮酷涂鸦风的边框就是纯黑，ln 保持 #111111，别在配色里被算成"线条色"跟着主色跑
+		'neo'       => ['a'=>'#ff6b2c', 'b'=>'#2f6bff', 'deg'=>135, 'pg'=>'#f7f2e8', 'sf'=>'#fffdf8', 'tx'=>'#141414', 'ln'=>'#111111'],
+		'skyline'   => ['a'=>'#2563eb', 'b'=>'#38bdf8', 'deg'=>135, 'pg'=>'#f4f7fc', 'sf'=>'#ffffff', 'tx'=>'#1a2540', 'ln'=>'#e6ecf6'],
+	];
+}
+
+/*
+ * #rgb / #rrggbb 都收，其余一律返回空串，交给调用处回退默认色。
+ */
+function normalize_hex_color($v){
+	$v = strtolower(trim((string)$v));
+	if(preg_match('/^#([0-9a-f]{3})$/', $v, $m)){
+		return '#'.$m[1][0].$m[1][0].$m[1][1].$m[1][1].$m[1][2].$m[1][2];
+	}
+	return preg_match('/^#[0-9a-f]{6}$/', $v) ? $v : '';
+}
+
+/*
+ * #rrggbb -> rgba(r,g,b,alpha)，导航条那种半透明渐变要用
+ */
+function hex_to_rgba($hex, $alpha){
+	$hex = normalize_hex_color($hex);
+	if($hex === '')return 'transparent';
+	return 'rgba('.hexdec(substr($hex, 1, 2)).','.hexdec(substr($hex, 3, 2)).','.hexdec(substr($hex, 5, 2)).','.$alpha.')';
+}
+
+/*
+ * 把颜色往白（$pct>0）或往黑（$pct<0）推一点，用来生成按钮的 hover 色
+ */
+function shift_hex_color($hex, $pct){
+	$hex = normalize_hex_color($hex);
+	if($hex === '')return $hex;
+	$out = '#';
+	for($i = 1; $i < 7; $i += 2){
+		$c = hexdec(substr($hex, $i, 2));
+		$c = $pct >= 0 ? $c + (255 - $c) * $pct : $c * (1 + $pct);
+		$out .= str_pad(dechex(max(0, min(255, (int)round($c)))), 2, '0', STR_PAD_LEFT);
+	}
+	return $out;
+}
+
+/*
+ * 把提交上来的渐变配置洗干净：只留认识的外观、合法的颜色和角度，
+ * 并且和默认值一样的整条丢掉——没改过的外观不落库，前台也就一行覆盖样式都不输出。
+ * 返回可以直接存进配置表的 JSON 字符串（全是默认值时返回空串）。
+ */
+function normalize_theme_gradient($raw){
+	if(is_string($raw))$raw = json_decode($raw, true);
+	if(!is_array($raw))return '';
+	$specs = theme_gradient_specs();
+	$out = [];
+	foreach($raw as $theme => $item){
+		if(!isset($specs[$theme]) || !is_array($item))continue;
+		$spec = $specs[$theme];
+		$one = [];
+		foreach(['a', 'b', 'mid', 'pg', 'sf', 'tx', 'ln'] as $k){
+			if(!isset($spec[$k]))continue;
+			$c = isset($item[$k]) ? normalize_hex_color($item[$k]) : '';
+			if($c !== '' && $c !== normalize_hex_color($spec[$k]))$one[$k] = $c;
+		}
+		if(isset($item['deg'])){
+			$deg = max(0, min(360, (int)$item['deg']));
+			if($deg !== (int)$spec['deg'])$one['deg'] = $deg;
+		}
+		if(isset($spec['bg'])){
+			$bg = [];
+			$changed = false;
+			foreach($spec['bg'] as $i => $def){
+				$c = isset($item['bg'][$i]) ? normalize_hex_color($item['bg'][$i]) : '';
+				if($c === '')$c = $def;
+				if($c !== $def)$changed = true;
+				$bg[] = $c;
+			}
+			if($changed)$one['bg'] = $bg;
+			if(isset($item['bgdeg'])){
+				$bgdeg = max(0, min(360, (int)$item['bgdeg']));
+				if($bgdeg !== (int)$spec['bgdeg'])$one['bgdeg'] = $bgdeg;
+			}
+		}
+		if($one)$out[$theme] = $one;
+	}
+	return $out ? json_encode($out) : '';
+}
+
+/*
+ * 读出某套外观最终生效的渐变参数（自定义的盖在默认值上）。
+ * $only_custom=true 时，没被后台改过的外观返回 false，用来决定要不要输出覆盖样式。
+ */
+function theme_gradient_of($theme, $only_custom = false){
+	global $conf;
+	$specs = theme_gradient_specs();
+	if(!isset($specs[$theme]))return false;
+	$spec = $specs[$theme];
+	$saved = isset($conf['theme_gradient']) ? json_decode($conf['theme_gradient'], true) : null;
+	$custom = (is_array($saved) && isset($saved[$theme]) && is_array($saved[$theme])) ? $saved[$theme] : [];
+	if($only_custom && !$custom)return false;
+	$val = [
+		'a'   => isset($custom['a']) ? normalize_hex_color($custom['a']) : '',
+		'b'   => isset($custom['b']) ? normalize_hex_color($custom['b']) : '',
+		'deg' => isset($custom['deg']) ? max(0, min(360, (int)$custom['deg'])) : $spec['deg'],
+	];
+	if($val['a'] === '')$val['a'] = $spec['a'];
+	if($val['b'] === '')$val['b'] = $spec['b'];
+	//三段渐变的中间色，以及页面底 / 面板底 / 正文 / 边框这四个界面底色：
+	//有自定义就用自定义的，没有就是这套外观原来的值
+	foreach(['mid', 'pg', 'sf', 'tx', 'ln'] as $k){
+		if(!isset($spec[$k]))continue;
+		$c = isset($custom[$k]) ? normalize_hex_color($custom[$k]) : '';
+		$val[$k] = $c !== '' ? $c : $spec[$k];
+	}
+	if(isset($spec['bg'])){
+		$bg = [];
+		foreach($spec['bg'] as $i => $def){
+			$c = isset($custom['bg'][$i]) ? normalize_hex_color($custom['bg'][$i]) : '';
+			$bg[] = $c !== '' ? $c : $def;
+		}
+		$val['bg'] = $bg;
+		$val['bgdeg'] = isset($custom['bgdeg']) ? max(0, min(360, (int)$custom['bgdeg'])) : $spec['bgdeg'];
+	}
+	if(!empty($spec['glass']))$val['glass'] = 1;
+	return $val;
+}
+
+/*
+ * 生成覆盖样式。$scope='front' 给前台页面，'admin' 给后台（后台挂的是 admin-theme-* 类）。
+ * 没自定义过的外观返回空串——默认外观一个字节都不多输出。
+ */
+function theme_gradient_css($theme, $scope = 'front'){
+	$val = theme_gradient_of($theme, true);
+	if(!$val)return '';
+	$a = $val['a'];
+	$b = $val['b'];
+	$deg = $val['deg'];
+	$grad = 'linear-gradient('.$deg.'deg,'.$a.','.$b.')';
+	$grad_hover = 'linear-gradient('.$deg.'deg,'.shift_hex_color($a, .14).','.shift_hex_color($b, .14).')';
+	$bar = 'linear-gradient(90deg,'.$a.','.$b.')';
+	if($scope === 'admin'){
+		$s = 'body.admin-theme-'.$theme.'.admin-body ';
+		$css  = $s.'.btn-primary{background:'.$grad.'!important;border-color:transparent!important}';
+		$css .= $s.'.btn-primary:hover,'.$s.'.btn-primary:focus,'.$s.'.btn-primary:active,'.$s.'.btn-primary:active:focus{background:'.$grad_hover.'!important;border-color:transparent!important}';
+		$css .= $s.'.progress-bar{background:'.$bar.'!important}';
+		return $css;
+	}
+	$s = 'body.theme-'.$theme.' ';
+	$css  = $s.'.btn-primary,'.$s.'.btn-raised.btn-primary{background:'.$grad.'!important;border-color:transparent!important}';
+	$css .= $s.'.btn-primary:hover,'.$s.'.btn-primary:focus,'.$s.'.btn-raised.btn-primary:hover,'.$s.'.btn-raised.btn-primary:focus{background:'.$grad_hover.'!important;border-color:transparent!important}';
+	$css .= $s.'.progress-bar{background:'.$bar.'!important}';
+	$css .= $s.'.pagination>li>a:hover,'.$s.'.pagination>.active>a,'.$s.'.pagination>.active>a:hover,'.$s.'.pagination>.active>a:focus{background:'.$grad.'!important;border-color:transparent!important;color:#fff!important}';
+	$css .= $s.'.file-action:hover{background:'.$grad.'!important;color:#fff!important}';
+	$css .= $s.'.searchbox .btn:hover,'.$s.'.searchbox .btn:focus{background:'.$grad.'!important;color:#fff!important}';
+	$css .= $s.'.tab-content .input-group-btn .copy-btn:hover,'.$s.'.tab-content .input-group-btn .copy-btn:focus{background:'.$grad.'!important;border-color:transparent!important;color:#fff!important}';
+	$css .= $s.'#upload_frame .checkbox input[type="checkbox"]:checked+.checkbox-material .check{background:'.$grad.'!important;border-color:'.$b.'!important}';
+	$css .= $s.'.layout-side-bar i{background:'.$bar.'!important}';
+	if(isset($val['mid'])){
+		//渐变仪表盘风的额度卡整块就是这一条变量
+		$css .= 'body.theme-'.$theme.'{--cockpit-grad:linear-gradient('.$deg.'deg,'.$a.' 0,'.$val['mid'].' 46%,'.$b.' 100%)}';
+	}
+	if(!empty($val['glass'])){
+		$css .= $s.'.navbar-default .navbar-nav>li.active>a,'.$s.'.navbar-default .navbar-nav>li>a:hover,'.$s.'.navbar-default .navbar-nav>li>a:focus{background:linear-gradient(135deg,'.hex_to_rgba($a, '.24').','.hex_to_rgba($b, '.26').')!important}';
+		$css .= $s.'.well.bs-component h2{background:linear-gradient(92deg,'.$a.','.$b.')!important;-webkit-background-clip:text!important;background-clip:text!important;color:transparent!important}';
+		$css .= $s.'.well.bs-component h2:after{background:'.$bar.'!important}';
+	}
+	if(isset($val['bg'])){
+		$stops = [];
+		$last = count($val['bg']) - 1;
+		foreach($val['bg'] as $i => $c){
+			$stops[] = $c.' '.($last > 0 ? round($i * 100 / $last) : 0).'%';
+		}
+		$page = 'radial-gradient(circle at 15% 9%,'.hex_to_rgba($a, '.26').',transparent 32%),radial-gradient(circle at 84% 61%,'.hex_to_rgba($b, '.26').',transparent 36%),linear-gradient('.$val['bgdeg'].'deg,'.implode(',', $stops).')';
+		$css .= 'body.theme-'.$theme.'{background:'.$page.'!important}';
+		//窄屏上原样式本来就退成两段纯渐变，覆盖时跟着退，省得手机上糊一片
+		$css .= '@media (max-width:767px){body.theme-'.$theme.'{background:linear-gradient('.$val['bgdeg'].'deg,'.$val['bg'][0].','.$val['bg'][$last].')!important}}';
+	}
+	return $css;
+}
+
+/*
+ * 直接吐一段 <style>，页面里 echo 一下就行；没自定义就是空串
+ */
+function theme_gradient_style($theme, $scope = 'front'){
+	$css = theme_gradient_css($theme, $scope);
+	return $css === '' ? '' : "\n<style id=\"theme-grad\">".$css."</style>\n";
 }
 
 /*
  * 把当前外观写进静态的 404.html。
  * 404.html 是纯静态文件，读不到数据库里的外观配置，所以在后台保存外观时
  * 直接改掉它的 <body class="...">，错误页就能跟着当前外观走。
+ * 自定义渐变同理，顺手把生成好的那段 <style id="theme-grad"> 也写进去。
  * 文件不存在或没有写权限时静默跳过，页面仍会用它自带的默认配色显示。
  */
 function sync_404_theme($theme){
@@ -1319,6 +1551,18 @@ function sync_404_theme($theme){
 	//打上 data-theme-synced 标记：页面里的兜底脚本看到它就不再用浏览器里存的旧外观覆盖
 	$new = preg_replace('/<body class="[^"]*"[^>]*>/', '<body class="'.$class.'" data-theme-synced="1">', $html, 1, $count);
 	if(!$count || $new === null)return false;
+	//自定义配色同样写死进去：先清掉上一次写的那两段，再按当前配置补上（没自定义就只清不补）
+	$new = preg_replace('#\s*<link[^>]*id="theme-recolor"[^>]*>#s', '', $new);
+	$new = preg_replace('#\s*<style id="theme-grad">.*?</style>#s', '', $new);
+	$extra = '';
+	//整套换色走生成好的样式文件；生成不出来（目录不可写）就算了，错误页保持原配色
+	if(function_exists('theme_recolor_url')){
+		$url = theme_recolor_url($theme);
+		if($url !== '')$extra .= '<link href="/'.$url.'" rel="stylesheet" id="theme-recolor">'."\n";
+	}
+	$extra .= rtrim(theme_gradient_style($theme));
+	$extra = trim($extra);
+	if($extra !== '')$new = str_replace('</head>', $extra."\n</head>", $new);
 	if($new === $html)return true;
 	return @file_put_contents($file, $new, LOCK_EX) !== false;
 }
@@ -1353,7 +1597,7 @@ function admin_setting_keys(){
 		'webdav_url', 'webdav_user', 'webdav_pass', 'webdav_path',
 		//onedrive_refresh_token / access_token 由授权流程自己写，不从表单进来
 		'onedrive_type', 'onedrive_client_id', 'onedrive_client_secret', 'onedrive_path',
-		'site_theme', 'storage', 'storagename', 'title',
+		'site_theme', 'theme_gradient', 'storage', 'storagename', 'title',
 		'tongji', 'type_audio', 'type_block', 'type_image',
 		'type_video', 'upload_limit', 'upload_per_minute', 'upload_size', 'uploadfile_type',
 		'upyun_name', 'upyun_pwd', 'upyun_user', 'userlogin',
