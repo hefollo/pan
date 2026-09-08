@@ -80,15 +80,15 @@ if($act !== ''){
 			$row = $DB->getRow("SELECT * FROM pre_file WHERE id=:id LIMIT 1", [':id'=>$id]);
 			//这里不能用 uc_own_file()：它遇到问题会直接 exit，批量删到一半就断了
 			if(!$row || intval($row['uid']) !== $uid){ $fail++; continue; }
-			//被后台冻结的文件不许用户自己删掉，得留着给管理员查
-			if(intval($row['block']) === 1){ $blocked++; continue; }
+			//冻结的、以及内容检测转人工还没复核完的，都不许用户自己删掉，得留着给管理员查
+			if(file_delete_locked_reason($row) !== ''){ $blocked++; continue; }
 			//同一份内容可能被多条记录共享（秒传），只有最后一条引用被删时才清理物理文件
 			delete_file_blob_if_orphaned($row['hash'], $row['id'], $row['storage']);
 			if($DB->exec("DELETE FROM pre_file WHERE id=:id AND uid=:uid", [':id'=>$row['id'], ':uid'=>$uid])) $ok++;
 			else $fail++;
 		}
 		$msg = '已删除 '.$ok.' 个文件';
-		if($blocked) $msg .= '，'.$blocked.' 个已被冻结跳过';
+		if($blocked) $msg .= '，'.$blocked.' 个已冻结或待人工审核，已跳过';
 		if($fail) $msg .= '，'.$fail.' 个失败';
 		uc_json($ok > 0 ? 0 : -1, $msg, ['ok'=>$ok, 'blocked'=>$blocked, 'fail'=>$fail]);
 	break;
@@ -464,15 +464,19 @@ if($tab === 'overview'){
         $fileurl = './down.php/'.$res['token'].'.'.($res['type'] ? $res['type'] : 'file');
         $viewurl = './file.php?hash='.$res['token'];
         $blocked = intval($res['block']) === 1;
+        $pending = intval($res['block']) === 2;
+        //冻结和待人工复核都不给删，勾选框和删除按钮统一按这个判断，别只看 $blocked
+        $nodelete = file_delete_locked_reason($res);
         $haspwd = !empty($res['pwd']);
         $hidden = intval($res['hide']) === 1;
 ?>
                 <tr data-id="<?php echo intval($res['id'])?>" data-name="<?php echo $res['name']?>" data-hide="<?php echo $hidden ? 1 : 0?>" data-haspwd="<?php echo $haspwd ? 1 : 0?>" data-view="<?php echo htmlspecialchars($viewurl, ENT_QUOTES, 'UTF-8')?>" data-down="<?php echo htmlspecialchars($fileurl, ENT_QUOTES, 'UTF-8')?>"<?php echo $blocked ? ' class="is-blocked"' : ''?>>
-                    <td class="uc-col-check"><input type="checkbox" class="uc-check"<?php echo $blocked ? ' disabled title="已冻结的文件不能删除"' : ''?>></td>
+                    <td class="uc-col-check"><input type="checkbox" class="uc-check"<?php echo $nodelete !== '' ? ' disabled title="'.htmlspecialchars($nodelete, ENT_QUOTES, 'UTF-8').'"' : ''?>></td>
                     <td class="uc-col-name"><i class="fa <?php echo type_to_icon($res['type'])?> fa-fw"></i><span class="uc-name"><?php echo $res['name']?></span></td>
                     <td class="uc-col-size"><?php echo size_format($res['size'])?></td>
                     <td class="uc-col-state">
 <?php if($blocked){?><span class="uc-badge uc-badge-danger">已冻结</span><?php }?>
+<?php if($pending){?><span class="uc-badge uc-badge-warn">待人工审核</span><?php }?>
 <?php if($hidden){?><span class="uc-badge">私密</span><?php }else{?><span class="uc-badge uc-badge-ok">公开</span><?php }?>
 <?php if($haspwd){?><span class="uc-badge uc-badge-warn"><i class="fa fa-lock" aria-hidden="true"></i> 有密码</span><?php }?>
                     </td>
@@ -489,7 +493,9 @@ if($tab === 'overview'){
 <?php if(can_edit_file_online($res)){?>
                             <a class="uc-act" href="./edit.php?id=<?php echo intval($res['id'])?>" title="在线编辑"><i class="fa fa-code" aria-hidden="true"></i></a>
 <?php }?>
+<?php if($nodelete === ''){?>
                             <button type="button" class="uc-act uc-act-danger" data-uc="del" title="删除"><i class="fa fa-trash" aria-hidden="true"></i></button>
+<?php }?>
 <?php }?>
                         </div>
                     </td>

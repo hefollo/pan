@@ -36,6 +36,8 @@ $file_reward_title = isset($conf['file_reward_title']) && $conf['file_reward_tit
 $file_reward_image = isset($conf['file_reward_image']) && $conf['file_reward_image'] !== '' ? $conf['file_reward_image'] : 'includes/sponsor/images/zhifubaohb.jpg';
 
 $is_mine = can_manage_file($row);
+//冻结、内容检测待人工复核的文件不给删，按钮直接不显示，后端 ajax.php 那边也照样拦
+$delete_locked = file_delete_locked_reason($row);
 $is_editable = can_edit_file_online($row);
 $is_text_viewable = is_editable_file_type($type);
 
@@ -234,7 +236,12 @@ if($filetype==1){
                             <a href="edit.php?id=<?php echo intval($row['id'])?>" class="btn btn-raised btn-info"><i class="fa fa-pencil-square-o" aria-hidden="true"></i> 在线编辑</a>
                             <?php }?>
                             <button type="button" onclick="replace_upload()" class="btn btn-raised btn-warning"><i class="fa fa-refresh" aria-hidden="true"></i> 重新上传替换（链接不变）</button>
+                            <?php if($delete_locked === ''){?>
                             <button onclick="delete_confirm()" class="btn btn-raised btn-danger"><i class="fa fa-close" aria-hidden="true"></i> 删除文件</button>
+                            <?php }else{?>
+                            <button type="button" class="btn btn-raised btn-danger" disabled title="<?php echo htmlspecialchars($delete_locked, ENT_QUOTES, 'UTF-8')?>"><i class="fa fa-close" aria-hidden="true"></i> 无法删除</button>
+                            <p class="text-muted" style="margin-top:8px"><?php echo htmlspecialchars($delete_locked, ENT_QUOTES, 'UTF-8')?></p>
+                            <?php }?>
                           </div>
                       </div>
                   </div>

@@ -494,7 +494,8 @@ case 'deleteFile':
 	$row = $DB->getRow("SELECT * FROM `pre_file` WHERE `token`=:token", [':token'=>$token]);
 	if(!$row)exit('{"code":-1,"msg":"文件不存在"}');
 	if($islogin2 && $row['uid']!=$uid || !$islogin2 && (!isset($_SESSION['fileids']) || !in_array($row['id'], $_SESSION['fileids'])))exit('{"code":-1,"msg":"无权限"}');
-	if($row['block']==1)exit('{"code":-1,"msg":"文件已被冻结，无法删除"}');
+	$lock_reason = file_delete_locked_reason($row);
+	if($lock_reason !== '')exit(json_encode(['code'=>-1, 'msg'=>$lock_reason], JSON_UNESCAPED_UNICODE));
 	if(!$islogin2 && strtotime($row['addtime'])<strtotime("-7 days"))exit('{"code":-1,"msg":"无法删除7天前的文件"}');
 	//同一份内容可能被多条记录共享，只有最后一条引用被删掉时才清理物理文件
 	delete_file_blob_if_orphaned($row['hash'], $row['id'], $row['storage']);

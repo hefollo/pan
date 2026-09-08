@@ -251,25 +251,170 @@ echo '</div>
 	</div>';
 	exit;
 }
-function sysmsg($msg = '未知的异常',$title = '站点提示信息') {
-	?>  
-	<!DOCTYPE html>
-	<html xmlns="http://www.w3.org/1999/xhtml" lang="zh-CN">
-	<head>
-		<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0">
-		<title><?php echo $title?></title>
-		<style type="text/css">
-html{background:#eee}body{background:#fff;color:#333;font-family:"微软雅黑","Microsoft YaHei",sans-serif;margin:2em auto;padding:1em 2em;max-width:700px;-webkit-box-shadow:10px 10px 10px rgba(0,0,0,.13);box-shadow:10px 10px 10px rgba(0,0,0,.13);opacity:.8}h1{border-bottom:1px solid #dadada;clear:both;color:#666;font:24px "微软雅黑","Microsoft YaHei",sans-serif;margin:30px 0 0 0;padding:0;padding-bottom:7px}#error-page{margin-top:50px}h3{text-align:center}#error-page p{font-size:9px;line-height:1.5;margin:25px 0 20px}#error-page code{font-family:Consolas,Monaco,monospace}ul li{margin-bottom:10px;font-size:9px}a{color:#21759B;text-decoration:none;margin-top:-10px}a:hover{color:#D54E21}.button{background:#f7f7f7;border:1px solid #ccc;color:#555;display:inline-block;text-decoration:none;font-size:9px;line-height:26px;height:28px;margin:0;padding:0 10px 1px;cursor:pointer;-webkit-border-radius:3px;-webkit-appearance:none;border-radius:3px;white-space:nowrap;-webkit-box-sizing:border-box;-moz-box-sizing:border-box;box-sizing:border-box;-webkit-box-shadow:inset 0 1px 0 #fff,0 1px 0 rgba(0,0,0,.08);box-shadow:inset 0 1px 0 #fff,0 1px 0 rgba(0,0,0,.08);vertical-align:top}.button.button-large{height:29px;line-height:28px;padding:0 12px}.button:focus,.button:hover{background:#fafafa;border-color:#999;color:#222}.button:focus{-webkit-box-shadow:1px 1px 1px rgba(0,0,0,.2);box-shadow:1px 1px 1px rgba(0,0,0,.2)}.button:active{background:#eee;border-color:#999;color:#333;-webkit-box-shadow:inset 0 2px 5px -3px rgba(0,0,0,.5);box-shadow:inset 0 2px 5px -3px rgba(0,0,0,.5)}table{table-layout:auto;border:1px solid #333;empty-cells:show;border-collapse:collapse}th{padding:4px;border:1px solid #333;overflow:hidden;color:#333;background:#eee}td{padding:4px;border:1px solid #333;overflow:hidden;color:#333}
-		</style>
-	</head>
-	<body id="error-page">
-		<?php echo '<h3>'.$title.'</h3>';
-		echo $msg; ?>
-	</body>
-	</html>
-	<?php
+
+/*
+ * 全站通用提示页。
+ *
+ * 它可能在很早的时候被调用（比如 common.php 里还没装完站就报缺 install.lock），
+ * 所以 $conf 和外观相关的函数都要先探一下再用，探不到就退回 CSS 变量的默认值，
+ * 任何情况下都不会变成裸页。
+ *
+ * 配色不自己写死：整页挂 body.theme-<当前外观> 并引站点样式表，
+ * 拿到的就是这套外观真正在用的 --page-bg / --surface / --text / --primary，
+ * 后台改过的自定义换色和渐变也一起输出，跟前台完全一致。
+ * 结构和 404.html 是一套（errorpage-*），那边是静态文件不能跑 PHP，只能各留一份。
+ *
+ * $msg 允许带 HTML：好几个调用点会传 <h2>/<ul> 这类排版。
+ * $actions 是底部按钮，每项 ['text'=>, 'href'=>, 'primary'=>bool]；
+ * 不传就是「返回上一页 + 返回首页」，传空数组表示一个都不要。
+ */
+function sysmsg($msg = '未知的异常', $title = '站点提示信息', $actions = null) {
+	global $conf, $siteurl;
+
+	//当前外观。函数或样式表缺一个就当没有外观，页面走 CSS 变量里的默认蓝白配色
+	$theme = '';
+	$body_class = '';
+	if(function_exists('site_theme_keys') && defined('ROOT') && is_file(ROOT.'assets/css/style.css')){
+		$theme = isset($conf['site_theme']) ? $conf['site_theme'] : default_site_theme();
+		if(!in_array($theme, site_theme_keys(), true))$theme = default_site_theme();
+		$body_class = 'theme-'.$theme;
+		//布局型外观的配色变量同样定义在 body.theme-* 上，layout-theme 只是结构类，
+		//这里没有侧栏和导航条，跟着挂上是为了和 404.html 保持一致
+		if(in_array($theme, layout_theme_keys(), true))$body_class .= ' layout-theme';
+	}
+	//站点根地址。装在子目录里时 '/assets/...' 会指错地方，所以优先用 common.php 算好的 $siteurl
+	$base = (isset($siteurl) && $siteurl !== '') ? $siteurl : '/';
+	$sitename = (isset($conf['title']) && $conf['title'] !== '') ? $conf['title'] : '';
+	//「参数错误」这种一句话的提示居中，跟标题对齐才好看；
+	//带段落、列表、小标题的长文必须左对齐，居中排出来没法读
+	$body_class_text = preg_match('/<(p|ul|ol|h[1-6]|div|table|pre|blockquote)\b/i', $msg) ? '' : ' errorpage-body-center';
+
+	if($actions === null){
+		$actions = [
+			['text'=>'返回上一页', 'href'=>'javascript:history.back(-1)', 'primary'=>true],
+			['text'=>'返回首页', 'href'=>$base],
+		];
+	}
+?><!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title><?php echo strip_tags($title)?></title>
+<link href="<?php echo htmlspecialchars($base, ENT_QUOTES, 'UTF-8')?>assets/css/style.css" rel="stylesheet">
+<?php if($theme !== '' && function_exists('theme_recolor_tag')){
+	//后台给这套外观单独配过颜色才有输出，没配就都是空串
+	echo theme_recolor_tag($theme, 'front', $base);
+	echo theme_gradient_style($theme);
+}?>
+<style>
+html{min-height:100%}
+body{margin:0;min-height:100vh;background:var(--page-bg,#f5f7fb);color:var(--text,#1f2937);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",Arial,sans-serif}
+.errorpage-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;box-sizing:border-box}
+/* style.css 里已经有一份 .errorpage-*（给静态 404.html 用），这段内联的在它之后，
+   同名属性会盖过去；反过来，那边声明了而这边没声明的属性照样生效——text-align 就是
+   典型：那边 .errorpage-card 是 center，这里不写死就会把下面的正文和列表一起居中 */
+.errorpage-card{width:100%;max-width:560px;padding:44px 38px 40px;background:var(--surface,#fff);border:1px solid var(--line,#e5e7eb);border-radius:18px;box-shadow:var(--shadow,0 18px 45px rgba(15,23,42,.08));box-sizing:border-box;text-align:center}
+.errorpage-site{margin:0 0 20px;color:var(--muted,#6b7280);font-size:13px;font-weight:600;letter-spacing:.04em;text-align:center}
+.errorpage-icon{display:flex;align-items:center;justify-content:center;width:64px;height:64px;margin:0 auto 18px;border-radius:50%;background:var(--tint,rgba(37,99,235,.1));color:var(--primary,#2563eb)}
+.errorpage-icon svg{display:block;width:32px;height:32px}
+.errorpage-title{margin:0 0 18px;color:var(--text,#1f2937);font-size:23px;font-weight:800;line-height:1.4;text-align:center}
+/* 正文左对齐：install.lock、封号说明这类会带小标题和条目，居中排出来没法看 */
+.errorpage-body{margin:0 0 28px;color:var(--muted,#6b7280);font-size:14.5px;line-height:1.9;text-align:left;word-break:break-word}
+.errorpage-body-center{text-align:center}
+.errorpage-body>:first-child{margin-top:0}
+.errorpage-body>:last-child{margin-bottom:0}
+.errorpage-body h2,.errorpage-body h3,.errorpage-body h4{margin:22px 0 10px;color:var(--text,#1f2937);font-size:16px;font-weight:800;line-height:1.5}
+.errorpage-body p{margin:0 0 12px}
+.errorpage-body ul,.errorpage-body ol{margin:0 0 12px;padding-left:22px}
+.errorpage-body li{margin-bottom:7px}
+.errorpage-body b,.errorpage-body strong{color:var(--text,#1f2937)}
+.errorpage-body code{padding:2px 6px;border-radius:5px;background:var(--surface-soft,#f1f5f9);color:var(--text,#1f2937);font-family:Consolas,Monaco,monospace;font-size:13px}
+.errorpage-body a{color:var(--primary,#2563eb)}
+/* 需要单独拎出来给人抄的信息（申诉用的 UID 等） */
+.errorpage-note{margin:0 0 26px;padding:14px 16px;border:1px solid var(--line,#e5e7eb);border-left:3px solid var(--primary,#2563eb);border-radius:10px;background:var(--surface-soft,#f8fafc);color:var(--text,#1f2937);font-size:14px;line-height:1.9;text-align:left}
+.errorpage-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:12px}
+html body .errorpage-btn{display:inline-flex;align-items:center;justify-content:center;min-width:132px;padding:12px 22px;border:1px solid var(--line,#e5e7eb);border-radius:11px;background:var(--surface-soft,#f8fafc)!important;color:var(--text,#1f2937)!important;font-size:15px;font-weight:700;text-decoration:none;transition:border-color .18s ease,background .18s ease,transform .18s ease}
+html body .errorpage-btn:hover,html body .errorpage-btn:focus{border-color:var(--primary,#2563eb)!important;color:var(--primary,#2563eb)!important;text-decoration:none;transform:translateY(-1px)}
+/* 底色和字色一律成对加 !important：外部样式表里任何带 !important 的 a 规则
+   都可能只盖掉其中一个，把按钮变成同色、字看不见 */
+html body .errorpage-btn-primary{background:var(--primary,#2563eb)!important;border-color:var(--primary,#2563eb)!important;color:#fff!important}
+html body .errorpage-btn-primary:hover,html body .errorpage-btn-primary:focus{background:var(--primary-dark,#1d4ed8)!important;border-color:var(--primary-dark,#1d4ed8)!important;color:#fff!important}
+/* 强调色偏浅的外观，主按钮要用深色字才看得清。底色一并写死不走 --primary：
+   万一样式表没加载出来，变量会回落成默认的蓝色，配深色字就看不清了。这几行和 404.html 一致 */
+html body.theme-workspace .errorpage-btn-primary{background:#f4c95d!important;border-color:#f4c95d!important;color:#221a05!important}
+html body.theme-workspace .errorpage-btn-primary:hover{background:#d9ad3f!important;border-color:#d9ad3f!important;color:#221a05!important}
+html body.theme-neon .errorpage-btn-primary{background:#73c7ff!important;border-color:#73c7ff!important;color:#06101f!important}
+html body.theme-neon .errorpage-btn-primary:hover{background:#4fb3f5!important;border-color:#4fb3f5!important;color:#06101f!important}
+html body.theme-onefour .errorpage-btn-primary{background:#ffffff!important;border-color:#ffffff!important;color:#050505!important}
+html body.theme-onefour .errorpage-btn-primary:hover{background:#d8dae4!important;border-color:#d8dae4!important;color:#050505!important}
+html body.theme-aurora .errorpage-btn-primary{background:#67e8ff!important;border-color:#67e8ff!important;color:#10204a!important}
+html body.theme-aurora .errorpage-btn-primary:hover{background:#3fd6f2!important;border-color:#3fd6f2!important;color:#10204a!important}
+html body.theme-abyss .errorpage-btn-primary{background:#38e0d8!important;border-color:#38e0d8!important;color:#062434!important}
+html body.theme-abyss .errorpage-btn-primary:hover{background:#22c7bf!important;border-color:#22c7bf!important;color:#062434!important}
+html body.theme-emerald .errorpage-btn-primary{background:#4ade80!important;border-color:#4ade80!important;color:#07301f!important}
+html body.theme-emerald .errorpage-btn-primary:hover{background:#2ec469!important;border-color:#2ec469!important;color:#07301f!important}
+html body.theme-sunset .errorpage-btn-primary{background:#ffb057!important;border-color:#ffb057!important;color:#3d0f2e!important}
+html body.theme-sunset .errorpage-btn-primary:hover{background:#f59a3a!important;border-color:#f59a3a!important;color:#3d0f2e!important}
+/* 玻璃拟态外观的卡片本来就是半透明的，加一层模糊才看得清 */
+body.theme-aurora .errorpage-card,body.theme-sunset .errorpage-card,body.theme-abyss .errorpage-card,body.theme-emerald .errorpage-card,body.theme-sakura .errorpage-card{backdrop-filter:blur(18px)}
+@media (max-width:767px){
+.errorpage-card{padding:34px 20px 32px;border-radius:16px}
+.errorpage-title{font-size:20px}
+html body .errorpage-btn{width:100%;min-width:0}
+}
+</style>
+</head>
+<body<?php echo $body_class !== '' ? ' class="'.$body_class.'"' : ''?>>
+<div class="errorpage-wrap">
+  <div class="errorpage-card">
+<?php if($sitename !== ''){?>    <p class="errorpage-site"><?php echo htmlspecialchars($sitename, ENT_QUOTES, 'UTF-8')?></p>
+<?php }?>    <div class="errorpage-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5"/><path d="M12 16.4h.01"/></svg></div>
+    <h1 class="errorpage-title"><?php echo strip_tags($title)?></h1>
+    <div class="errorpage-body<?php echo $body_class_text?>"><?php echo $msg?></div>
+<?php if($actions){?>    <div class="errorpage-actions">
+<?php foreach($actions as $a){
+	if(!is_array($a) || !isset($a['text']))continue;
+	$href = isset($a['href']) ? $a['href'] : $base;
+?>      <a class="errorpage-btn<?php echo !empty($a['primary']) ? ' errorpage-btn-primary' : ''?>" href="<?php echo htmlspecialchars($href, ENT_QUOTES, 'UTF-8')?>"><?php echo htmlspecialchars($a['text'], ENT_QUOTES, 'UTF-8')?></a>
+<?php }?>    </div>
+<?php }?>  </div>
+</div>
+</body>
+</html><?php
 	exit;
+}
+
+/*
+ * 账号被停用时的整页提示。
+ *
+ * 原来只有「当前用户已被禁止登录」一句，看到的人既不知道为什么、也不知道能做什么，
+ * 只会反复去点登录。这里把三件事说清楚：现在是什么状态、可能是什么原因、下一步找谁。
+ * UID 单独拎出来放，是因为申诉时站长要靠它在用户管理里定位到人。
+ *
+ * 不给「返回上一页」：上一页就是登录跳转，点回去会再走一遍第三方授权又弹回这里。
+ */
+function user_blocked_msg($userrow){
+	global $siteurl;
+	$uid = isset($userrow['uid']) ? intval($userrow['uid']) : 0;
+	$nick = isset($userrow['nickname']) ? trim((string)$userrow['nickname']) : '';
+
+	$note = '<b>账号 UID：'.$uid.'</b>';
+	if($nick !== '')$note .= '<br/>昵称：'.htmlspecialchars($nick, ENT_QUOTES, 'UTF-8');
+	$note .= '<br/>申诉时请把这个 UID 一起发给管理员。';
+
+	$msg = '<p>这个账号已被本站管理员停用，暂时无法登录，也不能继续上传或管理文件。</p>'
+		.'<div class="errorpage-note">'.$note.'</div>'
+		.'<h3>可能的原因</h3>'
+		.'<ul>'
+		.'<li>上传或分享的内容被判定违反了本站规定；</li>'
+		.'<li>收到他人举报，经人工复核后确认属实；</li>'
+		.'<li>账号存在异常操作，例如批量刷量、恶意占用空间。</li>'
+		.'</ul>'
+		.'<h3>接下来可以做什么</h3>'
+		.'<p>如果你认为这是误判，请联系站点管理员申诉并附上上面的 UID。管理员解除停用后，重新登录即可继续使用，<b>停用期间你已上传的文件不会被删除</b>。</p>';
+
+	sysmsg($msg, '账号已被停用', [['text'=>'返回首页', 'href'=>(isset($siteurl) && $siteurl !== '') ? $siteurl : '/', 'primary'=>true]]);
 }
 
 if(!function_exists("is_https")){
@@ -2004,6 +2149,23 @@ function can_manage_file($row){
 		return intval($row['uid']) === intval($uid);
 	}
 	return isset($_SESSION['fileids']) && in_array($row['id'], $_SESSION['fileids']) && strtotime($row['addtime']) > strtotime("-7 days");
+}
+
+/*
+ * 用户能不能自己删掉这个文件。返回 '' 表示可以删，否则返回给前台看的原因。
+ *
+ * block=1（封禁）和 block=2（内容检测判为待人工复核）都不许用户删：
+ * 封禁的要留着给管理员查；待人工的更不能删——文件还卡在人工复核队列里，
+ * 用户一删记录跟着没了，站长回头想看当初到底命中了什么已经无从查起，
+ * 等于留了「传违规内容 → 被转人工 → 自己删掉灭迹」这条路。
+ * 后台删除不走这里，管理员照样能删。
+ */
+function file_delete_locked_reason($row){
+	if(!is_array($row))return '';
+	$block = intval(isset($row['block']) ? $row['block'] : 0);
+	if($block === 1)return '文件已被冻结，无法删除';
+	if($block === 2)return '文件正在人工审核中，审核完成前无法删除';
+	return '';
 }
 
 /*

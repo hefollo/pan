@@ -191,7 +191,8 @@ if(isset($_GET['logout'])){
 	}
 	if(intval($row['enable']) === 0){
 		$_SESSION['user_block'] = true;
-		exit('{"code":-1,"msg":"当前账号已被禁止登录"}');
+		//邮箱登录走 AJAX，只能给一句话，但也要说清是被停用而不是密码不对，以及上哪去解决
+		exit(json_encode(['code'=>-1, 'msg'=>'该账号（UID '.intval($row['uid']).'）已被管理员停用，无法登录。如认为是误判，请联系站点管理员申诉并提供该 UID。'], JSON_UNESCAPED_UNICODE));
 	}
 	@unlink($lock_file);
 	$DB->update('user', ['loginip'=>$clientip, 'lasttime'=>'NOW()'], ['uid'=>$row['uid']]);
@@ -266,7 +267,7 @@ if(isset($_GET['logout'])){
 	}else{
         if($userrow['enable']==0){
             $_SESSION['user_block'] = true;
-            sysmsg('当前用户已被禁止登录');
+            user_blocked_msg($userrow);
         }
         unset($_SESSION['user_block']);
         $uid = $userrow['uid'];

@@ -203,7 +203,15 @@ function render_greenlog_rows($rows){
       </td>
       <td><small class="text-muted"><?php echo htmlspecialchars($r['detail'] !== '' ? $r['detail'] : '-', ENT_QUOTES, 'UTF-8')?></small></td>
       <td><small><?php echo isset($engine_text[$r['engine']]) ? $engine_text[$r['engine']] : htmlspecialchars($r['engine'], ENT_QUOTES, 'UTF-8')?><br/><?php echo intval($r['ms'])?>ms</small></td>
-      <td><small><?php echo htmlspecialchars($r['ip'], ENT_QUOTES, 'UTF-8')?><?php echo intval($r['uid']) > 0 ? '<br/>UID '.intval($r['uid']) : ''?></small></td>
+      <td><small><?php echo htmlspecialchars($r['ip'], ENT_QUOTES, 'UTF-8')?><?php
+        /*
+         * UID 点进去直达用户管理并且已经筛好人：user.php 的搜索条会读 URL 上的 type/kw 回填，
+         * 列表的 queryParams 又是从搜索条取值的，所以 type=1（按 UID 搜）+ kw=<uid> 就够了。
+         * 开新标签，别把正在复核的这一页顶掉。
+         */
+        $log_uid = intval($r['uid']);
+        if($log_uid > 0){?><br/><a class="greenlog-uid" href="./user.php?type=1&amp;kw=<?php echo $log_uid?>" target="_blank" title="在用户管理中查看该用户">UID <?php echo $log_uid?></a><?php }
+      ?></small></td>
     </tr>
 <?php
 	}
@@ -366,7 +374,7 @@ if(!$schema_missing && $numrows == 0){
   <div id="greenlogFilter"><?php echo render_greenlog_filter($verdict_filter, $kw, $etype);?></div>
 </div>
 <div class="table-responsive">
-<table class="table table-striped table-hover">
+<table class="table table-striped table-hover greenlog-table">
   <thead><tr><th>时间</th><th>文件</th><th class="text-center">证据帧</th><th class="text-center">查看</th><th class="text-center">结果</th><th class="text-center">状态(可修改)</th><th>评分</th><th>模型明细</th><th>引擎 / 耗时</th><th>来源</th></tr></thead>
   <tbody id="greenlogTbody"><?php echo render_greenlog_rows($rows);?></tbody>
 </table>
@@ -399,8 +407,17 @@ if(!$schema_missing && $numrows == 0){
 	.greenlog-filter .greenlog-search+.btn{flex:1 1 100%}
 }
 .greenlog-name{display:inline-block;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom}
-.greenlog-jump{margin-left:6px;font-size:12px;cursor:pointer}
-.greenlog-gone{margin-left:6px;font-size:12px;color:var(--admin-muted)}
+/*
+ * 「证据帧」「查看」两列就这么两个字，CJK 允许在字之间断行，列一挤就被拆成「查/看」竖排，
+ * 所以这里必须写死不换行。原来还带 margin-left:6px——那是这些链接跟在文字后面时留的间距，
+ * 现在它们是居中单元格里唯一的内容，留着只会把字顶偏，一并去掉。
+ */
+.greenlog-table thead th{white-space:nowrap}
+.greenlog-jump,.greenlog-gone{font-size:12px;white-space:nowrap}
+.greenlog-jump{cursor:pointer}
+.greenlog-gone{color:var(--admin-muted)}
+.greenlog-uid{cursor:pointer}
+.greenlog-uid:hover{text-decoration:underline}
 /* 分数条：数字之外再给个长度，一屏扫下来就知道整体分布 */
 .greenlog-score{position:relative;min-width:88px}
 .greenlog-score b{font-variant-numeric:tabular-nums;font-weight:600}
