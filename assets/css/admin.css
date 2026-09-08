@@ -2298,6 +2298,14 @@ body.admin-body .modal-header .close:hover{opacity:1}
 .stor-card-desc{display:block;min-height:46px;margin-top:9px;color:var(--admin-muted);font-size:13px;line-height:1.7}
 .stor-card-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto;padding-top:11px}
 .stor-card-tags i{padding:2px 9px;border:1px solid var(--admin-line);border-radius:999px;background:var(--admin-soft);color:var(--admin-muted);font-size:12px;font-style:normal}
+/* 「N 个文件在此」：告诉站长这份参数删不得，用醒目色和能力标签区分开 */
+.stor-card-tags i.stor-hold{border-color:transparent;background:var(--admin-yellow);color:#fff;font-weight:700}
+/* 多存储上传的配置表：三列（开放 / 存储 / 谁可以用），行高压紧一点 */
+.stor-pool-table{margin-bottom:10px}
+.stor-pool-table>thead>tr>th{border-bottom-width:1px;color:var(--admin-muted);font-size:13px;font-weight:600}
+.stor-pool-table>tbody>tr>td{vertical-align:middle;padding:7px 8px}
+.stor-pool-table .stor-badge{display:inline-block;margin-left:6px}
+.stor-pool-table .fa{margin-right:5px;color:var(--admin-muted)}
 .stor-submit{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-top:20px;padding-top:16px;border-top:1px solid var(--admin-line)}
 .stor-warn{flex:1;min-width:260px;margin:0;color:var(--admin-yellow);font-size:13px;line-height:1.7}
 .stor-warn i{margin-right:5px}

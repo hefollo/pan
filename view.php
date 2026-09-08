@@ -37,7 +37,7 @@ if(!check_file_pwd($row, $pwd)){
     exit;
 }
 
-if ($stor->exists($row['hash'])) {
+if (\lib\StorHelper::get($row['storage'])->exists($row['hash'])) {
     if(is_view($row['type']))
     {
         //列表页右侧的预览面板会自动加载选中文件，带 preview 参数的请求不计入下载次数，
@@ -46,6 +46,6 @@ if ($stor->exists($row['hash'])) {
             $DB->exec("UPDATE `pre_file` SET `lasttime`=NOW(),`count`=`count`+1 WHERE `id`='{$row['id']}'");
         }
 
-        file_output($row['hash'], $row['type'], $row['size'], $row['name'], true, isset($_GET['greencheck']));
+        file_output($row['hash'], $row['type'], $row['size'], $row['name'], true, isset($_GET['greencheck']), $row['storage']);
     }
 }

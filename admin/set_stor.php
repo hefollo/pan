@@ -74,6 +74,24 @@ if($islogin != 1){
 	}
 	if($do === 'test'){
 		$storage = isset($_POST['storage']) ? $_POST['storage'] : '';
+		/*
+		 * 用表单里「当前填着」的参数测，不是已经存进库的那份。
+		 *
+		 * 之前只认已保存的参数，于是「填好地址 → 直接点测试」会拿一份空配置去连，
+		 * 报回来的路径、域名跟屏幕上填的对不上，非常难猜（真踩过：存储目录填了
+		 * /xiran/pan/file，报错却说 mkdir /pan 失败——因为它用的是留空时的默认值）。
+		 *
+		 * 只往内存里的 $conf 覆盖，不落库：测试不该有副作用，测完不保存就什么都没发生。
+		 * 键仍然要过 is_admin_setting_key()，别让这个入口变成绕开白名单的后门。
+		 */
+		$typed = [];
+		if(isset($_POST['fields']) && is_string($_POST['fields'])){
+			parse_str($_POST['fields'], $typed);
+			foreach($typed as $k=>$v){
+				if(is_array($v) || !is_admin_setting_key($k))continue;
+				$conf[$k] = $v;
+			}
+		}
 		$model = \lib\StorHelper::getModel($storage);
 		if(!$model)exit(json_encode(['code'=>-1, 'msg'=>'不认识的存储类型：'.htmlspecialchars($storage, ENT_QUOTES, 'UTF-8')], JSON_UNESCAPED_UNICODE));
 		if(method_exists($model, 'test')){
@@ -113,17 +131,22 @@ $onedrive_authed = !empty($conf['onedrive_refresh_token']);
  * 能力标签（直传/直链/断点续传）直接问 StorHelper，避免这里和实际逻辑对不上。
  */
 $stor_list = [
-	'local' => ['name'=>'本地存储', 'icon'=>'fa-hdd-o', 'desc'=>'存在网站服务器自己的磁盘上，不依赖第三方，受服务器硬盘和带宽限制。'],
-	'oss' => ['name'=>'阿里云 OSS', 'icon'=>'fa-cloud', 'desc'=>'国内访问快、生态成熟，按存储量和流量计费。', 'link'=>'https://www.aliyun.com/product/oss?userCode=1cyrqim7'],
-	'qcloud' => ['name'=>'腾讯云 COS', 'icon'=>'fa-cloud', 'desc'=>'腾讯云对象存储，有新用户免费额度。', 'link'=>'https://cloud.tencent.com/act/cps/redirect?redirect=10042&cps_key=11eaac2f518cd09a6288f4b1912228b8'],
-	'obs' => ['name'=>'华为云 OBS', 'icon'=>'fa-cloud', 'desc'=>'华为云对象存储，多用于政企场景。', 'link'=>'https://www.huaweicloud.com/product/obs.html?fromacct=b70162c8-fbde-42ca-9f3d-5d99dc1951ba&utm_source=bmV0MjAy=&utm_medium=cps&utm_campaign=201905'],
-	'upyun' => ['name'=>'又拍云', 'icon'=>'fa-cloud-upload', 'desc'=>'自带 CDN，做图床很合适，下载必须绑定域名。', 'link'=>'https://console.upyun.com/register/?invite=jUSQy3jyE'],
-	'qiniu' => ['name'=>'七牛云', 'icon'=>'fa-cloud-upload', 'desc'=>'有免费额度，下载必须绑定域名。', 'link'=>'https://s.qiniu.com/j6zy63'],
-	's3' => ['name'=>'通用 S3 兼容', 'icon'=>'fa-server', 'desc'=>'AWS S3、MinIO、Cloudflare R2、Backblaze B2 等所有兼容 S3 协议的服务。'],
-	'webdav' => ['name'=>'WebDAV', 'icon'=>'fa-folder-open-o', 'desc'=>'坚果云、Nextcloud、Alist、群晖等标准 WebDAV 服务，上传下载走本站中转。'],
-	'onedrive' => ['name'=>'OneDrive', 'icon'=>'fa-cloud-download', 'desc'=>'微软 OneDrive，个人版 / 商业版 / 世纪互联版都支持，下载可用官方直链。'],
+	'local' => ['icon'=>'fa-hdd-o', 'desc'=>'存在网站服务器自己的磁盘上，不依赖第三方，受服务器硬盘和带宽限制。'],
+	'oss' => ['icon'=>'fa-cloud', 'desc'=>'国内访问快、生态成熟，按存储量和流量计费。', 'link'=>'https://www.aliyun.com/product/oss?userCode=1cyrqim7'],
+	'qcloud' => ['icon'=>'fa-cloud', 'desc'=>'腾讯云对象存储，有新用户免费额度。', 'link'=>'https://cloud.tencent.com/act/cps/redirect?redirect=10042&cps_key=11eaac2f518cd09a6288f4b1912228b8'],
+	'obs' => ['icon'=>'fa-cloud', 'desc'=>'华为云对象存储，多用于政企场景。', 'link'=>'https://www.huaweicloud.com/product/obs.html?fromacct=b70162c8-fbde-42ca-9f3d-5d99dc1951ba&utm_source=bmV0MjAy=&utm_medium=cps&utm_campaign=201905'],
+	'upyun' => ['icon'=>'fa-cloud-upload', 'desc'=>'自带 CDN，做图床很合适，下载必须绑定域名。', 'link'=>'https://console.upyun.com/register/?invite=jUSQy3jyE'],
+	'qiniu' => ['icon'=>'fa-cloud-upload', 'desc'=>'有免费额度，下载必须绑定域名。', 'link'=>'https://s.qiniu.com/j6zy63'],
+	's3' => ['icon'=>'fa-server', 'desc'=>'AWS S3、MinIO、Cloudflare R2、Backblaze B2 等所有兼容 S3 协议的服务。'],
+	'webdav' => ['icon'=>'fa-folder-open-o', 'desc'=>'坚果云、Nextcloud、Alist、群晖等标准 WebDAV 服务，上传下载走本站中转。'],
+	'onedrive' => ['icon'=>'fa-cloud-download', 'desc'=>'微软 OneDrive，个人版 / 商业版 / 世纪互联版都支持，下载可用官方直链。'],
+	//自建的，没有「开通地址」可给，链接改指官方文档
+	'openlist' => ['icon'=>'fa-sitemap', 'desc'=>'自建的 OpenList / AList 聚合网盘，后面挂什么盘由它管，下载可用它给的直链。', 'link'=>'https://doc.oplist.org/', 'link_text'=>'官方文档'],
 ];
-if($has_sae)$stor_list['sae'] = ['name'=>'SaeStorage', 'icon'=>'fa-archive', 'desc'=>'新浪 SAE 平台自带的存储服务。'];
+if($has_sae)$stor_list['sae'] = ['icon'=>'fa-archive', 'desc'=>'新浪 SAE 平台自带的存储服务。'];
+//显示名统一从 StorHelper 取：前台上传框的存储下拉用的是同一份，别两头各写一遍
+foreach($stor_list as $k=>&$v){ $v['name'] = \lib\StorHelper::name($k); }
+unset($v);
 //当前选的存储被删掉过配置也要能在卡片里选中，兜底回本地
 if(!isset($stor_list[$storage]))$storage = 'local';
 
@@ -135,9 +158,30 @@ foreach($stor_list as $k=>$v){
 		'up' => \lib\StorHelper::is_direct_upload($k),
 		'down' => \lib\StorHelper::is_direct_down($k),
 		'range' => \lib\StorHelper::is_range($k),
-		//只有对象存储那几家的直链要自己填绑定域名，OneDrive 的直链是微软临时地址
-		'domain' => \lib\StorHelper::is_direct_down($k) && $k !== 'onedrive',
+		//只有对象存储那几家的直链要自己填绑定域名；OneDrive 给的是微软临时地址，
+		//OpenList 给的是它自己拼好的完整地址，都轮不到这里改域名
+		'domain' => \lib\StorHelper::is_direct_down($k) && !in_array($k, ['onedrive','openlist'], true),
 	];
+}
+
+//多存储上传的当前配置，渲染下面那张表用
+$pool_now = storage_pool();
+$multi_now = storage_multi_open();
+$tier_names = [0=>'所有人（含未登录访客）', 1=>'仅登录用户', 2=>'仅高级用户'];
+
+/*
+ * 每个存储里还压着多少个文件。
+ * 切换存储之后旧文件仍然从旧存储读，所以旧存储那份参数不能删——但光看设置页
+ * 是看不出来哪份还在用的，这里把数量摆在卡片上，站长一眼就知道哪个动不得。
+ * storage 为空的是升级前建的老记录，它们就在当前存储里，并进当前存储统计。
+ */
+$stor_files = [];
+$rs = $DB->getAll("SELECT `storage`, count(*) AS `c` FROM `pre_file` GROUP BY `storage`");
+if(is_array($rs)){
+	foreach($rs as $r){
+		$k = $r['storage'] === '' ? $storage : $r['storage'];
+		$stor_files[$k] = (isset($stor_files[$k]) ? $stor_files[$k] : 0) + intval($r['c']);
+	}
 }
 
 /*
@@ -197,6 +241,13 @@ $stor_fields = [
 		['name'=>'onedrive_client_id', 'label'=>'应用 ID', 'placeholder'=>'Azure 应用的 Application (client) ID'],
 		['name'=>'onedrive_client_secret', 'label'=>'应用机密', 'type'=>'secret', 'tip'=>'Azure 里「证书和密码」生成的客户端密码<b>值（Value）</b>，不是密码 ID。'],
 		['name'=>'onedrive_path', 'label'=>'存储目录', 'placeholder'=>'pan/file', 'tip'=>'网盘里的目录，留空默认为 <b>pan/file</b>，目录不存在会自动创建。'],
+	],
+	'openlist' => [
+		['name'=>'openlist_url', 'label'=>'OpenList 地址', 'placeholder'=>'https://list.example.com', 'tip'=>'填站点根地址，<b>不要带 /api</b>。自建的没上 HTTPS 就要把 <b>http://</b> 一起写上，例如 <b>http://192.168.1.5:5244</b>。'],
+		['name'=>'openlist_user', 'label'=>'账号', 'tip'=>'建议单独建一个只对存储目录有读写权限的用户，别用 admin。'],
+		['name'=>'openlist_pass', 'label'=>'密码', 'type'=>'secret'],
+		['name'=>'openlist_token', 'label'=>'固定令牌', 'type'=>'secret', 'tip'=>'可不填。填了就直接用它调接口，不再用上面的账号密码登录；OpenList 后台「其他设置」里的令牌就是这个。'],
+		['name'=>'openlist_path', 'label'=>'存储目录', 'placeholder'=>'/aliyun/pan/file', 'tip'=>'OpenList 里的完整路径，<b>第一段必须是已经挂载好的存储名</b>，例如挂载路径是 <b>/aliyun</b> 就填 <b>/aliyun/pan/file</b>。留空默认为 <b>/pan/file</b>，目录不存在会自动创建。'],
 	],
 ];
 if($has_sae){
@@ -268,13 +319,76 @@ function stor_field($f){
 						<?php if($k === $storage){?><em class="stor-badge">使用中</em><?php }?>
 					</span>
 					<span class="stor-card-desc"><?php echo $v['desc']?></span>
-					<span class="stor-card-tags"><?php foreach($tags as $t){?><i><?php echo $t?></i><?php }?></span>
+					<span class="stor-card-tags"><?php foreach($tags as $t){?><i><?php echo $t?></i><?php }
+						//有文件压在这儿就说明它的参数删不得，哪怕早就不是当前存储了
+						if(!empty($stor_files[$k])){?><i class="stor-hold"><?php echo $stor_files[$k]?> 个文件在此</i><?php }?></span>
 				</label>
 			<?php }?>
 			</div>
 			<div class="stor-submit">
-				<p class="stor-warn"><i class="fa fa-exclamation-triangle"></i> 已经有文件的情况下不要随意切换，切换后之前上传的文件都会下不下来。切换前请先在下面填好对应存储的参数并测试通过。</p>
+				<p class="stor-warn"><i class="fa fa-exclamation-triangle"></i> 每个文件都记着自己当初存在哪儿，<b>切换只影响之后的新上传，已经上传的文件仍然从原存储读取，链接不会失效</b>。所以切换前有两件事要做到：一是在下面填好新存储的参数并<b>测试通过</b>；二是<b>旧存储的参数原样留着别删</b>，删了旧文件就真的下不下来了。</p>
 				<button type="submit" class="btn btn-primary">保存并启用</button>
+			</div>
+		</form>
+	</div>
+</div>
+
+<div class="panel panel-info">
+	<div class="panel-heading"><h3 class="panel-title"><i class="fa fa-random"></i> 多存储上传</h3></div>
+	<div class="panel-body">
+		<form onsubmit="return saveMulti(this)" method="post" class="form-horizontal" role="form">
+			<div class="form-group">
+				<label class="col-sm-3 control-label">同时开放多个存储</label>
+				<div class="col-sm-9">
+					<select class="form-control" name="storage_multi" id="storage_multi">
+						<option value="0"<?php echo $multi_now ? '' : ' selected'?>>关闭（所有新文件都存到上面选中的存储）</option>
+						<option value="1"<?php echo $multi_now ? ' selected' : ''?>>开启（上传页出现存储下拉，用户自己选）</option>
+					</select>
+					<p class="help-block">开启后，下面勾选的存储会出现在上传页的「存储位置」下拉里，用户上传时自己挑。只有一个可选时下拉不显示。</p>
+				</div>
+			</div>
+			<div class="form-group" id="pool_rows"<?php echo $multi_now ? '' : ' style="display:none"'?>>
+				<label class="col-sm-3 control-label">开放哪些、给谁用</label>
+				<div class="col-sm-9">
+					<table class="table stor-pool-table">
+						<thead><tr><th style="width:90px">开放</th><th>存储</th><th style="width:260px">谁可以用</th></tr></thead>
+						<tbody>
+						<?php foreach($stor_list as $k=>$v){
+							$on = isset($pool_now[$k]);
+							$tier = $on ? $pool_now[$k] : 0;
+							$is_cur = ($k === $storage);
+						?>
+							<tr>
+								<td><input type="checkbox" class="pool-on" data-stor="<?php echo $k?>"<?php echo ($on || $is_cur) ? ' checked' : ''?><?php echo $is_cur ? ' disabled' : ''?>/></td>
+								<td><i class="fa <?php echo $v['icon']?>"></i> <?php echo $v['name']?>
+									<?php if($is_cur){?><em class="stor-badge">当前存储</em><?php }?>
+									<?php if(!empty($stor_files[$k])){?><small class="text-muted">（已有 <?php echo $stor_files[$k]?> 个文件）</small><?php }?>
+								</td>
+								<td><select class="form-control input-sm pool-tier" data-stor="<?php echo $k?>"<?php echo $is_cur ? ' disabled' : ''?>>
+									<?php foreach($tier_names as $tv=>$tn){?><option value="<?php echo $tv?>"<?php echo $tier == $tv ? ' selected' : ''?>><?php echo $tn?></option><?php }?>
+								</select></td>
+							</tr>
+						<?php }?>
+						</tbody>
+					</table>
+					<input type="hidden" name="storage_pool" id="storage_pool" value="<?php echo htmlspecialchars(isset($conf['storage_pool']) ? $conf['storage_pool'] : '', ENT_QUOTES, 'UTF-8')?>"/>
+					<p class="help-block">
+						<b>当前存储必开、且对所有人开放</b>，它是兜底：用户没选、选了个不该他用的、或者池子配空了，都会落到它上面，所以这一行不能取消。<br/>
+						「仅高级用户」指 <b>level&gt;0 且权限还在有效期内</b>的账号，判断规则和上传额度用的是同一套。<br/>
+						勾之前请先在下面把这个存储的参数填好并<b>测试通过</b>——池子里的存储随时会被用户选中往里写。
+					</p>
+				</div>
+			</div>
+			<div class="alert alert-warning stor-note">
+				开了多存储之后有几件事跟单存储时不一样：<br/>
+				1. <b>直传要给每个开放的存储都配好跨域（CORS）</b>，只配了一个的话，用户选到另一个会传不上去。<br/>
+				2. <b>秒传优先</b>：站内已经有同样内容的文件时，直接复用那一份，不会按用户选的存储再存一遍，用户选了什么就不作数了。<br/>
+				3. <b>在线编辑保存</b>的新内容一律写到当前存储，不跟着原文件回原存储。<br/>
+				4. API 上传接口（api.php）没有存储参数，固定写当前存储。<br/>
+				5. 下面「文件下载域名」全站只有一个值，只对当前存储生效；存在别的对象存储里的文件会自动改走网站中转（内容一定对，但耗本站带宽）。想让每个存储都走直链，就把这个域名留空，各家用自己的默认域名。
+			</div>
+			<div class="form-group">
+				<div class="col-sm-offset-3 col-sm-9"><button type="submit" class="btn btn-primary">保存多存储设置</button></div>
 			</div>
 		</form>
 	</div>
@@ -314,7 +428,7 @@ function stor_field($f){
 						<button type="submit" class="btn btn-primary">保存参数</button>
 						<button type="button" class="btn btn-default stor-test" data-stor="<?php echo $k?>"><i class="fa fa-plug"></i> 连接测试</button>
 						<?php if(!empty($stor_list[$k]['link'])){?>
-						<a href="<?php echo $stor_list[$k]['link']?>" rel="noreferrer" target="_blank" class="btn btn-default"><i class="fa fa-external-link"></i> 开通地址</a>
+						<a href="<?php echo $stor_list[$k]['link']?>" rel="noreferrer" target="_blank" class="btn btn-default"><i class="fa fa-external-link"></i> <?php echo isset($stor_list[$k]['link_text']) ? $stor_list[$k]['link_text'] : '开通地址'?></a>
 						<?php }?>
 						<span class="stor-test-result"></span>
 					</div>
@@ -323,7 +437,7 @@ function stor_field($f){
 			<?php if(!$stor_caps[$k]['up'] && $stor_caps[$k]['cloud']){?>
 			<div class="alert alert-info stor-note"><?php echo $stor_list[$k]['name']?> 的上传只能走本站中转（它的直传要用 PUT 上传会话，跟浏览器直传的表单方式对不上），大文件会占用本站带宽<?php echo $stor_caps[$k]['down'] ? '；下载可以在下面选直接链接，由存储自己扛流量。' : '，下载同理。'?></div>
 			<?php }?>
-			<div class="alert alert-warning stor-note">连接测试用的是<b>已经保存</b>的参数，改完参数请先点保存参数再测试。测试会往存储里写一个几十字节的小文件，读回来核对后再删掉。</div>
+			<div class="alert alert-warning stor-note">连接测试用的是<b>当前填在上面框里</b>的参数（不必先保存，但测通了记得点「保存参数」，否则不会生效）。测试会往存储里写一个几十字节的小文件，读回来核对后再删掉。</div>
 		</div>
 	<?php }?>
 	</div>
@@ -371,6 +485,7 @@ $cap_now = $stor_caps[$storage];
 				</div>
 			</div>
 			<div class="alert alert-info stor-note" id="row_onedrive_note"<?php echo $storage === 'onedrive' ? '' : ' style="display:none"'?>>OneDrive 的直链是微软给的一小时临时地址，本站会 302 过去，不消耗本站流量；代价是下载下来的文件名会变成站内的存储名（没有扩展名）。在意文件名就选网站中转。</div>
+			<div class="alert alert-info stor-note" id="row_openlist_note"<?php echo $storage === 'openlist' ? '' : ' style="display:none"'?>>OpenList 的直链由它自己给出：底层是对象存储或网盘时会直接跳到上游地址，底层开了代理时跳的是 OpenList 自己的带签名地址。和 OneDrive 一样，直链下载拿到的文件名会变成站内的存储名（没有扩展名），在意文件名就选网站中转。</div>
 			<div class="form-group">
 				<div class="col-sm-offset-3 col-sm-9"><button type="submit" class="btn btn-primary">保存传输方式</button></div>
 			</div>
@@ -397,6 +512,7 @@ function showStor(k){
 	$('#row_upload').toggle(cap.up);
 	$('#row_down').toggle(cap.down);
 	$('#row_onedrive_note').toggle(k === 'onedrive');
+	$('#row_openlist_note').toggle(k === 'openlist');
 	$('#row_domain').toggle(cap.domain && $("select[name='downfile_type']").val() === '1');
 }
 $('.stor-card input[type=radio]').change(function(){ showStor($(this).val()); });
@@ -405,6 +521,35 @@ $("select[name='downfile_type']").change(function(){
 	$('#row_domain').toggle($(this).val() === '1' && storCaps[k] && storCaps[k].domain);
 });
 showStor(currentStor);
+
+/*
+ * 多存储的表格不是普通表单：勾选和下拉要拼成 storage_pool 的
+ * 「存储名:门槛|存储名:门槛」格式塞进隐藏域，再交给通用的 saveSetting 走后台白名单。
+ */
+$('#storage_multi').change(function(){ $('#pool_rows').toggle($(this).val() === '1'); });
+//没勾开放的行，门槛下拉灰掉，避免看上去像是配了却不生效
+function syncPoolRows(){
+	$('.pool-on').each(function(){
+		var k = $(this).data('stor');
+		//当前存储那一行整行锁死（必开、对所有人开放），不用跟着勾选状态变
+		if(k === currentStor)return;
+		$('.pool-tier[data-stor="'+k+'"]').prop('disabled', !$(this).prop('checked'));
+	});
+}
+$('.pool-on').change(syncPoolRows);
+syncPoolRows();
+function saveMulti(obj){
+	var parts = [];
+	$('.pool-on').each(function(){
+		if(!$(this).prop('checked'))return;
+		var k = $(this).data('stor');
+		//当前存储恒为 0：它是兜底，任何人都得能写进去
+		var tier = (k === currentStor) ? '0' : ($('.pool-tier[data-stor="'+k+'"]').val() || '0');
+		parts.push(k + ':' + tier);
+	});
+	$('#storage_pool').val(parts.join('|'));
+	return saveSetting(obj);
+}
 
 $('.stor-eye').click(function(){
 	var input = $(this).closest('.input-group').find('input');
@@ -417,7 +562,9 @@ $('.stor-test').click(function(){
 	var btn = $(this), box = btn.closest('.stor-form-btns').find('.stor-test-result');
 	box.removeClass('ok fail').text('测试中…');
 	btn.prop('disabled', true);
-	$.post('./set_stor.php', {ajax:'1', 'do':'test', storage:btn.data('stor')}, function(res){
+	//把这个存储的参数表单一起发过去，测的是屏幕上填着的值，不是库里存的
+	var fields = btn.closest('form').serialize();
+	$.post('./set_stor.php', {ajax:'1', 'do':'test', storage:btn.data('stor'), fields:fields}, function(res){
 		btn.prop('disabled', false);
 		box.addClass(res.code === 0 ? 'ok' : 'fail').text(res.msg || '');
 	}, 'json').fail(function(){

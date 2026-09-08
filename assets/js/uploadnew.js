@@ -33,7 +33,13 @@ new Vue({
             pwd: '',
             hash: '',
             name: '',
-            size: 0
+            size: 0,
+            /*
+             * 存储位置。要在这里就初始化好：v-model 首次渲染时会按数据把 select 刷一遍，
+             * 留空的话下拉会变成「未选中」，挂载后再去读 DOM 只能读到 null。
+             * 后台没开多存储时页面上没有这个下拉，值一直是空串，由服务端落到默认存储。
+             */
+            storage: (typeof upload_storage_default !== 'undefined' ? upload_storage_default : '')
         },
     },
     computed: {
@@ -522,6 +528,8 @@ new Vue({
                 //密码框留空就是不设密码，ispwd 由它自己推导出来，接口参数保持不变
                 ispwd: this.input.pwd?'1':'0',
                 pwd: this.input.pwd,
+                //服务端会拿允许列表校验这个值，非法的一律回落到默认存储
+                storage: this.input.storage,
             };
             var that = this;
             var timing = this.startFrontendTiming('pre_upload', ctx ? ctx.file : this.currentFile);

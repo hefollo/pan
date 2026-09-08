@@ -90,7 +90,7 @@ case 'delFile':
 		exit('{"code":-1,"msg":"当前文件不存在！"}');
 	//只有已封禁的文件才留公示，正常文件的日常清理不该被公示出去
 	if($row['block'] == 1)add_violation_log($row);
-	delete_file_blob_if_orphaned($row['hash'], $row['id']);
+	delete_file_blob_if_orphaned($row['hash'], $row['id'], $row['storage']);
 	$sql = "DELETE FROM pre_file WHERE id='$id'";
 	if($DB->exec($sql))exit('{"code":0,"msg":"删除文件成功！"}');
 	else exit('{"code":-1,"msg":"删除文件失败['.$DB->error().']"}');
@@ -112,7 +112,7 @@ case 'operation':
 			if($row){
 				//只有已封禁的文件才留公示，正常文件的日常清理不该被公示出去
 				if($row['block'] == 1)add_violation_log($row);
-				delete_file_blob_if_orphaned($row['hash'], $id);
+				delete_file_blob_if_orphaned($row['hash'], $id, $row['storage']);
 			}
 			$DB->exec("DELETE FROM pre_file WHERE id=:id", [':id'=>$id]);
 		}elseif($status == 1){

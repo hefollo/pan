@@ -83,7 +83,7 @@ if($act !== ''){
 			//被后台冻结的文件不许用户自己删掉，得留着给管理员查
 			if(intval($row['block']) === 1){ $blocked++; continue; }
 			//同一份内容可能被多条记录共享（秒传），只有最后一条引用被删时才清理物理文件
-			delete_file_blob_if_orphaned($row['hash'], $row['id']);
+			delete_file_blob_if_orphaned($row['hash'], $row['id'], $row['storage']);
 			if($DB->exec("DELETE FROM pre_file WHERE id=:id AND uid=:uid", [':id'=>$row['id'], ':uid'=>$uid])) $ok++;
 			else $fail++;
 		}

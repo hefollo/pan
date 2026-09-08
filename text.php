@@ -32,9 +32,9 @@ if(!check_file_pwd($row, $pwd)){ ?>
 	exit;
 }
 
-if(!$stor->exists($row['hash']))exit('File Not Found');
+if(!\lib\StorHelper::get($row['storage'])->exists($row['hash']))exit('File Not Found');
 
-$content = get_storage_content($row['hash']);
+$content = get_storage_content($row['hash'], $row['storage']);
 if($content === false)exit('Read file failed.');
 $decoded = decode_editable_content($content);
 if($decoded['code'] != 0)exit($decoded['msg']);

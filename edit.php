@@ -30,7 +30,7 @@ if($row['size'] > $max_size){
 	sysmsg('在线编辑文件大小不能超过 '.size_format($max_size));
 }
 
-$content = get_storage_content($row['hash']);
+$content = get_storage_content($row['hash'], $row['storage']);
 if($content === false)sysmsg('读取文件内容失败');
 $decoded = decode_editable_content($content);
 if($decoded['code'] != 0)sysmsg($decoded['msg']);

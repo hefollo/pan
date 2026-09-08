@@ -101,7 +101,7 @@ if($rs = $db->query("SELECT v FROM pre_config WHERE k='version'")){
 $uptodate = false;
 if($version<1009){
 	$sqls = read_sql('update.sql');
-	$sqls[]="REPLACE INTO `pre_config` VALUES ('version', '1021')";
+	$sqls[]="REPLACE INTO `pre_config` VALUES ('version', '1022')";
 	if(!$db->query("SELECT v FROM pre_config WHERE k='syskey'")->fetchColumn()){
 		$sqls[]="REPLACE INTO `pre_config` VALUES ('syskey', '".bin2hex(random_bytes(16))."')";
 	}
@@ -109,58 +109,62 @@ if($version<1009){
 	//1010：新增购买套餐（pre_plan）与订单（pre_order）两张表和支付宝当面付配置项
 	//update_1010.sql 的建表语句已经带上了后面版本加的字段，不用再执行 ALTER
 	$sqls = read_sql('update_1010.sql');
-	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1021')";
+	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1022')";
 }elseif($version<1011){
 	//1011：套餐支持“每日数量在现有基础上增加”，套餐表和订单表各加一个 limit_mode 字段
 	//1012：套餐加分类字段，购买页按分类分区展示
 	$sqls = array_merge(read_sql('update_1011.sql'), read_sql('update_1012.sql'), read_sql('update_1013.sql'));
-	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1021')";
+	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1022')";
 }elseif($version<1012){
 	//1012：套餐加分类字段
 	//1013：订单记下支付方式，新增易支付
 	$sqls = array_merge(read_sql('update_1012.sql'), read_sql('update_1013.sql'), read_sql('update_1014.sql'));
-	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1021')";
+	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1022')";
 }elseif($version<1013){
 	//1013：订单加 pay_type 字段，新增易支付配置
 	//1014：商品名称可自定义、易支付参数编码可选
 	$sqls = array_merge(read_sql('update_1013.sql'), read_sql('update_1014.sql'), read_sql('update_1015.sql'));
-	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1021')";
+	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1022')";
 }elseif($version<1014){
 	//1014：商品名称可自定义、易支付参数编码可选
 	//1015：加量包额度单独记录，不再被时长套餐覆盖
 	$sqls = array_merge(read_sql('update_1014.sql'), read_sql('update_1015.sql'), read_sql('update_1016.sql'));
-	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1021')";
+	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1022')";
 }elseif($version<1015){
 	//1015：用户表加 bonus_limit
 	//1016：邮箱注册——用户表加 password、验证码表 pre_mailcode
 	$sqls = array_merge(read_sql('update_1015.sql'), read_sql('update_1016.sql'), read_sql('update_1017.sql'));
-	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1021')";
+	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1022')";
 }elseif($version<1016){
 	//1016：邮箱注册所需的表和字段
 	//1017：文件表加限流维度 ipkey，ip 字段加宽到能存 IPv6
 	$sqls = array_merge(read_sql('update_1016.sql'), read_sql('update_1017.sql'), read_sql('update_1018.sql'));
-	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1021')";
+	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1022')";
 }elseif($version<1017){
 	//1017：文件表加限流维度 ipkey
 	//1018：验证码表记下发送结果，后台可以查发信记录
 	$sqls = array_merge(read_sql('update_1017.sql'), read_sql('update_1018.sql'));
-	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1021')";
+	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1022')";
 }elseif($version<1018){
 	//1018：验证码表加发送结果字段
 	$sqls = read_sql('update_1018.sql');
-	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1021')";
+	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1022')";
 }elseif($version<1019){
 	//1019：新增图片检测记录表（建表语句在下面统一补）
 	$sqls = [];
-	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1021')";
+	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1022')";
 }elseif($version<1020){
 	//1020：视频检测——任务表 pre_greenjob，检测记录加抽帧字段（语句在下面统一补）
 	$sqls = [];
-	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1021')";
+	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1022')";
 }elseif($version<1021){
 	//1021：账号绑定表 pre_user_bind，一个账号可以有多种登录方式（语句在下面统一补）
 	$sqls = [];
-	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1021')";
+	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1022')";
+}elseif($version<1022){
+	//1022：文件表加 storage，记下每条记录存在哪个存储里（语句在下面统一补）
+	$sqls = [];
+	$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1022')";
 }else{
 	/*
 	 * 版本号已经到位。这里不能直接 exit：万一之前某次升级把版本号写上去了、表却没建成功
@@ -194,6 +198,17 @@ if($version < 1020){
  * 不按版本判断、每次都跑：表被漏建时再点一次升级就能补回来。
  */
 $sqls = array_merge($sqls, read_sql('update_1021.sql'));
+
+/*
+ * 1022 的 ALTER 不像建表那样可以无脑重跑（MySQL 没有 ADD COLUMN IF NOT EXISTS），
+ * 重复执行会报「Duplicate column name」，所以不能像 1021 那样每次都跑。
+ * 但也不能只信版本号——出过「版本号写上去了、结构却是残的」的情况，那时版本号已经
+ * 挡住了这段，等于再也修不回来。所以直接查一次表结构：字段不在就补，在就跳过。
+ */
+$q = $db->query("SHOW COLUMNS FROM `pre_file` LIKE 'storage'");
+if(!$q || !$q->fetchColumn()){
+	$sqls = array_merge($sqls, read_sql('update_1022.sql'));
+}
 
 $success=0;$error=0;$errorMsg=null;
 foreach ($sqls as $value) {
@@ -237,6 +252,20 @@ if($lost){
 	echo '<div style="font:13px/1.7 system-ui;margin:0 24px;padding:14px;border:1px solid #f0c2c2;background:#fff5f5;border-radius:8px;color:#a33">'
 		.'<b>升级没有完成：</b>数据表 '.htmlspecialchars(implode('、', $lost), ENT_QUOTES, 'UTF-8').' 没有创建成功。<br>'
 		.'请确认 install 目录下的 .sql 文件已完整上传，以及数据库账号有建表权限，然后重新打开本页再升级一次。</div>';
+	echo '<p style="font:14px/1.7 system-ui;padding:16px 24px"><a href="../">返回首页</a></p>';
+	exit;
+}
+/*
+ * 字段级自检：1022 的 storage 是靠 ALTER 加的，被版本号挡住又没真加上时，
+ * 全站文件会按「当前存储」去取，换过存储的站点老文件会集体 404，而且哪里都不报错。
+ * 这里直接查一次表结构，比信版本号可靠。
+ */
+$q = $db->query("SHOW COLUMNS FROM `pre_file` LIKE 'storage'");
+if(!$q || !$q->fetchColumn()){
+	echo '<div style="font:13px/1.7 system-ui;margin:0 24px;padding:14px;border:1px solid #f0c2c2;background:#fff5f5;border-radius:8px;color:#a33">'
+		.'<b>升级没有完成：</b><code>pre_file</code> 表缺少 <code>storage</code> 字段。<br>'
+		.'请确认 <code>install/update_1022.sql</code> 已上传，以及数据库账号有改表权限，然后重新打开本页再升级一次。<br>'
+		.'也可以手工执行：<br><code>ALTER TABLE `pre_file` ADD COLUMN `storage` varchar(20) NOT NULL DEFAULT \'\';</code></div>';
 	echo '<p style="font:14px/1.7 system-ui;padding:16px 24px"><a href="../">返回首页</a></p>';
 	exit;
 }

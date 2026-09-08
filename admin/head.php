@@ -163,6 +163,27 @@ function saveSetting(obj){
 	return false;
 }
 /*
+ * 被后端白名单丢掉的设置字段，在这里统一报出来。
+ *
+ * ajax.php?act=set 只写 admin_setting_keys() 里的键，其余静默丢弃，但仍然返回 code:0，
+ * 而各页面的 saveSetting 都只看 code==0 就弹「保存成功」——于是「提示成功、值根本没写进去」。
+ * 赞助页那三个收款码就是这么坏的，界面上一点异常都看不出来。
+ *
+ * 挂全局 ajaxSuccess 钩子而不是改各页面的 saveSetting：好几个页面各自复制了一份
+ * saveSetting，改一处漏一处；钩子在 jQuery 层拦，不管哪份实现都能覆盖到，以后新加的也一样。
+ */
+$(document).ajaxSuccess(function(ev, xhr, settings){
+	if(!settings || !settings.url || settings.url.indexOf('act=set') === -1)return;
+	var res = xhr.responseJSON;
+	if(!res || !res.skipped || !res.skipped.length)return;
+	//延后一点弹，别和「保存成功」那个弹窗抢；这条正常永远不该出现，出现了就是程序漏配
+	setTimeout(function(){
+		layer.alert('这些设置<b>没有保存</b>：<br><br><b>' + res.skipped.join('、') + '</b><br><br>'
+			+ '它们不在后台允许写入的配置白名单里（includes/functions.php 的 admin_setting_keys）。'
+			+ '这是程序的疏漏，请反馈给作者。', {icon:2, area:'420px'});
+	}, 120);
+});
+/*
  * 文件状态选择器（0 正常 / 1 封禁 / 2 待审核）。
  * 文件管理和内容检测记录都用它，所以放在 head.php 里只写一份，免得两边各写一套慢慢跑偏。
  *

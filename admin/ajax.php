@@ -32,10 +32,12 @@ case 'set':
 		$_POST['theme_gradient'] = normalize_theme_gradient($_POST['theme_gradient']);
 	}
 	//只写白名单里的配置键，其余一律丢弃（admin_user/admin_pwd 走账号页自己的表单）
+	//表单里混进来的非配置字段（令牌、按钮之类）不算漏配，别报进 skipped 里干扰判断
+	$not_setting = ['csrf_token', 'ajax', 'do', 'fields', 'submit', 'act'];
 	$skipped = [];
 	foreach($_POST as $k=>$v){
 		if(!is_admin_setting_key($k)){
-			$skipped[] = $k;
+			if(!in_array($k, $not_setting, true))$skipped[] = $k;
 			continue;
 		}
 		saveSetting($k, $v);

@@ -1597,7 +1597,9 @@ function admin_setting_keys(){
 		'webdav_url', 'webdav_user', 'webdav_pass', 'webdav_path',
 		//onedrive_refresh_token / access_token 由授权流程自己写，不从表单进来
 		'onedrive_type', 'onedrive_client_id', 'onedrive_client_secret', 'onedrive_path',
-		'site_theme', 'theme_gradient', 'storage', 'storagename', 'title',
+		//openlist_cache_token / token_expire 由驱动登录后自己写，不从表单进来
+		'openlist_url', 'openlist_user', 'openlist_pass', 'openlist_token', 'openlist_path',
+		'site_theme', 'theme_gradient', 'storage', 'storage_multi', 'storage_pool', 'storagename', 'title',
 		'tongji', 'type_audio', 'type_block', 'type_image',
 		'type_video', 'upload_limit', 'upload_per_minute', 'upload_size', 'uploadfile_type',
 		'upyun_name', 'upyun_pwd', 'upyun_user', 'userlogin',
@@ -1606,6 +1608,8 @@ function admin_setting_keys(){
 		'epay_open', 'epay_apiurl', 'epay_pid', 'epay_key', 'epay_type', 'epay_charset',
 		'pay_subject',
 		'buy_notice',
+		//赞助页的三个收款码地址：漏在白名单外过，后台点保存会提示成功但值根本没写进去
+		'sponsor_img_weixin', 'sponsor_img_qq', 'sponsor_img_alipay',
 		//邮件发信：没有默认通道，勾选哪个用哪个，一个都不勾就是关闭
 		'mail_from', 'mail_from_name',
 		'mail_smtp_open', 'mail_smtp_host', 'mail_smtp_port', 'mail_smtp_secure',
@@ -1681,6 +1685,88 @@ function get_effective_upload_count_limit(){
 	}
 	$base = isset($conf['upload_limit']) ? intval($conf['upload_limit']) : 0;
 	return $base === 0 ? 0 : $base + $bonus;
+}
+
+/* ==================== 多存储上传 ====================
+ *
+ * 后台可以同时开几个存储让用户上传时自己挑，每个存储再限定谁能用。
+ * 配置只有两项，都在 pre_config 里：
+ *   storage_multi = 0/1        总开关，关着的时候下面这一整套都不生效
+ *   storage_pool  = oss:0|openlist:2   允许上传的存储和各自的门槛，顺序即前台下拉里的排序
+ *                                     （当前存储除外，它由 storage_allowed_list() 恒排第一）
+ *
+ * 门槛（下面的「档位」）：0 所有人（含游客）、1 需登录、2 需高级用户。
+ * 三档是按站点现有的用户体系来的：这站在卖套餐，高级用户就是 level>0 且权限还在有效期内。
+ *
+ * 「当前存储」($conf['storage']) 永远算在池子里、门槛恒为 0：它是全站兜底，
+ * 万一池子配空了、或者访客的档位够不着任何一个，总得有个地方能写进去。
+ */
+
+//当前访客的档位：2 高级用户、1 已登录、0 游客
+function storage_user_tier(){
+	global $islogin2, $userrow;
+	if(empty($islogin2))return 0;
+	if(isset($userrow['level']) && intval($userrow['level']) > 0 && is_user_permission_active())return 2;
+	return 1;
+}
+
+function storage_multi_open(){
+	global $conf;
+	return isset($conf['storage_multi']) && $conf['storage_multi'] == 1;
+}
+
+/*
+ * 解析 storage_pool，返回 [存储名 => 门槛]，保持后台配置的先后顺序。
+ * 会过滤掉不认识的存储名——后台删过某种存储的支持之后，池子里的残留不能让上传崩掉。
+ */
+function storage_pool(){
+	global $conf;
+	$pool = [];
+	$names = \lib\StorHelper::names();
+	$raw = isset($conf['storage_pool']) ? trim((string)$conf['storage_pool']) : '';
+	foreach(explode('|', $raw) as $item){
+		$item = trim($item);
+		if($item === '')continue;
+		$parts = explode(':', $item);
+		$key = trim($parts[0]);
+		if($key === '' || !isset($names[$key]))continue;
+		$tier = isset($parts[1]) ? intval($parts[1]) : 0;
+		$pool[$key] = ($tier < 0 || $tier > 2) ? 0 : $tier;
+	}
+	return $pool;
+}
+
+/*
+ * 当前访客可以往里传的存储，有序。
+ *
+ * 当前存储恒排第一，于是「上传框默认选中项」和「用户没选时的兜底」天然是同一个，
+ * 不会出现下拉里默认选中 A、但漏传参数时又落到 B 的错位。
+ * 多存储没开就只有当前存储一个，调用方据此决定要不要显示下拉。
+ */
+function storage_allowed_list(){
+	global $conf;
+	$current = $conf['storage'];
+	if(!storage_multi_open())return [$current];
+	$tier = storage_user_tier();
+	$list = [$current];
+	foreach(storage_pool() as $key=>$need){
+		if($key === $current)continue;
+		if($tier >= $need)$list[] = $key;
+	}
+	return $list;
+}
+
+/*
+ * 定下这次上传写到哪个存储。
+ * $want 是用户在上传框里选的，来自表单，必须拿允许列表校验一遍——
+ * 不校验的话，改个请求参数就能往管理员限定给高级用户的存储里传东西。
+ * 空的、不在允许列表里的，一律回落到列表第一项。
+ */
+function storage_pick($want = null){
+	$list = storage_allowed_list();
+	$want = is_string($want) ? trim($want) : '';
+	if($want !== '' && in_array($want, $list, true))return $want;
+	return $list[0];
 }
 
 function minetype($type){
@@ -1970,9 +2056,9 @@ function storage_content_to_string($content){
 	return (string)$content;
 }
 
-function get_storage_content($hash){
-	global $stor;
-	return storage_content_to_string($stor->get($hash));
+//$storage 传文件记录里的 storage 字段：换过全站存储之后，老文件要回原存储去读
+function get_storage_content($hash, $storage = null){
+	return storage_content_to_string(\lib\StorHelper::get($storage)->get($hash));
 }
 
 function is_utf8_editable_content($content){
@@ -2035,6 +2121,8 @@ function decode_editable_content($content){
 	return ['code'=>-1, 'msg'=>'无法识别文件编码，请先转换为 UTF-8 后再编辑'];
 }
 
+//在线编辑保存：新内容一律写进「当前存储」，不跟着老文件回旧存储——
+//旧存储可能已经停用或者不打算再往里写了，调用方保存成功后要把记录的 storage 一并改成当前存储
 function save_storage_content($hash, $content, $type){
 	global $stor;
 	$tmpfile = tempnam(sys_get_temp_dir(), 'edit_');
@@ -2159,11 +2247,14 @@ function add_green_log($row){
  * block=2，走 view.php 只会拿到那张占位图，指望不上。
  */
 function green_file_source($hash, $ext, $ctx = [], $opt = []){
-	global $conf, $stor, $siteurl;
+	global $conf, $siteurl;
 	$url_only = !empty($opt['url_only']);
 	$no_view = !empty($opt['no_view']);
+	//视频检测是异步的，轮询时手上只有任务表里的 hash，$ctx 带不出存储，按 hash 反查一次
+	$storage = isset($ctx['storage']) && $ctx['storage'] !== '' ? $ctx['storage'] : file_storage_by_hash($hash);
+	$stor = \lib\StorHelper::get($storage);
 
-	if(!$url_only && $conf['storage'] === 'local' && is_object($stor) && method_exists($stor, 'filepath')){
+	if(!$url_only && $storage === 'local' && is_object($stor) && method_exists($stor, 'filepath')){
 		$path = $stor->filepath($hash);
 		if($path !== '' && is_file($path))return ['path'=>$path];
 	}
@@ -2179,6 +2270,17 @@ function green_file_source($hash, $ext, $ctx = [], $opt = []){
 	//带密码的文件 view.php 同样只给占位图，密码要拼进去（格式和 player.php 用的一致）
 	$pwd = isset($ctx['pwd']) && $ctx['pwd'] !== '' && $ctx['pwd'] !== null ? '&'.$ctx['pwd'] : '';
 	return ['url'=>$apiurl.'view.php/'.$token.'.'.$ext.$pwd.'?greencheck=1'];
+}
+
+/*
+ * 按内容哈希反查这份内容存在哪个存储里，查不到就当作当前存储。
+ * 给的是异步流程用的：视频检测任务表里只有 hash，等结果回来时已经拿不到原来那条文件记录了。
+ * 同一个 hash 在换过存储的站点上可能有多条记录（新旧存储各一份），任意一条都指向可用的内容。
+ */
+function file_storage_by_hash($hash){
+	global $DB, $conf;
+	$storage = $DB->getColumn("SELECT storage FROM pre_file WHERE hash=:hash AND storage<>'' LIMIT 1", [':hash'=>$hash]);
+	return $storage ? $storage : $conf['storage'];
 }
 
 /*
@@ -2753,11 +2855,19 @@ function generate_file_token(){
 	return $token;
 }
 
-//仅当没有其它记录仍引用该hash对应的物理文件时才删除，避免误删被去重共享的存储文件
-function delete_file_blob_if_orphaned($hash, $exclude_id = null){
-	global $DB, $stor;
-	$params = [':hash'=>$hash];
-	$sql = "SELECT id FROM pre_file WHERE hash=:hash";
+/*
+ * 仅当没有其它记录仍引用该 hash 对应的物理文件时才删除，避免误删被去重共享的存储文件。
+ *
+ * 引用要按「存储」分开算：换过全站存储之后，同一份内容可能在旧存储和新存储里各有一份，
+ * 数据库里也就有 hash 相同、storage 不同的两批记录。不区分存储的话，删掉旧存储那批的
+ * 最后一条时会看见新存储那批还在，于是跳过删除——旧存储里那个对象就永远没人清了。
+ */
+function delete_file_blob_if_orphaned($hash, $exclude_id = null, $storage = null){
+	global $DB, $conf;
+	//空字段是升级前建的老记录，它和当前存储指的是同一个地方，要算成同一批
+	$storage = ($storage === null || $storage === '') ? $conf['storage'] : $storage;
+	$params = [':hash'=>$hash, ':stor'=>$storage];
+	$sql = "SELECT id FROM pre_file WHERE hash=:hash AND (storage=:stor".($storage === $conf['storage'] ? " OR storage=''" : "").")";
 	if($exclude_id){
 		$sql .= " AND id!=:id";
 		$params[':id'] = $exclude_id;
@@ -2765,7 +2875,7 @@ function delete_file_blob_if_orphaned($hash, $exclude_id = null){
 	if($DB->getColumn($sql." LIMIT 1", $params)){
 		return;
 	}
-	$stor->delete($hash);
+	\lib\StorHelper::get($storage)->delete($hash);
 }
 
 //覆盖上传审计：记下这次覆盖的前后内容，管理员在后台“覆盖记录”里复查有没有换成违规内容
@@ -2792,20 +2902,25 @@ function add_replace_log($old, $new, $uid, $ip, $source = 'replace'){
 
 //覆盖上传：把已有记录的内容换成新文件，token（也就是对外链接）保持不变。
 //换了内容必须重新过审并留审计记录，否则可以先传一个正常文件、事后覆盖成违规内容绕过检测。
-function replace_file_record($old, $name, $hash, $size, $ext, $uid, $ip, $source = 'replace'){
+//$storage 是新内容所在的存储，传 null 表示就在当前存储里。
+//记录的 storage 要跟着内容一起换：老内容在旧存储、新内容在新存储，字段不改的话新内容就找不着了
+function replace_file_record($old, $name, $hash, $size, $ext, $uid, $ip, $source = 'replace', $storage = null){
 	global $DB, $conf;
 	if(!is_array($old) || empty($old['id']))return false;
 	$id = intval($old['id']);
 	$old_hash = isset($old['hash']) ? $old['hash'] : '';
-	$ok = $DB->exec("UPDATE `pre_file` SET `name`=:name,`type`=:type,`size`=:size,`hash`=:hash,`block`=0,`lasttime`=NOW() WHERE `id`=:id LIMIT 1", [':name'=>$name, ':type'=>$ext, ':size'=>$size, ':hash'=>$hash, ':id'=>$id]);
+	$old_storage = isset($old['storage']) ? $old['storage'] : null;
+	$storage = ($storage === null || $storage === '') ? $conf['storage'] : $storage;
+	$ok = $DB->exec("UPDATE `pre_file` SET `name`=:name,`type`=:type,`size`=:size,`hash`=:hash,`storage`=:storage,`block`=0,`lasttime`=NOW() WHERE `id`=:id LIMIT 1", [':name'=>$name, ':type'=>$ext, ':size'=>$size, ':hash'=>$hash, ':storage'=>$storage, ':id'=>$id]);
 	if($ok === false)return false;
 
-	//旧内容如果没有别的记录再引用，把物理文件清掉，别留垃圾
-	if($old_hash !== '' && $old_hash !== $hash)delete_file_blob_if_orphaned($old_hash, $id);
+	//旧内容如果没有别的记录再引用，把物理文件清掉，别留垃圾。
+	//要按它原来所在的存储去删，这条记录的 storage 上面刚被改成新内容的了
+	if($old_hash !== '' && $old_hash !== $hash)delete_file_blob_if_orphaned($old_hash, $id, $old_storage);
 
 	$type_image = explode('|',$conf['type_image']);
 	$type_video = explode('|',$conf['type_video']);
-	$ctx = ['id'=>$id, 'name'=>$name, 'uid'=>$uid, 'ip'=>$ip, 'token'=>(isset($old['token'])?$old['token']:''), 'size'=>$size, 'pwd'=>(isset($old['pwd'])?$old['pwd']:'')];
+	$ctx = ['id'=>$id, 'name'=>$name, 'uid'=>$uid, 'ip'=>$ip, 'token'=>(isset($old['token'])?$old['token']:''), 'size'=>$size, 'pwd'=>(isset($old['pwd'])?$old['pwd']:''), 'storage'=>$storage];
 	if($conf['green_check']>0 && in_array($ext,$type_image)){
 		$verdict = checkImage($hash, $ext, $ctx);
 		if($verdict === 'block'){
@@ -2833,9 +2948,12 @@ function replace_file_record($old, $name, $hash, $size, $ext, $uid, $ip, $source
 //秒传：内容已经在存储里了，物理文件不用再传，但仍要为这次上传建一条独立记录，
 //否则上传者在“我的文件”里看不到，文件只挂在最早那个上传者名下。
 //另外已被封禁的内容要继承封禁状态，不然换个人重传一遍就能绕过封禁。
-function create_file_record_from_existing($existing, $name, $size, $ext, $hide, $pwd, $uid, $ip){
+//$storage 传 null 表示这次没有真的传文件（纯秒传），新记录只能跟着老记录指向同一个存储；
+//调用方要是刚把内容原样写进了当前存储，就把当前存储传进来，免得在新存储里留下没人引用的对象
+function create_file_record_from_existing($existing, $name, $size, $ext, $hide, $pwd, $uid, $ip, $storage = null){
 	global $DB;
-	$record = create_file_record($name, $existing['hash'], $size, $ext, $hide, $pwd, $uid, $ip, false);
+	if($storage === null)$storage = isset($existing['storage']) ? $existing['storage'] : null;
+	$record = create_file_record($name, $existing['hash'], $size, $ext, $hide, $pwd, $uid, $ip, false, $storage);
 	if(!$record)return false;
 	$block = isset($existing['block']) ? intval($existing['block']) : 0;
 	if($block >= 1){
@@ -2914,18 +3032,20 @@ function violation_mask_ip($ip){
 
 //插入一条新的文件记录（每次上传都会生成独立的记录和链接，即使内容与已有文件相同也不会互相覆盖）
 //$review 传 false 用于秒传：内容此前已经审核过，审核状态由调用方继承，不必再花一次云端检测的钱和时间
-function create_file_record($name, $hash, $size, $ext, $hide, $pwd, $uid, $ip, $review = true){
+//$storage 传空表示这次内容就写在当前存储里（新上传都是这样）；秒传要传出内容实际所在的存储
+function create_file_record($name, $hash, $size, $ext, $hide, $pwd, $uid, $ip, $review = true, $storage = null){
 	global $DB, $conf;
 	$token = generate_file_token();
+	$storage = ($storage === null || $storage === '') ? $conf['storage'] : $storage;
 	//ipkey 是限流用的维度（IPv6 归并到 /64），和展示用的 ip 分开存
-	$sds = $DB->exec("INSERT INTO `pre_file` (`name`,`type`,`size`,`hash`,`token`,`addtime`,`ip`,`ipkey`,`hide`,`pwd`,`uid`) values (:name,:type,:size,:hash,:token,NOW(),:ip,:ipkey,:hide,:pwd,:uid)", [':name'=>$name, ':type'=>$ext, ':size'=>$size, ':hash'=>$hash, ':token'=>$token, ':ip'=>$ip, ':ipkey'=>client_ip_key($ip), ':hide'=>$hide, ':pwd'=>$pwd, ':uid'=>($uid?$uid:0)]);
+	$sds = $DB->exec("INSERT INTO `pre_file` (`name`,`type`,`size`,`hash`,`storage`,`token`,`addtime`,`ip`,`ipkey`,`hide`,`pwd`,`uid`) values (:name,:type,:size,:hash,:storage,:token,NOW(),:ip,:ipkey,:hide,:pwd,:uid)", [':name'=>$name, ':type'=>$ext, ':size'=>$size, ':hash'=>$hash, ':storage'=>$storage, ':token'=>$token, ':ip'=>$ip, ':ipkey'=>client_ip_key($ip), ':hide'=>$hide, ':pwd'=>$pwd, ':uid'=>($uid?$uid:0)]);
 	if(!$sds)return false;
 	$id = $DB->lastInsertId();
-	if(!$review)return ['id'=>$id, 'token'=>$token];
+	if(!$review)return ['id'=>$id, 'token'=>$token, 'storage'=>$storage];
 
 	$type_image = explode('|',$conf['type_image']);
 	$type_video = explode('|',$conf['type_video']);
-	$ctx = ['id'=>$id, 'name'=>$name, 'uid'=>($uid?$uid:0), 'ip'=>$ip, 'token'=>$token, 'size'=>$size, 'pwd'=>$pwd];
+	$ctx = ['id'=>$id, 'name'=>$name, 'uid'=>($uid?$uid:0), 'ip'=>$ip, 'token'=>$token, 'size'=>$size, 'pwd'=>$pwd, 'storage'=>$storage];
 	if($conf['green_check']>0 && in_array($ext,$type_image)){
 		$verdict = checkImage($hash, $ext, $ctx);
 		if($verdict === 'block'){
@@ -2954,7 +3074,7 @@ function create_file_record($name, $hash, $size, $ext, $hide, $pwd, $uid, $ip, $
 		}
 	}
 
-	return ['id'=>$id, 'token'=>$token];
+	return ['id'=>$id, 'token'=>$token, 'storage'=>$storage];
 }
 
 function get_file_ext($name){
@@ -3006,8 +3126,13 @@ function get_file_range($size){
 	return false;
 }
 
-function file_output($hash, $type, $size, $name, $is_view = false, $is_admin = false){
-	global $conf, $stor;
+//$storage 传文件记录里的 storage 字段，换过全站存储之后老文件要回原存储去取
+function file_output($hash, $type, $size, $name, $is_view = false, $is_admin = false, $storage = null){
+	global $conf;
+	$stor = \lib\StorHelper::get($storage);
+	//直链/断点续传这些能力要按这个文件所在的存储来判断，不能按当前存储：
+	//旧文件在支持直链的 OSS 上、当前存储换成了不支持的 WebDAV，照样可以走直链
+	$storage = ($storage === null || $storage === '') ? $conf['storage'] : $storage;
 
 	@set_time_limit(0);
 	$size = intval($size);
@@ -3035,7 +3160,17 @@ function file_output($hash, $type, $size, $name, $is_view = false, $is_admin = f
 	//哪怕后台把 svg 加进了"可预览类型"，也只能当附件下载
 	if($is_view && is_scriptable_file_type($type))$is_view = false;
 
-	if(\lib\StorHelper::is_direct_down() && $conf['downfile_type'] == 1){
+	/*
+	 * 「文件下载域名」全站只有一个值，而这几家存储的驱动会拿它去替换直链里的域名。
+	 * 站点换过存储之后，旧文件在旧存储、域名却是给新存储绑的，直链拼出来必然是坏的。
+	 * 这种组合下旧文件改走网站中转：多耗一点本站带宽，但内容一定对；
+	 * 域名留空时各家用自己的默认域名，两边都没问题，不必降级。
+	 */
+	$domain_mismatch = $storage !== $conf['storage']
+		&& !empty($conf['downfile_domain'])
+		&& \lib\StorHelper::uses_down_domain($storage);
+
+	if(\lib\StorHelper::is_direct_down($storage) && $conf['downfile_type'] == 1 && !$domain_mismatch){
 		$redirect = $stor->getDownUrl($hash, $name, $is_view ? minetype($type) : null);
 		if($redirect){
 			header("Location: ".$redirect);
@@ -3054,7 +3189,7 @@ function file_output($hash, $type, $size, $name, $is_view = false, $is_admin = f
 		}
 
 		$range = false;
-		if(\lib\StorHelper::is_range()){
+		if(\lib\StorHelper::is_range($storage)){
 			header("Accept-Ranges: bytes");
 			$range = get_file_range($size);
 			//视频等媒体常用Range分段拖动播放；若客户端带着旧版本的If-Range校验值，
@@ -3071,7 +3206,7 @@ function file_output($hash, $type, $size, $name, $is_view = false, $is_admin = f
 			$stor->downfile($hash, $range);
 		}else{
 			header("Content-Length: {$size}");
-			$stor->downfile($hash, $conf['storage']=='local'?[0, $size-1]:false);
+			$stor->downfile($hash, $storage=='local'?[0, $size-1]:false);
 		}
 	}
 }

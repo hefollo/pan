@@ -63,11 +63,14 @@ function clear_upload_state($hash){
  * 内容已经写进存储、但没能建成数据库记录时，存储里会留下一个没人引用的对象。
  * 只有确认没有任何记录引用这个 hash 才删，避免误删别人秒传共用的同一份内容。
  */
-function cleanup_orphan_object($hash){
-	global $DB, $stor;
-	$used = intval($DB->getColumn("SELECT count(*) FROM pre_file WHERE hash=:hash", [':hash'=>$hash]));
+function cleanup_orphan_object($hash, $storage = null){
+	global $DB, $conf;
+	$storage = ($storage === null || $storage === '') ? $conf['storage'] : $storage;
+	//引用要按存储分开算，理由同 delete_file_blob_if_orphaned()：
+	//换过存储的站点上，同一份内容可能在新旧两个存储里各有一份，各自的引用互不相干
+	$used = intval($DB->getColumn("SELECT count(*) FROM pre_file WHERE hash=:hash AND (storage=:stor".($storage === $conf['storage'] ? " OR storage=''" : "").")", [':hash'=>$hash, ':stor'=>$storage]));
 	if($used > 0)return false;
-	return $stor->delete($hash);
+	return \lib\StorHelper::get($storage)->delete($hash);
 }
 
 function upload_all_parts_exist($hash, $chunks){
@@ -150,6 +153,16 @@ case 'pre_upload':
 		if(!can_manage_file($replace_row))exit('{"code":-1,"msg":"无权覆盖该文件"}');
 		if($replace_row['block']==1)exit('{"code":-1,"msg":"文件已被冻结，无法覆盖"}');
 	}
+	/*
+	 * 这次写到哪个存储，必须在这里就定死，后面几步全按它走。
+	 * 原因是直传：下面拿某个存储的密钥签好参数发给浏览器，浏览器直接把文件 POST 进那个桶，
+	 * 中途换目标就会变成「签的是 A、记录写的是 B」。所以定完立刻塞进 upload_state 带走。
+	 * storage_pick() 内部会拿允许列表校验用户提交的值，这里不用再防一遍。
+	 */
+	$target_stor = storage_pick(isset($_POST['storage']) ? $_POST['storage'] : null);
+	$target_model = \lib\StorHelper::get($target_stor);
+	if(!$target_model)exit('{"code":-1,"msg":"存储配置有误，请联系站长"}');
+
 	$limit_size = get_effective_upload_size_limit();
 	if($limit_size > 0 && $size > $limit_size * 1024 * 1024){
 		exit('{"code":-1,"msg":"上传文件大小限制'.$limit_size.'MB"}');
@@ -187,8 +200,9 @@ case 'pre_upload':
 	}
 	$row = $DB->getRow("SELECT * FROM pre_file WHERE hash=:hash", [':hash'=>$hash]);
 	if($row && $replace_row){
-		//覆盖的新内容站内已经有了，物理文件不用再传，直接把记录的内容换掉
-		if(!replace_file_record($replace_row, $name, $hash, $size, $ext, $uid, $clientip))exit('{"code":-1,"msg":"替换失败'.$DB->error().'","error":"database"}');
+		//覆盖的新内容站内已经有了，物理文件不用再传，直接把记录的内容换掉。
+		//这次没往存储里写东西，所以记录要指向那份内容实际所在的存储，不是当前存储
+		if(!replace_file_record($replace_row, $name, $hash, $size, $ext, $uid, $clientip, 'replace', $row['storage']))exit('{"code":-1,"msg":"替换失败'.$DB->error().'","error":"database"}');
 		$result = ['code'=>1, 'msg'=>'替换成功，链接保持不变', 'exists'=>1, 'hash'=>$hash, 'token'=>$replace_row['token'], 'name'=>$name, 'size'=>$size, 'type'=>$ext, 'id'=>$replace_row['id']];
 		set_upload_csrf_token($result);
 		exit(json_encode($result));
@@ -203,9 +217,10 @@ case 'pre_upload':
 		exit(json_encode($result));
 	}
 
-	if(\lib\StorHelper::is_direct_upload() && $conf['uploadfile_type'] == 1){
-		$param = $stor->getUploadParam($hash, $name, $limit_size * 1024 * 1024);
-		if(!$param)exit('{"code":-1,"msg":"获取上传参数失败","errmsg":"'.$stor->errmsg().'"}');
+	//能不能直传要按这次的目标存储判断，不能按全站当前存储
+	if(\lib\StorHelper::is_direct_upload($target_stor) && $conf['uploadfile_type'] == 1){
+		$param = $target_model->getUploadParam($hash, $name, $limit_size * 1024 * 1024);
+		if(!$param)exit('{"code":-1,"msg":"获取上传参数失败","errmsg":"'.$target_model->errmsg().'"}');
 		set_upload_state($hash, [
 			'chunks' => 1,
 			'name' => $name,
@@ -214,6 +229,7 @@ case 'pre_upload':
 			'ext' => $ext,
 			'hide' => $hide,
 			'pwd' => $pwd,
+			'storage' => $target_stor,
 			'replace_id' => $replace_id
 		]);
 		$result = ['code'=>0, 'third'=>true, 'hash'=>$hash, 'url'=>$param['url'], 'post'=>$param['post']];
@@ -230,6 +246,7 @@ case 'pre_upload':
 			'ext' => $ext,
 			'hide' => $hide,
 			'pwd' => $pwd,
+			'storage' => $target_stor,
 			'replace_id' => $replace_id
 		]);
 		$result = ['code'=>0, 'third'=>false, 'hash'=>$hash, 'chunksize'=>$chunksize, 'chunks'=>$chunks];
@@ -258,6 +275,13 @@ case 'upload_part':
 	}
 	$ext = $upload_state['ext'];
 	$declared_size = intval($upload_state['size']);
+	/*
+	 * 目标存储认 pre_upload 定下来存在会话里的那个，不再问一次 storage_pick()：
+	 * 一次上传横跨好几个请求，中途用户在别的标签页改了选择、或者权限刚好到期，
+	 * 重新算就会把分块写到两个不同的存储里去。会话里的值也不受表单参数影响。
+	 */
+	$target_stor = isset($upload_state['storage']) ? $upload_state['storage'] : $conf['storage'];
+	$target_model = \lib\StorHelper::get($target_stor);
 	$debug = upload_debug_start();
 	if($chunks > 1){
 		$tempFile = sys_get_temp_dir() . '/' . $hash. '.part'.$chunk;
@@ -296,7 +320,7 @@ case 'upload_part':
 				}
 				exit($real_size != $declared_size ? '{"code":-1,"msg":"文件大小校验失败"}' : '{"code":-1,"msg":"文件MD5校验失败"}');
 			}
-			$result = $stor->savefile($hash, $savePathTemp, minetype($ext));
+			$result = $target_model->savefile($hash, $savePathTemp, minetype($ext));
 			upload_debug_step($debug, 'storage_save_ms');
 			//合并出来的临时文件用完就删，之前无论成功失败都会留在临时目录里
 			@unlink($savePathTemp);
@@ -305,7 +329,7 @@ case 'upload_part':
 				fclose($mergeLock);
 				@unlink($mergeLockFile);
 			}
-			if(!$result)exit('{"code":-1,"msg":"文件上传失败","error":"stor","errmsg":"'.$stor->errmsg().'"}');
+			if(!$result)exit('{"code":-1,"msg":"文件上传失败","error":"stor","errmsg":"'.$target_model->errmsg().'"}');
 		}else{
 			$result = ['code'=>0, 'chunk'=>$chunk];
 			exit(json_encode($result));
@@ -320,9 +344,9 @@ case 'upload_part':
 			clear_upload_state($hash);
 			exit($real_size != $declared_size ? '{"code":-1,"msg":"文件大小校验失败"}' : '{"code":-1,"msg":"文件MD5校验失败"}');
 		}
-		$result = $stor->upload($hash, $_FILES['file']['tmp_name'], minetype($ext));
+		$result = $target_model->upload($hash, $_FILES['file']['tmp_name'], minetype($ext));
 		upload_debug_step($debug, 'storage_upload_ms');
-		if(!$result)exit('{"code":-1,"msg":"文件上传失败","error":"stor","errmsg":"'.$stor->errmsg().'"}');
+		if(!$result)exit('{"code":-1,"msg":"文件上传失败","error":"stor","errmsg":"'.$target_model->errmsg().'"}');
 	}
 
 	//大小和 MD5 在写入存储之前已经校验过了
@@ -338,12 +362,12 @@ case 'upload_part':
 	if($replace_id > 0){
 		$replace_row = $DB->getRow("SELECT * FROM pre_file WHERE id=:id LIMIT 1", [':id'=>$replace_id]);
 		//下面几种情况内容已经写进存储但不会建立引用，要把孤儿对象清掉
-		if(!$replace_row){cleanup_orphan_object($hash);exit('{"code":-1,"msg":"要覆盖的文件不存在"}');}
-		if(!can_manage_file($replace_row)){cleanup_orphan_object($hash);exit('{"code":-1,"msg":"无权覆盖该文件"}');}
-		if($replace_row['block']==1){cleanup_orphan_object($hash);exit('{"code":-1,"msg":"文件已被冻结，无法覆盖"}');}
+		if(!$replace_row){cleanup_orphan_object($hash, $target_stor);exit('{"code":-1,"msg":"要覆盖的文件不存在"}');}
+		if(!can_manage_file($replace_row)){cleanup_orphan_object($hash, $target_stor);exit('{"code":-1,"msg":"无权覆盖该文件"}');}
+		if($replace_row['block']==1){cleanup_orphan_object($hash, $target_stor);exit('{"code":-1,"msg":"文件已被冻结，无法覆盖"}');}
 		clear_upload_state($hash);
-		if(!replace_file_record($replace_row, $name, $hash, $size, $ext, $uid, $clientip)){
-			cleanup_orphan_object($hash);
+		if(!replace_file_record($replace_row, $name, $hash, $size, $ext, $uid, $clientip, 'replace', $target_stor)){
+			cleanup_orphan_object($hash, $target_stor);
 			exit('{"code":-1,"msg":"替换失败'.$DB->error().'","error":"database"}');
 		}
 		$result = ['code'=>1, 'msg'=>'替换成功，链接保持不变', 'exists'=>0, 'hash'=>$hash, 'token'=>$replace_row['token'], 'name'=>$name, 'size'=>$size, 'type'=>$ext, 'id'=>$replace_row['id']];
@@ -356,7 +380,9 @@ case 'upload_part':
 	if($row){
 		clear_upload_state($hash);
 		//秒传：跳过物理上传，但要为这次上传建独立记录，上传者才能在“我的文件”里看到并拥有自己的链接
-		$record = create_file_record_from_existing($row, $name, $size, $ext, $hide, $pwd, $uid, $clientip);
+		//内容刚刚已经写进本次的目标存储了，新记录就指那儿：跟着老记录指向别的存储的话，
+		//刚写进去的那份永远没人引用，等于留了个清不掉的孤儿
+		$record = create_file_record_from_existing($row, $name, $size, $ext, $hide, $pwd, $uid, $clientip, $target_stor);
 		if(!$record)exit('{"code":-1,"msg":"上传失败'.$DB->error().'","error":"database"}');
 		$_SESSION['fileids'][] = $record['id'];
 		$result = ['code'=>1, 'msg'=>'本站已存在该文件', 'exists'=>1, 'hash'=>$hash, 'token'=>$record['token'], 'name'=>$name, 'size'=>$size, 'type'=>$ext, 'id'=>$record['id']];
@@ -366,9 +392,9 @@ case 'upload_part':
 	}
 
 	//统一走 create_file_record，它负责生成访问用的 token，并顺带做图片检测和违规留档
-	$record = create_file_record($name, $hash, $size, $ext, $hide, $pwd, $uid, $clientip);
+	$record = create_file_record($name, $hash, $size, $ext, $hide, $pwd, $uid, $clientip, true, $target_stor);
 	if(!$record){
-		cleanup_orphan_object($hash);
+		cleanup_orphan_object($hash, $target_stor);
 		exit('{"code":-1,"msg":"上传失败'.$DB->error().'","error":"database"}');
 	}
 	$id = $record['id'];
@@ -392,9 +418,12 @@ case 'complete_upload':
 		exit('{"code":-1,"msg":"参数校验失败，请刷新页面重试"}');
 	}
 	if(!preg_match('/^[0-9a-z]{32}$/i', $hash))exit('{"code":-1,"msg":"hash error"}');
-	
-	if(!$stor->exists($hash)){
-		exit('{"code":-1,"msg":"文件上传失败","error":"stor","errmsg":"'.$stor->errmsg().'"}');
+
+	//浏览器是直接把文件传进 pre_upload 签好参数的那个存储的，要回同一个地方去确认
+	$target_stor = isset($upload_state['storage']) ? $upload_state['storage'] : $conf['storage'];
+	$target_model = \lib\StorHelper::get($target_stor);
+	if(!$target_model->exists($hash)){
+		exit('{"code":-1,"msg":"文件上传失败","error":"stor","errmsg":"'.$target_model->errmsg().'"}');
 	}
 	$debug = upload_debug_start();
 	upload_debug_step($debug, 'cloud_exists_check_ms');
@@ -410,12 +439,12 @@ case 'complete_upload':
 	if($replace_id > 0){
 		$replace_row = $DB->getRow("SELECT * FROM pre_file WHERE id=:id LIMIT 1", [':id'=>$replace_id]);
 		//下面几种情况内容已经写进存储但不会建立引用，要把孤儿对象清掉
-		if(!$replace_row){cleanup_orphan_object($hash);exit('{"code":-1,"msg":"要覆盖的文件不存在"}');}
-		if(!can_manage_file($replace_row)){cleanup_orphan_object($hash);exit('{"code":-1,"msg":"无权覆盖该文件"}');}
-		if($replace_row['block']==1){cleanup_orphan_object($hash);exit('{"code":-1,"msg":"文件已被冻结，无法覆盖"}');}
+		if(!$replace_row){cleanup_orphan_object($hash, $target_stor);exit('{"code":-1,"msg":"要覆盖的文件不存在"}');}
+		if(!can_manage_file($replace_row)){cleanup_orphan_object($hash, $target_stor);exit('{"code":-1,"msg":"无权覆盖该文件"}');}
+		if($replace_row['block']==1){cleanup_orphan_object($hash, $target_stor);exit('{"code":-1,"msg":"文件已被冻结，无法覆盖"}');}
 		clear_upload_state($hash);
-		if(!replace_file_record($replace_row, $name, $hash, $size, $ext, $uid, $clientip)){
-			cleanup_orphan_object($hash);
+		if(!replace_file_record($replace_row, $name, $hash, $size, $ext, $uid, $clientip, 'replace', $target_stor)){
+			cleanup_orphan_object($hash, $target_stor);
 			exit('{"code":-1,"msg":"替换失败'.$DB->error().'","error":"database"}');
 		}
 		$result = ['code'=>1, 'msg'=>'替换成功，链接保持不变', 'exists'=>0, 'hash'=>$hash, 'token'=>$replace_row['token'], 'name'=>$name, 'size'=>$size, 'type'=>$ext, 'id'=>$replace_row['id']];
@@ -428,7 +457,9 @@ case 'complete_upload':
 	if($row){
 		clear_upload_state($hash);
 		//秒传：跳过物理上传，但要为这次上传建独立记录，上传者才能在“我的文件”里看到并拥有自己的链接
-		$record = create_file_record_from_existing($row, $name, $size, $ext, $hide, $pwd, $uid, $clientip);
+		//内容刚刚已经写进本次的目标存储了，新记录就指那儿：跟着老记录指向别的存储的话，
+		//刚写进去的那份永远没人引用，等于留了个清不掉的孤儿
+		$record = create_file_record_from_existing($row, $name, $size, $ext, $hide, $pwd, $uid, $clientip, $target_stor);
 		if(!$record)exit('{"code":-1,"msg":"上传失败'.$DB->error().'","error":"database"}');
 		$_SESSION['fileids'][] = $record['id'];
 		$result = ['code'=>1, 'msg'=>'本站已存在该文件', 'exists'=>1, 'hash'=>$hash, 'token'=>$record['token'], 'name'=>$name, 'size'=>$size, 'type'=>$ext, 'id'=>$record['id']];
@@ -438,9 +469,9 @@ case 'complete_upload':
 	}
 
 	//统一走 create_file_record，它负责生成访问用的 token，并顺带做图片检测和违规留档
-	$record = create_file_record($name, $hash, $size, $ext, $hide, $pwd, $uid, $clientip);
+	$record = create_file_record($name, $hash, $size, $ext, $hide, $pwd, $uid, $clientip, true, $target_stor);
 	if(!$record){
-		cleanup_orphan_object($hash);
+		cleanup_orphan_object($hash, $target_stor);
 		exit('{"code":-1,"msg":"上传失败'.$DB->error().'","error":"database"}');
 	}
 	$id = $record['id'];
@@ -466,7 +497,7 @@ case 'deleteFile':
 	if($row['block']==1)exit('{"code":-1,"msg":"文件已被冻结，无法删除"}');
 	if(!$islogin2 && strtotime($row['addtime'])<strtotime("-7 days"))exit('{"code":-1,"msg":"无法删除7天前的文件"}');
 	//同一份内容可能被多条记录共享，只有最后一条引用被删掉时才清理物理文件
-	delete_file_blob_if_orphaned($row['hash'], $row['id']);
+	delete_file_blob_if_orphaned($row['hash'], $row['id'], $row['storage']);
 	$sql = "DELETE FROM pre_file WHERE id=:id";
 	if($DB->exec($sql, [':id'=>$row['id']]))exit('{"code":0,"msg":"删除文件成功！"}');
 	else exit('{"code":-1,"msg":"删除文件失败['.$DB->error().']"}');
@@ -498,11 +529,14 @@ case 'saveFileContent':
 		exit(json_encode(['code'=>-1, 'msg'=>'保存文件内容失败', 'errmsg'=>$stor->errmsg()], JSON_UNESCAPED_UNICODE));
 	}
 
-	$sql = "UPDATE `pre_file` SET `size`=:size,`hash`=:hash,`lasttime`=NOW() WHERE `id`=:id";
-	if(!$DB->exec($sql, [':size'=>$size, ':hash'=>$hash, ':id'=>$row['id']])){
+	//新内容写进的是当前存储（save_storage_content 只认当前存储），
+	//所以记录的 storage 要跟着改过来，不然下次还去旧存储找这个新哈希，找不到
+	$sql = "UPDATE `pre_file` SET `size`=:size,`hash`=:hash,`storage`=:storage,`lasttime`=NOW() WHERE `id`=:id";
+	if(!$DB->exec($sql, [':size'=>$size, ':hash'=>$hash, ':storage'=>$conf['storage'], ':id'=>$row['id']])){
 		exit('{"code":-1,"msg":"保存数据库失败['.$DB->error().']"}');
 	}
-	if($old_hash !== $hash)delete_file_blob_if_orphaned($old_hash, $row['id']);
+	//旧内容要回它原来所在的存储去清
+	if($old_hash !== $hash)delete_file_blob_if_orphaned($old_hash, $row['id'], $row['storage']);
 	//在线编辑同样是内容替换，一并纳入后台“覆盖记录”审计
 	add_replace_log($row, ['name'=>$row['name'], 'type'=>$row['type'], 'size'=>$size, 'hash'=>$hash], $uid, $clientip, 'edit');
 

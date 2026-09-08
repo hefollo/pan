@@ -22,13 +22,13 @@ if(strpos($url,".")){
 }
 
 $row = $DB->getRow("SELECT * FROM `pre_file` WHERE `token`=:token limit 1", [':token'=>$token]);
-if ($row && $stor->exists($row['hash'])) {
+if ($row && \lib\StorHelper::get($row['storage'])->exists($row['hash'])) {
     if(is_view($row['type']))
     {
         if(!isset($_GET['thumb'])){
             $DB->exec("UPDATE `pre_file` SET `lasttime`=NOW(),`count`=`count`+1 WHERE `id`='{$row['id']}'");
         }
 
-        file_output($row['hash'], $row['type'], $row['size'], $row['name'], true, true);
+        file_output($row['hash'], $row['type'], $row['size'], $row['name'], true, true, $row['storage']);
     }
 }

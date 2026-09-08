@@ -24,6 +24,19 @@ if($islogin2 && (intval($userrow['level']) > 0 || intval($userrow['upload_size']
         $permission_expire_text = $userrow['expiretime'].' 已过期，当前按普通用户权限生效';
     }
 }
+/*
+ * 多存储上传：只有后台开了、而且当前访客够格用的存储不止一个时，才显示存储下拉框。
+ * 只有一个的时候连框都不出，普通站点的上传页跟以前一模一样。
+ * 这里只管显示，真正写哪儿由 ajax.php 的 storage_pick() 再校验一次——
+ * 前端能改的东西一律不能当数。
+ */
+$upload_storages = storage_allowed_list();
+$upload_storage_options = [];
+if(storage_multi_open() && count($upload_storages) > 1){
+    foreach($upload_storages as $k){
+        $upload_storage_options[] = ['key'=>$k, 'name'=>\lib\StorHelper::name($k)];
+    }
+}
 if($effective_upload_limit > 0){
     $thisday = date("Y-m-d 00:00:00");
     if($islogin2){
@@ -139,6 +152,18 @@ echo render_permission_bar($DB, 'upload');
 <?php }else{?>
          <button id="uploadFile" class="btn btn-raised btn-primary" style="height:50px;font-size:20px;" @click="clickUpload"><i class="fa fa-upload"></i> 选择文件/批量上传<div class="ripple-container"></div></button>
 <?php }?>
+<?php if($upload_storage_options){?>
+<div class="form-group upload-storage">
+<label for="storage_select">存储位置</label>
+<div class="upload-storage-select">
+<select class="form-control" id="storage_select" v-model="input.storage">
+<?php foreach($upload_storage_options as $o){?>
+<option value="<?php echo htmlspecialchars($o['key'], ENT_QUOTES, 'UTF-8')?>"><?php echo htmlspecialchars($o['name'], ENT_QUOTES, 'UTF-8')?></option>
+<?php }?>
+</select>
+</div>
+</div>
+<?php }?>
 <div class="form-group">
 <div class="checkbox">
 <label>
@@ -213,6 +238,12 @@ var upload_max_filesize = '<?php echo $effective_upload_size?>';
 var upload_count_limit = <?php echo intval($effective_upload_limit)?>;
 var upload_count_used = <?php echo intval($effective_upload_used)?>;
 var upload_count_remaining = <?php echo intval($effective_upload_remaining)?>;
+/*
+ * 存储下拉的默认选中项。必须在这儿给出，不能等 Vue 挂载后再去读 select 的值：
+ * v-model 会在首次渲染时按数据（空串）把 select 刷成「未选中」，那时再读就是 null 了。
+ * 没开多存储时这里是空串，服务端会落到默认存储。
+ */
+var upload_storage_default = <?php echo json_encode($upload_storage_options ? $upload_storage_options[0]['key'] : '')?>;
 </script>
 <script src="./assets/js/uploadnew.js?v=<?php echo VERSION?>"></script>
 </body>

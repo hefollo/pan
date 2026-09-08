@@ -40,11 +40,11 @@ if(!check_file_pwd($row, $pwd)){ ?>
     exit;
 }
 
-if($stor->exists($row['hash']))
+if(\lib\StorHelper::get($row['storage'])->exists($row['hash']))
 {
     $DB->exec("UPDATE `pre_file` SET `lasttime`=NOW(),`count`=`count`+1 WHERE `id`='{$row['id']}'");
 
-    file_output($row['hash'], $row['type'], $row['size'], $row['name']);
+    file_output($row['hash'], $row['type'], $row['size'], $row['name'], false, false, $row['storage']);
 }
 else{
     exit('File Not Found');

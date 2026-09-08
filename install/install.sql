@@ -35,6 +35,15 @@ INSERT INTO `pre_config` VALUES ('onedrive_path', 'pan/file');
 INSERT INTO `pre_config` VALUES ('onedrive_refresh_token', '');
 INSERT INTO `pre_config` VALUES ('onedrive_access_token', '');
 INSERT INTO `pre_config` VALUES ('onedrive_token_expire', '0');
+INSERT INTO `pre_config` VALUES ('openlist_url', '');
+INSERT INTO `pre_config` VALUES ('openlist_user', '');
+INSERT INTO `pre_config` VALUES ('openlist_pass', '');
+INSERT INTO `pre_config` VALUES ('openlist_token', '');
+INSERT INTO `pre_config` VALUES ('openlist_path', 'pan/file');
+INSERT INTO `pre_config` VALUES ('openlist_cache_token', '');
+INSERT INTO `pre_config` VALUES ('openlist_token_expire', '0');
+INSERT INTO `pre_config` VALUES ('storage_multi', '0');
+INSERT INTO `pre_config` VALUES ('storage_pool', '');
 INSERT INTO `pre_config` VALUES ('aliyun_ak', '');
 INSERT INTO `pre_config` VALUES ('aliyun_sk', '');
 INSERT INTO `pre_config` VALUES ('name_block', '');
@@ -76,6 +85,7 @@ CREATE TABLE `pre_file` (
   `type` varchar(50) DEFAULT NULL,
   `size` int(11) unsigned NOT NULL,
   `hash` varchar(32) NOT NULL,
+  `storage` varchar(20) NOT NULL DEFAULT '' COMMENT '物理文件存在哪个存储里，空表示按当前存储处理',
   `token` varchar(32) NOT NULL,
   `addtime` datetime NOT NULL,
   `lasttime` datetime DEFAULT NULL,
