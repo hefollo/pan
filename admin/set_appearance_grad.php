@@ -33,12 +33,12 @@ $grad_names = [
       <span class="theme-grad-state" id="tg-state"></span>
       <span class="theme-grad-btns">
         <button type="button" class="btn btn-default btn-sm" id="tg-reset">恢复默认配色</button>
-        <button type="button" class="btn btn-default btn-sm" id="tg-toggle">收起</button>
+        <button type="button" class="btn btn-default btn-sm" id="tg-toggle" aria-controls="tg-panel" aria-expanded="false">展开</button>
         <?php //外壳沿用 appearance-submit：各套后台外观本来就给这个按钮写好了配色 ?>
         <span class="appearance-submit theme-grad-save"><input type="submit" name="submit" value="保存外观" class="btn btn-primary"/></span>
       </span>
     </div>
-    <div class="theme-grad-body" id="tg-panel">
+    <div class="theme-grad-body" id="tg-panel" style="display:none">
       <div class="theme-grad-tip">上面的下拉框和下面的外观卡片是<strong>同一个选择</strong>，在哪边选都一样，点「保存外观」时保存的就是它。改这里会把这套外观<strong>整套配色一起换掉</strong>——按钮、进度条、导航高亮、面板、边框、文字、阴影、整页背景都按新主色重算，前台和后台一起变；白灰黑和红绿这类状态色不跟着走，所以页面底、面板底、正文、边框另有「界面底色」四项可以单独调。每套外观各存各的，改哪套只影响哪套，换回去颜色还在。</div>
       <div class="theme-grad-cols">
         <div class="theme-grad-fields">
@@ -219,14 +219,13 @@ $grad_names = [
 		delete CUSTOM[sel.value];
 		render();
 	});
-	//这块是吸顶的，展开时占地方，收起状态记在浏览器里，下次进来还是上次那样
+	//这块是吸顶的，每次进入页面默认收起，需要调色时再展开。
 	function setCollapsed(on){
 		panel.style.display = on ? 'none' : '';
 		toggle.textContent = on ? '展开' : '收起';
-		try{ localStorage.setItem('tg_collapsed', on ? '1' : '0'); }catch(e){}
+		toggle.setAttribute('aria-expanded', on ? 'false' : 'true');
 	}
 	toggle.addEventListener('click', function(){ setCollapsed(panel.style.display !== 'none'); });
-	try{ if(localStorage.getItem('tg_collapsed') === '1') setCollapsed(true); }catch(e){}
 	//下拉框和下面的外观卡片是同一个选择，两边双向同步：
 	//在哪边选都会同时选中另一边，保存的外观和正在调的渐变永远是同一套
 	function checkCard(t){

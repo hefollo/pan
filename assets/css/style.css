@@ -534,11 +534,24 @@ body.theme-aurora .searchbox .btn{background:rgba(255,255,255,.12)!important;bor
 body.theme-aurora .searchbox .btn:hover,body.theme-aurora .searchbox .btn:focus{background:linear-gradient(135deg,#5fe7ff,#b872ff)!important;color:#fff!important}
 @media (max-width:767px){.searchbox form{display:block}.searchbox input.form-control[type="search"]{width:100%;min-width:0;margin-bottom:8px}.searchbox .btn{width:100%}}
 
-.mpimg-link-band{--gg-ad-bg:rgba(255,255,255,.96);--gg-ad-border:#dbe8f7;--gg-ad-shadow:0 10px 28px rgba(47,134,255,.08);width:100%;margin:-28px 0 28px;padding:8px 0 10px;background:var(--gg-ad-bg);border-bottom:1px solid var(--gg-ad-border);box-shadow:var(--gg-ad-shadow);box-sizing:border-box}
-.mpimg-link-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;max-width:1320px;width:calc(100% - 24px);margin:0 auto;padding:0 12px;box-sizing:border-box}
-.mpimg-link-grid .dh{display:flex;align-items:center;justify-content:center;min-width:0;min-height:46px;padding:13px 12px;text-align:center;color:#fff!important;text-decoration:none;background:var(--ad-card-bg,#2f86ff);border:1px solid rgba(255,255,255,.22);border-radius:10px;box-shadow:0 8px 20px rgba(24,46,84,.12);transition:transform .2s ease,box-shadow .2s ease,opacity .2s ease;position:relative;overflow:visible;box-sizing:border-box}
-.mpimg-link-grid .dh:hover,.mpimg-link-grid .dh:focus{color:#fff!important;transform:translateY(-2px);box-shadow:0 12px 26px rgba(24,46,84,.18);opacity:.94}
-.mpimg-link-grid .dh:hover::after,.mpimg-link-grid .dh:focus::after{content:attr(data-tooltip);position:absolute;top:-38px;left:50%;transform:translateX(-50%);min-width:160px;max-width:240px;background:rgba(10,18,30,.92);color:#fff;padding:8px 12px;border-radius:8px;font-size:12px;line-height:1.5;white-space:normal;word-wrap:break-word;box-shadow:0 10px 24px rgba(0,0,0,.22);z-index:20}
+.mpimg-link-band{--gg-ad-bg:rgba(255,255,255,.96);--gg-ad-border:#dbe8f7;--gg-ad-shadow:none;width:100%;margin:-28px 0 22px;padding:4px 0 0;background:none;border:0;box-shadow:none;box-sizing:border-box}
+.mpimg-link-grid{position:relative;max-width:var(--mpimg-ad-grid-max,1320px);width:calc(100% - 24px);margin:0 auto;padding:0 12px;box-sizing:border-box}
+.mpimg-link-grid .dh{display:inline-flex;flex:0 1 auto;min-width:110px;max-width:320px;align-items:center;justify-content:center;min-height:36px;padding:8px 16px;font-size:13px;font-weight:600;line-height:1.4;text-align:center;color:#fff!important;text-decoration:none;background:var(--ad-card-bg,#2f86ff);border:1px solid rgba(255,255,255,.2);border-radius:10px;box-shadow:0 2px 6px rgba(24,46,84,.14);transition:transform .2s ease,box-shadow .2s ease,opacity .2s ease;position:relative;overflow:visible;box-sizing:border-box}
+.mpimg-link-grid .dh:hover,.mpimg-link-grid .dh:focus{color:#fff!important;transform:translateY(-1px);box-shadow:0 4px 12px rgba(24,46,84,.2);opacity:.94}
+.mpimg-link-grid .dh.has-image{display:flex;align-items:center;justify-content:center;width:100%;min-width:0;max-width:100%;margin:0;padding:0;background:transparent;border:0;box-shadow:none;overflow:visible}
+.mpimg-link-grid .dh.has-image img{display:block;width:var(--mpimg-ad-img-w,100%);max-width:100%;height:var(--mpimg-ad-img-h,auto);object-fit:var(--mpimg-ad-img-fit,cover);border-radius:12px}
+.mpimg-ad-carousel[data-tooltip]:not([data-tooltip=""]):hover::after{content:attr(data-tooltip);position:absolute;top:calc(100% + 4px);left:50%;transform:translateX(-50%);min-width:160px;max-width:260px;background:rgba(10,18,30,.92);color:#fff;padding:8px 12px;border-radius:8px;font-size:12px;line-height:1.5;text-align:center;white-space:normal;word-wrap:break-word;box-shadow:0 10px 24px rgba(0,0,0,.22);pointer-events:none;z-index:20}
+.mpimg-ad-viewport{position:relative;overflow:hidden;padding:6px 0;border-radius:12px}
+.mpimg-ad-track{display:flex;align-items:stretch;transition:transform .45s cubic-bezier(.4,0,.2,1);will-change:transform}
+.mpimg-ad-slide{flex:0 0 100%;max-width:100%;display:flex;align-items:center;justify-content:center;min-width:0;box-sizing:border-box}
+.mpimg-ad-nav{position:absolute;top:50%;transform:translateY(-50%);z-index:3;display:flex;align-items:center;justify-content:center;width:30px;height:30px;padding:0;border:0;border-radius:50%;background:rgba(15,23,42,.42);color:#fff;font-size:14px;line-height:1;cursor:pointer;opacity:.55;transition:opacity .2s ease,background .2s ease}
+.mpimg-ad-nav:hover,.mpimg-ad-nav:focus{opacity:1;background:rgba(15,23,42,.66);color:#fff;outline:none}
+.mpimg-ad-prev{left:10px}
+.mpimg-ad-next{right:10px}
+.mpimg-ad-dots{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px}
+.mpimg-ad-dot{width:7px;height:7px;padding:0;border:0;border-radius:999px;background:#94a3b8;opacity:.45;cursor:pointer;transition:width .2s ease,opacity .2s ease}
+.mpimg-ad-dot.is-active{width:18px;opacity:.9}
+.mpimg-link-grid.is-single .mpimg-ad-nav,.mpimg-link-grid.is-single .mpimg-ad-dots{display:none}
 body.theme-night .mpimg-link-band{--gg-ad-bg:rgba(9,15,25,.94);--gg-ad-border:#26354f;--gg-ad-shadow:0 14px 36px rgba(0,0,0,.28)}
 body.theme-neon .mpimg-link-band{--gg-ad-bg:linear-gradient(180deg,rgba(13,26,49,.9),rgba(8,17,33,.92));--gg-ad-border:rgba(86,130,218,.46);--gg-ad-shadow:0 16px 42px rgba(0,0,0,.35)}
 body.theme-neon .mpimg-link-grid .dh{box-shadow:0 0 22px rgba(47,134,255,.16)}
@@ -607,7 +620,7 @@ body.theme-onefour .searchbox .btn:hover,body.theme-onefour .searchbox .btn:focu
 body.theme-onefour .mpimg-link-band{--gg-ad-bg:rgba(6,6,9,.92);--gg-ad-border:rgba(255,255,255,.08);--gg-ad-shadow:0 16px 40px rgba(0,0,0,.34)}
 body.theme-onefour .mpimg-link-grid .dh{border-color:rgba(255,255,255,.1);box-shadow:none}
 @media (max-width:767px){body.theme-onefour{background-color:#040404}body.theme-onefour .navbar-collapse{background:#070709;border-top:1px solid rgba(255,255,255,.08)}body.theme-onefour .well,body.theme-onefour .panel{border-radius:14px;box-shadow:none}}
-@media (max-width:768px){.mpimg-link-band{margin:-18px 0 18px;padding:6px 0 8px}.mpimg-link-grid{grid-template-columns:repeat(2,minmax(0,1fr));width:calc(100% - 16px);padding:0 8px}.mpimg-link-grid .dh:hover::after,.mpimg-link-grid .dh:focus::after{top:-44px;min-width:130px;max-width:170px;font-size:11px;padding:6px 8px}}
+@media (max-width:768px){.mpimg-link-band{margin:-18px 0 14px;padding:2px 0 0}.mpimg-link-grid{width:calc(100% - 16px);padding:0 8px}.mpimg-link-grid .dh{min-width:0;min-height:32px;padding:7px 12px;font-size:12px}.mpimg-link-grid .dh.has-image img{width:100%!important;border-radius:10px}.mpimg-ad-nav{width:26px;height:26px;font-size:12px}.mpimg-ad-prev{left:6px}.mpimg-ad-next{right:6px}.mpimg-ad-dots{margin-top:6px}.mpimg-ad-carousel[data-tooltip]:not([data-tooltip=""]):hover::after{min-width:130px;max-width:200px;font-size:11px;padding:6px 8px}}
 
 /* File detail share/code panel theme sync */
 .tab-content .input-group .form-control[readonly]{height:42px;background:#f7fbff!important;border:1px solid #d9e6f5!important;color:#19304f!important;-webkit-text-fill-color:#19304f;box-shadow:none!important;cursor:text}
@@ -3729,3 +3742,11 @@ body.theme-skyline .footer{border-top:1px solid var(--line);background:var(--sur
 /* 公告条：覆盖 ads.php 注入的那份变量（新外观不在它的名单里，默认会回落成蓝白配色） */
 body.theme-skyline .theme-announcement-bar{--announce-bg:rgba(255,255,255,.97);--announce-border:#e6ecf6;--announce-shadow:0 10px 28px rgba(26,37,64,.07);--announce-text:#1a2540;--announce-link:#2563eb;--announce-c1:#2563eb;--announce-c2:#38bdf8;--announce-c3:#6f7f9b}
 body.theme-skyline .mpimg-link-band{--gg-ad-bg:rgba(255,255,255,.98);--gg-ad-border:#e6ecf6;--gg-ad-shadow:0 10px 28px rgba(26,37,64,.07)}
+
+/* 紧凑广告条：各套外观里给广告条写死的白底、边框、毛玻璃和重阴影统一去掉，
+   只留居中的一排小按钮；各主题只改变量的那些规则自然就失效了，这里只收写死属性的几套。 */
+.mpimg-link-band{background:none!important;border-top:0!important;border-bottom:0!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+body.theme-mac .mpimg-link-band{border-left:0!important;border-right:0!important}
+body .mpimg-link-grid .dh{box-shadow:0 2px 6px rgba(24,46,84,.14)!important}
+body .mpimg-link-grid .dh:hover,body .mpimg-link-grid .dh:focus{box-shadow:0 4px 12px rgba(24,46,84,.2)!important}
+body .mpimg-link-grid .dh.has-image{box-shadow:none!important}

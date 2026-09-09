@@ -110,6 +110,14 @@ if($islogin2 && $userrow['level']>0 && is_user_permission_active()){
 }
 
 switch($act){
+//上传页可能已经开了很久，同一浏览器的其它页面会把会话里的 token 刷掉，
+//开传之前先取一次最新值，免得白算完 hash 才被 CSRF 挡回去。
+//同源才读得到：ajax.php 入口处已经过了 checkRefererHost()，跨站页面也读不到响应体。
+case 'csrf_token':
+	if(empty($_SESSION['csrf_token']))$_SESSION['csrf_token'] = bin2hex(random_bytes(16));
+	exit(json_encode(['code'=>0, 'csrf_token'=>$_SESSION['csrf_token']]));
+break;
+
 case 'pre_upload':
 	if(!$_POST['csrf_token'] || $_POST['csrf_token']!=$_SESSION['csrf_token'])exit('{"code":-1,"msg":"CSRF TOKEN ERROR"}');
 	if($conf['forcelogin']==1 && !$islogin2)exit('{"code":-1,"msg":"请先登录"}');

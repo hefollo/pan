@@ -89,6 +89,46 @@ function mpimg_get_ads($conf){
 	return $result;
 }
 
+/**
+ * 后台广告表格里的文字框现在是可拖大的 textarea，
+ * 这里把换行、制表符归一成空格，避免前台渲染时多出空白。
+**/
+function mpimg_ads_clean_line($value){
+	$value = preg_replace('/\s+/u', ' ', (string)$value);
+	return trim((string)$value);
+}
+
+function mpimg_ads_clean_url($value){
+	return preg_replace('/\s+/u', '', (string)$value);
+}
+
+/**
+ * 图片广告的宽度（0 = 不锁宽，铺满整行）。
+ * 旧版本这里存的是百分比，换成像素后换了个键，免得把旧的 50（%）当成 50px 读。
+**/
+function mpimg_ads_image_width($conf){
+	$value = isset($conf['ads_image_width_px']) ? (int)$conf['ads_image_width_px'] : 0;
+	if($value < 0){ $value = 0; }
+	if($value > 2000){ $value = 2000; }
+	return $value;
+}
+
+function mpimg_ads_image_height($conf){
+	$value = isset($conf['ads_image_height']) ? (int)$conf['ads_image_height'] : 0;
+	if($value < 0){ $value = 0; }
+	if($value > 600){ $value = 600; }
+	return $value;
+}
+
+/**
+ * 锁了高度之后，图和框的比例往往对不上，这里决定怎么放：
+ * cover = 放大盖满、多余部分裁掉；contain = 完整放进去、周围留白；fill = 直接拉伸。
+**/
+function mpimg_ads_image_fit($conf){
+	$value = isset($conf['ads_image_fit']) ? (string)$conf['ads_image_fit'] : 'cover';
+	return in_array($value, ['cover', 'contain', 'fill'], true) ? $value : 'cover';
+}
+
 function mpimg_ads_from_post($post){
 	$rows = [];
 	$indexes = isset($post['ad_index']) && is_array($post['ad_index']) ? $post['ad_index'] : null;
@@ -107,12 +147,12 @@ function mpimg_ads_from_post($post){
 
 	foreach($indexes as $idx){
 		$key = (string)$idx;
-		$text = isset($texts[$key]) ? trim($texts[$key]) : '';
-		$href = isset($hrefs[$key]) ? trim($hrefs[$key]) : '#';
-		$image = isset($images[$key]) ? trim($images[$key]) : '';
+		$text = isset($texts[$key]) ? mpimg_ads_clean_line($texts[$key]) : '';
+		$href = isset($hrefs[$key]) ? mpimg_ads_clean_url($hrefs[$key]) : '#';
+		$image = isset($images[$key]) ? mpimg_ads_clean_url($images[$key]) : '';
 		$mode = isset($modes[$key]) && in_array($modes[$key], ['text', 'image'], true) ? $modes[$key] : ($image !== '' ? 'image' : 'text');
 		$color = isset($colors[$key]) ? trim($colors[$key]) : '#2f86ff';
-		$tooltip = isset($tooltips[$key]) ? trim($tooltips[$key]) : '';
+		$tooltip = isset($tooltips[$key]) ? mpimg_ads_clean_line($tooltips[$key]) : '';
 		if($text === '' && $image === '' && ($href === '' || $href === '#') && $tooltip === '')continue;
 		if(!preg_match('/^#[0-9a-fA-F]{6}$/', $color)){
 			$color = '#2f86ff';
@@ -171,17 +211,169 @@ function mpimg_safe_image($src){
 	return in_array($scheme, ['http', 'https'], true) ? $src : '';
 }
 
+/**
+ * 广告轮播的实现只写一份：首页服务端渲染时跟在广告条后面内联一次，
+ * includes/ads.php 输出的脚本里再带一份。ads.php 这个名字容易被拦截插件屏蔽，
+ * 内联那份能保证首页的轮播照样能转；两份都到也不会重复接管。
+**/
+function mpimg_ads_carousel_js(){
+	return <<<'JS'
+(function () {
+  if (window.mpimgInitAdCarousels) { return; }
+
+  function initAdCarousels() {
+    var roots = document.querySelectorAll('.mpimg-ad-carousel');
+    for (var i = 0; i < roots.length; i++) {
+      initAdCarousel(roots[i]);
+    }
+  }
+
+  function initAdCarousel(root) {
+    if (!root || root.getAttribute('data-mpimg-carousel') === '1') {
+      return;
+    }
+    var track = root.querySelector('.mpimg-ad-track');
+    if (!track || track.children.length === 0) {
+      return;
+    }
+    root.setAttribute('data-mpimg-carousel', '1');
+    var total = track.children.length;
+
+    //悬停提示改挂在轮播容器上：可视区是 overflow:hidden 的，挂在按钮上会被裁掉
+    function slideTip(at) {
+      var slide = track.children[at];
+      var link = slide ? slide.querySelector('[data-tooltip]') : null;
+      return link ? (link.getAttribute('data-tooltip') || '') : '';
+    }
+    root.setAttribute('data-tooltip', slideTip(0));
+
+    if (total < 2) {
+      if (root.className.indexOf('is-single') === -1) {
+        root.className += ' is-single';
+      }
+      return;
+    }
+
+    var index = 0;
+    var timer = null;
+    var dots = [];
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      track.style.transition = 'none';
+    }
+
+    function goTo(next) {
+      index = (next % total + total) % total;
+      track.style.transform = 'translateX(' + (-index * 100) + '%)';
+      root.setAttribute('data-tooltip', slideTip(index));
+      for (var i = 0; i < dots.length; i++) {
+        dots[i].className = 'mpimg-ad-dot' + (i === index ? ' is-active' : '');
+        dots[i].setAttribute('aria-current', i === index ? 'true' : 'false');
+      }
+    }
+    function start() {
+      if (!timer) {
+        timer = setInterval(function () { goTo(index + 1); }, 5000);
+      }
+    }
+    function stop() {
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+      }
+    }
+    function step(delta) {
+      goTo(index + delta);
+      stop();
+      start();
+    }
+
+    function makeNav(dir) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'mpimg-ad-nav mpimg-ad-' + dir;
+      btn.setAttribute('aria-label', dir === 'prev' ? '上一条广告' : '下一条广告');
+      btn.innerHTML = dir === 'prev' ? '&#10094;' : '&#10095;';
+      btn.onclick = function () { step(dir === 'prev' ? -1 : 1); };
+      (root.querySelector('.mpimg-ad-viewport') || root).appendChild(btn);
+    }
+    makeNav('prev');
+    makeNav('next');
+
+    var dotWrap = document.createElement('div');
+    dotWrap.className = 'mpimg-ad-dots';
+    for (var d = 0; d < total; d++) {
+      dotWrap.appendChild((function (target) {
+        var dot = document.createElement('button');
+        dot.type = 'button';
+        dot.className = 'mpimg-ad-dot';
+        dot.setAttribute('aria-label', '第 ' + (target + 1) + ' 条广告');
+        dot.onclick = function () { goTo(target); stop(); start(); };
+        dots.push(dot);
+        return dot;
+      })(d));
+    }
+    root.appendChild(dotWrap);
+
+    root.onmouseenter = stop;
+    root.onmouseleave = start;
+    root.addEventListener('focusin', stop, false);
+    root.addEventListener('focusout', start, false);
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) { stop(); } else { start(); }
+    }, false);
+
+    //手机上支持左右滑
+    var startX = null;
+    track.addEventListener('touchstart', function (e) {
+      startX = e.touches[0].clientX;
+      stop();
+    }, false);
+    track.addEventListener('touchend', function (e) {
+      if (startX === null) { return; }
+      var delta = e.changedTouches[0].clientX - startX;
+      startX = null;
+      if (Math.abs(delta) > 40) { step(delta < 0 ? 1 : -1); } else { start(); }
+    }, false);
+
+    goTo(0);
+    start();
+  }
+
+  window.mpimgInitAdCarousels = initAdCarousels;
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initAdCarousels, false);
+  } else {
+    initAdCarousels();
+  }
+})();
+JS;
+}
+
+/**
+ * 前台广告位：一次只露一条，多条时由 initAdCarousel() 接管成轮播。
+ * 只有一条广告就加 is-single，不出箭头和圆点。
+**/
 function mpimg_render_ads_html($conf){
 	if(!mpimg_conf_enabled_any($conf, ['ads_enable', 'gg_js_enable'], 1)){
 		return '';
 	}
 
 	$html = '';
-	$band_style = 'width:100%;margin:0 0 28px;padding:8px 0 10px;background:rgba(255,255,255,.96);border-bottom:1px solid #dbe8f7;box-shadow:0 10px 28px rgba(47,134,255,.08);position:relative;z-index:2;box-sizing:border-box;';
-	$wrap_style = 'display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;max-width:1320px;width:calc(100% - 24px);margin:0 auto;padding:0 12px;box-sizing:border-box;';
-	$text_style = 'display:flex;align-items:center;justify-content:center;min-width:0;min-height:46px;padding:13px 12px;text-align:center;color:#fff!important;text-decoration:none;border:1px solid rgba(255,255,255,.22);border-radius:10px;box-shadow:0 8px 20px rgba(24,46,84,.12);position:relative;overflow:visible;box-sizing:border-box;';
-	$image_style = 'display:flex;align-items:center;justify-content:center;width:auto;max-width:100%;min-height:46px;height:60px;padding:0 8px;margin:0 auto;text-align:center;color:#fff!important;text-decoration:none;background:transparent;border:0;border-radius:10px;box-shadow:none;position:relative;overflow:visible;';
-	$image_tag_style = 'display:block;width:auto;max-width:100%;height:60px;object-fit:contain;border-radius:10px;border:1px solid rgba(255,255,255,.18);background:#fff;';
+	$count = 0;
+	$image_width = mpimg_ads_image_width($conf);
+	$image_height = mpimg_ads_image_height($conf);
+	$image_fit = mpimg_ads_image_fit($conf);
+	//容器默认只放得下 1320px，图片又有 max-width:100%，所以宽度拖得再大也会被卡在这里。
+	//设了具体宽度就把容器上限一并顶开，否则“拖满”在宽屏上看着像没生效
+	$grid_max = $image_width > 0 ? max(1320, $image_width + 24) : 1320;
+	$band_style = '--mpimg-ad-grid-max:'.$grid_max.'px;--mpimg-ad-img-w:'.($image_width > 0 ? $image_width.'px' : '100%').';--mpimg-ad-img-h:'.($image_height > 0 ? $image_height.'px' : 'auto').';--mpimg-ad-img-fit:'.$image_fit.';width:100%;margin:0 0 22px;padding:4px 0 0;background:none;border:0;box-shadow:none;position:relative;z-index:2;box-sizing:border-box;';
+	$wrap_style = 'position:relative;max-width:var(--mpimg-ad-grid-max,1320px);width:calc(100% - 24px);margin:0 auto;padding:0 12px;box-sizing:border-box;';
+	$viewport_style = 'position:relative;overflow:hidden;padding:6px 0;border-radius:12px;';
+	$track_style = 'display:flex;align-items:stretch;transition:transform .45s cubic-bezier(.4,0,.2,1);';
+	$slide_style = 'flex:0 0 100%;max-width:100%;display:flex;align-items:center;justify-content:center;min-width:0;box-sizing:border-box;';
+	$text_style = 'display:inline-flex;flex:0 1 auto;min-width:110px;max-width:320px;align-items:center;justify-content:center;min-height:36px;padding:8px 16px;font-size:13px;font-weight:600;line-height:1.4;text-align:center;color:#fff!important;text-decoration:none;border:1px solid rgba(255,255,255,.2);border-radius:10px;box-shadow:0 2px 6px rgba(24,46,84,.14);position:relative;overflow:visible;box-sizing:border-box;';
+	$image_style = 'display:flex;align-items:center;justify-content:center;width:100%;max-width:100%;padding:0;margin:0;text-decoration:none;background:transparent;border:0;box-shadow:none;position:relative;overflow:visible;box-sizing:border-box;';
+	$image_tag_style = 'display:block;width:var(--mpimg-ad-img-w,100%);max-width:100%;height:var(--mpimg-ad-img-h,auto);object-fit:var(--mpimg-ad-img-fit,cover);border-radius:12px;';
 	foreach(mpimg_get_ads($conf) as $ad){
 		$text = trim((string)$ad['text']);
 		$image = mpimg_safe_image(isset($ad['image']) ? $ad['image'] : '');
@@ -194,6 +386,7 @@ function mpimg_render_ads_html($conf){
 		$tooltip = trim((string)($ad['tooltip'] ?: $text ?: '广告'));
 		$class = $use_image ? 'dh has-image' : 'dh';
 		$link_style = ($use_image ? $image_style : ('background:'.$color.';'.$text_style));
+		$html .= '<div class="mpimg-ad-slide" style="'.mpimg_html_escape($slide_style).'">';
 		$html .= '<a href="'.mpimg_html_escape(mpimg_safe_href($ad['href'])).'" target="_blank" rel="nofollow noopener" class="'.$class.'" style="'.mpimg_html_escape($link_style).'" data-tooltip="'.mpimg_html_escape($tooltip).'">';
 		if($use_image){
 			$alt = $text !== '' ? $text : $tooltip;
@@ -201,14 +394,21 @@ function mpimg_render_ads_html($conf){
 		}else{
 			$html .= mpimg_html_escape($text);
 		}
-		$html .= '</a>';
+		$html .= '</a></div>';
+		$count++;
 	}
 
 	if($html === ''){
 		return '';
 	}
 
-	return '<div class="mpimg-link-band" data-mpimg-dynamic="ads" style="'.mpimg_html_escape($band_style).'"><div class="mpimg-link-grid" style="'.mpimg_html_escape($wrap_style).'">'.$html.'</div></div>';
+	$wrap_class = 'mpimg-link-grid mpimg-ad-carousel'.($count < 2 ? ' is-single' : '');
+	return '<div class="mpimg-link-band" data-mpimg-dynamic="ads" style="'.mpimg_html_escape($band_style).'">'
+		.'<div class="'.$wrap_class.'" data-mpimg-dynamic="ads" style="'.mpimg_html_escape($wrap_style).'">'
+		.'<div class="mpimg-ad-viewport" style="'.mpimg_html_escape($viewport_style).'">'
+		.'<div class="mpimg-ad-track" style="'.mpimg_html_escape($track_style).'">'.$html.'</div>'
+		.'</div></div></div>'
+		.'<script>'.mpimg_ads_carousel_js().'</script>';
 }
 
 function mpimg_render_notice_html($conf){
@@ -457,8 +657,12 @@ function mpimg_output_script($type, $conf){
 		'textId' => $is_announcement ? 'scrollText' : 'adsNoticeText',
 		'text' => mpimg_conf_value_any($conf, $text_keys, $default_text),
 		'ads' => $is_announcement ? [] : mpimg_get_ads($conf),
+		'imageWidth' => mpimg_ads_image_width($conf),
+		'imageHeight' => mpimg_ads_image_height($conf),
+		'imageFit' => mpimg_ads_image_fit($conf),
 	];
 
+	echo mpimg_ads_carousel_js()."\n";
 	echo '(function(){'."\n";
 	echo 'var mpimgPayload = '.mpimg_json($payload).";\n";
 	echo <<<'JS'
@@ -493,13 +697,24 @@ function ensureStyle() {
     'body.theme-neon .theme-announcement-bar{--announce-bg:linear-gradient(90deg,rgba(13,26,49,.92),rgba(8,17,33,.92));--announce-border:rgba(86,130,218,.46);--announce-shadow:0 16px 42px rgba(0,0,0,.35);--announce-text:#cad8f0;--announce-link:#73c7ff;--announce-c1:#73c7ff;--announce-c2:#b69cff;--announce-c3:#24d7ff}',
     'body.theme-aurora .theme-announcement-bar{--announce-bg:rgba(20,28,88,.72);--announce-border:rgba(255,255,255,.16);--announce-shadow:0 14px 40px rgba(15,16,70,.24);--announce-text:#e6eeff;--announce-link:#78edff;--announce-c1:#67e8ff;--announce-c2:#f0b7ff;--announce-c3:#eef5ff;backdrop-filter:blur(14px)}',
     'body.theme-onefour .theme-announcement-bar{--announce-bg:rgba(7,7,9,.9);--announce-border:rgba(255,255,255,.08);--announce-shadow:0 16px 40px rgba(0,0,0,.34);--announce-text:#d8dae4;--announce-link:#ffffff;--announce-c1:#ffffff;--announce-c2:#b8bcc8;--announce-c3:#8e939f}',
-    '.mpimg-link-band{--gg-ad-bg:rgba(255,255,255,.96);--gg-ad-border:#dbe8f7;--gg-ad-shadow:0 10px 28px rgba(47,134,255,.08);width:100%;margin:0 0 28px;padding:8px 0 10px;background:var(--gg-ad-bg);border-bottom:1px solid var(--gg-ad-border);box-shadow:var(--gg-ad-shadow);box-sizing:border-box}',
-    '.mpimg-link-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;max-width:1320px;width:calc(100% - 24px);margin:0 auto;padding:0 12px;box-sizing:border-box}',
-    '.mpimg-link-grid .dh{display:flex;align-items:center;justify-content:center;min-width:0;min-height:46px;padding:13px 12px;text-align:center;color:#fff!important;text-decoration:none;background:var(--ad-card-bg,#2f86ff);border:1px solid rgba(255,255,255,.22);border-radius:10px;box-shadow:0 8px 20px rgba(24,46,84,.12);transition:transform .2s ease,box-shadow .2s ease,opacity .2s ease;position:relative;overflow:visible;box-sizing:border-box}',
-    '.mpimg-link-grid .dh.has-image{display:flex;align-items:center;justify-content:center;width:auto;max-width:100%;margin:0 auto;padding:0 8px;background:transparent;border-color:transparent;box-shadow:none;overflow:visible}',
-    '.mpimg-link-grid .dh.has-image img{display:block;width:auto;max-width:100%;height:60px;min-height:46px;object-fit:contain;border-radius:10px;border:1px solid rgba(255,255,255,.18);background:#fff}',
-    '.mpimg-link-grid .dh:hover,.mpimg-link-grid .dh:focus{color:#fff!important;transform:translateY(-2px);box-shadow:0 12px 26px rgba(24,46,84,.18);opacity:.94}',
-    '.mpimg-link-grid .dh:hover::after,.mpimg-link-grid .dh:focus::after{content:attr(data-tooltip);position:absolute;top:-38px;left:50%;transform:translateX(-50%);min-width:160px;max-width:240px;background:rgba(10,18,30,.92);color:#fff;padding:8px 12px;border-radius:8px;font-size:12px;line-height:1.5;white-space:normal;word-wrap:break-word;box-shadow:0 10px 24px rgba(0,0,0,.22);z-index:20}',
+    '.mpimg-link-band{--gg-ad-bg:rgba(255,255,255,.96);--gg-ad-border:#dbe8f7;--gg-ad-shadow:none;width:100%;margin:0 0 22px;padding:4px 0 0;background:none;border:0;box-shadow:none;box-sizing:border-box}',
+    '.mpimg-link-grid{position:relative;max-width:var(--mpimg-ad-grid-max,1320px);width:calc(100% - 24px);margin:0 auto;padding:0 12px;box-sizing:border-box}',
+    '.mpimg-link-grid .dh{display:inline-flex;flex:0 1 auto;min-width:110px;max-width:320px;align-items:center;justify-content:center;min-height:36px;padding:8px 16px;font-size:13px;font-weight:600;line-height:1.4;text-align:center;color:#fff!important;text-decoration:none;background:var(--ad-card-bg,#2f86ff);border:1px solid rgba(255,255,255,.2);border-radius:10px;box-shadow:0 2px 6px rgba(24,46,84,.14);transition:transform .2s ease,box-shadow .2s ease,opacity .2s ease;position:relative;overflow:visible;box-sizing:border-box}',
+    '.mpimg-link-grid .dh.has-image{display:flex;align-items:center;justify-content:center;width:100%;min-width:0;max-width:100%;margin:0;padding:0;background:transparent;border:0;box-shadow:none;overflow:visible}',
+    '.mpimg-link-grid .dh.has-image img{display:block;width:var(--mpimg-ad-img-w,100%);max-width:100%;height:var(--mpimg-ad-img-h,auto);object-fit:var(--mpimg-ad-img-fit,cover);border-radius:12px}',
+    '.mpimg-ad-viewport{position:relative;overflow:hidden;padding:6px 0;border-radius:12px}',
+    '.mpimg-ad-track{display:flex;align-items:stretch;transition:transform .45s cubic-bezier(.4,0,.2,1);will-change:transform}',
+    '.mpimg-ad-slide{flex:0 0 100%;max-width:100%;display:flex;align-items:center;justify-content:center;min-width:0;box-sizing:border-box}',
+    '.mpimg-ad-nav{position:absolute;top:50%;transform:translateY(-50%);z-index:3;display:flex;align-items:center;justify-content:center;width:30px;height:30px;padding:0;border:0;border-radius:50%;background:rgba(15,23,42,.42);color:#fff;font-size:14px;line-height:1;cursor:pointer;opacity:.55;transition:opacity .2s ease,background .2s ease}',
+    '.mpimg-ad-nav:hover,.mpimg-ad-nav:focus{opacity:1;background:rgba(15,23,42,.66);color:#fff;outline:none}',
+    '.mpimg-ad-prev{left:10px}',
+    '.mpimg-ad-next{right:10px}',
+    '.mpimg-ad-dots{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px}',
+    '.mpimg-ad-dot{width:7px;height:7px;padding:0;border:0;border-radius:999px;background:#94a3b8;opacity:.45;cursor:pointer;transition:width .2s ease,opacity .2s ease}',
+    '.mpimg-ad-dot.is-active{width:18px;opacity:.9}',
+    '.mpimg-link-grid.is-single .mpimg-ad-nav,.mpimg-link-grid.is-single .mpimg-ad-dots{display:none}',
+    '.mpimg-link-grid .dh:hover,.mpimg-link-grid .dh:focus{color:#fff!important;transform:translateY(-1px);box-shadow:0 4px 12px rgba(24,46,84,.2);opacity:.94}',
+    '.mpimg-ad-carousel[data-tooltip]:not([data-tooltip=""]):hover::after{content:attr(data-tooltip);position:absolute;top:calc(100% + 4px);left:50%;transform:translateX(-50%);min-width:160px;max-width:260px;background:rgba(10,18,30,.92);color:#fff;padding:8px 12px;border-radius:8px;font-size:12px;line-height:1.5;text-align:center;white-space:normal;word-wrap:break-word;box-shadow:0 10px 24px rgba(0,0,0,.22);pointer-events:none;z-index:20}',
     'body.theme-night .mpimg-link-band{--gg-ad-bg:rgba(9,15,25,.94);--gg-ad-border:#26354f;--gg-ad-shadow:0 14px 36px rgba(0,0,0,.28)}',
     'body.theme-neon .mpimg-link-band{--gg-ad-bg:linear-gradient(180deg,rgba(13,26,49,.9),rgba(8,17,33,.92));--gg-ad-border:rgba(86,130,218,.46);--gg-ad-shadow:0 16px 42px rgba(0,0,0,.35)}',
     'body.theme-neon .mpimg-link-grid .dh{box-shadow:0 0 22px rgba(47,134,255,.16)}',
@@ -554,7 +769,13 @@ function ensureStyle() {
     '.navbar{margin-bottom:0}',
     '@keyframes themeAnnouncementScroll{from{transform:translateX(0)}to{transform:translateX(-100%)}}',
     '@keyframes themeAnnouncementColor{0%,100%{color:var(--announce-c1)}35%{color:var(--announce-c2)}70%{color:var(--announce-c3)}}',
-    '@media (max-width:768px){.theme-announcement-bar{margin:-18px 0 0}.theme-announcement-text{padding:0 14px;line-height:32px;font-size:14px}.mpimg-link-band{margin:0 0 18px;padding:6px 0 8px}.mpimg-link-grid{grid-template-columns:repeat(2,minmax(0,1fr));width:calc(100% - 16px);padding:0 8px}.mpimg-link-grid .dh:hover::after,.mpimg-link-grid .dh:focus::after{top:-44px;min-width:130px;max-width:170px;font-size:11px;padding:6px 8px}}'
+    '@media (max-width:768px){.theme-announcement-bar{margin:-18px 0 0}.theme-announcement-text{padding:0 14px;line-height:32px;font-size:14px}.mpimg-link-band{margin:0 0 14px;padding:2px 0 0}.mpimg-link-grid{width:calc(100% - 16px);padding:0 8px}.mpimg-link-grid .dh{min-width:0;min-height:32px;padding:7px 12px;font-size:12px}.mpimg-link-grid .dh.has-image img{width:100%!important;border-radius:10px}.mpimg-ad-nav{width:26px;height:26px;font-size:12px}.mpimg-ad-prev{left:6px}.mpimg-ad-next{right:6px}.mpimg-ad-dots{margin-top:6px}.mpimg-ad-carousel[data-tooltip]:not([data-tooltip=""]):hover::after{min-width:130px;max-width:200px;font-size:11px;padding:6px 8px}}',
+    //各套外观里给广告条写死的白底、边框、毛玻璃和重阴影统一去掉，只留居中的一排小按钮
+    '.mpimg-link-band{background:none!important;border-top:0!important;border-bottom:0!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}',
+    'body.theme-mac .mpimg-link-band{border-left:0!important;border-right:0!important}',
+    'body .mpimg-link-grid .dh{box-shadow:0 2px 6px rgba(24,46,84,.14)!important}',
+    'body .mpimg-link-grid .dh:hover,body .mpimg-link-grid .dh:focus{box-shadow:0 4px 12px rgba(24,46,84,.2)!important}',
+    'body .mpimg-link-grid .dh.has-image{box-shadow:none!important}'
   ].join('');
   document.head.appendChild(style);
 }
@@ -685,6 +906,7 @@ function renderAnnouncement() {
   insertAfterNavbar(bar);
 }
 
+//多条广告就轮播：一次只露一条，5 秒一切，鼠标移上去或切到后台标签页就暂停。
 function renderAds() {
   if (mpimgPayload.type !== 'ads' || document.querySelector('.mpimg-link-band[data-mpimg-dynamic="ads"], .mpimg-link-band[data-mpimg-dynamic="gg"], .mpimg-link-grid[data-mpimg-dynamic="ads"], .mpimg-link-grid[data-mpimg-dynamic="gg"], .txtguanggao[data-mpimg-dynamic="ads"], .txtguanggao[data-mpimg-dynamic="gg"]')) {
     return;
@@ -693,9 +915,17 @@ function renderAds() {
   var band = document.createElement('div');
   band.className = 'mpimg-link-band';
   band.setAttribute('data-mpimg-dynamic', 'ads');
+  band.style.setProperty('--mpimg-ad-grid-max', (mpimgPayload.imageWidth > 0 ? Math.max(1320, mpimgPayload.imageWidth + 24) : 1320) + 'px');
+  band.style.setProperty('--mpimg-ad-img-w', mpimgPayload.imageWidth > 0 ? mpimgPayload.imageWidth + 'px' : '100%');
+  band.style.setProperty('--mpimg-ad-img-h', mpimgPayload.imageHeight > 0 ? mpimgPayload.imageHeight + 'px' : 'auto');
+  band.style.setProperty('--mpimg-ad-img-fit', mpimgPayload.imageFit || 'cover');
   var wrap = document.createElement('div');
-  wrap.className = 'mpimg-link-grid';
+  wrap.className = 'mpimg-link-grid mpimg-ad-carousel';
   wrap.setAttribute('data-mpimg-dynamic', 'ads');
+  var viewport = document.createElement('div');
+  viewport.className = 'mpimg-ad-viewport';
+  var track = document.createElement('div');
+  track.className = 'mpimg-ad-track';
 
   for (var i = 0; i < ads.length; i++) {
     var ad = ads[i] || {};
@@ -721,12 +951,18 @@ function renderAds() {
     } else {
       link.textContent = ad.text;
     }
-    wrap.appendChild(link);
+    var slide = document.createElement('div');
+    slide.className = 'mpimg-ad-slide';
+    slide.appendChild(link);
+    track.appendChild(slide);
   }
 
-  if (wrap.children.length > 0) {
+  if (track.children.length > 0) {
+    viewport.appendChild(track);
+    wrap.appendChild(viewport);
     band.appendChild(wrap);
     insertAfterNavbar(band);
+    if (window.mpimgInitAdCarousels) { window.mpimgInitAdCarousels(); }
   }
 }
 
@@ -734,6 +970,7 @@ ready(function () {
   ensureStyle();
   renderAnnouncement();
   renderAds();
+  if (window.mpimgInitAdCarousels) { window.mpimgInitAdCarousels(); }
 });
 JS;
 	echo "\n})();\n";

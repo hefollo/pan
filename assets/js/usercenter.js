@@ -135,6 +135,17 @@
       return;
     }
 
+    if (act === 'replace') {
+      //换的是内容，外链不变，所以旧内容直接就没了，先确认一下
+      if (!window.replaceUpload) { layer.msg('替换组件未加载，请刷新页面重试'); return; }
+      layer.confirm('用新文件替换《' + $tr.find('.uc-name').text() + '》的内容？外链地址保持不变，文件名会换成新文件的名字，原内容不可恢复。',
+        { icon: 3, title: '重新上传替换' }, function (idx) {
+          layer.close(idx);
+          window.replaceUpload.pick(id);
+        });
+      return;
+    }
+
     if (act === 'hide') {
       var toHide = $tr.data('hide') == 1 ? 0 : 1;
       post('setHide', { id: id, hide: toHide }, reloadAfter);

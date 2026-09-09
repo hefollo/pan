@@ -494,6 +494,7 @@ if($tab === 'overview'){
                             <a class="uc-act" href="./edit.php?id=<?php echo intval($res['id'])?>" title="在线编辑"><i class="fa fa-code" aria-hidden="true"></i></a>
 <?php }?>
 <?php if($nodelete === ''){?>
+                            <button type="button" class="uc-act" data-uc="replace" title="重新上传替换"><i class="fa fa-refresh" aria-hidden="true"></i></button>
                             <button type="button" class="uc-act uc-act-danger" data-uc="del" title="删除"><i class="fa fa-trash" aria-hidden="true"></i></button>
 <?php }?>
 <?php }?>
@@ -707,6 +708,11 @@ $uc_oauth_types = bindable_login_types();
 <script>
 var uc_csrf = '<?php echo $csrf_token?>';
 </script>
+<?php //覆盖上传要自己算文件 MD5，只有「我的文件」这一页用得上，其它 tab 不必拉这两个
+if($tab === 'files'){?>
+<script src="https://s4.zstatic.net/ajax/libs/spark-md5/3.0.2/spark-md5.min.js"></script>
+<script src="./assets/js/replace-upload.js?v=<?php echo VERSION?>"></script>
+<?php }?>
 <script src="./assets/js/usercenter.js?v=<?php echo VERSION?>"></script>
 </body>
 </html>
