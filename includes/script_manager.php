@@ -970,6 +970,18 @@ function insertAfterNavbar(element) {
   insertIntoPage(element);
 }
 
+function insertAfterElement(anchor, element) {
+  if (!anchor || !anchor.parentNode) {
+    insertAfterNavbar(element);
+    return;
+  }
+  if (anchor.nextSibling) {
+    anchor.parentNode.insertBefore(element, anchor.nextSibling);
+  } else {
+    anchor.parentNode.appendChild(element);
+  }
+}
+
 function renderAnnouncement() {
   if (document.getElementById(mpimgPayload.textId) || !String(mpimgPayload.text || '').trim()) {
     return;
@@ -1047,7 +1059,9 @@ function renderAds() {
     viewport.appendChild(track);
     wrap.appendChild(viewport);
     band.appendChild(wrap);
-    insertAfterNavbar(band);
+    //公告和广告都以导航栏为锚点时，后插入的广告会跑到公告上面。
+    //文件列表页的服务端顺序是“公告在上、广告在下”，其它页面也保持一致。
+    insertAfterElement(document.querySelector('.theme-announcement-bar'), band);
     if (window.mpimgInitAdCarousels) { window.mpimgInitAdCarousels(); }
   }
 }
