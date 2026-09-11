@@ -88,11 +88,8 @@ case 'delFile':
 	$row=$DB->getRow("select * from pre_file where id='$id' limit 1");
 	if(!$row)
 		exit('{"code":-1,"msg":"当前文件不存在！"}');
-	//只有已封禁的文件才留公示，正常文件的日常清理不该被公示出去
-	if($row['block'] == 1)add_violation_log($row);
-	delete_file_blob_if_orphaned($row['hash'], $row['id'], $row['storage']);
-	$sql = "DELETE FROM pre_file WHERE id='$id'";
-	if($DB->exec($sql))exit('{"code":0,"msg":"删除文件成功！"}');
+	if(!lock_file_blobs([$row['hash']]))exit('{"code":-1,"msg":"文件正忙，请稍后重试"}');
+	if(delete_file_record($row, true))exit('{"code":0,"msg":"删除文件成功！"}');
 	else exit('{"code":-1,"msg":"删除文件失败['.$DB->error().']"}');
 break;
 case 'operation':
@@ -100,21 +97,17 @@ case 'operation':
 	$checkbox=isset($_POST['checkbox'])?$_POST['checkbox']:null;
 	if(!$checkbox || !is_array($checkbox))exit('{"code":-1,"msg":"未选中文件"}');
 	$i=0;
+	$failed=0;
 	if($status == 2)$opname = '解封';
 	elseif($status == 1)$opname = '封禁';
 	else $opname = '删除';
 	foreach($checkbox as $id){
 		//选中的id直接来自表单，必须转成整数再进SQL
 		$id = intval($id);
-		if($id <= 0)continue;
+		if($id <= 0){ if($status == 0)$failed++; continue; }
 		if($status == 0){
 			$row=$DB->getRow("select * from pre_file where id=:id limit 1", [':id'=>$id]);
-			if($row){
-				//只有已封禁的文件才留公示，正常文件的日常清理不该被公示出去
-				if($row['block'] == 1)add_violation_log($row);
-				delete_file_blob_if_orphaned($row['hash'], $id, $row['storage']);
-			}
-			$DB->exec("DELETE FROM pre_file WHERE id=:id", [':id'=>$id]);
+			if(!$row || !delete_file_record($row, true)){ $failed++; continue; }
 		}elseif($status == 1){
 			$row=$DB->getRow("select * from pre_file where id=:id limit 1", [':id'=>$id]);
 			$DB->exec("UPDATE pre_file SET `block`=1 WHERE id=:id", [':id'=>$id]);
@@ -125,6 +118,7 @@ case 'operation':
 		}
 		$i++;
 	}
+	if($status == 0)exit(json_encode(['code'=>$i > 0 ? 0 : -1, 'msg'=>'成功删除'.$i.'个文件，失败'.$failed.'个', 'ok'=>$i, 'fail'=>$failed], JSON_UNESCAPED_UNICODE));
 	exit('{"code":0,"msg":"成功'.$opname.$i.'个文件"}');
 break;
 case 'getFileInfo':

@@ -59,6 +59,17 @@ class S3 implements IStorage
         return $response === false ? false : $response['body'];
     }
 
+    public function downloadTo($name, $path)
+    {
+        $handle = fopen($path, 'wb');
+        if (!$handle) return false;
+        try {
+            return $this->request('GET', $this->objectKey($name), [], null, $handle) !== false;
+        } finally {
+            fclose($handle);
+        }
+    }
+
     public function downfile($name, $range = false)
     {
         $headers = [];
@@ -197,7 +208,7 @@ class S3 implements IStorage
         return $scheme . '://' . $host . $basePath . ($this->pathStyle ? '/' . rawurlencode($this->bucket) : '') . '/';
     }
 
-    private function request($method, $key, $headers = [], $file = null)
+    private function request($method, $key, $headers = [], $file = null, $sink = null)
     {
         if (!function_exists('curl_init')) {
             $this->errmsg = 'S3 storage requires the PHP cURL extension.';
@@ -231,6 +242,9 @@ class S3 implements IStorage
         curl_setopt($curl, CURLOPT_CUSTOMREQUEST, $method);
         curl_setopt($curl, CURLOPT_HTTPHEADER, $curlHeaders);
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+        if ($sink) curl_setopt($curl, CURLOPT_FILE, $sink);
+        curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, 15);
+        curl_setopt($curl, CURLOPT_TIMEOUT, 300);
         curl_setopt($curl, CURLOPT_HEADERFUNCTION, function ($curl, $line) use (&$responseHeaders) {
             $length = strlen($line);
             $pos = strpos($line, ':');

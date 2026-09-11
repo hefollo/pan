@@ -80,11 +80,10 @@ if($act !== ''){
 			$row = $DB->getRow("SELECT * FROM pre_file WHERE id=:id LIMIT 1", [':id'=>$id]);
 			//这里不能用 uc_own_file()：它遇到问题会直接 exit，批量删到一半就断了
 			if(!$row || intval($row['uid']) !== $uid){ $fail++; continue; }
+			if(!lock_file_blobs([$row['hash']])){ $fail++; continue; }
 			//冻结的、以及内容检测转人工还没复核完的，都不许用户自己删掉，得留着给管理员查
 			if(file_delete_locked_reason($row) !== ''){ $blocked++; continue; }
-			//同一份内容可能被多条记录共享（秒传），只有最后一条引用被删时才清理物理文件
-			delete_file_blob_if_orphaned($row['hash'], $row['id'], $row['storage']);
-			if($DB->exec("DELETE FROM pre_file WHERE id=:id AND uid=:uid", [':id'=>$row['id'], ':uid'=>$uid])) $ok++;
+			if(delete_file_record($row)) $ok++;
 			else $fail++;
 		}
 		$msg = '已删除 '.$ok.' 个文件';

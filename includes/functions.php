@@ -1157,10 +1157,10 @@ function plan_days_text($days){
  *   - 买到永久套餐直接变永久；
  *   - 已经是永久付费权限的用户再买限时套餐，只换权限数值，不会被改成有期限（不降级）。
  */
-function grant_plan_to_user($uid, $order){
+function grant_plan_to_user($uid, $order, $lock_user = false){
 	global $DB, $conf;
 	$uid = intval($uid);
-	$user = $DB->getRow("SELECT * FROM pre_user WHERE uid=:uid LIMIT 1", [':uid'=>$uid]);
+	$user = $DB->getRow("SELECT * FROM pre_user WHERE uid=:uid LIMIT 1".($lock_user ? ' FOR UPDATE' : ''), [':uid'=>$uid]);
 	if(!$user)return false;
 
 	$days = intval($order['days']);
@@ -1197,7 +1197,7 @@ function grant_plan_to_user($uid, $order){
 	//侧栏“我的权限”卡有 120 秒会话缓存，这里清掉，买完刷新就能看到新的权限
 	unset($_SESSION['layout_plan']);
 	$ok = $DB->update('user', $data, ['uid'=>$uid]);
-	if($ok === false && isset($data['bonus_limit'])){
+	if($ok === false && isset($data['bonus_limit']) && !$lock_user){
 		//站点还没执行 install/update.php 的话没有 bonus_limit 这一列，
 		//这时候宁可少发加量额度，也不能因为一个字段就把整笔权限卡住不发
 		unset($data['bonus_limit']);
@@ -1352,11 +1352,25 @@ function plan_effect($user, $plan){
  */
 function finish_order($order, $pay_trade_no){
 	global $DB;
-	$stmt = $DB->query("UPDATE pre_order SET status=1, paytime=NOW(), alipay_no=:no WHERE id=:id AND status<>1",
-		[':no'=>$pay_trade_no, ':id'=>intval($order['id'])]);
-	$affected = $stmt ? $stmt->rowCount() : 0;
-	if($affected < 1)return true;      //别人已经处理过了，不重复发
-	return grant_plan_to_user($order['uid'], $order);
+	$started = false;
+	try{
+		if(!$DB->beginTransaction())return false;
+		$started = true;
+		//重读并锁定订单；不同订单还须锁用户，避免加量/续期互相覆盖。
+		$current = $DB->getRow("SELECT * FROM pre_order WHERE id=:id LIMIT 1 FOR UPDATE", [':id'=>intval($order['id'])]);
+		if(!$current)throw new \RuntimeException('Order unavailable');
+		if(intval($current['status']) !== 1){
+			if(!grant_plan_to_user($current['uid'], $current, true))throw new \RuntimeException('Grant failed');
+			$stmt = $DB->query("UPDATE pre_order SET status=1, paytime=NOW(), alipay_no=:no WHERE id=:id AND status<>1",
+				[':no'=>$pay_trade_no, ':id'=>intval($current['id'])]);
+			if(!$stmt || $stmt->rowCount() !== 1)throw new \RuntimeException('Order update failed');
+		}
+		if(!$DB->commit())throw new \RuntimeException('Commit failed');
+		return true;
+	}catch(\Throwable $e){
+		if($started){try{$DB->rollBack();}catch(\Throwable $ignored){}}
+		return false;
+	}
 }
 
 /*
@@ -1390,7 +1404,9 @@ function check_order_paid($order){
 	if(round(floatval($amount), 2) + 0.001 < round(floatval($order['price']), 2)){
 		return ['code'=>-1, 'msg'=>'到账金额与订单金额不一致，已停止发放，请联系站长'];
 	}
-	finish_order($order, isset($res['trade_no']) ? $res['trade_no'] : '');
+	if(!finish_order($order, isset($res['trade_no']) ? $res['trade_no'] : '')){
+		return ['code'=>-1, 'paid'=>0, 'msg'=>'支付已确认，权限发放暂未完成，请稍后重试'];
+	}
 	return ['code'=>0, 'paid'=>1];
 }
 
@@ -3024,20 +3040,64 @@ function generate_file_token(){
  * 数据库里也就有 hash 相同、storage 不同的两批记录。不区分存储的话，删掉旧存储那批的
  * 最后一条时会看见新存储那批还在，于是跳过删除——旧存储里那个对象就永远没人清了。
  */
+//连接级命名锁保持到请求结束，涵盖存储写入/删除及其数据库引用变更。
+//同一数据库内按内容摘要串行；锁失败必须停止变更，不能降级为无锁执行。
+function lock_file_blobs($hashes){
+	global $DB;
+	static $held = [];
+	$hashes = array_unique(array_map('strtolower', (array)$hashes));
+	sort($hashes, SORT_STRING);
+	foreach($hashes as $hash){
+		if(!preg_match('/^[a-f0-9]{32}$/D', $hash))return false;
+		if(isset($held[$hash]))continue;
+		$name = $DB->getColumn("SELECT CONCAT('pan:blob:', MD5(CONCAT(DATABASE(), ':', :hash)))", [':hash'=>$hash]);
+		if(!is_string($name) || strpos($name, 'pan:blob:') !== 0)return false;
+		$locked = $DB->getColumn("SELECT GET_LOCK(:name, 10)", [':name'=>$name]);
+		if($locked !== 1 && $locked !== '1')return false;
+		$held[$hash] = true;
+		register_shutdown_function(function() use ($DB, $name){
+			try{$DB->getColumn("SELECT RELEASE_LOCK(:name)", [':name'=>$name]);}catch(\Throwable $ignored){}
+		});
+	}
+	return true;
+}
+
+//用于自动提交的删除入口：先删除记录，清理失败只留下孤儿对象，不恢复记录。
+function delete_file_record($row, $log_violation = false){
+	global $DB;
+	if(!is_array($row) || empty($row['id']) || !lock_file_blobs([$row['hash']]))return false;
+	$current = $DB->getRow("SELECT * FROM pre_file WHERE id=:id LIMIT 1", [':id'=>$row['id']]);
+	//调用方已对该快照做权限/冻结检查；等待锁期间发生变化则要求重试。
+	if(!$current || $current !== $row)return false;
+	if($log_violation && $current['block'] == 1)add_violation_log($current);
+	//PdoHelper::exec 的参数化分支只返回 execute 布尔值，必须用 rowCount 确认删行。
+	$stmt = $DB->query("DELETE FROM pre_file WHERE id=:id AND hash=:hash AND storage=:storage AND uid=:uid AND block=:block",
+		[':id'=>$current['id'], ':hash'=>$current['hash'], ':storage'=>$current['storage'], ':uid'=>$current['uid'], ':block'=>$current['block']]);
+	if(!$stmt || $stmt->rowCount() !== 1)return false;
+	try{
+		//记录已经删除，不能再排除某条记录；计数失败必须保留对象。
+		delete_file_blob_if_orphaned($current['hash'], null, $current['storage']);
+	}catch(\Throwable $ignored){}
+	return true;
+}
+
 function delete_file_blob_if_orphaned($hash, $exclude_id = null, $storage = null){
 	global $DB, $conf;
+	if(!lock_file_blobs([$hash]))return false;
 	//空字段是升级前建的老记录，它和当前存储指的是同一个地方，要算成同一批
 	$storage = ($storage === null || $storage === '') ? $conf['storage'] : $storage;
 	$params = [':hash'=>$hash, ':stor'=>$storage];
-	$sql = "SELECT id FROM pre_file WHERE hash=:hash AND (storage=:stor".($storage === $conf['storage'] ? " OR storage=''" : "").")";
+	$sql = "SELECT COUNT(*) FROM pre_file WHERE hash=:hash AND (storage=:stor".($storage === $conf['storage'] ? " OR storage=''" : "").")";
 	if($exclude_id){
 		$sql .= " AND id!=:id";
 		$params[':id'] = $exclude_id;
 	}
-	if($DB->getColumn($sql." LIMIT 1", $params)){
-		return;
+	$count = $DB->getColumn($sql, $params);
+	//COUNT 成功时必有一行；失败的 false/null 绝不能当作零引用。
+	if($count !== 0 && $count !== '0'){
+		return false;
 	}
-	\lib\StorHelper::get($storage)->delete($hash);
+	return \lib\StorHelper::get($storage)->delete($hash);
 }
 
 //覆盖上传审计：记下这次覆盖的前后内容，管理员在后台“覆盖记录”里复查有没有换成违规内容
@@ -3069,6 +3129,10 @@ function add_replace_log($old, $new, $uid, $ip, $source = 'replace'){
 function replace_file_record($old, $name, $hash, $size, $ext, $uid, $ip, $source = 'replace', $storage = null){
 	global $DB, $conf;
 	if(!is_array($old) || empty($old['id']))return false;
+	if(!lock_file_blobs([$old['hash'], $hash]))return false;
+	$current = $DB->getRow("SELECT * FROM pre_file WHERE id=:id LIMIT 1", [':id'=>$old['id']]);
+	if(!$current || $current['hash'] !== $old['hash'] || $current['storage'] !== $old['storage'])return false;
+	$old = $current;
 	$id = intval($old['id']);
 	$old_hash = isset($old['hash']) ? $old['hash'] : '';
 	$old_storage = isset($old['storage']) ? $old['storage'] : null;
@@ -3114,6 +3178,10 @@ function replace_file_record($old, $name, $hash, $size, $ext, $uid, $ip, $source
 //调用方要是刚把内容原样写进了当前存储，就把当前存储传进来，免得在新存储里留下没人引用的对象
 function create_file_record_from_existing($existing, $name, $size, $ext, $hide, $pwd, $uid, $ip, $storage = null){
 	global $DB;
+	if(!lock_file_blobs([$existing['hash']]))return false;
+	$current = $DB->getRow("SELECT * FROM pre_file WHERE id=:id AND hash=:hash LIMIT 1", [':id'=>$existing['id'], ':hash'=>$existing['hash']]);
+	if(!$current || $current['storage'] !== $existing['storage'])return false;
+	$existing = $current;
 	if($storage === null)$storage = isset($existing['storage']) ? $existing['storage'] : null;
 	$record = create_file_record($name, $existing['hash'], $size, $ext, $hide, $pwd, $uid, $ip, false, $storage);
 	if(!$record)return false;
@@ -3197,6 +3265,7 @@ function violation_mask_ip($ip){
 //$storage 传空表示这次内容就写在当前存储里（新上传都是这样）；秒传要传出内容实际所在的存储
 function create_file_record($name, $hash, $size, $ext, $hide, $pwd, $uid, $ip, $review = true, $storage = null){
 	global $DB, $conf;
+	if(!lock_file_blobs([$hash]))return false;
 	$token = generate_file_token();
 	$storage = ($storage === null || $storage === '') ? $conf['storage'] : $storage;
 	//ipkey 是限流用的维度（IPv6 归并到 /64），和展示用的 ip 分开存

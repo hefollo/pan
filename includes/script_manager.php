@@ -121,6 +121,17 @@ function mpimg_ads_image_height($conf){
 }
 
 /**
+ * 一行同时并排几条广告（1~4）。默认 3 条，图片广告并排铺开更像 banner 位。
+ * 广告条数不够时格子宽度不变、从左往右排：设 3 条只有 1 条广告，就占最左边那一格。
+**/
+function mpimg_ads_per_view($conf){
+	$value = isset($conf['ads_per_view']) ? (int)$conf['ads_per_view'] : 3;
+	if($value < 1){ $value = 1; }
+	if($value > 4){ $value = 4; }
+	return $value;
+}
+
+/**
  * 锁了高度之后，图和框的比例往往对不上，这里决定怎么放：
  * cover = 放大盖满、多余部分裁掉；contain = 完整放进去、周围留白；fill = 直接拉伸。
 **/
@@ -238,40 +249,77 @@ function mpimg_ads_carousel_js(){
     }
     root.setAttribute('data-mpimg-carousel', '1');
     var total = track.children.length;
-
-    //悬停提示改挂在轮播容器上：可视区是 overflow:hidden 的，挂在按钮上会被裁掉
-    function slideTip(at) {
-      var slide = track.children[at];
-      var link = slide ? slide.querySelector('[data-tooltip]') : null;
-      return link ? (link.getAttribute('data-tooltip') || '') : '';
-    }
-    root.setAttribute('data-tooltip', slideTip(0));
-
-    if (total < 2) {
-      if (root.className.indexOf('is-single') === -1) {
-        root.className += ' is-single';
-      }
-      return;
-    }
-
     var index = 0;
     var timer = null;
     var dots = [];
+    var dotWrap = null;
+    var perView = 1;
+    var pages = 1;
+
+    //一屏并排几条由 CSS 变量说了算，窄屏的媒体查询会把它压回 1，所以每次都现读
+    function readPerView() {
+      var raw = 0;
+      if (window.getComputedStyle) {
+        raw = parseInt(window.getComputedStyle(root).getPropertyValue('--mpimg-ad-per-view'), 10);
+      }
+      if (!raw || raw < 1) { raw = 1; }
+      return raw;
+    }
+
+    //并排多条时容器提示会指错人（空着的格子上也会冒出来），改用浏览器原生 title，一条一屏时再摘掉
+    function applyTips() {
+      for (var t = 0; t < total; t++) {
+        var tipEl = track.children[t].querySelector('[data-tooltip]');
+        if (!tipEl) { continue; }
+        if (perView > 1) {
+          tipEl.title = tipEl.getAttribute('data-tooltip') || '';
+        } else {
+          tipEl.removeAttribute('title');
+        }
+      }
+    }
+
+    //悬停提示挂在轮播容器上：可视区是 overflow:hidden 的，挂在按钮上会被裁掉。
+    //一屏并排好几条的时候挂上去会指错是哪一条，这种情况干脆不挂
+    function syncTip() {
+      var tip = '';
+      if (perView === 1) {
+        var slide = track.children[index];
+        var link = slide ? slide.querySelector('[data-tooltip]') : null;
+        tip = link ? (link.getAttribute('data-tooltip') || '') : '';
+      }
+      root.setAttribute('data-tooltip', tip);
+    }
+
+    function setSingle(on) {
+      var name = root.className.replace(/\s*is-single/g, '');
+      root.className = on ? name + ' is-single' : name;
+    }
+
+    if (total < 2) {
+      setSingle(true);
+      var refreshSingle = function () { perView = readPerView(); applyTips(); syncTip(); };
+      refreshSingle();
+      window.addEventListener('resize', refreshSingle, false);
+      return;
+    }
+
     if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       track.style.transition = 'none';
     }
 
+    //一页 = 并排的那几条，位移永远是一整个可视区宽度，所以还是按 100% 走
     function goTo(next) {
-      index = (next % total + total) % total;
+      index = (next % pages + pages) % pages;
       track.style.transform = 'translateX(' + (-index * 100) + '%)';
-      root.setAttribute('data-tooltip', slideTip(index));
+      syncTip();
       for (var i = 0; i < dots.length; i++) {
         dots[i].className = 'mpimg-ad-dot' + (i === index ? ' is-active' : '');
         dots[i].setAttribute('aria-current', i === index ? 'true' : 'false');
       }
     }
     function start() {
-      if (!timer) {
+      if (!timer && pages > 1) {
         timer = setInterval(function () { goTo(index + 1); }, 5000);
       }
     }
@@ -291,7 +339,7 @@ function mpimg_ads_carousel_js(){
       var btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'mpimg-ad-nav mpimg-ad-' + dir;
-      btn.setAttribute('aria-label', dir === 'prev' ? '上一条广告' : '下一条广告');
+      btn.setAttribute('aria-label', dir === 'prev' ? '上一页广告' : '下一页广告');
       btn.innerHTML = dir === 'prev' ? '&#10094;' : '&#10095;';
       btn.onclick = function () { step(dir === 'prev' ? -1 : 1); };
       (root.querySelector('.mpimg-ad-viewport') || root).appendChild(btn);
@@ -299,20 +347,43 @@ function mpimg_ads_carousel_js(){
     makeNav('prev');
     makeNav('next');
 
-    var dotWrap = document.createElement('div');
-    dotWrap.className = 'mpimg-ad-dots';
-    for (var d = 0; d < total; d++) {
-      dotWrap.appendChild((function (target) {
-        var dot = document.createElement('button');
-        dot.type = 'button';
-        dot.className = 'mpimg-ad-dot';
-        dot.setAttribute('aria-label', '第 ' + (target + 1) + ' 条广告');
-        dot.onclick = function () { goTo(target); stop(); start(); };
-        dots.push(dot);
-        return dot;
-      })(d));
+    function buildDots() {
+      if (!dotWrap) {
+        dotWrap = document.createElement('div');
+        dotWrap.className = 'mpimg-ad-dots';
+        root.appendChild(dotWrap);
+      }
+      while (dotWrap.firstChild) { dotWrap.removeChild(dotWrap.firstChild); }
+      dots = [];
+      for (var d = 0; d < pages; d++) {
+        dotWrap.appendChild((function (target) {
+          var dot = document.createElement('button');
+          dot.type = 'button';
+          dot.className = 'mpimg-ad-dot';
+          dot.setAttribute('aria-label', '第 ' + (target + 1) + ' 页广告');
+          dot.onclick = function () { goTo(target); stop(); start(); };
+          dots.push(dot);
+          return dot;
+        })(d));
+      }
     }
-    root.appendChild(dotWrap);
+
+    //并排条数变了（换屏宽、转屏）就重算页数、重排圆点
+    function layout() {
+      var pv = readPerView();
+      var next = Math.max(1, Math.ceil(total / pv));
+      if (dotWrap && pv === perView && next === pages) {
+        return;
+      }
+      perView = pv;
+      pages = next;
+      applyTips();
+      buildDots();
+      setSingle(pages < 2);
+      goTo(index < pages ? index : pages - 1);
+      if (pages < 2) { stop(); } else { start(); }
+    }
+    layout();
 
     root.onmouseenter = stop;
     root.onmouseleave = start;
@@ -320,6 +391,11 @@ function mpimg_ads_carousel_js(){
     root.addEventListener('focusout', start, false);
     document.addEventListener('visibilitychange', function () {
       if (document.hidden) { stop(); } else { start(); }
+    }, false);
+    var resizeTimer = null;
+    window.addEventListener('resize', function () {
+      if (resizeTimer) { clearTimeout(resizeTimer); }
+      resizeTimer = setTimeout(layout, 150);
     }, false);
 
     //手机上支持左右滑
@@ -334,9 +410,6 @@ function mpimg_ads_carousel_js(){
       startX = null;
       if (Math.abs(delta) > 40) { step(delta < 0 ? 1 : -1); } else { start(); }
     }, false);
-
-    goTo(0);
-    start();
   }
 
   window.mpimgInitAdCarousels = initAdCarousels;
@@ -350,30 +423,23 @@ JS;
 }
 
 /**
- * 前台广告位：一次只露一条，多条时由 initAdCarousel() 接管成轮播。
- * 只有一条广告就加 is-single，不出箭头和圆点。
+ * 前台广告位：一屏并排放「每屏条数」条（后台可调，默认 3），放不下的由 initAdCarousel() 翻页轮播。
+ * 广告条数不超过一屏就加 is-single，不出箭头和圆点。
 **/
 function mpimg_render_ads_html($conf){
 	if(!mpimg_conf_enabled_any($conf, ['ads_enable', 'gg_js_enable'], 1)){
 		return '';
 	}
 
-	$html = '';
-	$count = 0;
 	$image_width = mpimg_ads_image_width($conf);
 	$image_height = mpimg_ads_image_height($conf);
 	$image_fit = mpimg_ads_image_fit($conf);
-	//容器默认只放得下 1320px，图片又有 max-width:100%，所以宽度拖得再大也会被卡在这里。
-	//设了具体宽度就把容器上限一并顶开，否则“拖满”在宽屏上看着像没生效
-	$grid_max = $image_width > 0 ? max(1320, $image_width + 24) : 1320;
-	$band_style = '--mpimg-ad-grid-max:'.$grid_max.'px;--mpimg-ad-img-w:'.($image_width > 0 ? $image_width.'px' : '100%').';--mpimg-ad-img-h:'.($image_height > 0 ? $image_height.'px' : 'auto').';--mpimg-ad-img-fit:'.$image_fit.';width:100%;margin:0 0 22px;padding:4px 0 0;background:none;border:0;box-shadow:none;position:relative;z-index:2;box-sizing:border-box;';
-	$wrap_style = 'position:relative;max-width:var(--mpimg-ad-grid-max,1320px);width:calc(100% - 24px);margin:0 auto;padding:0 12px;box-sizing:border-box;';
-	$viewport_style = 'position:relative;overflow:hidden;padding:6px 0;border-radius:12px;';
-	$track_style = 'display:flex;align-items:stretch;transition:transform .45s cubic-bezier(.4,0,.2,1);';
-	$slide_style = 'flex:0 0 100%;max-width:100%;display:flex;align-items:center;justify-content:center;min-width:0;box-sizing:border-box;';
+	$per_view = mpimg_ads_per_view($conf);
 	$text_style = 'display:inline-flex;flex:0 1 auto;min-width:110px;max-width:320px;align-items:center;justify-content:center;min-height:36px;padding:8px 16px;font-size:13px;font-weight:600;line-height:1.4;text-align:center;color:#fff!important;text-decoration:none;border:1px solid rgba(255,255,255,.2);border-radius:10px;box-shadow:0 2px 6px rgba(24,46,84,.14);position:relative;overflow:visible;box-sizing:border-box;';
 	$image_style = 'display:flex;align-items:center;justify-content:center;width:100%;max-width:100%;padding:0;margin:0;text-decoration:none;background:transparent;border:0;box-shadow:none;position:relative;overflow:visible;box-sizing:border-box;';
 	$image_tag_style = 'display:block;width:var(--mpimg-ad-img-w,100%);max-width:100%;height:var(--mpimg-ad-img-h,auto);object-fit:var(--mpimg-ad-img-fit,cover);border-radius:12px;';
+
+	$links = [];
 	foreach(mpimg_get_ads($conf) as $ad){
 		$text = trim((string)$ad['text']);
 		$image = mpimg_safe_image(isset($ad['image']) ? $ad['image'] : '');
@@ -386,23 +452,39 @@ function mpimg_render_ads_html($conf){
 		$tooltip = trim((string)($ad['tooltip'] ?: $text ?: '广告'));
 		$class = $use_image ? 'dh has-image' : 'dh';
 		$link_style = ($use_image ? $image_style : ('background:'.$color.';'.$text_style));
-		$html .= '<div class="mpimg-ad-slide" style="'.mpimg_html_escape($slide_style).'">';
-		$html .= '<a href="'.mpimg_html_escape(mpimg_safe_href($ad['href'])).'" target="_blank" rel="nofollow noopener" class="'.$class.'" style="'.mpimg_html_escape($link_style).'" data-tooltip="'.mpimg_html_escape($tooltip).'">';
+		$link = '<a href="'.mpimg_html_escape(mpimg_safe_href($ad['href'])).'" target="_blank" rel="nofollow noopener" class="'.$class.'" style="'.mpimg_html_escape($link_style).'" data-tooltip="'.mpimg_html_escape($tooltip).'">';
 		if($use_image){
 			$alt = $text !== '' ? $text : $tooltip;
-			$html .= '<img src="'.mpimg_html_escape($image).'" alt="'.mpimg_html_escape($alt).'" loading="lazy" style="'.mpimg_html_escape($image_tag_style).'">';
+			$link .= '<img src="'.mpimg_html_escape($image).'" alt="'.mpimg_html_escape($alt).'" loading="lazy" style="'.mpimg_html_escape($image_tag_style).'">';
 		}else{
-			$html .= mpimg_html_escape($text);
+			$link .= mpimg_html_escape($text);
 		}
-		$html .= '</a></div>';
-		$count++;
+		$links[] = $link.'</a>';
 	}
 
-	if($html === ''){
+	$count = count($links);
+	if($count === 0){
 		return '';
 	}
 
-	$wrap_class = 'mpimg-link-grid mpimg-ad-carousel'.($count < 2 ? ' is-single' : '');
+	//格子宽度始终按后台设的并排条数算，广告条数不够就从左往右排、后面的格子空着
+	$columns = max(1, $per_view);
+	//容器默认只放得下 1320px，图片又有 max-width:100%，所以宽度拖得再大也会被卡在这里。
+	//设了具体宽度就把容器上限一并顶开（按并排条数乘出来），否则“拖满”在宽屏上看着像没生效
+	$grid_max = $image_width > 0 ? max(1320, ($image_width + 24) * $columns) : 1320;
+	$band_style = '--mpimg-ad-grid-max:'.$grid_max.'px;--mpimg-ad-per-view:'.$columns.';--mpimg-ad-img-w:'.($image_width > 0 ? $image_width.'px' : '100%').';--mpimg-ad-img-h:'.($image_height > 0 ? $image_height.'px' : 'auto').';--mpimg-ad-img-fit:'.$image_fit.';width:100%;margin:0 0 22px;padding:4px 0 0;background:none;border:0;box-shadow:none;position:relative;z-index:2;box-sizing:border-box;';
+	$wrap_style = 'position:relative;max-width:var(--mpimg-ad-grid-max,1320px);width:calc(100% - 24px);margin:0 auto;padding:0 12px;box-sizing:border-box;';
+	$viewport_style = 'position:relative;overflow:hidden;padding:6px 0;border-radius:12px;';
+	$track_style = 'display:flex;align-items:stretch;transition:transform .45s cubic-bezier(.4,0,.2,1);';
+	$slide_style = 'flex:0 0 calc(100% / var(--mpimg-ad-per-view,1));max-width:100%;display:flex;align-items:center;justify-content:center;min-width:0;padding:0 6px;box-sizing:border-box;';
+
+	$html = '';
+	foreach($links as $link){
+		$html .= '<div class="mpimg-ad-slide" style="'.mpimg_html_escape($slide_style).'">'.$link.'</div>';
+	}
+
+	//一屏就放得下所有广告时不用轮播，箭头和圆点都收起来
+	$wrap_class = 'mpimg-link-grid mpimg-ad-carousel'.($count <= $columns ? ' is-single' : '');
 	return '<div class="mpimg-link-band" data-mpimg-dynamic="ads" style="'.mpimg_html_escape($band_style).'">'
 		.'<div class="'.$wrap_class.'" data-mpimg-dynamic="ads" style="'.mpimg_html_escape($wrap_style).'">'
 		.'<div class="mpimg-ad-viewport" style="'.mpimg_html_escape($viewport_style).'">'
@@ -660,6 +742,7 @@ function mpimg_output_script($type, $conf){
 		'imageWidth' => mpimg_ads_image_width($conf),
 		'imageHeight' => mpimg_ads_image_height($conf),
 		'imageFit' => mpimg_ads_image_fit($conf),
+		'perView' => mpimg_ads_per_view($conf),
 	];
 
 	echo mpimg_ads_carousel_js()."\n";
@@ -704,7 +787,7 @@ function ensureStyle() {
     '.mpimg-link-grid .dh.has-image img{display:block;width:var(--mpimg-ad-img-w,100%);max-width:100%;height:var(--mpimg-ad-img-h,auto);object-fit:var(--mpimg-ad-img-fit,cover);border-radius:12px}',
     '.mpimg-ad-viewport{position:relative;overflow:hidden;padding:6px 0;border-radius:12px}',
     '.mpimg-ad-track{display:flex;align-items:stretch;transition:transform .45s cubic-bezier(.4,0,.2,1);will-change:transform}',
-    '.mpimg-ad-slide{flex:0 0 100%;max-width:100%;display:flex;align-items:center;justify-content:center;min-width:0;box-sizing:border-box}',
+    '.mpimg-ad-slide{flex:0 0 calc(100% / var(--mpimg-ad-per-view,1));max-width:100%;display:flex;align-items:center;justify-content:center;min-width:0;padding:0 6px;box-sizing:border-box}',
     '.mpimg-ad-nav{position:absolute;top:50%;transform:translateY(-50%);z-index:3;display:flex;align-items:center;justify-content:center;width:30px;height:30px;padding:0;border:0;border-radius:50%;background:rgba(15,23,42,.42);color:#fff;font-size:14px;line-height:1;cursor:pointer;opacity:.55;transition:opacity .2s ease,background .2s ease}',
     '.mpimg-ad-nav:hover,.mpimg-ad-nav:focus{opacity:1;background:rgba(15,23,42,.66);color:#fff;outline:none}',
     '.mpimg-ad-prev{left:10px}',
@@ -769,7 +852,7 @@ function ensureStyle() {
     '.navbar{margin-bottom:0}',
     '@keyframes themeAnnouncementScroll{from{transform:translateX(0)}to{transform:translateX(-100%)}}',
     '@keyframes themeAnnouncementColor{0%,100%{color:var(--announce-c1)}35%{color:var(--announce-c2)}70%{color:var(--announce-c3)}}',
-    '@media (max-width:768px){.theme-announcement-bar{margin:-18px 0 0}.theme-announcement-text{padding:0 14px;line-height:32px;font-size:14px}.mpimg-link-band{margin:0 0 14px;padding:2px 0 0}.mpimg-link-grid{width:calc(100% - 16px);padding:0 8px}.mpimg-link-grid .dh{min-width:0;min-height:32px;padding:7px 12px;font-size:12px}.mpimg-link-grid .dh.has-image img{width:100%!important;border-radius:10px}.mpimg-ad-nav{width:26px;height:26px;font-size:12px}.mpimg-ad-prev{left:6px}.mpimg-ad-next{right:6px}.mpimg-ad-dots{margin-top:6px}.mpimg-ad-carousel[data-tooltip]:not([data-tooltip=""]):hover::after{min-width:130px;max-width:200px;font-size:11px;padding:6px 8px}}',
+    '@media (max-width:768px){.theme-announcement-bar{margin:-18px 0 0}.theme-announcement-text{padding:0 14px;line-height:32px;font-size:14px}.mpimg-link-band{margin:0 0 14px;padding:2px 0 0;--mpimg-ad-per-view:1!important}.mpimg-ad-slide{padding:0 4px}.mpimg-link-grid{width:calc(100% - 16px);padding:0 8px}.mpimg-link-grid .dh{min-width:0;min-height:32px;padding:7px 12px;font-size:12px}.mpimg-link-grid .dh.has-image img{width:100%!important;border-radius:10px}.mpimg-ad-nav{width:26px;height:26px;font-size:12px}.mpimg-ad-prev{left:6px}.mpimg-ad-next{right:6px}.mpimg-ad-dots{margin-top:6px}.mpimg-ad-carousel[data-tooltip]:not([data-tooltip=""]):hover::after{min-width:130px;max-width:200px;font-size:11px;padding:6px 8px}}',
     //各套外观里给广告条写死的白底、边框、毛玻璃和重阴影统一去掉，只留居中的一排小按钮
     '.mpimg-link-band{background:none!important;border-top:0!important;border-bottom:0!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}',
     'body.theme-mac .mpimg-link-band{border-left:0!important;border-right:0!important}',
@@ -906,7 +989,7 @@ function renderAnnouncement() {
   insertAfterNavbar(bar);
 }
 
-//多条广告就轮播：一次只露一条，5 秒一切，鼠标移上去或切到后台标签页就暂停。
+//一屏并排「每屏条数」条，放不下的翻页轮播：5 秒一页，鼠标移上去或切到后台标签页就暂停。
 function renderAds() {
   if (mpimgPayload.type !== 'ads' || document.querySelector('.mpimg-link-band[data-mpimg-dynamic="ads"], .mpimg-link-band[data-mpimg-dynamic="gg"], .mpimg-link-grid[data-mpimg-dynamic="ads"], .mpimg-link-grid[data-mpimg-dynamic="gg"], .txtguanggao[data-mpimg-dynamic="ads"], .txtguanggao[data-mpimg-dynamic="gg"]')) {
     return;
@@ -915,7 +998,6 @@ function renderAds() {
   var band = document.createElement('div');
   band.className = 'mpimg-link-band';
   band.setAttribute('data-mpimg-dynamic', 'ads');
-  band.style.setProperty('--mpimg-ad-grid-max', (mpimgPayload.imageWidth > 0 ? Math.max(1320, mpimgPayload.imageWidth + 24) : 1320) + 'px');
   band.style.setProperty('--mpimg-ad-img-w', mpimgPayload.imageWidth > 0 ? mpimgPayload.imageWidth + 'px' : '100%');
   band.style.setProperty('--mpimg-ad-img-h', mpimgPayload.imageHeight > 0 ? mpimgPayload.imageHeight + 'px' : 'auto');
   band.style.setProperty('--mpimg-ad-img-fit', mpimgPayload.imageFit || 'cover');
@@ -958,6 +1040,10 @@ function renderAds() {
   }
 
   if (track.children.length > 0) {
+    //格子宽度始终按后台设的并排条数算，广告条数不够就从左往右排、后面的格子空着
+    var columns = Math.max(1, Math.min(parseInt(mpimgPayload.perView, 10) || 3, 4));
+    band.style.setProperty('--mpimg-ad-per-view', String(columns));
+    band.style.setProperty('--mpimg-ad-grid-max', (mpimgPayload.imageWidth > 0 ? Math.max(1320, (mpimgPayload.imageWidth + 24) * columns) : 1320) + 'px');
     viewport.appendChild(track);
     wrap.appendChild(viewport);
     band.appendChild(wrap);

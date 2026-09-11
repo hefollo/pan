@@ -68,9 +68,7 @@ function cleanup_orphan_object($hash, $storage = null){
 	$storage = ($storage === null || $storage === '') ? $conf['storage'] : $storage;
 	//引用要按存储分开算，理由同 delete_file_blob_if_orphaned()：
 	//换过存储的站点上，同一份内容可能在新旧两个存储里各有一份，各自的引用互不相干
-	$used = intval($DB->getColumn("SELECT count(*) FROM pre_file WHERE hash=:hash AND (storage=:stor".($storage === $conf['storage'] ? " OR storage=''" : "").")", [':hash'=>$hash, ':stor'=>$storage]));
-	if($used > 0)return false;
-	return \lib\StorHelper::get($storage)->delete($hash);
+	return delete_file_blob_if_orphaned($hash, null, $storage);
 }
 
 function upload_all_parts_exist($hash, $chunks){
@@ -126,6 +124,7 @@ case 'pre_upload':
 	$name = trim(htmlspecialchars($_POST['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'));
 	$hash = trim($_POST['hash']);
 	$size = intval($_POST['size']);
+	if($size < 1)exit('{"code":-1,"msg":"文件大小必须大于零"}');
 	$hide = $_POST['show']==1?0:1;
 	$ispwd = intval($_POST['ispwd']);
 	$pwd = $ispwd==1?trim(htmlspecialchars($_POST['pwd'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')):null;
@@ -206,6 +205,7 @@ case 'pre_upload':
 			exit('{"code":-1,"msg":"你今天上传文件的数量已超过限制"}');
 		}
 	}
+	if(!lock_file_blobs($replace_row ? [$hash, $replace_row['hash']] : [$hash]))exit('{"code":-1,"msg":"文件正忙，请稍后重试"}');
 	$row = $DB->getRow("SELECT * FROM pre_file WHERE hash=:hash", [':hash'=>$hash]);
 	if($row && $replace_row){
 		//覆盖的新内容站内已经有了，物理文件不用再传，直接把记录的内容换掉。
@@ -227,9 +227,11 @@ case 'pre_upload':
 
 	//能不能直传要按这次的目标存储判断，不能按全站当前存储
 	if(\lib\StorHelper::is_direct_upload($target_stor) && $conf['uploadfile_type'] == 1){
-		$param = $target_model->getUploadParam($hash, $name, $limit_size * 1024 * 1024);
+		$staging_key = 'pending/'.bin2hex(random_bytes(24));
+		$param = $target_model->getUploadParam($staging_key, $name, $size);
 		if(!$param)exit('{"code":-1,"msg":"获取上传参数失败","errmsg":"'.$target_model->errmsg().'"}');
 		set_upload_state($hash, [
+			'staging_key' => $staging_key,
 			'chunks' => 1,
 			'name' => $name,
 			'hash' => $hash,
@@ -291,6 +293,12 @@ case 'upload_part':
 	$target_stor = isset($upload_state['storage']) ? $upload_state['storage'] : $conf['storage'];
 	$target_model = \lib\StorHelper::get($target_stor);
 	$debug = upload_debug_start();
+	$lock_hashes = [$hash];
+	if(!empty($upload_state['replace_id'])){
+		$lock_row = $DB->getRow("SELECT hash FROM pre_file WHERE id=:id", [':id'=>$upload_state['replace_id']]);
+		if($lock_row)$lock_hashes[] = $lock_row['hash'];
+	}
+	if(!lock_file_blobs($lock_hashes))exit('{"code":-1,"msg":"文件正忙，请稍后重试"}');
 	if($chunks > 1){
 		$tempFile = sys_get_temp_dir() . '/' . $hash. '.part'.$chunk;
 		if(!move_uploaded_file($_FILES['file']['tmp_name'], $tempFile)){
@@ -430,8 +438,21 @@ case 'complete_upload':
 	//浏览器是直接把文件传进 pre_upload 签好参数的那个存储的，要回同一个地方去确认
 	$target_stor = isset($upload_state['storage']) ? $upload_state['storage'] : $conf['storage'];
 	$target_model = \lib\StorHelper::get($target_stor);
-	if(!$target_model->exists($hash)){
-		exit('{"code":-1,"msg":"文件上传失败","error":"stor","errmsg":"'.$target_model->errmsg().'"}');
+	//拒绝升级前签发的最终对象凭证，以及把中转上传状态提交给直传完成接口。
+	if(empty($upload_state['staging_key'])){
+		clear_upload_state($hash);
+		exit('{"code":-1,"msg":"上传状态已失效，请重新上传"}');
+	}
+	$lock_hashes = [$hash];
+	if(!empty($upload_state['replace_id'])){
+		$lock_row = $DB->getRow("SELECT hash FROM pre_file WHERE id=:id", [':id'=>$upload_state['replace_id']]);
+		if($lock_row)$lock_hashes[] = $lock_row['hash'];
+	}
+	if(!lock_file_blobs($lock_hashes))exit('{"code":-1,"msg":"文件正忙，请稍后重试"}');
+	$publish = \lib\VerifiedUpload::publish($target_model, $upload_state);
+	if(!$publish){
+		clear_upload_state($hash);
+		exit('{"code":-1,"msg":"上传内容校验或发布失败，请重新上传","error":"stor"}');
 	}
 	$debug = upload_debug_start();
 	upload_debug_step($debug, 'cloud_exists_check_ms');
@@ -501,14 +522,12 @@ case 'deleteFile':
 	if(!preg_match('/^[0-9a-z]{32}$/i', $token))exit('{"code":-1,"msg":"hash error"}');
 	$row = $DB->getRow("SELECT * FROM `pre_file` WHERE `token`=:token", [':token'=>$token]);
 	if(!$row)exit('{"code":-1,"msg":"文件不存在"}');
+	if(!lock_file_blobs([$row['hash']]))exit('{"code":-1,"msg":"文件正忙，请稍后重试"}');
 	if($islogin2 && $row['uid']!=$uid || !$islogin2 && (!isset($_SESSION['fileids']) || !in_array($row['id'], $_SESSION['fileids'])))exit('{"code":-1,"msg":"无权限"}');
 	$lock_reason = file_delete_locked_reason($row);
 	if($lock_reason !== '')exit(json_encode(['code'=>-1, 'msg'=>$lock_reason], JSON_UNESCAPED_UNICODE));
 	if(!$islogin2 && strtotime($row['addtime'])<strtotime("-7 days"))exit('{"code":-1,"msg":"无法删除7天前的文件"}');
-	//同一份内容可能被多条记录共享，只有最后一条引用被删掉时才清理物理文件
-	delete_file_blob_if_orphaned($row['hash'], $row['id'], $row['storage']);
-	$sql = "DELETE FROM pre_file WHERE id=:id";
-	if($DB->exec($sql, [':id'=>$row['id']]))exit('{"code":0,"msg":"删除文件成功！"}');
+	if(delete_file_record($row))exit('{"code":0,"msg":"删除文件成功！"}');
 	else exit('{"code":-1,"msg":"删除文件失败['.$DB->error().']"}');
 break;
 
@@ -534,6 +553,7 @@ case 'saveFileContent':
 	//内容按新哈希另存：同一份内容可能被多条记录共享（秒传），就地覆盖旧哈希会把别人的文件一起改掉
 	$old_hash = $row['hash'];
 	$hash = md5($content);
+	if(!lock_file_blobs([$old_hash, $hash]))exit('{"code":-1,"msg":"文件正忙，请稍后重试"}');
 	if(!save_storage_content($hash, $content, $row['type'])){
 		exit(json_encode(['code'=>-1, 'msg'=>'保存文件内容失败', 'errmsg'=>$stor->errmsg()], JSON_UNESCAPED_UNICODE));
 	}

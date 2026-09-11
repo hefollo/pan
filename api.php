@@ -106,6 +106,7 @@ if($upload_limit > 0){
 }
 
 $hash = md5_file($_FILES['file']['tmp_name']);
+if(!lock_file_blobs([$hash]))showresult(['code'=>-1, 'msg'=>'文件正忙，请稍后重试']);
 $row = $DB->getRow("SELECT * FROM pre_file WHERE hash=:hash", [':hash'=>$hash]);
 if($row){
 	unset($_SESSION['csrf_token']);

@@ -41,6 +41,20 @@ class Obs implements IStorage {
 		}
 	}
 
+	public function downloadTo($name, $path) {
+		$handle = fopen($path, 'wb');
+		if(!$handle)return false;
+		try {
+			$resp = $this->obsClient->getObject(['Bucket'=>$this->bucket, 'Key'=>$this->filepath.$name, 'SaveAsStream'=>true]);
+			while(!$resp['Body']->eof()){
+				$chunk = $resp['Body']->read(102400);
+				if(fwrite($handle, $chunk) !== strlen($chunk))return false;
+			}
+			return true;
+		} catch(\Throwable $e) { return false; }
+		finally { fclose($handle); }
+	}
+
 	public function get($name) {
 		try {
 			$resp = $this->obsClient->getObject([

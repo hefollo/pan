@@ -33,6 +33,13 @@ class Oss implements IStorage {
 		}
 	}
 
+	public function downloadTo($name, $path) {
+		try {
+			$this->ossClient->getObject($this->bucket, $this->filepath.$name, [\OSS\OssClient::OSS_FILE_DOWNLOAD=>$path]);
+			return true;
+		} catch(\Throwable $e) { return false; }
+	}
+
 	public function get($name) {
 		try {
 			return $this->ossClient->getObject($this->bucket, $this->filepath.$name);
@@ -99,7 +106,7 @@ class Oss implements IStorage {
 		$url = 'https://'.$this->bucket.'.'.$this->config['endpoint'].'/';
 		$key = $this->filepath.$name;
 		$expire = 3600;
-		$expiration = date("Y-m-d\TH:i:s.000\Z", time() + $expire);
+		$expiration = gmdate("Y-m-d\TH:i:s.000\Z", time() + $expire);
 		$conditions = [];
 		$conditions[] = ['bucket' => $this->bucket];
         $conditions[] = ['eq', '$key', $key];

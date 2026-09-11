@@ -35,6 +35,18 @@ class Qiniu implements IStorage {
 		}
 	}
 
+	public function downloadTo($name, $path) {
+		try {
+			//Read the bucket's configured origin, not the current storage's shared download domain.
+			$url = rtrim($this->config['domain'], '/');
+			if(!preg_match('#^https?://#i', $url))$url = 'https://'.$url;
+			$url = $this->auth->privateDownloadUrl($url.'/'.$this->filepath.$name, 300);
+			$client = new Client(['timeout'=>300]);
+			$response = $client->request('GET', $url, ['sink'=>$path]);
+			return $response->getStatusCode() === 200;
+		} catch(\Throwable $e) { return false; }
+	}
+
 	public function get($name) {
 		try {
 			$url = $this->getDownUrl($name);

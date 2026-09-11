@@ -39,6 +39,13 @@ class Qcloud implements IStorage {
 		}
 	}
 
+	public function downloadTo($name, $path) {
+		try {
+			$this->cosClient->getObject(['Bucket'=>$this->bucket, 'Key'=>$this->filepath.$name, 'SaveAs'=>$path]);
+			return true;
+		} catch(\Throwable $e) { return false; }
+	}
+
 	public function get($name) {
 		try {
 			$content = $this->cosClient->getObject(['Bucket'=>$this->bucket, 'Key'=>$this->filepath.$name]);
@@ -108,7 +115,7 @@ class Qcloud implements IStorage {
 		$url = 'https://'.$this->bucket.'.cos.'.$this->config['region'].'.myqcloud.com/';
 		$key = $this->filepath.$name;
 		$expire = 3600;
-		$expiration = date("Y-m-d\TH:i:s.000\Z", time() + $expire);
+		$expiration = gmdate("Y-m-d\TH:i:s.000\Z", time() + $expire);
 		$keyTime = time().';'.(time()+$expire);
 		$conditions = [];
 		$conditions[] = ['bucket' => $this->bucket];

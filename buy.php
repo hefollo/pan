@@ -32,7 +32,11 @@ if($act === 'notify' || $act === 'return'){
 	if($order && isset($order['pay_type']) && $order['pay_type'] === 'epay'
 		&& isset($params['trade_status']) && $params['trade_status'] === 'TRADE_SUCCESS'
 		&& round(floatval($params['money']), 2) >= round(floatval($order['price']), 2)){
-		finish_order($order, isset($params['trade_no']) ? $params['trade_no'] : '');
+		if(!finish_order($order, isset($params['trade_no']) ? $params['trade_no'] : '')){
+			if($act === 'notify')exit('fail');
+			@header('Location: ./buy.php?paid=0');
+			exit;
+		}
 		if($act === 'notify')exit('success');
 		@header('Location: ./buy.php?paid=1');
 		exit;

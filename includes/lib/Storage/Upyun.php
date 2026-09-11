@@ -30,6 +30,16 @@ class Upyun implements IStorage {
 		}
 	}
 
+	public function downloadTo($name, $path) {
+		$handle = fopen($path, 'wb');
+		if(!$handle)return false;
+		try {
+			$this->client->read($this->filepath.$name, $handle);
+			return true;
+		} catch(\Throwable $e) { return false; }
+		finally { fclose($handle); }
+	}
+
 	public function get($name) {
 		try {
 			return $this->client->read($this->filepath.$name);
