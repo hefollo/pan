@@ -210,6 +210,171 @@ window.adminBlockHtml = function(id, value){
 	return h + '</span></div>';
 };
 jQuery(function($){
+	var adminDynamicScripts = {};
+	var adminDynamicLoadId = 0;
+	$('script[src]').each(function(){
+		try{ adminDynamicScripts[new URL(this.src, window.location.href).href] = true; }catch(e){}
+	});
+	function findAdminNavLink(url){
+		var found = null;
+		$('.navbar-nav>li>a:not(.dropdown-toggle),.navbar-nav>li>.dropdown-menu>li>a').each(function(){
+			if(this.href.indexOf('logout=1') !== -1)return;
+			var linkUrl;
+			try{ linkUrl = new URL(this.href, window.location.href); }catch(e){ return; }
+			if(linkUrl.pathname === url.pathname && linkUrl.search === url.search){ found = $(this); return false; }
+		});
+		return found;
+	}
+	function resetAdminNavigation($link){
+		$('.navbar-nav li').removeClass('active admin-section-menu');
+		$('.admin-settings-menu>li>.admin-section-submenu').remove();
+		$('.admin-settings-menu>li>a .admin-section-caret').remove();
+		$link.parent().addClass('active');
+		$link.closest('.navbar-nav>li').addClass('active');
+	}
+	function parseAdminDynamicPage(html, baseUrl){
+		var doc = document.implementation.createHTMLDocument('');
+		doc.documentElement.innerHTML = html;
+		var marker = doc.getElementById('admin-dynamic-content-start');
+		if(!marker)return null;
+		var holder = doc.createElement('div'), node = marker.nextSibling;
+		while(node){ holder.appendChild(node.cloneNode(true)); node = node.nextSibling; }
+		var $holder = $(holder), scripts = [];
+		$holder.find('script').each(function(){
+			var type = (this.getAttribute('type') || '').toLowerCase();
+			if(type && type !== 'text/javascript' && type !== 'application/javascript'){ $(this).remove(); return; }
+			scripts.push({src:this.getAttribute('src') ? new URL(this.getAttribute('src'), baseUrl).href : '', code:this.text || this.textContent || ''});
+			$(this).remove();
+		});
+		return {title:doc.title, nodes:$holder.contents(), scripts:scripts};
+	}
+	function runAdminDynamicScripts(scripts, done){
+		var index = 0;
+		function next(){
+			if(index >= scripts.length){ done(); return; }
+			var script = scripts[index++];
+			if(script.src){
+				if(adminDynamicScripts[script.src]){ next(); return; }
+				$.ajax({url:script.src, dataType:'script', cache:true}).done(function(){ adminDynamicScripts[script.src] = true; }).always(next);
+				return;
+			}
+			if(script.code){
+				try{ $.globalEval(script.code); }catch(err){ if(window.console)console.error(err); }
+			}
+			next();
+		}
+		next();
+	}
+	function syncAdminQueryState(target){
+		var query = {};
+		target.searchParams.forEach(function(value, key){ query[key] = value; });
+		window.$_GET = query;
+	}
+	function buildAdminSectionMenu(){
+		var $parent = $('.admin-settings-menu>li.active').not('.dropdown-header,.divider').first();
+		if(!$parent.length || $parent.children('.admin-section-submenu').length)return;
+		var $panels = $('.admin-page>.panel,.admin-page-wide>.panel,.admin-page>form>.panel,.admin-page-wide>form>.panel,.admin-page>.api-settings-page>.panel,.admin-page-wide>.api-settings-page>.panel');
+		var $submenu = $('<ul class="admin-section-submenu" aria-label="当前设置页子菜单"></ul>');
+		var count = 0;
+		$panels.each(function(){
+			var $panel = $(this), $heading = $panel.children('.panel-heading').find('.panel-title').first();
+			if(!$heading.length)return;
+			var $title = $heading.clone();
+			$title.find('small,form,button').remove();
+			var title = $.trim($title.text());
+			if(!title)return;
+			count++;
+			var id = $panel.attr('id') || ('admin-section-' + count);
+			$panel.attr('id', id).addClass('admin-settings-section');
+			$('<li></li>').attr('data-admin-section', id).append($('<a></a>').attr('href', '#' + id).text(title)).appendTo($submenu);
+		});
+		if(!count)return;
+		$parent.addClass('admin-section-menu');
+		if(!$parent.children('a').find('.admin-section-caret').length){
+			$parent.children('a').append(' <i class="fa fa-angle-down admin-section-caret" aria-hidden="true"></i>');
+		}
+		$parent.append($submenu);
+	}
+	function syncAdminSectionMenu(){
+		var section = (window.location.hash || '').replace(/^#/, '');
+		var $submenu = $('.admin-settings-menu>li.active>.admin-section-submenu');
+		var $item = $submenu.children('li').filter(function(){
+			return $(this).attr('data-admin-section') === section;
+		});
+		if(!$item.length && section){
+			var $target = $(document.getElementById(section));
+			var $panel = $target.closest('.admin-settings-section');
+			if($panel.length){
+				var panelId = $panel.attr('id');
+				$item = $submenu.children('li').filter(function(){
+					return $(this).attr('data-admin-section') === panelId;
+				});
+			}
+		}
+		if(!$item.length)$item = $submenu.children('li').first();
+		$submenu.children('li').removeClass('active');
+		$item.addClass('active');
+	}
+	function loadAdminSetting(url, addHistory){
+		var target;
+		try{ target = new URL(url, window.location.href); }catch(e){ return; }
+		var $link = findAdminNavLink(target);
+		if(!$link || target.origin !== window.location.origin){ window.location.href = target.href; return; }
+		var loadId = ++adminDynamicLoadId;
+		$('body').addClass('admin-dynamic-loading');
+		$.ajax({url:target.pathname + target.search, dataType:'html', headers:{'X-Admin-Dynamic':'1'}}).done(function(html){
+			if(loadId !== adminDynamicLoadId)return;
+			var page = parseAdminDynamicPage(html, target.href);
+			if(!page){ window.location.href = target.href; return; }
+			try{
+				$('[data-toggle="table"]').each(function(){ if($(this).data('bootstrap.table'))$(this).bootstrapTable('destroy'); });
+			}catch(e){}
+			$(document).off('.adminDynamicPage');
+			$(window).off('.adminDynamicPage');
+			$('#admin-dynamic-content-start').nextAll().remove();
+			$('#admin-dynamic-content-start').after(page.nodes);
+			if(page.title)document.title = page.title;
+			resetAdminNavigation($link);
+			if(addHistory)history.pushState({adminDynamic:true}, '', target.href);
+			syncAdminQueryState(target);
+			runAdminDynamicScripts(page.scripts, function(){
+				if(loadId !== adminDynamicLoadId)return;
+				buildAdminSectionMenu();
+				syncAdminSectionMenu();
+				$('body').removeClass('admin-dynamic-loading');
+				window.scrollTo(0, 0);
+			});
+		}).fail(function(){
+			if(loadId !== adminDynamicLoadId)return;
+			$('body').removeClass('admin-dynamic-loading');
+			if(window.layer)layer.msg('页面加载失败，请稍后重试');
+		});
+	}
+	$(document).on('click.adminDynamicNav', '.navbar-nav>li>a:not(.dropdown-toggle),.navbar-nav>li>.dropdown-menu>li>a', function(e){
+		if(e.which !== 1 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || this.target === '_blank')return;
+		if(this.href.indexOf('logout=1') !== -1)return;
+		e.preventDefault();
+		loadAdminSetting(this.href, true);
+	});
+	$(document).on('click.adminDynamicNav', '.admin-section-submenu>li>a', function(e){
+		e.preventDefault();
+		var id = $(this).parent().attr('data-admin-section'), target = document.getElementById(id);
+		if(!target)return;
+		history.replaceState({adminDynamic:true}, '', window.location.pathname + window.location.search + '#' + id);
+		syncAdminSectionMenu();
+		target.scrollIntoView({behavior:'smooth', block:'start'});
+	});
+	$(window).on('popstate.adminDynamicNav', function(){
+		var target = new URL(window.location.href);
+		if(findAdminNavLink(target))loadAdminSetting(target.href, false);
+		else window.location.href = target.href;
+	});
+	if(findAdminNavLink(new URL(window.location.href)))history.replaceState({adminDynamic:true}, '', window.location.href);
+	buildAdminSectionMenu();
+	if($('.admin-settings-menu>li.active>.admin-section-submenu').length){
+		syncAdminSectionMenu();
+		$(window).on('hashchange', syncAdminSectionMenu);
+	}
 	$(document).on('click', '.admin-block-cur', function(e){
 		e.stopPropagation();   //不然会被下面那条"点空白处收起"立刻关掉
 		$('.admin-block-pick.is-open').removeClass('is-open');
@@ -238,3 +403,4 @@ jQuery(function($){
 	$(document).on('click', function(){ $('.admin-block-pick.is-open').removeClass('is-open'); });
 });
 </script>
+<span id="admin-dynamic-content-start" hidden></span>

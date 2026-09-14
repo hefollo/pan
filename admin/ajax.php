@@ -189,6 +189,19 @@ case 'violationList':
 	foreach($list as &$row){
 		$row['size_text'] = size_format($row['size']);
 		$row['mask_name'] = violation_mask_name($row['name']);
+		//违规公示页的“查看”与内容检测记录一致：图片弹层查看，音视频就地播放。
+		//手工补录没有关联文件，文件后来被删除时也只保留公示记录，这两种情况返回已删除状态。
+		$row['file_exists'] = 0;
+		$row['view_type'] = '';
+		$row['viewurl'] = '';
+		if(intval($row['file_id']) > 0){
+			$file = $DB->getRow("SELECT `token`,`type` FROM pre_file WHERE `id`=:id LIMIT 1", [':id'=>intval($row['file_id'])]);
+			if($file){
+				$row['file_exists'] = 1;
+				$row['view_type'] = get_view_type($file['type']);
+				$row['viewurl'] = './view.php/'.rawurlencode($file['token']).'.'.rawurlencode($file['type'] ? $file['type'] : 'file');
+			}
+		}
 	}
 	unset($row);
 	exit(json_encode(['total'=>$total, 'rows'=>$list], JSON_UNESCAPED_UNICODE));

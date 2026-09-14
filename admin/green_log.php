@@ -494,7 +494,7 @@ function showimage(resourcesUrl){
 	img.onerror = function(){ layer.close(ii); layer.msg('图片加载失败，可能已被删除'); };
 	img.src = resourcesUrl;
 }
-$(document).on('click', '.js-image-preview', function(){
+$(document).on('click.adminDynamicPage', '.js-image-preview', function(){
 	showimage($(this).data('src'));
 });
 
@@ -504,7 +504,7 @@ $(document).on('click', '.js-image-preview', function(){
  * file-view.php 里的地址解析出来是 admin/view.php，所以待审和已封的文件也能播——
  * 前台的 view.php 对 block>=1 只会返回一张占位图，正好是需要复核的那些看不了。
  */
-$(document).on('click', '.js-video-preview', function(){
+$(document).on('click.adminDynamicPage', '.js-video-preview', function(){
 	var w = $(window).width(), area;
 	if(w >= 1200){ area = ['50%', '60%']; }
 	else if(w >= 992){ area = ['75%', '70%']; }
@@ -520,7 +520,7 @@ $(document).on('click', '.js-video-preview', function(){
 });
 
 //筛选条和分页是 AJAX 换上去的，事件得挂在容器上
-$(document).on('click', '.greenlog-tab', function(){
+$(document).on('click.adminDynamicPage', '.greenlog-tab', function(){
 	greenlogState.verdict = $(this).data('verdict') || '';
 	greenlogState.page = 1;
 	loadGreenlog();
@@ -537,12 +537,12 @@ $(document).on('click', '.greenlog-tab', function(){
 function adminBlockDone(id, status, res){
 	loadGreenlog();
 }
-$(document).on('click', '.greenlog-etype', function(){
+$(document).on('click.adminDynamicPage', '.greenlog-etype', function(){
 	greenlogState.etype = $(this).data('etype') || '';
 	greenlogState.page = 1;
 	loadGreenlog();
 });
-$(document).on('click', '.greenlog-page', function(){
+$(document).on('click.adminDynamicPage', '.greenlog-page', function(){
 	greenlogState.page = $(this).data('page');
 	loadGreenlog();
 });

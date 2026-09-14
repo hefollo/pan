@@ -64,8 +64,8 @@ if($islogin==1){}else exit("<script language='javascript'>window.location.href='
 			</div>
 			<div class="form-group">
 				<select class="form-control" name="is_show">
-					<option value="-1">全部状态</option>
 					<option value="1">公示中</option>
+					<option value="-1">全部状态</option>
 					<option value="0">不公示</option>
 				</select>
 			</div>
@@ -83,6 +83,11 @@ if($islogin==1){}else exit("<script language='javascript'>window.location.href='
 	  	</table>
     </div>
   </div>
+<style>
+/* “查看/播放/已删除”只有几个字，固定不换行，避免窄列把“查看”拆成竖排。 */
+.js-violation-image,.js-violation-media,.violation-view-gone{font-size:12px;white-space:nowrap}
+.violation-view-gone{color:var(--admin-muted)}
+</style>
 <script src="https://s4.zstatic.net/ajax/libs/bootstrap-table/1.21.4/bootstrap-table.min.js"></script>
 <script src="https://s4.zstatic.net/ajax/libs/bootstrap-table/1.21.4/extensions/page-jump-to/bootstrap-table-page-jump-to.min.js"></script>
 <script src="../assets/js/custom.js"></script>
@@ -90,9 +95,9 @@ if($islogin==1){}else exit("<script language='javascript'>window.location.href='
 window.violationRows = {};
 $(document).ready(function(){
 	updateToolbar();
-	const defaultPageSize = 15;
-	const pageNumber = typeof window.$_GET['pageNumber'] != 'undefined' ? parseInt(window.$_GET['pageNumber']) : 1;
-	const pageSize = typeof window.$_GET['pageSize'] != 'undefined' ? parseInt(window.$_GET['pageSize']) : defaultPageSize;
+	var defaultPageSize = 15;
+	var pageNumber = typeof window.$_GET['pageNumber'] != 'undefined' ? parseInt(window.$_GET['pageNumber']) : 1;
+	var pageSize = typeof window.$_GET['pageSize'] != 'undefined' ? parseInt(window.$_GET['pageSize']) : defaultPageSize;
 
 	$("#listTable").bootstrapTable({
 		url: 'ajax.php?act=violationList',
@@ -132,6 +137,22 @@ $(document).ready(function(){
 				}
 			},
 			{
+				field: 'file_exists',
+				title: '查看',
+				align: 'center',
+				halign: 'center',
+				formatter: function(value, row, index) {
+					if(!row.file_exists)return '<span class="violation-view-gone" title="原文件已删除或该记录为手工补录">已删除</span>';
+					if(row.view_type == 'image'){
+						return '<a href="javascript:void(0)" class="js-violation-image" data-src="'+escapeHtml(row.viewurl)+'">查看</a>';
+					}
+					if(row.view_type == 'video' || row.view_type == 'audio'){
+						return '<a href="javascript:void(0)" class="js-violation-media" data-id="'+row.file_id+'" data-type="'+row.view_type+'">播放</a>';
+					}
+					return '<span class="violation-view-gone" title="该文件格式不支持在线预览">—</span>';
+				}
+			},
+			{
 				field: 'ip',
 				title: '上传IP'
 			},
@@ -152,9 +173,11 @@ $(document).ready(function(){
 			{
 				field: 'status',
 				title: '操作',
+				width: 130,
+				class: 'admin-actions-cell',
 				formatter: function(value, row, index) {
 					window.violationRows[row.id] = row;
-					return '<a href="javascript:editViolation('+row.id+')" class="btn btn-xs btn-info">编辑</a>&nbsp;<a href="javascript:delViolation('+row.id+')" class="btn btn-xs btn-danger">删除</a>';
+					return '<div class="admin-action-buttons"><a href="javascript:editViolation('+row.id+')" class="btn btn-xs btn-info">编辑</a><a href="javascript:delViolation('+row.id+')" class="btn btn-xs btn-danger">删除</a></div>';
 				}
 			},
 		],
@@ -164,6 +187,56 @@ $(document).ready(function(){
 function escapeHtml(str){
 	return $('<div>').text(str == null ? '' : str).html();
 }
+
+//和内容检测记录页相同：图片在当前页弹层查看，封禁文件也通过后台专用 view.php 读取。
+function violationShowImage(resourcesUrl){
+	var ii = layer.load(2, {shade:[0.1,'#fff']});
+	var img = new Image();
+	img.onload = function(){
+		var maxHeight = $(window).height() - 200;
+		var maxWidth = $(window).width();
+		var rate = Math.min(maxHeight / img.height, maxWidth / img.width, 1);
+		var imgHeight = img.height * rate;
+		var imgWidth = img.width * rate;
+		var boxId = 'violation-preview-' + Date.now();
+		img.style = 'width:100%';
+		layer.close(ii);
+		layer.open({
+			type: 1,
+			shade: 0.6,
+			title: false,
+			area: ['auto', 'auto'],
+			shadeClose: true,
+			content: '<div id="'+boxId+'" style="width:'+imgWidth+'px;height:'+imgHeight+'px"></div>',
+			success: function(){ $('#'+boxId).append(img); }
+		});
+	};
+	img.onerror = function(){ layer.close(ii); layer.msg('文件加载失败，可能已被删除'); };
+	img.src = resourcesUrl;
+}
+
+$(document).on('click.adminDynamicPage', '.js-violation-image', function(){
+	violationShowImage($(this).data('src'));
+});
+
+$(document).on('click.adminDynamicPage', '.js-violation-media', function(){
+	var isAudio = $(this).data('type') == 'audio';
+	var width = $(window).width();
+	var area;
+	if(isAudio){
+		area = [width >= 1200 ? '50%' : (width >= 992 ? '75%' : (width >= 768 ? '95%' : '100%')), '120px'];
+	}else if(width >= 1200){ area = ['50%', '60%']; }
+	else if(width >= 992){ area = ['75%', '70%']; }
+	else if(width >= 768){ area = ['95%', '75%']; }
+	else{ area = ['100%', '55%']; }
+	layer.open({
+		type: 2,
+		title: isAudio ? '音频播放' : '视频播放',
+		shadeClose: true,
+		area: area,
+		content: './file-view.php?id=' + $(this).data('id')
+	});
+});
 
 function addViolation(){
 	$("#modal-store").modal('show');

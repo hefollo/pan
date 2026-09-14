@@ -426,68 +426,111 @@ $scriptpath=str_replace('\\','/',$_SERVER['SCRIPT_NAME']);
 $sitepath = substr($scriptpath, 0, strrpos($scriptpath, '/'));
 $admin_path = substr($sitepath, strrpos($sitepath, '/'));
 $siteurl = (is_https() ? 'https://' : 'http://').$_SERVER['HTTP_HOST'].str_replace($admin_path,'',$sitepath).'/';
+$api_endpoint = $siteurl.'api.php';
 ?>
-<div class="panel panel-primary">
-<div class="panel-heading"><h3 class="panel-title">上传API设置</h3></div>
-<div class="panel-body">
-  <form onsubmit="return saveSetting(this)" method="post" class="form-horizontal" role="form">
-	<div class="form-group">
-	  <label class="col-sm-3 control-label">上传API开关</label>
-	  <div class="col-sm-9"><select class="form-control" name="api_open" default="<?php echo $conf['api_open']?>"><option value="0">关闭</option><option value="1">开启</option></select></div>
-	</div><br/>
-	<div class="form-group">
-	  <label class="col-sm-3 control-label">来源域名白名单</label>
-	  <div class="col-sm-9"><input type="text" name="api_referer" value="<?php echo $conf['api_referer']; ?>" class="form-control" placeholder="多个域名用|隔开"/><font color="green">多个域名用|隔开，不填写则不限制来源域名</font></div>
-	</div><br/>
-	<div class="form-group">
-	  <div class="col-sm-offset-3 col-sm-9"><input type="submit" name="submit" value="修改" class="btn btn-primary form-control"/><br/>
-	 </div>
-	</div>
-  </form>
-</div>
-</div>
-<div class="panel panel-info">
-<div class="panel-heading"><h3 class="panel-title">上传API文档</h3></div>
-<div class="panel-body">
-<pre>
-API接口地址：<?php echo $siteurl?>api.php
+<div class="api-settings-page">
+  <div class="panel panel-primary api-config-panel">
+    <div class="panel-heading">
+      <h3 class="panel-title"><i class="fa fa-cloud-upload"></i> 上传API设置</h3>
+      <span class="api-status <?php echo !empty($conf['api_open']) ? 'is-on' : 'is-off'?>"><i class="fa fa-circle"></i> <?php echo !empty($conf['api_open']) ? '接口已开启' : '接口已关闭'?></span>
+    </div>
+    <div class="panel-body">
+      <div class="api-intro"><i class="fa fa-shield"></i><div><b>开放前请先确认来源范围</b><span>开启后可通过 HTTP 接口上传文件。建议配置来源域名白名单，避免接口被未知网站直接调用。</span></div></div>
+      <form onsubmit="return saveSetting(this)" method="post" class="form-horizontal api-config-form" role="form">
+        <div class="form-group">
+          <label class="col-sm-3 control-label">接口状态</label>
+          <div class="col-sm-9">
+            <select class="form-control" name="api_open" default="<?php echo (int)$conf['api_open']?>"><option value="0">关闭上传API</option><option value="1">开启上传API</option></select>
+            <p class="help-block">关闭后，所有通过 <code>api.php</code> 发起的上传请求都将被拒绝。</p>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="col-sm-3 control-label">来源域名白名单</label>
+          <div class="col-sm-9">
+            <input type="text" name="api_referer" value="<?php echo htmlspecialchars(isset($conf['api_referer']) ? $conf['api_referer'] : '', ENT_QUOTES, 'UTF-8')?>" class="form-control" placeholder="example.com|upload.example.com"/>
+            <p class="help-block">多个域名使用 <code>|</code> 分隔，不填写表示不限制来源域名。填写域名即可，不要包含路径。</p>
+          </div>
+        </div>
+        <div class="form-group api-form-actions">
+          <div class="col-sm-offset-3 col-sm-9"><button type="submit" name="submit" class="btn btn-primary"><i class="fa fa-save"></i> 保存API设置</button></div>
+        </div>
+      </form>
+    </div>
+  </div>
 
-当前API支持JSON、JSONP、FORM 3种返回方式，支持Web跨域调用，也支持程序中直接调用。
+  <div class="panel panel-info api-doc-panel">
+    <div class="panel-heading"><h3 class="panel-title"><i class="fa fa-book"></i> 上传API文档</h3></div>
+    <div class="panel-body">
+      <div class="api-endpoint-card">
+        <div class="api-endpoint-meta"><span class="api-method">POST</span><div><b>接口地址</b><small>请求类型：multipart/form-data</small></div></div>
+        <div class="api-endpoint-value"><code id="apiEndpoint"><?php echo htmlspecialchars($api_endpoint, ENT_QUOTES, 'UTF-8')?></code><button type="button" class="btn btn-default btn-sm" onclick="copyApiEndpoint(this)"><i class="fa fa-copy"></i> 复制</button></div>
+      </div>
+      <div class="api-format-row"><span>返回格式</span><b>JSON</b><b>JSONP</b><b>FORM</b><small>支持浏览器跨域调用和服务端程序调用</small></div>
 
-请求方式：POST  multipart/form-data
+      <section class="api-doc-section">
+        <div class="api-section-title"><span>01</span><div><h4>请求参数</h4><p>仅 <code>file</code> 为必填项，其余参数均可按需传入。</p></div></div>
+        <div class="table-responsive api-table-wrap">
+          <table class="table table-hover api-table">
+            <thead><tr><th>参数</th><th>含义</th><th>必填</th><th>示例值</th><th>说明</th></tr></thead>
+            <tbody>
+              <tr><td><code>file</code></td><td>文件</td><td><span class="api-required">必填</span></td><td>—</td><td>multipart 格式文件</td></tr>
+              <tr><td><code>show</code></td><td>首页显示</td><td>否</td><td><code>1</code></td><td>默认为是</td></tr>
+              <tr><td><code>ispwd</code></td><td>设置密码</td><td>否</td><td><code>0</code></td><td>默认为否</td></tr>
+              <tr><td><code>pwd</code></td><td>下载密码</td><td>否</td><td><code>123456</code></td><td>默认留空</td></tr>
+              <tr><td><code>format</code></td><td>返回格式</td><td>否</td><td><code>json</code></td><td>可选 json、jsonp、form，默认 json</td></tr>
+              <tr><td><code>backurl</code></td><td>跳转地址</td><td>否</td><td><code>https://...</code></td><td>仅在 form 格式下有效</td></tr>
+              <tr><td><code>callback</code></td><td>回调函数</td><td>否</td><td><code>callback</code></td><td>仅在 jsonp 格式下有效</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
 
-请求参数说明：
-<table class="table table-bordered table-hover">
-  <thead><tr><th>字段名</th><th>变量名</th><th>是否必填</th><th>示例值</th><th>描述</th></tr></thead>
-  <tbody>
-  <tr><td>文件</td><td>file</td><td>是</td><td></td><td>multipart格式文件</td></tr>
-  <tr><td>是否首页显示</td><td>show</td><td>否</td><td>1</td><td>默认为是</td></tr>
-  <tr><td>是否设置密码</td><td>ispwd</td><td>否</td><td>0</td><td>默认为否</td></tr>
-  <tr><td>下载密码</td><td>pwd</td><td>否</td><td>123456</td><td>默认留空</td></tr>
-  <tr><td>返回格式</td><td>format</td><td>否</td><td>json</td><td>有json、jsonp、form三种选择
-默认为json</td></tr>
-  <tr><td>跳转页面url</td><td>backurl</td><td>否</td><td>http://...</td><td>上传成功后的跳转地址
-只在form格式有效</td></tr>
-  <tr><td>callback</td><td>callback</td><td>否</td><td>callback</td><td>只在jsonp格式有效</td></tr>
-  </tbody>
-</table>
-返回参数说明：
-<table class="table table-bordered table-hover">
-  <thead><tr><th>字段名</th><th>变量名</th><th>类型</th><th>示例值</th><th>描述</th></tr></thead>
-  <tbody>
-  <tr><td>上传状态</td><td>code</td><td>Int</td><td>0</td><td>0为成功，其他为失败</td></tr>
-  <tr><td>提示信息</td><td>msg</td><td>String</td><td>上传成功！</td><td>如果上传失败会有错误提示</td></tr>
-  <tr><td>文件MD5</td><td>hash</td><td>String</td><td>f1e807cb0d6ba52d71bdb02864e6bda8</td><td></td></tr>
-  <tr><td>文件名称</td><td>name</td><td>String</td><td>exapmle1.jpg</td><td></td></tr>
-  <tr><td>文件大小</td><td>size</td><td>Int</td><td>58937</td><td>单位：字节</td></tr>
-  <tr><td>文件格式</td><td>type</td><td>String</td><td>jpg</td><td></td></tr>
-  <tr><td>下载地址</td><td>downurl</td><td>String</td><td>http://.....</td><td></td></tr>
-  <tr><td>预览地址</td><td>viewurl</td><td>String</td><td>http://.....</td><td>只有图片、音乐、视频文件才有</td></tr>
-  </tbody>
-</table>
-</pre>
+      <section class="api-doc-section">
+        <div class="api-section-title"><span>02</span><div><h4>返回参数</h4><p><code>code = 0</code> 表示上传成功，其它值会在 <code>msg</code> 中说明原因。</p></div></div>
+        <div class="table-responsive api-table-wrap">
+          <table class="table table-hover api-table">
+            <thead><tr><th>参数</th><th>类型</th><th>示例值</th><th>说明</th></tr></thead>
+            <tbody>
+              <tr><td><code>code</code></td><td>Int</td><td><code>0</code></td><td>0 为成功，其它为失败</td></tr>
+              <tr><td><code>msg</code></td><td>String</td><td>上传成功！</td><td>操作提示或失败原因</td></tr>
+              <tr><td><code>hash</code></td><td>String</td><td><code>f1e807...bda8</code></td><td>文件 MD5</td></tr>
+              <tr><td><code>name</code></td><td>String</td><td><code>example.jpg</code></td><td>文件名称</td></tr>
+              <tr><td><code>size</code></td><td>Int</td><td><code>58937</code></td><td>文件大小，单位为字节</td></tr>
+              <tr><td><code>type</code></td><td>String</td><td><code>jpg</code></td><td>文件格式</td></tr>
+              <tr><td><code>downurl</code></td><td>String</td><td><code>https://...</code></td><td>下载地址</td></tr>
+              <tr><td><code>viewurl</code></td><td>String</td><td><code>https://...</code></td><td>图片、音频和视频文件的预览地址</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="api-doc-section api-example-section">
+        <div class="api-section-title"><span>03</span><div><h4>调用示例</h4><p>下面示例以 JSON 格式上传本地文件。</p></div></div>
+        <div class="api-code-card"><div class="api-code-head"><span>cURL</span><button type="button" onclick="copyApiCode(this)"><i class="fa fa-copy"></i> 复制代码</button></div><pre><code>curl -X POST \
+  -F "file=@example.jpg" \
+  -F "format=json" \
+  "<?php echo htmlspecialchars($api_endpoint, ENT_QUOTES, 'UTF-8')?>"</code></pre></div>
+      </section>
+    </div>
+  </div>
 </div>
-</div>
+<script>
+function apiCopyText(text, button){
+	function done(){
+		var old = button.innerHTML;
+		button.innerHTML = '<i class="fa fa-check"></i> 已复制';
+		setTimeout(function(){ button.innerHTML = old; }, 1500);
+	}
+	if(navigator.clipboard && window.isSecureContext){ navigator.clipboard.writeText(text).then(done); return; }
+	var area = document.createElement('textarea');
+	area.value = text; area.style.position = 'fixed'; area.style.opacity = '0';
+	document.body.appendChild(area); area.select();
+	try{ document.execCommand('copy'); done(); }catch(e){ if(window.layer)layer.msg('复制失败，请手动复制'); }
+	document.body.removeChild(area);
+}
+function copyApiEndpoint(button){ apiCopyText(document.getElementById('apiEndpoint').textContent, button); }
+function copyApiCode(button){ apiCopyText(button.parentNode.nextElementSibling.textContent, button); }
+</script>
 <?php
 }elseif($mod=='account_n' && $_POST['do']=='submit'){
 	if(!checkRefererHost())exit;
@@ -666,8 +709,11 @@ $(document).ready(function(){
 	  <div class="col-sm-9">
 	  <input type="hidden" name="login_qq" value="0"/>
 	  <input type="hidden" name="login_wx" value="0"/>
+	  <input type="hidden" name="mail_reg_open" value="0"/>
 	  <label class="checkbox-inline"><input type="checkbox" name="login_qq" value="1" <?php echo $conf['login_qq']?'checked':null;?>> QQ</label>
 	  <label class="checkbox-inline"><input type="checkbox" name="login_wx" value="1" <?php echo $conf['login_wx']?'checked':null;?>> 微信</label>
+	  <label class="checkbox-inline"><input type="checkbox" name="mail_reg_open" value="1" <?php echo !empty($conf['mail_reg_open'])?'checked':null;?>> 邮箱注册</label>
+	  <p class="help-block">开启邮箱注册前，请先在「邮件发信设置」中配置可用的发信通道；关闭后，已有邮箱账号仍可正常登录。</p>
 	  </div>
 	</div><br/>
 	<div class="form-group">

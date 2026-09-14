@@ -59,6 +59,19 @@ function read_sql($file){
 	}
 	return explode(';', $sql);
 }
+
+/*
+ * 升级脚本需要允许安全重跑。MySQL/MariaDB 在字段、索引或数据表已经存在时会返回固定错误码：
+ * 1050 table exists、1060 duplicate column、1061 duplicate key name。
+ * 这些只表示目标结构已经到位，应该记为“跳过”而不是失败。
+ *
+ * 这里只认驱动错误码，不能看到错误文案里有 already exists 就一概放过；否则权限、语法或
+ * 数据冲突等真正会导致结构残缺的问题也可能被误判，最后还把版本号写成最新。
+ */
+function is_repeat_structure_error($errorInfo){
+	$driver_code = isset($errorInfo[1]) ? intval($errorInfo[1]) : 0;
+	return in_array($driver_code, [1050, 1060, 1061], true);
+}
 $admin_user = update_conf($db, 'admin_user');
 $admin_pwd  = update_conf($db, 'admin_pwd');
 $auth_err = '';
@@ -210,19 +223,25 @@ if(!$q || !$q->fetchColumn()){
 	$sqls = array_merge($sqls, read_sql('update_1022.sql'));
 }
 
-$success=0;$error=0;$errorMsg=null;
+$success=0;$skipped=0;$error=0;$errorMsg=null;
 foreach ($sqls as $value) {
 	$value=trim($value);
 	if(empty($value))continue;
 	if($db->exec($value)===false){
-		$error++;
 		$dberror=$db->errorInfo();
-		$errorMsg.=$dberror[2]."<br>";
+		if(is_repeat_structure_error($dberror)){
+			$skipped++;
+			continue;
+		}
+		$error++;
+		$errorMsg.=htmlspecialchars(isset($dberror[2]) ? $dberror[2] : '未知数据库错误', ENT_QUOTES, 'UTF-8')."<br>";
 	}else{
 		$success++;
 	}
 }
-echo '<p style="font:14px/1.7 system-ui;padding:24px 24px 0">成功执行 SQL 语句 '.$success.' 条'.($error ? '，<b style="color:#d33">失败 '.$error.' 条</b>' : '').'</p>';
+echo '<p style="font:14px/1.7 system-ui;padding:24px 24px 0">成功执行 SQL 语句 '.$success.' 条'
+	.($skipped ? '，<b style="color:#8a6d3b">已跳过重复结构 '.$skipped.' 条</b>' : '')
+	.($error ? '，<b style="color:#d33">失败 '.$error.' 条</b>' : '').'</p>';
 /*
  * 报错原来是注释掉的，升级失败和成功长得一模一样。
  * 「字段已存在」这类重复执行的报错无所谓，但建表失败必须让人看见——不然版本号写上去了、
@@ -231,8 +250,8 @@ echo '<p style="font:14px/1.7 system-ui;padding:24px 24px 0">成功执行 SQL �
 if($errorMsg){
 	echo '<div style="font:13px/1.7 system-ui;margin:0 24px;padding:14px;border:1px solid #f0c2c2;background:#fff5f5;border-radius:8px;color:#a33">'
 		.'<b>下面这些语句没执行成功：</b><br>'.$errorMsg
-		.'<br>其中「Duplicate column name」「already exists」属于重复执行，可以忽略；'
-		.'其它错误说明结构没升上去，请把错误信息连同数据库版本一起反馈。</div>';
+		.'<br>以上错误说明结构没有完整升级，请把错误信息连同数据库版本一起反馈。'
+		.'字段、索引或数据表已存在的重复结构语句已由升级器自动跳过，不会列在这里。</div>';
 	echo '<p style="font:14px/1.7 system-ui;padding:16px 24px"><a href="../">返回首页</a></p>';
 	exit;
 }

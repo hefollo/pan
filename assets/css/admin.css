@@ -24,6 +24,41 @@ body.admin-body a:hover,body.admin-body a:focus{color:var(--admin-primary-dark);
 .dropdown-menu>li>a:hover i.fa-fw,.dropdown-menu>.active>a i.fa-fw{color:var(--admin-primary)}
 /* 设置菜单有 14 项 5 个分组，笔记本屏幕竖着排会顶到屏幕外，给个上限让它自己滚 */
 .admin-settings-menu{min-width:214px;max-height:calc(100vh - 96px);overflow-y:auto}
+.admin-section-menu{position:relative}
+.admin-section-menu>a{position:relative;padding-right:34px!important}
+.admin-section-caret{position:absolute;right:14px;top:50%;margin:0!important;transform:translateY(-50%);transition:transform .18s ease}
+.admin-section-submenu{display:none;list-style:none;margin:2px 10px 7px 25px;padding:3px 0 3px 12px;border-left:1px solid var(--admin-line)}
+.admin-section-menu.active>.admin-section-submenu{display:block}
+.admin-section-menu.active>a .admin-section-caret{transform:translateY(-50%) rotate(180deg)}
+.admin-section-submenu>li>a{display:block;padding:7px 10px;border-radius:6px;color:var(--admin-muted)!important;font-size:13px;line-height:1.35}
+.admin-section-submenu>li>a:hover,.admin-section-submenu>li>a:focus{background:var(--admin-soft);color:var(--admin-primary)!important}
+.admin-section-submenu>li.active>a{background:var(--admin-soft);color:var(--admin-primary)!important;font-weight:700}
+.admin-settings-section{scroll-margin-top:78px}
+body.admin-dynamic-loading{cursor:progress}
+body.admin-dynamic-loading #admin-dynamic-content-start~.container,body.admin-dynamic-loading #admin-dynamic-content-start~.container-fluid{opacity:.45;pointer-events:none;transition:opacity .15s ease}
+body.admin-dynamic-loading:after{content:"";position:fixed;z-index:2000;left:50%;top:50%;width:34px;height:34px;margin:-17px 0 0 -17px;border:3px solid rgba(100,116,139,.24);border-top-color:var(--admin-primary);border-radius:50%;animation:admin-dynamic-spin .7s linear infinite}
+@keyframes admin-dynamic-spin{to{transform:rotate(360deg)}}
+.api-settings-page>.panel{margin-bottom:18px}
+.api-settings-page .panel-heading{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.api-settings-page .panel-title{display:flex;align-items:center;gap:8px}
+.api-settings-page .panel-title i{margin:0}
+.api-status{display:inline-flex;align-items:center;gap:7px;padding:5px 10px;border:1px solid var(--admin-line);border-radius:999px;background:var(--admin-surface);color:var(--admin-muted);font-size:12px;font-weight:700;white-space:nowrap}
+.api-status i{font-size:8px}.api-status.is-on{border-color:rgba(5,150,105,.28);background:rgba(5,150,105,.1);color:var(--admin-green)}
+.api-status.is-off{border-color:rgba(220,38,38,.22);background:rgba(220,38,38,.08);color:var(--admin-red)}
+.api-intro{display:flex;align-items:flex-start;gap:13px;margin-bottom:18px;padding:14px 16px;border:1px solid rgba(37,99,235,.16);border-radius:10px;background:rgba(37,99,235,.06)}
+.api-intro>i{flex:0 0 34px;width:34px;height:34px;border-radius:9px;background:var(--admin-primary);color:#fff;font-size:16px;line-height:34px;text-align:center}
+.api-intro div{display:flex;flex-direction:column;gap:3px}.api-intro b{color:var(--admin-text)}.api-intro span{color:var(--admin-muted);font-size:13px;line-height:1.6}
+.api-config-form{max-width:920px}.api-config-form .help-block{margin-bottom:0}.api-form-actions .btn{min-width:170px}
+.api-endpoint-card{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:18px;border:1px solid var(--admin-line);border-radius:12px;background:var(--admin-soft)}
+.api-endpoint-meta{display:flex;align-items:center;gap:12px}.api-endpoint-meta>div{display:flex;flex-direction:column;gap:3px}.api-endpoint-meta b{color:var(--admin-text)}.api-endpoint-meta small{color:var(--admin-muted)}
+.api-method{padding:6px 10px;border-radius:7px;background:var(--admin-green);color:#fff;font-size:12px;font-weight:800;letter-spacing:.04em}
+.api-endpoint-value{display:flex;align-items:center;min-width:0;gap:8px}.api-endpoint-value code{display:block;max-width:620px;padding:8px 11px;overflow:hidden;border:1px solid var(--admin-line);border-radius:7px;background:var(--admin-surface);color:var(--admin-primary);font-size:13px;text-overflow:ellipsis;white-space:nowrap}.api-endpoint-value .btn{flex:none}
+.api-format-row{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:12px 0 26px;color:var(--admin-muted);font-size:12px}.api-format-row>b{padding:4px 8px;border-radius:5px;background:rgba(100,116,139,.1);color:var(--admin-text);font-size:11px}.api-format-row>small{margin-left:auto;color:var(--admin-muted)}
+.api-doc-section+.api-doc-section{margin-top:28px;padding-top:26px;border-top:1px solid var(--admin-line)}
+.api-section-title{display:flex;align-items:flex-start;gap:12px;margin-bottom:14px}.api-section-title>span{flex:0 0 32px;width:32px;height:32px;border-radius:9px;background:rgba(37,99,235,.1);color:var(--admin-primary);font-size:12px;font-weight:800;line-height:32px;text-align:center}.api-section-title h4{margin:0 0 4px;color:var(--admin-text);font-size:16px;font-weight:800}.api-section-title p{margin:0;color:var(--admin-muted);font-size:13px}
+.api-table-wrap{border:1px solid var(--admin-line);border-radius:10px}.api-table{margin:0}.api-table>thead>tr>th{padding:11px 13px;border-bottom:1px solid var(--admin-line);background:var(--admin-soft);color:var(--admin-muted);font-size:12px;white-space:nowrap}.api-table>tbody>tr>td{padding:11px 13px;border-top:1px solid var(--admin-line);color:var(--admin-text);vertical-align:middle}.api-table code{color:var(--admin-primary);white-space:nowrap}.api-required{display:inline-block;padding:2px 7px;border-radius:999px;background:rgba(220,38,38,.09);color:var(--admin-red);font-size:11px;font-weight:700}
+.api-code-card{overflow:hidden;border:1px solid #243148;border-radius:10px;background:#101827}.api-code-head{display:flex;align-items:center;justify-content:space-between;padding:9px 13px;border-bottom:1px solid rgba(255,255,255,.1);color:#a9b8cf;font-size:12px}.api-code-head button{padding:3px 7px;border:0;background:transparent;color:#c6d4e8}.api-code-head button:hover{color:#fff}.api-code-card pre{margin:0;padding:18px;border:0;border-radius:0;background:transparent;color:#dbeafe;font-size:13px;line-height:1.7;white-space:pre-wrap;word-break:break-word}.api-code-card code{background:transparent;color:inherit}
+@media (max-width:767px){.api-settings-page .panel-heading{align-items:flex-start}.api-status{padding:4px 8px}.api-endpoint-card{align-items:stretch;flex-direction:column}.api-endpoint-value code{flex:1}.api-endpoint-value .btn{font-size:0}.api-endpoint-value .btn i{font-size:13px}.api-format-row>small{width:100%;margin-left:0}.api-form-actions .btn{width:100%}.api-table{min-width:680px}}
 .container{max-width:1220px}
 /* ===== 后台页面外壳 =====
    顶栏是 fixed 的，内容要给它让出高度。这行 padding 原来是 14 个页面各写一份行内样式，

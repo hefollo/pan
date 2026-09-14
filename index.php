@@ -103,6 +103,9 @@ if($site_theme === 'portal' && !$kw && (!isset($_GET['m']) || $_GET['m'] !== 'mi
 //布局型外观的额外结构：统计卡、类型筛选、右侧预览，只在对应外观下输出
 $layout_key = (isset($layout_themes) && in_array($site_theme, $layout_themes, true)) ? $site_theme : '';
 $layout_is_mine = isset($_GET['m']) && $_GET['m'] === 'mine';
+//游客的“我的文件”也使用个人中心的文件表格排版。登录用户在文件开头已经跳转到 user.php，
+//所以这里的 guest mine 只可能来自当前浏览器会话保存的上传记录。
+$guest_mine = $layout_is_mine && !$islogin2;
 $layout_counts = null;
 if($layout_key === 'console' || $layout_key === 'workspace' || $layout_key === 'cockpit' || in_array($layout_key, studio_family_keys(), true)){
     $layout_counts = layout_type_counts($DB, $sql_base);
@@ -164,10 +167,25 @@ echo layout_render_stats($layout_counts, layout_today_total($DB, $sql_base), $st
         <?php if(isset($_GET['m']) && $_GET['m']=='mine'){?>
         <input type="file" id="replaceFileInput" style="display:none">
         <?php }?>
+<?php if($guest_mine){?>
+        <div class="uc-batchbar" id="guestBatchBar" hidden>
+            <span>已选中 <b id="guestSelCount">0</b> 个文件</span>
+            <button type="button" class="uc-btn uc-btn-danger" id="guestBatchDelete"><i class="fa fa-trash" aria-hidden="true"></i> 批量删除</button>
+            <button type="button" class="uc-btn" id="guestSelClear">取消选择</button>
+        </div>
+<?php }?>
         <div class="table-responsive">
-       <table class="table table-striped table-hover filelist filelist-main">
+       <table class="table table-hover <?php echo $guest_mine ? 'uc-filelist guest-filelist' : 'table-striped filelist filelist-main'?>">
             <thead>
                 <tr>
+<?php if($guest_mine){?>
+                    <th class="uc-col-check"><input type="checkbox" id="guestCheckAll" title="全选本页"></th>
+                    <th>文件名</th>
+                    <th class="uc-col-size">大小</th>
+                    <th class="uc-col-state">状态</th>
+                    <th class="uc-col-time">上传时间</th>
+                    <th class="uc-col-act">操作</th>
+<?php }else{?>
                     <th>#</th>
                     <?php //工作台家族把操作列放到最右边，和这几套外观的原型一致；其余外观保持原来的第二列
                     if(!in_array($layout_key, studio_family_keys(), true)){?><th>操作</th><?php }?>
@@ -177,6 +195,7 @@ echo layout_render_stats($layout_counts, layout_today_total($DB, $sql_base), $st
                     <th>上传时间</th>
                     <th>上传者IP</th>
                     <?php if(in_array($layout_key, studio_family_keys(), true)){?><th>操作</th><?php }?>
+<?php }?>
                 </tr>
             </thead>
             <tbody>
@@ -193,6 +212,13 @@ while($res = $rs->fetch())
 {
 	$fileurl = './down.php/'.$res['token'].'.'.($res['type']?$res['type']:'file');
 	$viewurl = './file.php?hash='.$res['token'];
+	$blocked = intval($res['block']) === 1;
+	$pending = intval($res['block']) === 2;
+	$hidden = intval($res['hide']) === 1;
+	$haspwd = !empty($res['pwd']);
+	$can_manage = can_manage_file($res);
+	$delete_reason = file_delete_locked_reason($res);
+	if($delete_reason === '' && !$can_manage) $delete_reason = '游客只能管理本浏览器七天内上传的文件';
 	$actions = '<div class="file-actions"><a class="file-action file-action-down" href="'.$fileurl.'" title="下载"><i class="fa fa-download" aria-hidden="true"></i> <span class="file-action-label">下载</span></a><a class="file-action file-action-view" href="'.$viewurl.'" title="查看"><i class="fa fa-eye" aria-hidden="true"></i> <span class="file-action-label">查看</span></a>';
 	if(isset($_GET['m']) && $_GET['m']=='mine' && can_edit_file_online($res)){
 		$actions .= '<a class="file-action file-action-edit" href="./edit.php?id='.$res['id'].'" title="编辑"><i class="fa fa-pencil" aria-hidden="true"></i> <span class="file-action-label">编辑</span></a>';
@@ -239,13 +265,44 @@ while($res = $rs->fetch())
 		.' data-view="'.htmlspecialchars($viewurl, ENT_QUOTES, 'UTF-8').'"'
 		.' data-icon="'.type_to_icon($res['type']).'"'
 		.' data-lock="'.(!empty($res['pwd']) ? '1' : '').'"';
+if($guest_mine){
+	$guest_actions = '<div class="uc-acts">'
+		.'<a class="uc-act" href="'.htmlspecialchars($fileurl, ENT_QUOTES, 'UTF-8').'" title="下载"><i class="fa fa-download" aria-hidden="true"></i></a>'
+		.'<a class="uc-act" href="'.htmlspecialchars($viewurl, ENT_QUOTES, 'UTF-8').'" title="查看"><i class="fa fa-eye" aria-hidden="true"></i></a>';
+	if(can_edit_file_online($res)){
+		$guest_actions .= '<a class="uc-act" href="./edit.php?id='.intval($res['id']).'" title="在线编辑"><i class="fa fa-code" aria-hidden="true"></i></a>';
+	}
+	if($can_manage){
+		$guest_actions .= '<button type="button" class="uc-act" data-guest="replace" title="重新上传替换"><i class="fa fa-refresh" aria-hidden="true"></i></button>';
+	}
+	if($delete_reason === ''){
+		$guest_actions .= '<button type="button" class="uc-act uc-act-danger" data-guest="delete" title="删除"><i class="fa fa-trash" aria-hidden="true"></i></button>';
+	}
+	$guest_actions .= '</div>';
+	$check_attr = $delete_reason !== '' ? ' disabled title="'.htmlspecialchars($delete_reason, ENT_QUOTES, 'UTF-8').'"' : '';
+	$state = '';
+	if($blocked) $state .= '<span class="uc-badge uc-badge-danger">已冻结</span>';
+	if($pending) $state .= '<span class="uc-badge uc-badge-warn">待人工审核</span>';
+	$state .= $hidden ? '<span class="uc-badge">私密</span>' : '<span class="uc-badge uc-badge-ok">公开</span>';
+	if($haspwd) $state .= '<span class="uc-badge uc-badge-warn"><i class="fa fa-lock" aria-hidden="true"></i> 有密码</span>';
+	echo '<tr data-id="'.intval($res['id']).'" data-token="'.htmlspecialchars($res['token'], ENT_QUOTES, 'UTF-8').'"'.($blocked ? ' class="is-blocked"' : '').'>'
+		.'<td class="uc-col-check"><input type="checkbox" class="guest-check"'.$check_attr.'></td>'
+		.'<td class="uc-col-name"><i class="fa '.type_to_icon($res['type']).' fa-fw"></i><span class="uc-name">'.$res['name'].'</span></td>'
+		.'<td class="uc-col-size">'.size_format($res['size']).'</td>'
+		.'<td class="uc-col-state">'.$state.'</td>'
+		.'<td class="uc-col-time">'.$res['addtime'].'</td>'
+		.'<td class="uc-col-act">'.$guest_actions.'</td></tr>';
+	continue;
+}
 $cell_action = '<td class="filelist-actions-cell">'.$actions.'</td>';
 $cell_rest = '<td><i class="fa '.type_to_icon($res['type']).' fa-fw"></i>'.$res['name'].$lock_icon.'</td><td>'.size_format($res['size']).'</td><td><span class="file-type-badge">'.htmlspecialchars($type_text).'</span></td><td>'.$res['addtime'].'</td><td>'.$row_ip.'</td>';
 //操作列的位置跟着表头走：蓝白工作台风在最右，其余外观在第二列
 echo '<tr'.$row_attr.'><td><b>'.$i++.'</b></td>'
 	.(in_array($layout_key, studio_family_keys(), true) ? $cell_rest.$cell_action : $cell_action.$cell_rest).'</tr>';
 }
-if($numrows == 0) echo '<tr><td colspan="7" align="center">还没上传过任何文件</td></tr>';
+if($numrows == 0) echo $guest_mine
+	? '<tr><td colspan="6" class="uc-empty">还没上传过任何文件</td></tr>'
+	: '<tr><td colspan="7" align="center">还没上传过任何文件</td></tr>';
 ?>
             </tbody>
         </table>
@@ -309,6 +366,90 @@ if(in_array($layout_key, studio_family_keys(), true)){echo layout_render_studio_
 <script>
 var replace_csrf_token = '<?php echo $csrf_token?>';
 var replace_target_id = 0;
+
+//游客文件表格沿用个人中心的勾选体验，但删除仍逐条走 ajax.php 的游客权限校验：
+//服务端会按 token 复查当前会话归属、七天期限以及冻结/待审状态。
+function guest_selected_rows(){
+  return $('.guest-filelist tbody .guest-check:checked').closest('tr');
+}
+function guest_refresh_batchbar(){
+  var $selected = guest_selected_rows();
+  var $available = $('.guest-filelist tbody .guest-check:not(:disabled)');
+  $('#guestSelCount').text($selected.length);
+  $('#guestBatchBar').prop('hidden', $selected.length === 0);
+  $('#guestCheckAll').prop('checked', $available.length > 0 && $selected.length === $available.length);
+}
+$('#guestCheckAll').on('change', function(){
+  $('.guest-filelist tbody .guest-check:not(:disabled)').prop('checked', this.checked);
+  guest_refresh_batchbar();
+});
+$('.guest-filelist').on('change', '.guest-check', guest_refresh_batchbar);
+$('#guestSelClear').on('click', function(){
+  $('.guest-filelist tbody .guest-check').prop('checked', false);
+  $('#guestCheckAll').prop('checked', false);
+  guest_refresh_batchbar();
+});
+
+function guest_delete_files(tokens){
+  if(!tokens.length) return;
+  var loading = layer.load(2, {shade:[0.2,'#fff']});
+  var ok = 0, failed = [];
+  $.getJSON('ajax.php?act=csrf_token').done(function(tokenData){
+    if(tokenData && tokenData.csrf_token) replace_csrf_token = tokenData.csrf_token;
+    var next = function(index){
+      if(index >= tokens.length){
+        layer.close(loading);
+        if(failed.length === 0){
+          layer.msg('已删除 '+ok+' 个文件', {icon:1, time:1200}, function(){ window.location.reload(); });
+        }else{
+          layer.alert('已删除 '+ok+' 个文件，'+failed.length+' 个删除失败：'+failed.join('；'), {icon: ok ? 0 : 2}, function(){ window.location.reload(); });
+        }
+        return;
+      }
+      $.ajax({
+        type: 'POST',
+        url: 'ajax.php?act=deleteFile',
+        data: {hash: tokens[index], csrf_token: replace_csrf_token},
+        dataType: 'json',
+        success: function(res){
+          if(res && res.code === 0) ok++;
+          else failed.push((res && res.msg) || '服务器返回异常');
+          next(index + 1);
+        },
+        error: function(){ failed.push('网络错误'); next(index + 1); }
+      });
+    };
+    next(0);
+  }).fail(function(){
+    layer.close(loading);
+    layer.msg('无法获取安全令牌，请刷新页面重试', {icon:2});
+  });
+}
+
+$('#guestBatchDelete').on('click', function(){
+  var tokens = guest_selected_rows().map(function(){ return $(this).attr('data-token'); }).get();
+  if(!tokens.length){ layer.msg('请先选择文件'); return; }
+  layer.confirm('确定删除选中的 '+tokens.length+' 个文件？删除后外链立即失效，且无法恢复。',
+    {icon:3, title:'批量删除'}, function(index){
+      layer.close(index);
+      guest_delete_files(tokens);
+    });
+});
+
+$('.guest-filelist').on('click', '[data-guest]', function(){
+  var $row = $(this).closest('tr');
+  if($(this).data('guest') === 'replace'){
+    replace_upload_click($row.data('id'));
+    return;
+  }
+  var name = $row.find('.uc-name').text();
+  layer.confirm('确定删除《'+name+'》？删除后外链立即失效，且无法恢复。',
+    {icon:3, title:'删除文件'}, function(index){
+      layer.close(index);
+      guest_delete_files([$row.attr('data-token')]);
+    });
+});
+
 function replace_upload_click(id){
   replace_target_id = id;
   $("#replaceFileInput").val('');

@@ -280,10 +280,10 @@ if($islogin==1){}else exit("<script language='javascript'>window.location.href='
 	}
 
 	//筛选条和分页都是整块替换的，用事件委托绑在 document 上
-	$(document).on('click', '.maillog-tab', function(){
+	$(document).on('click.adminDynamicPage', '.maillog-tab', function(){
 		load({status: parseInt($(this).attr('data-status'), 10), page: 1}, true);
 	});
-	$(document).on('click', '.maillog-page', function(){
+	$(document).on('click.adminDynamicPage', '.maillog-page', function(){
 		load({page: parseInt($(this).attr('data-page'), 10)}, true);
 	});
 
@@ -316,7 +316,7 @@ if($islogin==1){}else exit("<script language='javascript'>window.location.href='
 	};
 
 	//浏览器前进后退时按地址栏里的条件重新拉一次
-	$(window).on('popstate', function(){
+	$(window).on('popstate.adminDynamicPage', function(){
 		var q = location.search;
 		var m = q.match(/[?&]status=(-?\d+)/);
 		state.status = m ? parseInt(m[1], 10) : -1;

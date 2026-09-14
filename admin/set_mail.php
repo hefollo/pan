@@ -46,7 +46,7 @@ $mail_names = implode('、', $mail_names);
 <div class="container">
 <div class="admin-page">
 
-<div class="panel panel-primary">
+<div class="panel panel-primary" id="mail-sender">
 <div class="panel-heading"><h3 class="panel-title">发件人设置</h3></div>
 <div class="panel-body">
   <form onsubmit="return saveSetting(this)" method="post" class="form-horizontal" role="form">
@@ -72,7 +72,56 @@ $mail_names = implode('、', $mail_names);
 </div>
 </div>
 
-<div class="panel panel-primary">
+<div class="panel panel-primary" id="mail-registration">
+<div class="panel-heading"><h3 class="panel-title">邮箱注册设置</h3></div>
+<div class="panel-body">
+  <div class="alert alert-info">邮箱注册开关已移到「用户登录设置 → 开启的登录方式」，这里配置验证码安全策略和发信限额。</div>
+  <form onsubmit="return saveSetting(this)" method="post" class="form-horizontal" role="form">
+	<div class="form-group">
+	  <label class="col-sm-3 control-label">算术验证码</label>
+	  <div class="col-sm-9"><select class="form-control" name="mail_captcha_open" default="<?php echo isset($conf['mail_captcha_open'])?$conf['mail_captcha_open']:1?>"><option value="1">开启</option><option value="0">关闭</option></select>
+	  <p class="help-block">在「获取验证码」前加一道简单算术题（比如 3 + 5 = ?），纯服务端生成、不依赖第三方也不用画图。<b>建议保持开启</b>：光靠频率限制挡不住脚本，加了这一步刷接口的成本会高很多。</p></div>
+	</div><br/>
+	<div class="form-group">
+	  <label class="col-sm-3 control-label">验证码有效期</label>
+	  <div class="col-sm-9"><div class="mail-field"><input type="number" name="mail_code_expire" value="<?php echo htmlspecialchars(isset($conf['mail_code_expire'])?$conf['mail_code_expire']:'10', ENT_QUOTES, 'UTF-8')?>" class="form-control" min="1" max="60"/><span class="mail-unit">分钟</span></div>
+	  <p class="help-block">验证码错 5 次会自动作废，需要重新获取。</p></div>
+	</div><br/>
+	<div class="form-group">
+	  <label class="col-sm-3 control-label">同邮箱发送间隔</label>
+	  <div class="col-sm-9"><div class="mail-field"><input type="number" name="mail_send_interval" value="<?php echo htmlspecialchars(isset($conf['mail_send_interval'])?$conf['mail_send_interval']:'60', ENT_QUOTES, 'UTF-8')?>" class="form-control" min="0"/><span class="mail-unit">秒</span></div></div>
+	</div><br/>
+	<div class="form-group">
+	  <label class="col-sm-3 control-label">每日发送上限</label>
+	  <div class="col-sm-9">
+		<div class="row">
+		  <div class="col-xs-12 col-sm-6"><div class="mail-field"><span class="mail-unit mail-unit-pre">同邮箱</span><input type="number" name="mail_daily_limit" value="<?php echo htmlspecialchars(isset($conf['mail_daily_limit'])?$conf['mail_daily_limit']:'10', ENT_QUOTES, 'UTF-8')?>" class="form-control" min="0"/><span class="mail-unit">封/天</span></div></div>
+		  <div class="col-xs-12 col-sm-6"><div class="mail-field"><span class="mail-unit mail-unit-pre">同 IP</span><input type="number" name="mail_ip_daily_limit" value="<?php echo htmlspecialchars(isset($conf['mail_ip_daily_limit'])?$conf['mail_ip_daily_limit']:'20', ENT_QUOTES, 'UTF-8')?>" class="form-control" min="0"/><span class="mail-unit">封/天</span></div></div>
+		</div>
+	  <p class="help-block">填 0 表示不限制。「同 IP」用的是伪造不了的来源地址：只有请求确实来自 Cloudflare 时才采信 CF 的真实 IP 头，否则一律按 TCP 连接的对端地址算。<br/><b>建议把「同 IP」调到 5 左右</b>：正常人注册一次最多试两三回，调小能明显压制脚本刷接口。</p></div>
+	</div><br/>
+	<div class="form-group">
+	  <label class="col-sm-3 control-label">全站发信上限</label>
+	  <div class="col-sm-9">
+		<div class="row">
+		  <div class="col-xs-12 col-sm-6"><div class="mail-field"><span class="mail-unit mail-unit-pre">每小时</span><input type="number" name="mail_hour_limit" value="<?php echo htmlspecialchars(isset($conf['mail_hour_limit'])?$conf['mail_hour_limit']:'50', ENT_QUOTES, 'UTF-8')?>" class="form-control" min="0"/><span class="mail-unit">封</span></div></div>
+		  <div class="col-xs-12 col-sm-6"><div class="mail-field"><span class="mail-unit mail-unit-pre">每天</span><input type="number" name="mail_site_daily" value="<?php echo htmlspecialchars(isset($conf['mail_site_daily'])?$conf['mail_site_daily']:'200', ENT_QUOTES, 'UTF-8')?>" class="form-control" min="0"/><span class="mail-unit">封</span></div></div>
+		</div>
+	  <p class="help-block">最后一道保险：就算有人换着邮箱和网络来刷，也烧不掉整个发信额度。正常站点碰不到这个数，按自己的邮箱额度设置即可（QQ 邮箱个人账号一天大约几十封）。</p></div>
+	</div><br/>
+	<div class="form-group">
+	  <label class="col-sm-3 control-label">邮箱域名黑名单</label>
+	  <div class="col-sm-9"><textarea name="mail_domain_deny" class="form-control" rows="3" placeholder="mailinator.com&#10;10minutemail.com"><?php echo htmlspecialchars(isset($conf['mail_domain_deny'])?$conf['mail_domain_deny']:'', ENT_QUOTES, 'UTF-8')?></textarea>
+	  <p class="help-block">一行一个域名，用来挡一次性邮箱。留空表示不限制。</p></div>
+	</div><br/>
+	<div class="form-group">
+	  <div class="col-sm-offset-3 col-sm-9"><input type="submit" value="保存注册设置" class="btn btn-primary form-control"/></div>
+	</div>
+  </form>
+</div>
+</div>
+
+<div class="panel panel-primary" id="mail-channels">
 <div class="panel-heading"><h3 class="panel-title">发信通道</h3></div>
 <div class="panel-body">
   <ul class="nav nav-tabs mail-tabs" role="tablist">
@@ -185,60 +234,7 @@ $mail_names = implode('、', $mail_names);
 </div>
 </div>
 
-<div class="panel panel-primary">
-<div class="panel-heading"><h3 class="panel-title">邮箱注册设置</h3></div>
-<div class="panel-body">
-  <form onsubmit="return saveSetting(this)" method="post" class="form-horizontal" role="form">
-	<div class="form-group">
-	  <label class="col-sm-3 control-label">邮箱注册</label>
-	  <div class="col-sm-9"><select class="form-control" name="mail_reg_open" default="<?php echo isset($conf['mail_reg_open'])?$conf['mail_reg_open']:0?>"><option value="0">关闭</option><option value="1">开启</option></select>
-	  <p class="help-block">开启后登录页会出现「注册」标签，用户填邮箱收验证码即可注册。需要先配好上面的发信通道，并且「用户登录设置」里的登录功能是开启的。<br/>关闭后已注册的用户仍然可以用邮箱登录，只是不能再注册新账号。</p></div>
-	</div><br/>
-	<div class="form-group">
-	  <label class="col-sm-3 control-label">算术验证码</label>
-	  <div class="col-sm-9"><select class="form-control" name="mail_captcha_open" default="<?php echo isset($conf['mail_captcha_open'])?$conf['mail_captcha_open']:1?>"><option value="1">开启</option><option value="0">关闭</option></select>
-	  <p class="help-block">在「获取验证码」前加一道简单算术题（比如 3 + 5 = ?），纯服务端生成、不依赖第三方也不用画图。<b>建议保持开启</b>：光靠频率限制挡不住脚本，加了这一步刷接口的成本会高很多。</p></div>
-	</div><br/>
-	<div class="form-group">
-	  <label class="col-sm-3 control-label">验证码有效期</label>
-	  <div class="col-sm-9"><div class="mail-field"><input type="number" name="mail_code_expire" value="<?php echo htmlspecialchars(isset($conf['mail_code_expire'])?$conf['mail_code_expire']:'10', ENT_QUOTES, 'UTF-8')?>" class="form-control" min="1" max="60"/><span class="mail-unit">分钟</span></div>
-	  <p class="help-block">验证码错 5 次会自动作废，需要重新获取。</p></div>
-	</div><br/>
-	<div class="form-group">
-	  <label class="col-sm-3 control-label">同邮箱发送间隔</label>
-	  <div class="col-sm-9"><div class="mail-field"><input type="number" name="mail_send_interval" value="<?php echo htmlspecialchars(isset($conf['mail_send_interval'])?$conf['mail_send_interval']:'60', ENT_QUOTES, 'UTF-8')?>" class="form-control" min="0"/><span class="mail-unit">秒</span></div></div>
-	</div><br/>
-	<div class="form-group">
-	  <label class="col-sm-3 control-label">每日发送上限</label>
-	  <div class="col-sm-9">
-		<div class="row">
-		  <div class="col-xs-12 col-sm-6"><div class="mail-field"><span class="mail-unit mail-unit-pre">同邮箱</span><input type="number" name="mail_daily_limit" value="<?php echo htmlspecialchars(isset($conf['mail_daily_limit'])?$conf['mail_daily_limit']:'10', ENT_QUOTES, 'UTF-8')?>" class="form-control" min="0"/><span class="mail-unit">封/天</span></div></div>
-		  <div class="col-xs-12 col-sm-6"><div class="mail-field"><span class="mail-unit mail-unit-pre">同 IP</span><input type="number" name="mail_ip_daily_limit" value="<?php echo htmlspecialchars(isset($conf['mail_ip_daily_limit'])?$conf['mail_ip_daily_limit']:'20', ENT_QUOTES, 'UTF-8')?>" class="form-control" min="0"/><span class="mail-unit">封/天</span></div></div>
-		</div>
-	  <p class="help-block">填 0 表示不限制。「同 IP」用的是伪造不了的来源地址：只有请求确实来自 Cloudflare 时才采信 CF 的真实 IP 头，否则一律按 TCP 连接的对端地址算。<br/><b>建议把「同 IP」调到 5 左右</b>：正常人注册一次最多试两三回，调小能明显压制脚本刷接口。</p></div>
-	</div><br/>
-	<div class="form-group">
-	  <label class="col-sm-3 control-label">全站发信上限</label>
-	  <div class="col-sm-9">
-		<div class="row">
-		  <div class="col-xs-12 col-sm-6"><div class="mail-field"><span class="mail-unit mail-unit-pre">每小时</span><input type="number" name="mail_hour_limit" value="<?php echo htmlspecialchars(isset($conf['mail_hour_limit'])?$conf['mail_hour_limit']:'50', ENT_QUOTES, 'UTF-8')?>" class="form-control" min="0"/><span class="mail-unit">封</span></div></div>
-		  <div class="col-xs-12 col-sm-6"><div class="mail-field"><span class="mail-unit mail-unit-pre">每天</span><input type="number" name="mail_site_daily" value="<?php echo htmlspecialchars(isset($conf['mail_site_daily'])?$conf['mail_site_daily']:'200', ENT_QUOTES, 'UTF-8')?>" class="form-control" min="0"/><span class="mail-unit">封</span></div></div>
-		</div>
-	  <p class="help-block">最后一道保险：就算有人换着邮箱和网络来刷，也烧不掉整个发信额度。正常站点碰不到这个数，按自己的邮箱额度设置即可（QQ 邮箱个人账号一天大约几十封）。</p></div>
-	</div><br/>
-	<div class="form-group">
-	  <label class="col-sm-3 control-label">邮箱域名黑名单</label>
-	  <div class="col-sm-9"><textarea name="mail_domain_deny" class="form-control" rows="3" placeholder="mailinator.com&#10;10minutemail.com"><?php echo htmlspecialchars(isset($conf['mail_domain_deny'])?$conf['mail_domain_deny']:'', ENT_QUOTES, 'UTF-8')?></textarea>
-	  <p class="help-block">一行一个域名，用来挡一次性邮箱。留空表示不限制。</p></div>
-	</div><br/>
-	<div class="form-group">
-	  <div class="col-sm-offset-3 col-sm-9"><input type="submit" value="保存注册设置" class="btn btn-primary form-control"/></div>
-	</div>
-  </form>
-</div>
-</div>
-
-<div class="panel panel-primary">
+<div class="panel panel-primary" id="mail-test">
 <div class="panel-heading"><h3 class="panel-title">测试发信</h3></div>
 <div class="panel-body">
   <form onsubmit="return sendTest(this)" method="post" class="form-horizontal" role="form">

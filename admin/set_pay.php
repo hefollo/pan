@@ -520,8 +520,8 @@ if(isset($_GET['tab']) && $_GET['tab'] === 'epay')$pay_tab = 'epay';
 	});
 
 	//列表是整块替换的，这里统一用事件委托，不用每次重新绑定
-	$(document).on('click', '.plan-edit', function(e){ e.preventDefault(); toEdit(this); });
-	$(document).on('submit', '.plan-op', function(e){
+	$(document).on('click.adminDynamicPage', '.plan-edit', function(e){ e.preventDefault(); toEdit(this); });
+	$(document).on('submit.adminDynamicPage', '.plan-op', function(e){
 		e.preventDefault();
 		var msg = this.getAttribute('data-confirm');
 		if(msg && !confirm(msg))return;

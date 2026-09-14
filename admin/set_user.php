@@ -59,8 +59,11 @@ if($islogin==1){}else exit("<script language='javascript'>window.location.href='
                         <label class="form-label"><b>开启的登录方式</b></label>
                         <input type="hidden" name="login_qq" value="0"/>
                         <input type="hidden" name="login_wx" value="0"/>
+                        <input type="hidden" name="mail_reg_open" value="0"/>
                         <label class="checkbox-inline"><input type="checkbox" name="login_qq" value="1" <?php echo $conf['login_qq']?'checked':null;?>> QQ</label>
                         <label class="checkbox-inline"><input type="checkbox" name="login_wx" value="1" <?php echo $conf['login_wx']?'checked':null;?>> 微信</label>
+                        <label class="checkbox-inline"><input type="checkbox" name="mail_reg_open" value="1" <?php echo !empty($conf['mail_reg_open'])?'checked':null;?>> 邮箱注册</label>
+                        <div class="form-text">开启邮箱注册前，请先在“邮件发信设置”中配置可用的发信通道；关闭后，已有邮箱账号仍可正常登录。</div>
                     </div>
                     <div class="mb-4">
                         <button type="submit" class="btn btn-primary">
