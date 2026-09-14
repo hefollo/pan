@@ -469,6 +469,112 @@ function getSetting($k){
 	global $DB;
 	return $DB->getColumn("SELECT v FROM pre_config WHERE k=:k LIMIT 1", [':k'=>$k]);
 }
+
+/* ===== 用户上传 API 密钥 ===== */
+
+function api_auth_mode(){
+	global $conf;
+	$mode = isset($conf['api_auth_mode']) ? (string)$conf['api_auth_mode'] : 'user';
+	return in_array($mode, ['public', 'user', 'vip'], true) ? $mode : 'user';
+}
+
+function api_key_limit(){
+	global $conf;
+	$value = isset($conf['api_key_limit']) ? intval($conf['api_key_limit']) : 5;
+	return max(1, min(20, $value));
+}
+
+function api_key_default_expire_days(){
+	global $conf;
+	$value = isset($conf['api_key_expire_days']) ? intval($conf['api_key_expire_days']) : 365;
+	return max(0, min(3650, $value));
+}
+
+function api_key_hash($key){
+	return hash_hmac('sha256', (string)$key, SYS_KEY);
+}
+
+function api_request_token(){
+	$header = '';
+	if(!empty($_SERVER['HTTP_AUTHORIZATION']))$header = trim($_SERVER['HTTP_AUTHORIZATION']);
+	elseif(!empty($_SERVER['REDIRECT_HTTP_AUTHORIZATION']))$header = trim($_SERVER['REDIRECT_HTTP_AUTHORIZATION']);
+	if($header !== '' && preg_match('/^Bearer\s+(.+)$/i', $header, $match))return trim($match[1]);
+	return !empty($_SERVER['HTTP_X_API_KEY']) ? trim($_SERVER['HTTP_X_API_KEY']) : '';
+}
+
+function normalize_api_ip_list($value, &$error = ''){
+	$error = '';
+	$items = preg_split('/[|,\s]+/', trim((string)$value), -1, PREG_SPLIT_NO_EMPTY);
+	$result = [];
+	foreach($items as $item){
+		$parts = explode('/', $item, 2);
+		if(filter_var($parts[0], FILTER_VALIDATE_IP) === false){ $error = 'IP 白名单中包含无效地址：'.$item; return ''; }
+		if(isset($parts[1])){
+			if($parts[1] === '' || !ctype_digit($parts[1])){ $error = 'CIDR 格式不正确：'.$item; return ''; }
+			$max = strpos($parts[0], ':') !== false ? 128 : 32;
+			if(intval($parts[1]) < 0 || intval($parts[1]) > $max){ $error = 'CIDR 前缀超出范围：'.$item; return ''; }
+			$item = $parts[0].'/'.intval($parts[1]);
+		}else{
+			$item = $parts[0];
+		}
+		$result[] = $item;
+	}
+	return implode('|', array_values(array_unique($result)));
+}
+
+function api_ip_allowed($ip, $whitelist){
+	$whitelist = trim((string)$whitelist);
+	if($whitelist === '')return true;
+	$ip_binary = @inet_pton((string)$ip);
+	foreach(explode('|', $whitelist) as $rule){
+		if(strpos($rule, '/') !== false){
+			if(ip_in_cidr($ip, $rule))return true;
+		}else{
+			$rule_binary = @inet_pton($rule);
+			if($ip_binary !== false && $rule_binary !== false && hash_equals($rule_binary, $ip_binary))return true;
+		}
+	}
+	return false;
+}
+
+function create_user_api_key($uid, $name, $allow_ip = '', $expire_days = null){
+	global $DB;
+	$uid = intval($uid);
+	$name = trim(strip_tags((string)$name));
+	if($uid <= 0 || $name === '')return ['ok'=>false, 'msg'=>'请填写密钥名称'];
+	$name_length = function_exists('mb_strlen') ? mb_strlen($name, 'UTF-8') : strlen($name);
+	if($name_length > 32)return ['ok'=>false, 'msg'=>'密钥名称不能超过 32 个字'];
+	$error = '';
+	$allow_ip = normalize_api_ip_list($allow_ip, $error);
+	if($error !== '')return ['ok'=>false, 'msg'=>$error];
+	$count = intval($DB->getColumn("SELECT count(*) FROM pre_api_key WHERE uid=:uid", [':uid'=>$uid]));
+	if($count >= api_key_limit())return ['ok'=>false, 'msg'=>'每个账号最多创建 '.api_key_limit().' 把 API 密钥'];
+	$expire_days = $expire_days === null ? api_key_default_expire_days() : max(0, min(3650, intval($expire_days)));
+	$expiretime = $expire_days > 0 ? date('Y-m-d H:i:s', strtotime('+'.$expire_days.' days')) : null;
+	$key = 'pan_'.bin2hex(random_bytes(32));
+	$ok = $DB->exec("INSERT INTO pre_api_key (`uid`,`name`,`key_prefix`,`key_hash`,`enable`,`allow_ip`,`expiretime`,`addtime`) VALUES (:uid,:name,:prefix,:hash,1,:allow_ip,:expiretime,NOW())", [
+		':uid'=>$uid, ':name'=>$name, ':prefix'=>substr($key, 0, 12), ':hash'=>api_key_hash($key),
+		':allow_ip'=>$allow_ip, ':expiretime'=>$expiretime
+	]);
+	if($ok === false)return ['ok'=>false, 'msg'=>'创建密钥失败['.$DB->error().']'];
+	return ['ok'=>true, 'key'=>$key, 'id'=>$DB->lastInsertId(), 'expiretime'=>$expiretime];
+}
+
+function authenticate_user_api_key($key, $ip){
+	global $DB;
+	$key = trim((string)$key);
+	if(!preg_match('/^pan_[a-f0-9]{64}$/i', $key))return ['ok'=>false, 'msg'=>'API 密钥格式不正确'];
+	$row = $DB->getRow("SELECT * FROM pre_api_key WHERE key_hash=:hash LIMIT 1", [':hash'=>api_key_hash($key)]);
+	if(!$row || intval($row['enable']) !== 1)return ['ok'=>false, 'msg'=>'API 密钥无效或已停用'];
+	if(!empty($row['expiretime']) && strtotime($row['expiretime']) <= time())return ['ok'=>false, 'msg'=>'API 密钥已过期'];
+	if(!api_ip_allowed($ip, $row['allow_ip']))return ['ok'=>false, 'msg'=>'当前 IP 不在该密钥的白名单中'];
+	$user = $DB->getRow("SELECT * FROM pre_user WHERE uid=:uid LIMIT 1", [':uid'=>intval($row['uid'])]);
+	if(!$user || intval($user['enable']) !== 1)return ['ok'=>false, 'msg'=>'密钥所属账号不存在或已被停用'];
+	if(empty($row['lasttime']) || strtotime($row['lasttime']) < time() - 60){
+		$DB->exec("UPDATE pre_api_key SET lasttime=NOW(),lastip=:ip WHERE id=:id", [':ip'=>$ip, ':id'=>intval($row['id'])]);
+	}
+	return ['ok'=>true, 'key'=>$row, 'user'=>$user];
+}
 /* ===== 购买套餐 / 支付宝当面付 ===== */
 
 /*
@@ -1736,9 +1842,12 @@ function sync_404_theme($theme){
  */
 function admin_setting_keys(){
 	return [
-		'aliyun_ak', 'aliyun_sk', 'api_open', 'api_referer',
+		'aliyun_ak', 'aliyun_sk', 'api_open', 'api_referer', 'api_auth_mode',
+		'api_key_limit', 'api_key_expire_days',
 		'apiurl', 'blackip', 'description', 'downfile_domain',
-		'downfile_protocol', 'downfile_type', 'filepath', 'filesearch',
+		'downfile_protocol', 'downfile_type', 'down_speed_guest', 'down_speed_guest_unit',
+		'down_speed_user', 'down_speed_user_unit', 'down_speed_vip', 'down_speed_vip_unit',
+		'filepath', 'filesearch',
 		'forcelogin', 'gg_file', 'gonggao', 'green_check',
 		'green_check_porn', 'green_check_region', 'green_check_terrorism', 'green_label_porn',
 		'green_self_api', 'green_self_token', 'green_self_block', 'green_self_review',
@@ -1869,6 +1978,59 @@ function storage_user_tier(){
 	if(empty($islogin2))return 0;
 	if(isset($userrow['level']) && intval($userrow['level']) > 0 && is_user_permission_active())return 2;
 	return 1;
+}
+
+/* 当前下载者的速度上限，统一返回 KB/s。0 表示不限速。 */
+function get_effective_download_speed_kbps(){
+	global $conf;
+	$tier = storage_user_tier();
+	$key = $tier >= 2 ? 'vip' : ($tier === 1 ? 'user' : 'guest');
+	$value = isset($conf['down_speed_'.$key]) ? floatval($conf['down_speed_'.$key]) : 0;
+	if($value <= 0 || !is_finite($value))return 0;
+	$unit = isset($conf['down_speed_'.$key.'_unit']) ? strtoupper(trim($conf['down_speed_'.$key.'_unit'])) : 'KB';
+	if($unit === 'MB')$value *= 1024;
+	return max(1, intval(round($value)));
+}
+
+/* 初始化当前请求的下载节流状态。 */
+function start_download_throttle($kbps){
+	$kbps = max(0, intval($kbps));
+	$GLOBALS['_download_throttle'] = ['rate'=>$kbps * 1024, 'sent'=>0, 'start'=>microtime(true)];
+	if($kbps > 0){
+		@ini_set('zlib.output_compression', '0');
+		header('X-Accel-Buffering: no');
+		//Nginx 直接执行该响应头；Apache/PHP 环境由分块节流兜底。
+		header('X-Accel-Limit-Rate: '.($kbps * 1024));
+	}
+}
+
+/* 所有存储驱动统一通过此函数输出，Range 分段下载同样受限。 */
+function download_output_chunk($data){
+	if($data === null || $data === false)return 0;
+	$data = (string)$data;
+	$length = strlen($data);
+	if($length === 0)return 0;
+	$state = isset($GLOBALS['_download_throttle']) ? $GLOBALS['_download_throttle'] : ['rate'=>0, 'sent'=>0, 'start'=>microtime(true)];
+	$rate = intval($state['rate']);
+	if($rate <= 0){
+		echo $data;
+		return $length;
+	}
+	$chunkSize = max(1024, min(65536, intval($rate / 4)));
+	for($offset = 0; $offset < $length; $offset += $chunkSize){
+		$chunk = substr($data, $offset, $chunkSize);
+		echo $chunk;
+		$state['sent'] += strlen($chunk);
+		if(ob_get_level() > 0)@ob_flush();
+		@flush();
+		$wait = ($state['start'] + $state['sent'] / $rate) - microtime(true);
+		while($wait > 0){
+			usleep((int)(min($wait, 0.5) * 1000000));
+			$wait = ($state['start'] + $state['sent'] / $rate) - microtime(true);
+		}
+	}
+	$GLOBALS['_download_throttle'] = $state;
+	return $length;
 }
 
 function storage_multi_open(){
@@ -3364,6 +3526,7 @@ function file_output($hash, $type, $size, $name, $is_view = false, $is_admin = f
 	//直链/断点续传这些能力要按这个文件所在的存储来判断，不能按当前存储：
 	//旧文件在支持直链的 OSS 上、当前存储换成了不支持的 WebDAV，照样可以走直链
 	$storage = ($storage === null || $storage === '') ? $conf['storage'] : $storage;
+	$download_speed = $is_admin ? 0 : get_effective_download_speed_kbps();
 
 	@set_time_limit(0);
 	$size = intval($size);
@@ -3375,7 +3538,8 @@ function file_output($hash, $type, $size, $name, $is_view = false, $is_admin = f
 		//这样同一个文件重复访问依然能省流量（304），但替换后能立刻拿到新内容
 		$etag = '"'.$hash.'"';
 		header("ETag: $etag");
-		header("Cache-Control: no-cache");
+		//限速响应不能被 CDN 缓存，否则后续命中 CDN 会绕开 PHP 节流，直接按 CDN 带宽下载。
+		header($download_speed > 0 ? "Cache-Control: private, no-store, no-cache, must-revalidate" : "Cache-Control: no-cache");
 		$client_etag = isset($_SERVER['HTTP_IF_NONE_MATCH']) ? trim($_SERVER['HTTP_IF_NONE_MATCH']) : '';
 		if($client_etag !== '' && $client_etag === $etag){
 			header("HTTP/1.1 304 Not Modified");
@@ -3401,7 +3565,7 @@ function file_output($hash, $type, $size, $name, $is_view = false, $is_admin = f
 		&& !empty($conf['downfile_domain'])
 		&& \lib\StorHelper::uses_down_domain($storage);
 
-	if(\lib\StorHelper::is_direct_down($storage) && $conf['downfile_type'] == 1 && !$domain_mismatch){
+	if($download_speed <= 0 && \lib\StorHelper::is_direct_down($storage) && $conf['downfile_type'] == 1 && !$domain_mismatch){
 		$redirect = $stor->getDownUrl($hash, $name, $is_view ? minetype($type) : null);
 		if($redirect){
 			header("Location: ".$redirect);
@@ -3410,6 +3574,7 @@ function file_output($hash, $type, $size, $name, $is_view = false, $is_admin = f
 			exit('Error:'.$stor->errmsg());
 		}
 	}else{
+		start_download_throttle($download_speed);
 		if($is_view){
 			header("Content-Type: ".minetype($type));
 			header("Content-Disposition: inline; filename={$filename}");

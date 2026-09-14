@@ -55,7 +55,7 @@ class Oss implements IStorage {
 			$options['range'] = $range[0].'-'.$range[1];
 		}
 		try {
-			echo $this->ossClient->getObject($this->bucket, $this->filepath.$name, $options);
+			\download_output_chunk($this->ossClient->getObject($this->bucket, $this->filepath.$name, $options));
 			return true;
         } catch(\OSS\Core\OssException $e) {
 			$this->errmsg = __FUNCTION__ . ": " . $e->getMessage();

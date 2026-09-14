@@ -447,8 +447,8 @@ function stor_field($f){
 //先按当前存储的能力把面板和行的显示状态渲染好，避免页面加载时闪一下再被 JS 收起来
 $cap_now = $stor_caps[$storage];
 ?>
-<div class="panel panel-info" id="transfer_panel"<?php echo ($cap_now['up'] || $cap_now['down']) ? '' : ' style="display:none"'?>>
-	<div class="panel-heading"><h3 class="panel-title"><i class="fa fa-exchange"></i> 传输方式</h3></div>
+<div class="panel panel-info" id="transfer_panel">
+	<div class="panel-heading"><h3 class="panel-title"><i class="fa fa-tachometer"></i> 限速设置</h3></div>
 	<div class="panel-body">
 		<form onsubmit="return saveSetting(this)" method="post" class="form-horizontal" role="form">
 			<div class="form-group" id="row_upload"<?php echo $cap_now['up'] ? '' : ' style="display:none"'?>>
@@ -466,6 +466,26 @@ $cap_now = $stor_caps[$storage];
 					<option value="1"<?php echo $conf['downfile_type']=='1'?' selected':''?>>直接链接</option>
 				</select>
 				<p class="help-block"><b>网站中转：</b>下载经过本站服务器，本机和云存储内网互通的话不消耗云存储流量。<br/><b>直接链接：</b>直接从云存储下载，速度更快，但要付云存储的流量费。</p></div>
+			</div>
+			<div class="form-group" id="row_speed">
+				<label class="col-sm-3 control-label">下载速度权限</label>
+				<div class="col-sm-9">
+					<div class="download-speed-grid">
+					<?php foreach(['guest'=>'游客', 'user'=>'普通登录用户', 'vip'=>'有效高级用户'] as $speed_key=>$speed_name){
+						$speed_value = isset($conf['down_speed_'.$speed_key]) ? $conf['down_speed_'.$speed_key] : '0';
+						$speed_unit = isset($conf['down_speed_'.$speed_key.'_unit']) && strtoupper($conf['down_speed_'.$speed_key.'_unit']) === 'MB' ? 'MB' : 'KB';
+					?>
+						<div class="download-speed-item">
+							<label><?php echo $speed_name?></label>
+							<div class="download-speed-control">
+								<input type="number" class="form-control" name="down_speed_<?php echo $speed_key?>" value="<?php echo htmlspecialchars($speed_value, ENT_QUOTES, 'UTF-8')?>" min="0" step="0.1"/>
+								<select class="form-control" name="down_speed_<?php echo $speed_key?>_unit"><option value="KB"<?php echo $speed_unit === 'KB' ? ' selected' : ''?>>KB/s</option><option value="MB"<?php echo $speed_unit === 'MB' ? ' selected' : ''?>>MB/s</option></select>
+							</div>
+						</div>
+					<?php }?>
+					</div>
+					<p class="help-block">填写 <b>0</b> 表示不限速。高级用户必须权限仍在有效期内；权限到期后自动按普通登录用户速度计算。限速用户会强制走网站中转，不再跳转到对象存储直链。整站使用 CDN 时，请勿对 <b>down.php</b> 和 <b>view.php</b> 设置强制缓存，否则命中 CDN 缓存后将绕过本站限速。</p>
+				</div>
 			</div>
 			<div class="form-group" id="row_domain"<?php echo ($conf['downfile_type']=='1' && $cap_now['domain']) ? '' : ' style="display:none"'?>>
 				<label class="col-sm-3 control-label">文件下载域名</label>
@@ -487,7 +507,7 @@ $cap_now = $stor_caps[$storage];
 			<div class="alert alert-info stor-note" id="row_onedrive_note"<?php echo $storage === 'onedrive' ? '' : ' style="display:none"'?>>OneDrive 的直链是微软给的一小时临时地址，本站会 302 过去，不消耗本站流量；代价是下载下来的文件名会变成站内的存储名（没有扩展名）。在意文件名就选网站中转。</div>
 			<div class="alert alert-info stor-note" id="row_openlist_note"<?php echo $storage === 'openlist' ? '' : ' style="display:none"'?>>OpenList 的直链由它自己给出：底层是对象存储或网盘时会直接跳到上游地址，底层开了代理时跳的是 OpenList 自己的带签名地址。和 OneDrive 一样，直链下载拿到的文件名会变成站内的存储名（没有扩展名），在意文件名就选网站中转。</div>
 			<div class="form-group">
-				<div class="col-sm-offset-3 col-sm-9"><button type="submit" class="btn btn-primary">保存传输方式</button></div>
+				<div class="col-sm-offset-3 col-sm-9"><button type="submit" class="btn btn-primary">保存限速设置</button></div>
 			</div>
 		</form>
 	</div>
@@ -499,7 +519,7 @@ $cap_now = $stor_caps[$storage];
 var storCaps = <?php echo json_encode($stor_caps, JSON_UNESCAPED_UNICODE)?>;
 var currentStor = <?php echo json_encode($storage)?>;
 
-//点卡片就切到那个存储的参数表单，传输方式面板也跟着按能力显示
+//点卡片就切到对应参数；上传和下载方式按存储能力显示，通用下载限速始终可设置。
 function showStor(k){
 	if(!storCaps[k])return;
 	$('.stor-card').removeClass('active');
@@ -508,9 +528,11 @@ function showStor(k){
 	$('.stor-config[data-stor="'+k+'"]').show();
 	$('.stor-config-name').text('· ' + storCaps[k].name);
 	var cap = storCaps[k];
-	$('#transfer_panel').toggle(cap.up || cap.down);
+	//下载限速对本地存储和所有中转下载同样有效，所以传输面板始终显示。
+	$('#transfer_panel').show();
 	$('#row_upload').toggle(cap.up);
 	$('#row_down').toggle(cap.down);
+	$('#row_speed').show();
 	$('#row_onedrive_note').toggle(k === 'onedrive');
 	$('#row_openlist_note').toggle(k === 'openlist');
 	$('#row_domain').toggle(cap.domain && $("select[name='downfile_type']").val() === '1');

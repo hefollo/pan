@@ -47,6 +47,27 @@ exit;
 
 if(!$conf['api_open'])showresult(['code'=>-4, 'msg'=>'当前站点未开启上传API']);
 
+//API 身份只认显式密钥，不借用浏览器登录 Cookie，避免跨站请求偷偷使用用户身份。
+$uid = 0;
+$islogin2 = 0;
+$userrow = null;
+$api_key_row = null;
+$api_mode = api_auth_mode();
+$api_token = api_request_token();
+if($api_token !== ''){
+	$api_auth = authenticate_user_api_key($api_token, $clientip);
+	if(empty($api_auth['ok']))showresult(['code'=>-5, 'msg'=>$api_auth['msg'], 'error'=>'auth']);
+	$userrow = $api_auth['user'];
+	$api_key_row = $api_auth['key'];
+	$uid = intval($userrow['uid']);
+	$islogin2 = 1;
+}elseif($api_mode !== 'public'){
+	showresult(['code'=>-5, 'msg'=>'请在 Authorization 请求头中提供用户 API 密钥', 'error'=>'auth']);
+}
+if($api_mode === 'vip' && (empty($islogin2) || intval($userrow['level']) <= 0 || !is_user_permission_active())){
+	showresult(['code'=>-5, 'msg'=>'当前接口只允许有效高级用户调用', 'error'=>'permission']);
+}
+
 if(!empty($conf['api_referer'])){
 	//配置了白名单就必须能取到合法的来源域名，取不到一律拒绝，不能放行
 	$referers = array_filter(array_map('trim', explode('|',$conf['api_referer'])));
@@ -66,9 +87,9 @@ if(!is_uploaded_file($_FILES['file']['tmp_name']))showresult(['code'=>-1, 'msg'=
 //ENT_QUOTES 不能省：PHP 8.1 以下默认不转义单引号，文件名会被拼进播放器的 JS 字符串
 $name=trim(htmlspecialchars($_FILES['file']['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'));
 $size=intval($_FILES['file']['size']);
-$hide = $_POST['show']==1?0:1;
-$ispwd = intval($_POST['ispwd']);
-$pwd = $ispwd==1?trim(htmlspecialchars($_POST['pwd'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')):null;
+$hide = isset($_POST['show']) && $_POST['show']==1 ? 0 : 1;
+$ispwd = isset($_POST['ispwd']) ? intval($_POST['ispwd']) : 0;
+$pwd = $ispwd==1 ? trim(htmlspecialchars(isset($_POST['pwd']) ? $_POST['pwd'] : '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) : null;
 $name = str_replace(['/','\\',':','*','"','<','>','|','?'],'',$name);
 if(empty($name))showresult(['code'=>-1, 'msg'=>'文件名不能为空']);
 if($ispwd==1 && !empty($pwd)){
@@ -97,12 +118,26 @@ if($limit_size > 0 && $size > $limit_size * 1024 * 1024){
 }
 $upload_limit = get_effective_upload_count_limit();
 if($upload_limit > 0){
-	//本接口建的记录 uid 恒为0，只能按IP统计当天数量
 	$thisday = date("Y-m-d 00:00:00");
-	$ipcount = $DB->getColumn("SELECT count(*) from pre_file WHERE ip=:ip AND addtime>=:day", [':ip'=>$clientip, ':day'=>$thisday]);
-	if($ipcount >= $upload_limit){
+	if($uid > 0){
+		$today_count = $DB->getColumn("SELECT count(*) from pre_file WHERE uid=:uid AND addtime>=:day", [':uid'=>$uid, ':day'=>$thisday]);
+	}else{
+		$today_count = $DB->getColumn("SELECT count(*) from pre_file WHERE ip=:ip AND addtime>=:day", [':ip'=>$clientip, ':day'=>$thisday]);
+	}
+	if($today_count >= $upload_limit){
 		showresult(['code'=>-1, 'msg'=>'你今天上传文件的数量已超过限制']);
 	}
+}
+
+$minute_limit = isset($conf['upload_per_minute']) ? max(0, intval($conf['upload_per_minute'])) : 10;
+if($minute_limit > 0){
+	$since = date('Y-m-d H:i:s', time() - 60);
+	if($uid > 0){
+		$minute_count = $DB->getColumn("SELECT count(*) from pre_file WHERE uid=:uid AND addtime>=:since", [':uid'=>$uid, ':since'=>$since]);
+	}else{
+		$minute_count = $DB->getColumn("SELECT count(*) from pre_file WHERE ip=:ip AND addtime>=:since", [':ip'=>$clientip, ':since'=>$since]);
+	}
+	if($minute_count >= $minute_limit)showresult(['code'=>-1, 'msg'=>'上传太频繁，请稍后再试', 'error'=>'rate_limit']);
 }
 
 $hash = md5_file($_FILES['file']['tmp_name']);
@@ -111,7 +146,7 @@ $row = $DB->getRow("SELECT * FROM pre_file WHERE hash=:hash", [':hash'=>$hash]);
 if($row){
 	unset($_SESSION['csrf_token']);
 	//秒传：跳过物理上传，但仍建独立记录，这次上传有自己的链接和文件名，不会挂到别人名下
-	$record = create_file_record_from_existing($row, $name, $size, $ext, $hide, $pwd, 0, $clientip);
+	$record = create_file_record_from_existing($row, $name, $size, $ext, $hide, $pwd, $uid, $clientip);
 	if(!$record)showresult(['code'=>-1, 'msg'=>'上传失败'.$DB->error(), 'error'=>'database']);
 	//下载和预览地址都按 token 解析，不能再用内容哈希拼链接
 	$downurl = $siteurl.'down.php/'.$record['token'].'.'.$ext;
@@ -127,7 +162,7 @@ if($row){
 $result = $stor->upload($hash, $_FILES['file']['tmp_name'], minetype($ext));
 if(!$result)showresult(['code'=>-1, 'msg'=>'文件上传失败', 'error'=>'stor']);
 //统一走 create_file_record，它负责生成访问用的 token，并顺带做图片检测和违规留档
-$record = create_file_record($name, $hash, $size, $ext, $hide, $pwd, 0, $clientip);
+$record = create_file_record($name, $hash, $size, $ext, $hide, $pwd, $uid, $clientip);
 if(!$record)showresult(['code'=>-1, 'msg'=>'上传失败'.$DB->error(), 'error'=>'database']);
 $id = $record['id'];
 $token = $record['token'];

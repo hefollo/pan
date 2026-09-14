@@ -223,6 +223,13 @@ if(!$q || !$q->fetchColumn()){
 	$sqls = array_merge($sqls, read_sql('update_1022.sql'));
 }
 
+/*
+ * 1023 只有独立新表和 INSERT IGNORE 配置，可以每次运行用于自检修复。
+ * 版本号统一在它之后写入，旧版本分支里先写 1022 也不会影响最终结果。
+ */
+$sqls = array_merge($sqls, read_sql('update_1023.sql'));
+$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1023')";
+
 $success=0;$skipped=0;$error=0;$errorMsg=null;
 foreach ($sqls as $value) {
 	$value=trim($value);
@@ -260,7 +267,7 @@ if($errorMsg){
  * 出过"版本号写上去了、表却没建出来"的情况，页面还提示升级成功，
  * 站长要等到用那个功能才会看见 1146 报错，这里提前说清楚。
  */
-$need_tables = ['pre_greenlog', 'pre_greenjob', 'pre_user_bind'];
+$need_tables = ['pre_greenlog', 'pre_greenjob', 'pre_user_bind', 'pre_api_key'];
 $lost = [];
 foreach($need_tables as $t){
 	//ERRMODE_SILENT 下 query 出错会返回 false，不能直接往后链 fetchColumn

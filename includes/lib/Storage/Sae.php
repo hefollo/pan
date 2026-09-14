@@ -31,7 +31,7 @@ class Sae implements IStorage { //SaeStorage
 	}
 
 	public function downfile($name, $start = 0, $end = 0) {
-		echo $this->Storage->read($this->domain, $this->path.$name);
+		\download_output_chunk($this->Storage->read($this->domain, $this->path.$name));
 		return true;
 	}
 

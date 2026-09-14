@@ -31,6 +31,24 @@ case 'set':
 	if(isset($_POST['theme_gradient'])){
 		$_POST['theme_gradient'] = normalize_theme_gradient($_POST['theme_gradient']);
 	}
+	//下载限速只接受非负数字和固定单位，避免绕过页面校验写入异常配置。
+	foreach(['guest', 'user', 'vip'] as $speed_tier){
+		$speed_key = 'down_speed_'.$speed_tier;
+		$unit_key = $speed_key.'_unit';
+		if(isset($_POST[$speed_key])){
+			$speed_value = is_numeric($_POST[$speed_key]) ? max(0, floatval($_POST[$speed_key])) : 0;
+			if(!is_finite($speed_value))$speed_value = 0;
+			$_POST[$speed_key] = rtrim(rtrim(number_format($speed_value, 2, '.', ''), '0'), '.');
+		}
+		if(isset($_POST[$unit_key])){
+			$_POST[$unit_key] = strtoupper(trim($_POST[$unit_key])) === 'MB' ? 'MB' : 'KB';
+		}
+	}
+	if(isset($_POST['api_auth_mode'])){
+		$_POST['api_auth_mode'] = in_array($_POST['api_auth_mode'], ['public', 'user', 'vip'], true) ? $_POST['api_auth_mode'] : 'user';
+	}
+	if(isset($_POST['api_key_limit']))$_POST['api_key_limit'] = max(1, min(20, intval($_POST['api_key_limit'])));
+	if(isset($_POST['api_key_expire_days']))$_POST['api_key_expire_days'] = max(0, min(3650, intval($_POST['api_key_expire_days'])));
 	//只写白名单里的配置键，其余一律丢弃（admin_user/admin_pwd 走账号页自己的表单）
 	//表单里混进来的非配置字段（令牌、按钮之类）不算漏配，别报进 skipped 里干扰判断
 	$not_setting = ['csrf_token', 'ajax', 'do', 'fields', 'submit', 'act'];

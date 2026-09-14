@@ -435,7 +435,7 @@ $api_endpoint = $siteurl.'api.php';
       <span class="api-status <?php echo !empty($conf['api_open']) ? 'is-on' : 'is-off'?>"><i class="fa fa-circle"></i> <?php echo !empty($conf['api_open']) ? '接口已开启' : '接口已关闭'?></span>
     </div>
     <div class="panel-body">
-      <div class="api-intro"><i class="fa fa-shield"></i><div><b>开放前请先确认来源范围</b><span>开启后可通过 HTTP 接口上传文件。建议配置来源域名白名单，避免接口被未知网站直接调用。</span></div></div>
+      <div class="api-intro"><i class="fa fa-shield"></i><div><b>开放前请先确认访问权限</b><span>建议要求用户 API 密钥。使用 CDN 时必须透传 Authorization 或 X-API-Key 请求头，并关闭 api.php 的缓存。</span></div></div>
       <form onsubmit="return saveSetting(this)" method="post" class="form-horizontal api-config-form" role="form">
         <div class="form-group">
           <label class="col-sm-3 control-label">接口状态</label>
@@ -445,10 +445,32 @@ $api_endpoint = $siteurl.'api.php';
           </div>
         </div>
         <div class="form-group">
+          <label class="col-sm-3 control-label">访问权限</label>
+          <div class="col-sm-9">
+            <?php $api_auth_mode = isset($conf['api_auth_mode']) ? $conf['api_auth_mode'] : 'user';?>
+            <select class="form-control" name="api_auth_mode" default="<?php echo htmlspecialchars($api_auth_mode, ENT_QUOTES, 'UTF-8')?>">
+              <option value="public">允许匿名上传（携带密钥时仍绑定用户）</option>
+              <option value="user">必须使用用户 API 密钥</option>
+              <option value="vip">仅有效高级用户的 API 密钥</option>
+            </select>
+            <p class="help-block">推荐选择“必须使用用户 API 密钥”。密钥上传的文件会进入对应账号的“我的文件”，并使用该账号的上传额度。</p>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="col-sm-3 control-label">用户密钥限制</label>
+          <div class="col-sm-9">
+            <div class="row">
+              <div class="col-sm-6"><div class="input-group"><input type="number" min="1" max="20" name="api_key_limit" value="<?php echo isset($conf['api_key_limit']) ? intval($conf['api_key_limit']) : 5?>" class="form-control"><span class="input-group-addon">把/用户</span></div></div>
+              <div class="col-sm-6"><div class="input-group"><input type="number" min="0" max="3650" name="api_key_expire_days" value="<?php echo isset($conf['api_key_expire_days']) ? intval($conf['api_key_expire_days']) : 365?>" class="form-control"><span class="input-group-addon">天有效</span></div></div>
+            </div>
+            <p class="help-block">有效期填写 0 表示永久；它也是用户创建密钥时的默认值。</p>
+          </div>
+        </div>
+        <div class="form-group">
           <label class="col-sm-3 control-label">来源域名白名单</label>
           <div class="col-sm-9">
             <input type="text" name="api_referer" value="<?php echo htmlspecialchars(isset($conf['api_referer']) ? $conf['api_referer'] : '', ENT_QUOTES, 'UTF-8')?>" class="form-control" placeholder="example.com|upload.example.com"/>
-            <p class="help-block">多个域名使用 <code>|</code> 分隔，不填写表示不限制来源域名。填写域名即可，不要包含路径。</p>
+            <p class="help-block">多个域名使用 <code>|</code> 分隔，不填写表示不限制。填写后所有请求都必须携带匹配的 Referer，服务端和命令行调用也不例外；使用用户密钥时通常建议留空。</p>
           </div>
         </div>
         <div class="form-group api-form-actions">
@@ -465,7 +487,7 @@ $api_endpoint = $siteurl.'api.php';
         <div class="api-endpoint-meta"><span class="api-method">POST</span><div><b>接口地址</b><small>请求类型：multipart/form-data</small></div></div>
         <div class="api-endpoint-value"><code id="apiEndpoint"><?php echo htmlspecialchars($api_endpoint, ENT_QUOTES, 'UTF-8')?></code><button type="button" class="btn btn-default btn-sm" onclick="copyApiEndpoint(this)"><i class="fa fa-copy"></i> 复制</button></div>
       </div>
-      <div class="api-format-row"><span>返回格式</span><b>JSON</b><b>JSONP</b><b>FORM</b><small>支持浏览器跨域调用和服务端程序调用</small></div>
+      <div class="api-format-row"><span>返回格式</span><b>JSON</b><b>JSONP</b><b>FORM</b><small>支持服务端程序调用和同源浏览器调用</small></div>
 
       <section class="api-doc-section">
         <div class="api-section-title"><span>01</span><div><h4>请求参数</h4><p>仅 <code>file</code> 为必填项，其余参数均可按需传入。</p></div></div>
@@ -474,7 +496,8 @@ $api_endpoint = $siteurl.'api.php';
             <thead><tr><th>参数</th><th>含义</th><th>必填</th><th>示例值</th><th>说明</th></tr></thead>
             <tbody>
               <tr><td><code>file</code></td><td>文件</td><td><span class="api-required">必填</span></td><td>—</td><td>multipart 格式文件</td></tr>
-              <tr><td><code>show</code></td><td>首页显示</td><td>否</td><td><code>1</code></td><td>默认为是</td></tr>
+              <tr><td><code>Authorization</code></td><td>用户 API 密钥</td><td><span class="api-required">按后台模式</span></td><td><code>Bearer pan_...</code></td><td>放在 HTTP 请求头中；也可使用 <code>X-API-Key</code>，不要作为 URL 参数传递</td></tr>
+              <tr><td><code>show</code></td><td>首页显示</td><td>否</td><td><code>1</code></td><td>1 为公开显示，不传或 0 为私密</td></tr>
               <tr><td><code>ispwd</code></td><td>设置密码</td><td>否</td><td><code>0</code></td><td>默认为否</td></tr>
               <tr><td><code>pwd</code></td><td>下载密码</td><td>否</td><td><code>123456</code></td><td>默认留空</td></tr>
               <tr><td><code>format</code></td><td>返回格式</td><td>否</td><td><code>json</code></td><td>可选 json、jsonp、form，默认 json</td></tr>
@@ -507,6 +530,7 @@ $api_endpoint = $siteurl.'api.php';
       <section class="api-doc-section api-example-section">
         <div class="api-section-title"><span>03</span><div><h4>调用示例</h4><p>下面示例以 JSON 格式上传本地文件。</p></div></div>
         <div class="api-code-card"><div class="api-code-head"><span>cURL</span><button type="button" onclick="copyApiCode(this)"><i class="fa fa-copy"></i> 复制代码</button></div><pre><code>curl -X POST \
+  -H "Authorization: Bearer pan_请替换为用户密钥" \
   -F "file=@example.jpg" \
   -F "format=json" \
   "<?php echo htmlspecialchars($api_endpoint, ENT_QUOTES, 'UTF-8')?>"</code></pre></div>

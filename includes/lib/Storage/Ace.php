@@ -28,7 +28,7 @@ class Ace implements IStorage { //AceStorage
 	}
 
 	public function downfile($name, $start = 0, $end = 0) {
-		echo $this->Storage->get($name);
+		\download_output_chunk($this->Storage->get($name));
 		return true;
 	}
 

@@ -80,7 +80,7 @@ class S3 implements IStorage
         if ($response === false) {
             return false;
         }
-        echo $response['body'];
+		\download_output_chunk($response['body']);
         return true;
     }
 

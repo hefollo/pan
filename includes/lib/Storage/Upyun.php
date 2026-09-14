@@ -54,7 +54,7 @@ class Upyun implements IStorage {
 		try {
 			$body = $this->client->read($this->filepath.$name, true);
 			while(!$body -> eof()){
-				echo $body -> read(102400);
+				\download_output_chunk($body -> read(102400));
 			}
 			return true;
         } catch(\Exception $e) {

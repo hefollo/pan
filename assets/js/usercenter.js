@@ -207,6 +207,71 @@
     else layer.alert(text, { title: '复制失败，请手动复制外链' });
   }
 
+  /* ---------------- API 密钥 ---------------- */
+
+  function copyApiSecret(text, successMessage) {
+    function done() { layer.msg(successMessage || '内容已复制', { icon: 1 }); }
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(done, function () { fallback(); });
+      return;
+    }
+    fallback();
+    function fallback() {
+      var el = document.createElement('textarea');
+      el.value = text;
+      el.setAttribute('readonly', '');
+      el.style.position = 'fixed';
+      el.style.left = '-9999px';
+      document.body.appendChild(el);
+      el.select();
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+      document.body.removeChild(el);
+      if (ok) done();
+      else layer.alert(text, { title: '请手动复制' });
+    }
+  }
+
+  $('#ucApiCreate').on('click', function () {
+    var name = $.trim($('#ucApiName').val());
+    if (!name) { layer.msg('请填写密钥名称'); return; }
+    post('createApiKey', {
+      name: name,
+      allow_ip: $.trim($('#ucApiAllowIp').val()),
+      expire_days: $('#ucApiExpire').val()
+    }, function (res) {
+      if (res.code !== 0) { layer.msg(res.msg || '创建密钥失败', { icon: 2 }); return; }
+      $('#ucApiSecret').text(res.key || '');
+      $('#ucApiSecretBox').prop('hidden', false);
+      $('#ucApiName,#ucApiAllowIp').val('');
+      layer.msg(res.msg, { icon: 1 });
+    });
+  });
+
+  $('#ucApiCopy').on('click', function () {
+    var key = $('#ucApiSecret').text();
+    if (key) copyApiSecret(key, 'API 密钥已复制');
+  });
+
+  $('[data-api-copy-text]').on('click', function () {
+    copyApiSecret($(this).attr('data-api-copy-text') || '', '接口地址已复制');
+  });
+
+  $('.uc-api-docs').on('click', '[data-api-copy-code]', function () {
+    copyApiSecret($(this).closest('.uc-api-code').find('pre').text(), '示例代码已复制');
+  });
+
+  $('.uc-api-key-list').on('click', '[data-api-key-toggle]', function () {
+    var id = $(this).closest('tr').data('api-key-id');
+    post('toggleApiKey', { id: id }, reloadAfter);
+  }).on('click', '[data-api-key-delete]', function () {
+    var id = $(this).closest('tr').data('api-key-id');
+    layer.confirm('删除后使用该密钥的程序会立即无法上传，确定删除吗？', { icon: 3, title: '删除 API 密钥' }, function (idx) {
+      layer.close(idx);
+      post('deleteApiKey', { id: id }, reloadAfter);
+    });
+  });
+
   /* ---------------- 账号设置 ---------------- */
 
   $('#ucNickSave').on('click', function () {
@@ -307,4 +372,5 @@
       }
     });
   });
+
 })(window.jQuery);

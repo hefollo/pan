@@ -48,7 +48,7 @@ class Local implements IStorage {
 		}
 		$cur = $start;
 		while(!feof($handle) && $cur<=$end) {
-			echo fread($handle, min($read_buffer, ($end - $cur) + 1));
+			\download_output_chunk(fread($handle, min($read_buffer, ($end - $cur) + 1)));
 			$cur += $read_buffer;
 			flush();
 		}

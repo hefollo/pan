@@ -76,7 +76,7 @@ class Qiniu implements IStorage {
 			$response = $client->send($request);
 			$body = $response->getBody();
 			while(!$body -> eof()){
-				echo $body -> read(102400);
+				\download_output_chunk($body -> read(102400));
 			}
 			return true;
         } catch(\Exception $e) {

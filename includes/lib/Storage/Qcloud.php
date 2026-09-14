@@ -64,7 +64,12 @@ class Qcloud implements IStorage {
 		}
 		try {
 			$content = $this->cosClient->getObject(['Bucket'=>$this->bucket, 'Key'=>$this->filepath.$name] + $options);
-			echo $content['Body'];
+			$body = $content['Body'];
+			if(is_object($body) && method_exists($body, 'eof') && method_exists($body, 'read')){
+				while(!$body->eof())\download_output_chunk($body->read(102400));
+			}else{
+				\download_output_chunk($body);
+			}
 			return true;
         } catch(\Qcloud\Cos\Exception\ServiceResponseException $e) {
 			$this->errmsg = __FUNCTION__ . ": " . $e->getMessage();

@@ -67,6 +67,38 @@ if($act !== ''){
 	}
 
 	switch($act){
+	case 'createApiKey':
+		if(empty($conf['api_open']))uc_json(-1, '上传 API 已关闭');
+		$name = isset($_POST['name']) ? $_POST['name'] : '';
+		$allow_ip = isset($_POST['allow_ip']) ? $_POST['allow_ip'] : '';
+		$expire_days = isset($_POST['expire_days']) ? intval($_POST['expire_days']) : api_key_default_expire_days();
+		$result = create_user_api_key($uid, $name, $allow_ip, $expire_days);
+		if(empty($result['ok']))uc_json(-1, $result['msg']);
+		uc_json(0, 'API 密钥创建成功，请立即复制保存', ['key'=>$result['key'], 'id'=>intval($result['id']), 'expiretime'=>$result['expiretime']]);
+	break;
+
+	case 'toggleApiKey':
+		if(empty($conf['api_open']))uc_json(-1, '上传 API 已关闭');
+		$id = isset($_POST['id']) ? intval($_POST['id']) : 0;
+		$row = $DB->getRow("SELECT * FROM pre_api_key WHERE id=:id AND uid=:uid LIMIT 1", [':id'=>$id, ':uid'=>$uid]);
+		if(!$row)uc_json(-1, 'API 密钥不存在');
+		$enable = intval($row['enable']) === 1 ? 0 : 1;
+		if($DB->exec("UPDATE pre_api_key SET enable=:enable WHERE id=:id AND uid=:uid", [':enable'=>$enable, ':id'=>$id, ':uid'=>$uid]) === false){
+			uc_json(-1, '修改密钥状态失败['.$DB->error().']');
+		}
+		uc_json(0, $enable ? 'API 密钥已启用' : 'API 密钥已停用');
+	break;
+
+	case 'deleteApiKey':
+		if(empty($conf['api_open']))uc_json(-1, '上传 API 已关闭');
+		$id = isset($_POST['id']) ? intval($_POST['id']) : 0;
+		$row = $DB->getRow("SELECT id FROM pre_api_key WHERE id=:id AND uid=:uid LIMIT 1", [':id'=>$id, ':uid'=>$uid]);
+		if(!$row)uc_json(-1, 'API 密钥不存在');
+		if($DB->exec("DELETE FROM pre_api_key WHERE id=:id AND uid=:uid", [':id'=>$id, ':uid'=>$uid]) === false){
+			uc_json(-1, '删除密钥失败['.$DB->error().']');
+		}
+		uc_json(0, 'API 密钥已删除');
+	break;
 
 	//批量删除（单个删除也走这里，就是只传一个 id）
 	case 'deleteFiles':
@@ -266,10 +298,13 @@ $tabs = [
 	'overview' => ['概览', 'fa-dashboard'],
 	'files'    => ['我的文件', 'fa-folder-open'],
 	'orders'   => ['订单记录', 'fa-shopping-cart'],
+	'api'      => ['上传 API 密钥', 'fa-key'],
 	'account'  => ['账号设置', 'fa-user-circle'],
 ];
 //购买功能没开的话就不显示订单页签，免得点进去是一片空白
 if(!function_exists('is_buy_open') || !is_buy_open()) unset($tabs['orders']);
+//上传 API 关闭时，前台不显示密钥入口、创建功能和对接文档；已有密钥保留，重新开启后恢复。
+if(empty($conf['api_open'])) unset($tabs['api']);
 
 $tab = (isset($_GET['tab']) && isset($tabs[$_GET['tab']])) ? $_GET['tab'] : 'overview';
 
@@ -591,6 +626,211 @@ if($tab === 'overview'){
         </div>
 <?php }?>
 
+<?php
+/* ===================== API 密钥 ===================== */
+}elseif($tab === 'api'){
+    $api_keys = $DB->getAll("SELECT * FROM pre_api_key WHERE uid=:uid ORDER BY id DESC", [':uid'=>$uid]);
+    $api_default_days = api_key_default_expire_days();
+    $upload_api_endpoint = $siteurl.'api.php';
+?>
+        <div class="uc-api-about">
+            <i class="fa fa-cloud-upload" aria-hidden="true"></i>
+            <div>
+                <strong>这是本站的“文件上传 API”</strong>
+                <p>供脚本、应用程序或支持自定义上传接口的图床工具，通过 HTTP 自动把文件上传到你的本站账号。它不是登录密码，也不能用来登录用户中心。</p>
+                <div class="uc-api-meta">
+                    <span><b>接口地址</b><code><?php echo htmlspecialchars($upload_api_endpoint, ENT_QUOTES, 'UTF-8')?></code></span>
+                    <span><b>请求方式</b><code>POST multipart/form-data</code></span>
+                    <span><b>文件字段</b><code>file</code></span>
+                    <span><b>账号归属</b>上传后进入当前账号的“我的文件”</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="uc-section">
+            <div class="uc-section-title"><span>创建上传 API 密钥</span></div>
+            <div class="uc-api-create">
+                <input class="uc-input" type="text" id="ucApiName" maxlength="32" placeholder="密钥名称，例如：图床客户端">
+                <input class="uc-input" type="text" id="ucApiAllowIp" maxlength="255" placeholder="允许的 IP/CIDR，留空不限制">
+                <select class="uc-input" id="ucApiExpire">
+<?php foreach([30, 90, 180, 365, 0] as $days){?>
+                    <option value="<?php echo $days?>"<?php echo $days === $api_default_days ? ' selected' : ''?>><?php echo $days === 0 ? '永久有效' : $days.' 天有效'?></option>
+<?php }?>
+<?php if(!in_array($api_default_days, [30,90,180,365,0], true)){?>
+                    <option value="<?php echo $api_default_days?>" selected><?php echo $api_default_days.' 天有效（默认）'?></option>
+<?php }?>
+                </select>
+                <button type="button" class="uc-btn uc-btn-primary" id="ucApiCreate"><i class="fa fa-plus" aria-hidden="true"></i> 创建密钥</button>
+            </div>
+            <p class="uc-tip">每个账号最多 <?php echo api_key_limit()?> 把。IP 白名单可用竖线、逗号或空格分隔，支持 IPv4、IPv6 和 CIDR；留空表示不限制来源。</p>
+        </div>
+
+        <div class="uc-api-secret" id="ucApiSecretBox" hidden>
+            <div><strong>密钥只显示这一次，请立即复制保存</strong><small>离开或刷新页面后无法再次查看完整密钥，遗失后请删除并重新创建。</small></div>
+            <code id="ucApiSecret"></code>
+            <button type="button" class="uc-btn uc-btn-primary" id="ucApiCopy"><i class="fa fa-copy" aria-hidden="true"></i> 复制密钥</button>
+        </div>
+
+        <div class="uc-section">
+            <div class="uc-section-title"><span>已有密钥</span></div>
+            <div class="table-responsive">
+            <table class="table table-hover uc-api-key-list">
+                <thead><tr><th>名称</th><th>密钥前缀</th><th>状态</th><th>IP 白名单</th><th>到期时间</th><th>最近使用</th><th>操作</th></tr></thead>
+                <tbody>
+<?php foreach($api_keys as $keyrow){
+    $key_expired = !empty($keyrow['expiretime']) && strtotime($keyrow['expiretime']) <= time();
+    $key_enabled = intval($keyrow['enable']) === 1;
+?>
+                    <tr data-api-key-id="<?php echo intval($keyrow['id'])?>">
+                        <td><strong><?php echo htmlspecialchars($keyrow['name'], ENT_QUOTES, 'UTF-8')?></strong></td>
+                        <td><code><?php echo htmlspecialchars($keyrow['key_prefix'], ENT_QUOTES, 'UTF-8')?>…</code></td>
+                        <td><?php if($key_expired){?><span class="uc-badge uc-badge-danger">已过期</span><?php }elseif($key_enabled){?><span class="uc-badge uc-badge-ok">已启用</span><?php }else{?><span class="uc-badge uc-badge-muted">已停用</span><?php }?></td>
+                        <td><?php echo $keyrow['allow_ip'] !== '' ? htmlspecialchars(str_replace('|', '、', $keyrow['allow_ip']), ENT_QUOTES, 'UTF-8') : '<span class="uc-dim">不限制</span>'?></td>
+                        <td><?php echo !empty($keyrow['expiretime']) ? htmlspecialchars($keyrow['expiretime'], ENT_QUOTES, 'UTF-8') : '<span class="uc-dim">永久</span>'?></td>
+                        <td><?php echo !empty($keyrow['lasttime']) ? htmlspecialchars($keyrow['lasttime'], ENT_QUOTES, 'UTF-8').'<br><span class="uc-dim">'.htmlspecialchars($keyrow['lastip'], ENT_QUOTES, 'UTF-8').'</span>' : '<span class="uc-dim">尚未使用</span>'?></td>
+                        <td><div class="uc-acts"><button type="button" class="uc-act" data-api-key-toggle title="<?php echo $key_enabled ? '停用' : '启用'?>"><i class="fa fa-<?php echo $key_enabled ? 'pause' : 'play'?>" aria-hidden="true"></i></button><button type="button" class="uc-act uc-act-danger" data-api-key-delete title="删除"><i class="fa fa-trash" aria-hidden="true"></i></button></div></td>
+                    </tr>
+<?php }?>
+<?php if(!$api_keys){?><tr><td colspan="7" class="uc-empty">还没有创建 API 密钥</td></tr><?php }?>
+                </tbody>
+            </table>
+            </div>
+            <p class="uc-tip">外部程序调用上传接口时，在请求头中发送 <code>Authorization: Bearer 你的密钥</code>，并通过名为 <code>file</code> 的表单字段提交文件。上传会使用当前账号的文件大小和每日数量额度。</p>
+        </div>
+
+        <div class="uc-section uc-api-docs">
+            <div class="uc-section-title"><span>上传 API 对接文档</span></div>
+
+            <div class="uc-api-doc-block">
+                <h3><em>1</em> 接口与鉴权</h3>
+                <p>向下面的地址发送 <code>POST</code> 请求，请求体必须使用 <code>multipart/form-data</code>。推荐把密钥放在标准 Bearer 请求头中；兼容方式是使用 <code>X-API-Key</code> 请求头。</p>
+                <div class="uc-api-endpoint"><code><?php echo htmlspecialchars($upload_api_endpoint, ENT_QUOTES, 'UTF-8')?></code><button type="button" class="uc-btn uc-btn-sm" data-api-copy-text="<?php echo htmlspecialchars($upload_api_endpoint, ENT_QUOTES, 'UTF-8')?>"><i class="fa fa-copy" aria-hidden="true"></i> 复制地址</button></div>
+                <div class="uc-api-auth-lines">
+                    <code>Authorization: Bearer pan_你的完整密钥</code>
+                    <span>或</span>
+                    <code>X-API-Key: pan_你的完整密钥</code>
+                </div>
+                <p class="uc-tip uc-hint"><i class="fa fa-shield" aria-hidden="true"></i> 密钥相当于上传凭证，请勿放进公开网页、公开代码仓库或 URL 参数中。CDN、反向代理必须透传上述请求头。</p>
+            </div>
+
+            <div class="uc-api-doc-block">
+                <h3><em>2</em> 请求参数</h3>
+                <div class="table-responsive">
+                    <table class="table table-hover uc-api-doc-table">
+                        <thead><tr><th>位置</th><th>名称</th><th>必填</th><th>说明</th></tr></thead>
+                        <tbody>
+                            <tr><td>请求头</td><td><code>Authorization</code></td><td>是</td><td><code>Bearer pan_完整密钥</code>；也可改用 <code>X-API-Key</code></td></tr>
+                            <tr><td>表单</td><td><code>file</code></td><td>是</td><td>需要上传的文件</td></tr>
+                            <tr><td>表单</td><td><code>show</code></td><td>否</td><td><code>1</code> 表示在首页公开显示；不传或传 <code>0</code> 表示私密</td></tr>
+                            <tr><td>表单</td><td><code>ispwd</code></td><td>否</td><td><code>1</code> 表示启用访问密码，默认 <code>0</code></td></tr>
+                            <tr><td>表单</td><td><code>pwd</code></td><td>否</td><td>访问密码，仅支持字母和数字；需同时传 <code>ispwd=1</code></td></tr>
+                            <tr><td>表单</td><td><code>format</code></td><td>否</td><td>返回格式：<code>json</code>、<code>jsonp</code> 或 <code>form</code>，推荐并默认使用 <code>json</code></td></tr>
+                            <tr><td>表单</td><td><code>callback</code></td><td>否</td><td>仅在 <code>format=jsonp</code> 时使用的回调函数名</td></tr>
+                            <tr><td>表单</td><td><code>backurl</code></td><td>否</td><td>仅在 <code>format=form</code> 上传成功后使用，必须是 HTTP(S) 地址</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="uc-api-doc-block">
+                <h3><em>3</em> 返回数据</h3>
+                <p>JSON 返回中的 <code>code</code> 为 <code>0</code> 才表示成功。调用程序应判断该字段，不要只判断 HTTP 状态码。</p>
+                <div class="table-responsive">
+                    <table class="table table-hover uc-api-doc-table">
+                        <thead><tr><th>字段</th><th>类型</th><th>说明</th></tr></thead>
+                        <tbody>
+                            <tr><td><code>code</code></td><td>整数</td><td><code>0</code> 成功；<code>-5</code> 鉴权或权限失败；<code>-4</code> 接口关闭或来源错误；其它失败通常为 <code>-1</code></td></tr>
+                            <tr><td><code>msg</code></td><td>字符串</td><td>成功提示或具体失败原因</td></tr>
+                            <tr><td><code>exists</code></td><td>整数</td><td><code>1</code> 表示服务器已有相同内容并完成秒传，<code>0</code> 表示新上传</td></tr>
+                            <tr><td><code>id</code> / <code>token</code></td><td>整数 / 字符串</td><td>文件记录 ID 和访问标识</td></tr>
+                            <tr><td><code>hash</code></td><td>字符串</td><td>文件 MD5</td></tr>
+                            <tr><td><code>name</code> / <code>size</code> / <code>type</code></td><td>混合</td><td>文件名、字节数和扩展名</td></tr>
+                            <tr><td><code>downurl</code></td><td>字符串</td><td>文件下载地址</td></tr>
+                            <tr><td><code>viewurl</code></td><td>字符串</td><td>可预览格式才会返回的预览地址</td></tr>
+                            <tr><td><code>error</code></td><td>字符串</td><td>部分失败响应附带的机器可读错误类型</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="uc-api-code">
+                    <div><b>成功响应示例</b><button type="button" data-api-copy-code><i class="fa fa-copy" aria-hidden="true"></i> 复制</button></div>
+                    <pre><code>{
+  "code": 0,
+  "msg": "文件上传成功！",
+  "exists": 0,
+  "id": 123,
+  "token": "文件访问标识",
+  "hash": "文件MD5",
+  "name": "example.jpg",
+  "size": 58937,
+  "type": "jpg",
+  "downurl": "https://站点地址/down.php/文件访问标识.jpg",
+  "viewurl": "https://站点地址/view.php/文件访问标识.jpg"
+}</code></pre>
+                </div>
+            </div>
+
+            <div class="uc-api-doc-block">
+                <h3><em>4</em> 调用示例</h3>
+                <div class="uc-api-code">
+                    <div><b>cURL</b><button type="button" data-api-copy-code><i class="fa fa-copy" aria-hidden="true"></i> 复制</button></div>
+                    <pre><code>curl -X POST \
+  -H "Authorization: Bearer pan_请替换为你的完整密钥" \
+  -F "file=@example.jpg" \
+  -F "show=0" \
+  -F "format=json" \
+  "<?php echo htmlspecialchars($upload_api_endpoint, ENT_QUOTES, 'UTF-8')?>"</code></pre>
+                </div>
+                <div class="uc-api-code">
+                    <div><b>PHP cURL</b><button type="button" data-api-copy-code><i class="fa fa-copy" aria-hidden="true"></i> 复制</button></div>
+                    <pre><code>&lt;?php
+$ch = curl_init('<?php echo htmlspecialchars($upload_api_endpoint, ENT_QUOTES, 'UTF-8')?>');
+curl_setopt_array($ch, [
+    CURLOPT_POST =&gt; true,
+    CURLOPT_RETURNTRANSFER =&gt; true,
+    CURLOPT_HTTPHEADER =&gt; [
+        'Authorization: Bearer pan_请替换为你的完整密钥',
+    ],
+    CURLOPT_POSTFIELDS =&gt; [
+        'file' =&gt; new CURLFile('/path/to/example.jpg'),
+        'show' =&gt; '0',
+        'format' =&gt; 'json',
+    ],
+]);
+$response = curl_exec($ch);
+if ($response === false) {
+    throw new RuntimeException(curl_error($ch));
+}
+$result = json_decode($response, true);
+if (!is_array($result) || $result['code'] !== 0) {
+    throw new RuntimeException($result['msg'] ?? '上传失败');
+}
+echo $result['downurl'];</code></pre>
+                </div>
+                <div class="uc-api-code">
+                    <div><b>JavaScript（Node.js 18+）</b><button type="button" data-api-copy-code><i class="fa fa-copy" aria-hidden="true"></i> 复制</button></div>
+                    <pre><code>const fs = require('node:fs');
+const form = new FormData();
+form.append(
+  'file',
+  new Blob([fs.readFileSync('./example.jpg')]),
+  'example.jpg'
+);
+form.append('show', '0');
+form.append('format', 'json');
+
+const response = await fetch('<?php echo htmlspecialchars($upload_api_endpoint, ENT_QUOTES, 'UTF-8')?>', {
+  method: 'POST',
+  headers: {
+    Authorization: 'Bearer pan_请替换为你的完整密钥'
+  },
+  body: form
+});
+const result = await response.json();
+if (result.code !== 0) throw new Error(result.msg || '上传失败');
+console.log(result.downurl);</code></pre>
+                </div>
+            </div>
+        </div>
 <?php
 /* ===================== 账号设置 ===================== */
 }else{

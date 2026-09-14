@@ -221,8 +221,7 @@ class Webdav implements IStorage
 		}
 		if(!empty($opts['stream'])){
 			curl_setopt($ch, CURLOPT_WRITEFUNCTION, function($ch, $data){
-				echo $data;
-				flush();
+				\download_output_chunk($data);
 				return strlen($data);
 			});
 		}

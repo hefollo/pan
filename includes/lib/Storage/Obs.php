@@ -81,7 +81,7 @@ class Obs implements IStorage {
 				'SaveAsStream' => true
 			] + $options);
 			while(!$resp['Body'] -> eof()){
-				echo $resp['Body'] -> read(102400);
+				\download_output_chunk($resp['Body'] -> read(102400));
 			}
 			return true;
         } catch(\Obs\ObsException $e) {

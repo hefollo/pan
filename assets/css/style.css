@@ -2486,6 +2486,18 @@ body.theme-sunset .buy-plan-btn,body.theme-sunset .buy-plan-btn:hover{color:#3d0
 .uc-form-row .uc-btn{flex:none;white-space:nowrap}
 /* 和 .uc-batchbar 同一个道理：.uc-form 的 display:flex 会把 [hidden] 顶掉 */
 .uc-form[hidden]{display:none}
+.uc-api-about{display:flex;align-items:flex-start;gap:16px;margin:0 0 20px;padding:18px;border:1px solid var(--line);border-left:4px solid var(--primary);border-radius:12px;background:var(--surface)}
+.uc-api-about>i{flex:none;width:42px;height:42px;border-radius:12px;background:var(--surface-soft);color:var(--primary);font-size:20px;line-height:42px;text-align:center}.uc-api-about>div{min-width:0;flex:1}.uc-api-about strong{display:block;font-size:17px}.uc-api-about p{margin:5px 0 13px;color:var(--muted);line-height:1.7}
+.uc-api-meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 18px}.uc-api-meta span{min-width:0;color:var(--text);font-size:13px}.uc-api-meta b{margin-right:8px}.uc-api-meta code{overflow-wrap:anywhere}
+.uc-api-create{display:grid;grid-template-columns:minmax(180px,1fr) minmax(240px,1.4fr) 150px auto;gap:10px;align-items:center}
+.uc-api-create .uc-input{width:100%;max-width:none}
+.uc-api-secret{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin:0 0 20px;padding:15px;border:1px solid var(--primary);border-radius:12px;background:var(--surface-soft)}
+.uc-api-secret[hidden]{display:none}
+.uc-api-secret>div{flex:1 1 260px}.uc-api-secret strong,.uc-api-secret small{display:block}.uc-api-secret small{margin-top:3px;color:var(--muted);font-size:12px}.uc-api-secret code{flex:1 1 360px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--surface);overflow-wrap:anywhere}
+.uc-api-key-list{min-width:900px}.uc-api-key-list td{vertical-align:middle!important}.uc-api-key-list code{white-space:nowrap}
+.uc-api-docs>.uc-section-title{margin-bottom:4px}.uc-api-doc-block{padding:20px 0;border-bottom:1px solid var(--line)}.uc-api-doc-block:last-child{padding-bottom:0;border-bottom:0}.uc-api-doc-block h3{display:flex;align-items:center;gap:9px;margin:0 0 10px;color:var(--text);font-size:16px}.uc-api-doc-block h3 em{display:inline-flex;align-items:center;justify-content:center;width:25px;height:25px;border-radius:8px;background:var(--primary);color:#fff;font-size:12px;font-style:normal}.uc-api-doc-block>p{margin:0 0 12px;color:var(--muted);line-height:1.75}
+.uc-api-endpoint{display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface-soft)}.uc-api-endpoint code{min-width:0;flex:1;overflow-wrap:anywhere}.uc-api-auth-lines{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px}.uc-api-auth-lines code{padding:7px 9px;border-radius:7px;background:var(--surface-soft);overflow-wrap:anywhere}.uc-api-auth-lines span{color:var(--muted);font-size:12px}
+.uc-api-doc-table{min-width:720px;margin-bottom:12px!important}.uc-api-doc-table th{white-space:nowrap}.uc-api-doc-table td{vertical-align:middle!important;line-height:1.6}.uc-api-code{margin-top:12px;overflow:hidden;border:1px solid var(--line);border-radius:10px;background:#111827}.uc-api-code>div{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#1f2937;color:#e5e7eb}.uc-api-code button{padding:3px 7px;border:0;background:transparent;color:#cbd5e1;font-size:12px}.uc-api-code pre{margin:0;padding:14px;overflow:auto;border:0;background:transparent;color:#e5e7eb;font-size:12px;line-height:1.7}.uc-api-code code{padding:0;background:transparent;color:inherit;white-space:pre}
 /* 账号设置的三栏布局。侧栏型外观下内容区能到 1600px 宽，
    单栏铺开时右边会空掉一大半；auto-fit + minmax 宽屏三栏、中屏两栏、窄屏一栏 */
 /* 不写 align-items:start —— 让三张卡按最高的那张拉平，底边对齐；
@@ -2582,6 +2594,9 @@ body.theme-sunset .uc-tab.active,body.theme-sunset .uc-filter.active,body.theme-
 .uc-filelist .uc-col-state,.uc-filelist .uc-col-size{display:none}
 .uc-name{max-width:160px}
 .uc-form .uc-input,.uc-form-col{max-width:none}
+.uc-api-about{padding:14px}.uc-api-about>i{display:none}.uc-api-meta{grid-template-columns:1fr}
+.uc-api-endpoint{align-items:stretch;flex-direction:column}.uc-api-endpoint .uc-btn{width:100%}.uc-api-auth-lines{align-items:stretch;flex-direction:column}.uc-api-auth-lines span{text-align:center}
+.uc-api-create{grid-template-columns:1fr}.uc-api-create .uc-btn{width:100%}
 }
 
 /* ===== macOS 窗口风（布局型）：整站套进一个 macOS 窗口，文件列表默认是访达式图标网格 =====

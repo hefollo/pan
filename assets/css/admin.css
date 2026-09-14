@@ -2346,6 +2346,11 @@ body.admin-body .modal-header .close:hover{opacity:1}
 .stor-warn i{margin-right:5px}
 .stor-submit .btn{min-width:150px}
 .stor-config-body .form-horizontal,#transfer_panel .form-horizontal{max-width:920px}
+.download-speed-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.download-speed-item{padding:13px;border:1px solid var(--admin-line);border-radius:10px;background:var(--admin-soft)}
+.download-speed-item>label{display:block;margin-bottom:8px;color:var(--admin-text);font-size:13px}
+.download-speed-control{display:flex;width:100%}.download-speed-control input{min-width:0;border-radius:4px 0 0 4px}.download-speed-control select{flex:0 0 82px;width:82px;border-left:0;border-radius:0 4px 4px 0}
+@media (max-width:767px){.download-speed-grid{grid-template-columns:1fr}.download-speed-control select{flex-basis:92px;width:92px}}
 .stor-page .form-group{margin-bottom:20px}
 .stor-page .help-block{margin-top:7px;color:var(--admin-muted);font-size:13px;line-height:1.8}
 .stor-page .control-label{color:var(--admin-text)}
