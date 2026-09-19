@@ -949,8 +949,16 @@ function greenEngine(v){
 	}
 }
 $("select[name='green_check']").change(function(){ greenEngine($(this).val()); });
-//要等页面底部那段把 select[default] 的值套上去之后再算一次，所以放进 ready 里
-$(function(){ greenEngine($("select[name='green_check']").val()); });
+/*
+ * 初始状态直接读 default 属性，不读 .val()，也不放进 $(function(){}) 里等 ready。
+ *
+ * 页面底部那段回填 select[default] 的循环排在本段之后，这里读 .val() 只会拿到第一个
+ * 选项「关闭」。整页打开时靠 ready 排到底部之后能绕过去，但从侧栏点进来是动态换页，
+ * 页面脚本是插完节点后逐段 eval 的，DOM 早就 ready，$(function(){}) 当场就执行，
+ * 于是三块引擎配置全被判成不该显示——选着自建检测，下面的自建服务连接、图片判定、
+ * 视频检测却一块都不出来，还连带被 disabled。读 default 属性就跟回填顺序无关了。
+ */
+greenEngine($("select[name='green_check']").attr('default') || '0');
 $("select[name='green_check_porn']").change(function(){
 	if($(this).val() == 1){
 		$("#green_check_porn_").show();

@@ -209,6 +209,22 @@ window.adminBlockHtml = function(id, value){
 	}
 	return h + '</span></div>';
 };
+/*
+ * select[default] 的回填。
+ *
+ * 各设置页底部都有一份自己的回填循环，整页打开时没问题：内联脚本按顺序跑完，
+ * DOMContentLoaded 才到，写在 $(function(){}) 里的初始化读到的已经是真实值。
+ * 但从侧栏点进来是动态换页，页面脚本是插完节点后逐段 eval 的，此时 DOM 早就 ready，
+ * jQuery 2 的 $(function(){}) 会当场执行——那时候底部那段还没轮到，select 还停在
+ * 第一个选项上，按它算出来的初始状态是错的（内容检测设置页就因此不显示自建服务那几块）。
+ * 所以动态换页插完节点、跑页面脚本之前，先在这里统一回填一次。
+ */
+window.applyAdminSelectDefaults = function(scope){
+	jQuery(scope || document).find('select[default]').each(function(){
+		var d = this.getAttribute('default');
+		jQuery(this).val(d === null || d === '' ? '0' : d);
+	});
+};
 jQuery(function($){
 	var adminDynamicScripts = {};
 	var adminDynamicLoadId = 0;
@@ -333,6 +349,8 @@ jQuery(function($){
 			$(window).off('.adminDynamicPage');
 			$('#admin-dynamic-content-start').nextAll().remove();
 			$('#admin-dynamic-content-start').after(page.nodes);
+			//页面脚本里立刻执行的初始化要读得到 select 的真实值，回填得排在它们前面
+			window.applyAdminSelectDefaults();
 			if(page.title)document.title = page.title;
 			resetAdminNavigation($link);
 			if(addHistory)history.pushState({adminDynamic:true}, '', target.href);
