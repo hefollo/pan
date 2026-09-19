@@ -63,7 +63,7 @@ if(isset($_GET['logout'])){
 	if(!checkRefererHost())exit('{"code":-1,"msg":"来源校验失败"}');
 	exit(json_encode(['code'=>0, 'question'=>make_captcha()], JSON_UNESCAPED_UNICODE));
 
-}elseif(isset($_GET['act']) && in_array($_GET['act'], ['sendcode', 'register', 'maillogin'], true)){
+}elseif(isset($_GET['act']) && in_array($_GET['act'], ['sendcode', 'register', 'maillogin', 'sendresetcode', 'resetpwd'], true)){
 	@header('Content-Type: application/json; charset=UTF-8');
 	if(!checkRefererHost())exit('{"code":-1,"msg":"来源校验失败"}');
 	$act = $_GET['act'];
@@ -79,7 +79,7 @@ if(isset($_GET['logout'])){
 	if(!filter_var($email, FILTER_VALIDATE_EMAIL))exit('{"code":-1,"msg":"邮箱格式不正确"}');
 
 	if($act === 'sendcode'){
-		//目前只有注册会用到验证码，找回密码留到下一步做
+		//这一支只管注册；找回密码在下面的 sendresetcode 里，两边共用同一组会话配额
 		if(!is_mail_reg_open())exit('{"code":-1,"msg":"站点未开启邮箱注册"}');
 		/*
 		 * 会话级频率：令牌逼着调用方维持会话，这两道限制才真正拦得住。
@@ -125,6 +125,118 @@ if(isset($_GET['logout'])){
 			'token' => $_SESSION['mail_token'],
 			'question' => is_captcha_open() ? make_captcha() : '',
 		], JSON_UNESCAPED_UNICODE));
+	}
+
+
+	/*
+	 * 找回密码：发验证码。
+	 *
+	 * 口径是「不泄露这个邮箱在不在站里」（DEC-20260919-003 方案 A1）：不管账号存不存在，
+	 * 都消耗同一份会话配额、返回同一句话，只有真存在的账号才会收到信。
+	 * 未登录状态下能改密码的入口只有这一个，下面每一道限制都不能省。
+	 */
+	if($act === 'sendresetcode'){
+		if(!is_mail_reset_open())exit('{"code":-1,"msg":"站点暂时无法使用找回密码"}');
+		/*
+		 * 会话级频率：和注册**共用**同一组计数键。各记各的话，同一个会话在注册接口刷 5 次、
+		 * 再来这边刷 5 次，等于把每天的配额翻倍。
+		 */
+		if(isset($_SESSION['sendcode_time']) && $_SESSION['sendcode_time'] + 60 > time()){
+			$wait = $_SESSION['sendcode_time'] + 60 - time();
+			exit(json_encode(['code'=>-1, 'msg'=>'操作太频繁了，请 '.$wait.' 秒后再试']));
+		}
+		$today = date('Y-m-d');
+		if(!isset($_SESSION['sendcode_day']) || $_SESSION['sendcode_day'] !== $today){
+			$_SESSION['sendcode_day'] = $today;
+			$_SESSION['sendcode_num'] = 0;
+		}
+		if(intval($_SESSION['sendcode_num']) >= 5){
+			exit('{"code":-1,"msg":"今天获取验证码的次数已用完，请明天再试"}');
+		}
+		if(is_captcha_open()){
+			$err = check_captcha(isset($_POST['captcha']) ? $_POST['captcha'] : '');
+			if($err !== ''){
+				exit(json_encode(['code'=>-1, 'msg'=>$err, 'question'=>make_captcha()], JSON_UNESCAPED_UNICODE));
+			}
+		}
+		//配额在查账号之前就扣掉：存在和不存在两条路消耗一样，免得靠"哪次没扣配额"反推
+		$_SESSION['sendcode_time'] = time();
+		$_SESSION['sendcode_num'] = intval($_SESSION['sendcode_num']) + 1;
+		//域名黑名单可以直说：它只说明这个域名不收，和站里有没有这个账号无关
+		if(mail_domain_denied($email))exit('{"code":-1,"msg":"该邮箱域名不被支持，请换一个邮箱"}');
+
+		$_SESSION['mail_token'] = md5(uniqid('', true).mt_rand());
+		$sent_msg = '如果该邮箱已注册，验证码已经发出，请查收（也看一下垃圾箱）。';
+		$row = find_user_by_identity('mail', $email);
+		/*
+		 * 没这个账号、或者账号根本没设过密码（纯 QQ/微信登录）时：什么都不做，
+		 * 但要返回和成功完全一样的那句话。
+		 */
+		if(!$row || $row['password'] === ''){
+			exit(json_encode([
+				'code' => 0,
+				'msg' => $sent_msg,
+				'token' => $_SESSION['mail_token'],
+				'question' => is_captcha_open() ? make_captcha() : '',
+			], JSON_UNESCAPED_UNICODE));
+		}
+		$res = send_mail_code($email, 'reset', $row['uid']);
+		/*
+		 * 发信本身失败或撞上站点级限额时，照实回报。
+		 * 这一处严格说会泄露"账号存在"，但要触发它，攻击者得先把某个邮箱的发信额度打满，
+		 * 而上面的会话配额每天只有 5 次，根本够不到；换来的是正常用户能看懂为什么没收到信。
+		 */
+		exit(json_encode([
+			'code' => $res['code'],
+			'msg' => $res['code'] === 0 ? $sent_msg : $res['msg'],
+			'token' => $_SESSION['mail_token'],
+			'question' => is_captcha_open() ? make_captcha() : '',
+		], JSON_UNESCAPED_UNICODE));
+	}
+
+	/*
+	 * 找回密码：校验验证码并改密码。
+	 * 改完不自动登录（DEC-20260919-003 方案 B2），让用户拿新密码真登一次，自己确认改对了。
+	 */
+	if($act === 'resetpwd'){
+		if(!is_mail_reset_open())exit('{"code":-1,"msg":"站点暂时无法使用找回密码"}');
+		$pwd = isset($_POST['password']) ? (string)$_POST['password'] : '';
+		$err = check_password_rule($pwd);
+		if($err !== '')exit(json_encode(['code'=>-1, 'msg'=>$err], JSON_UNESCAPED_UNICODE));
+
+		/*
+		 * 先只校验、不作废：下面还有「账号还在不在」「新密码是不是和当前的一样」两道，
+		 * 那两道失败时这张码必须还能用——否则用户换个密码重新提交，就会撞上
+		 * 「请先获取验证码」，因为码在上一次失败里已经被吃掉了。
+		 */
+		$check = verify_mail_code($email, isset($_POST['code']) ? $_POST['code'] : '', 'reset', false);
+		if($check['code'] != 0)exit(json_encode(['code'=>-1, 'msg'=>$check['msg']], JSON_UNESCAPED_UNICODE));
+
+		//验证码是几分钟前发的，这中间账号可能被删、被改，落库前重新查一次
+		$row = find_user_by_identity('mail', $email);
+		if(!$row || $row['password'] === ''){
+			exit('{"code":-1,"msg":"该邮箱当前无法重置密码，请联系站长"}');
+		}
+		if(password_verify($pwd, $row['password'])){
+			exit('{"code":-1,"msg":"新密码不能和当前密码相同"}');
+		}
+		$hash = password_hash($pwd, PASSWORD_DEFAULT);
+		if(!$DB->exec("UPDATE pre_user SET password=:p WHERE uid=:uid", [':p'=>$hash, ':uid'=>intval($row['uid'])])){
+			exit('{"code":-1,"msg":"保存失败，请稍后重试"}');
+		}
+		/*
+		 * 把登录失败锁解掉。来找回密码的人十有八九就是先密码试错被锁了 15 分钟才来的
+		 * （见下面 maillogin 那支的 pan_loginfail 文件），不清掉的话他刚改完还是登不进去，
+		 * 只会以为"重置根本没生效"。
+		 */
+		//密码已经落库，这时候才把验证码作废
+		if(isset($check['row']['id']))consume_mail_code($check['row']['id']);
+		@unlink(sys_get_temp_dir().'/pan_loginfail_'.substr(md5(SYS_KEY.'|'.$email), 0, 24));
+		/*
+		 * 不在这里签发登录态：user_session_hash() 把密码哈希算了进去，密码一改，
+		 * 所有设备上的旧 cookie 立刻失效——这正是找回密码该有的效果，本机也不例外。
+		 */
+		exit('{"code":0,"msg":"密码已重置，请用新密码登录"}');
 	}
 
 	if($act === 'register'){
@@ -296,20 +408,13 @@ include SYSTEM_ROOT.'header.php';
 $has_oauth = !empty($conf['login_apiurl']) && (!empty($conf['login_qq']) || !empty($conf['login_wx']));
 //邮箱登录入口：开着注册就一定显示；关掉注册后，只要站里已经有邮箱账号也要留着入口，
 //否则老用户会登不进来。这个统计缓存 5 分钟，不用每次打开登录页都查一遍
-$has_mail_user = false;
-if(!is_mail_reg_open() && !empty($conf['userlogin'])){
-	if(isset($_SESSION['has_mail_user']) && isset($_SESSION['has_mail_user_time']) && $_SESSION['has_mail_user_time'] + 300 > time()){
-		$has_mail_user = $_SESSION['has_mail_user'];
-	}else{
-		//绑定表里的邮箱同样要算：快捷登录账号绑了邮箱之后，也得留着邮箱登录入口给他用
-		$has_mail_user = ($DB->getColumn("SELECT uid FROM pre_user WHERE type='mail' LIMIT 1")
-			|| $DB->getColumn("SELECT uid FROM pre_user_bind WHERE type='mail' LIMIT 1")) ? true : false;
-		$_SESSION['has_mail_user'] = $has_mail_user;
-		$_SESSION['has_mail_user_time'] = time();
-	}
-}
+//绑定表里的邮箱同样要算：快捷登录账号绑了邮箱之后，也得留着邮箱登录入口给他用
+//（查询和 5 分钟会话缓存抽到了 functions.php 的 has_mail_user()，找回密码那边也要用同一份判断）
+$has_mail_user = (!is_mail_reg_open() && !empty($conf['userlogin'])) ? has_mail_user() : false;
 $show_mail = is_mail_reg_open() || $has_mail_user;
 $show_reg = is_mail_reg_open();
+//找回密码的入口：发信可用 + 站里有邮箱账号就给，关掉注册也不影响老用户找回（DEC-20260919-003）
+$show_forget = $show_mail && is_mail_reset_open();
 ?>
 <div class="container">
 <div class="col-xs-10 col-sm-8 col-md-6 col-lg-5 center-block" style="float: none;">
@@ -335,6 +440,9 @@ $show_reg = is_mail_reg_open();
                     <div class="form-group"><input type="email" id="login_email" class="form-control" placeholder="邮箱地址" autocomplete="username" required/></div>
                     <div class="form-group"><input type="password" id="login_pwd" class="form-control" placeholder="密码" autocomplete="current-password" required/></div>
                     <button type="submit" class="btn btn-primary btn-block loginsubmit">登录</button>
+<?php if($show_forget){?>
+                    <p class="text-center" style="margin:12px 0 0"><a href="javascript:;" onclick="showTab('forget')">忘记密码？</a></p>
+<?php }?>
                 </form>
             </div>
 <?php if($show_reg){?>
@@ -344,7 +452,7 @@ $show_reg = is_mail_reg_open();
 <?php if($captcha_question !== ''){?>
                     <div class="form-group field-wrap has-prefix">
                         <button type="button" class="field-prefix" onclick="refreshCaptcha()" title="点一下换一题"><span id="captchaQ"><?php echo htmlspecialchars($captcha_question, ENT_QUOTES, 'UTF-8')?></span><i class="fa fa-refresh" aria-hidden="true"></i></button>
-                        <input type="text" id="reg_captcha" class="form-control" placeholder="答案" inputmode="numeric" maxlength="3" autocomplete="off" required/>
+                        <input type="text" id="reg_captcha" class="form-control" placeholder="答案" inputmode="numeric" maxlength="3" autocomplete="off"/>
                     </div>
 <?php }?>
                     <div class="form-group field-wrap has-suffix">
@@ -354,6 +462,28 @@ $show_reg = is_mail_reg_open();
                     <div class="form-group"><input type="password" id="reg_pwd" class="form-control" placeholder="设置密码（6-32 位，含字母和数字）" autocomplete="new-password" required/></div>
                     <div class="form-group"><input type="text" id="reg_nick" class="form-control" placeholder="昵称（选填，默认用邮箱前缀）" maxlength="20" autocomplete="off"/></div>
                     <button type="submit" class="btn btn-primary btn-block loginsubmit">注册并登录</button>
+                </form>
+            </div>
+<?php }?>
+<?php if($show_forget){?>
+            <div class="tab-pane" id="tab-forget">
+                <form class="loginform" onsubmit="return doReset()">
+                    <p class="text-muted" style="margin-bottom:12px">填注册时用的邮箱，我们会发一封验证码过去。改完密码所有设备都要重新登录。</p>
+                    <div class="form-group"><input type="email" id="forget_email" class="form-control" placeholder="邮箱地址" autocomplete="username" required/></div>
+<?php if($captcha_question !== ''){?>
+                    <div class="form-group field-wrap has-prefix">
+                        <button type="button" class="field-prefix" onclick="refreshCaptcha()" title="点一下换一题"><span id="captchaQ2"><?php echo htmlspecialchars($captcha_question, ENT_QUOTES, 'UTF-8')?></span><i class="fa fa-refresh" aria-hidden="true"></i></button>
+                        <input type="text" id="forget_captcha" class="form-control" placeholder="答案" inputmode="numeric" maxlength="3" autocomplete="off"/>
+                    </div>
+<?php }?>
+                    <div class="form-group field-wrap has-suffix">
+                        <input type="text" id="forget_code" class="form-control" placeholder="邮箱验证码" inputmode="numeric" maxlength="6" autocomplete="off" required/>
+                        <button type="button" class="field-suffix" id="sendResetBtn" onclick="sendResetCode()">获取验证码</button>
+                    </div>
+                    <div class="form-group"><input type="password" id="forget_pwd" class="form-control" placeholder="新密码（6-32 位，含字母和数字）" autocomplete="new-password" required/></div>
+                    <div class="form-group"><input type="password" id="forget_pwd2" class="form-control" placeholder="再输一次新密码" autocomplete="new-password" required/></div>
+                    <button type="submit" class="btn btn-primary btn-block loginsubmit">重置密码</button>
+                    <p class="text-center" style="margin:12px 0 0"><a href="javascript:;" onclick="showTab('mail')">返回登录</a></p>
                 </form>
             </div>
 <?php }?>
@@ -408,10 +538,25 @@ function mailPost(act, data, done){
 	});
 }
 
+/*
+ * 算术题只服务于「获取验证码」这一步：服务端答对一次就作废，所以每发一次码都会换新题、
+ * 清空答案框。但题目一直杵在表单里，用户会以为提交前还得再算一遍——实际上提交
+ * （注册 / 重置密码）服务端根本不看它。
+ *
+ * 所以发码成功后直接把这一行收起来，等 60 秒倒计时结束、可以重发了再放出来；
+ * 那时候题面已经是服务端换过的新题，答完正好用于下一次发码。
+ */
+function captchaRow(sel, show){
+	var $row = $(sel).closest('.form-group');
+	if(!$row.length)return;
+	if(show){ $row.show(); }else{ $row.hide(); }
+}
+
 //算术题：答对一次就作废，所以每次请求后都要换题面、清输入框
 function setCaptcha(q){
-	$('#captchaQ').text(q);
-	$('#reg_captcha').val('');
+	//注册和找回密码各有一处题面，但服务端同一时刻只有一道题，两边都要跟着换
+	$('#captchaQ,#captchaQ2').text(q);
+	$('#reg_captcha,#forget_captcha').val('');
 }
 function refreshCaptcha(){
 	$.ajax({
@@ -440,6 +585,8 @@ function sendCode(){
 			return;
 		}
 		layer.msg(res.msg || '验证码已发送');
+		//码已经发出去了，这一行暂时没用，收起来免得挡路；能重发的时候再放出来
+		captchaRow('#reg_captcha', false);
 		//倒计时期间不让重复点，服务端也有同样的间隔限制
 		var left = 60;
 		btn.text(left + ' 秒后重发');
@@ -448,11 +595,83 @@ function sendCode(){
 			if(left <= 0){
 				clearInterval(codeTimer);
 				btn.prop('disabled', false).text('重新获取');
+				//要重发就得重新答题，这时候才把题目放回来
+				captchaRow('#reg_captcha', true);
 			}else{
 				btn.text(left + ' 秒后重发');
 			}
 		}, 1000);
 	});
+}
+
+//「忘记密码」那一栏不在顶部标签里露出（露出来登录页顶上就成了三个标签），
+//靠登录表单下面那行小字切过去，再从它自己的「返回登录」切回来
+function showTab(name){
+	$('.login-tabs li').removeClass('active');
+	$('.tab-content > .tab-pane').removeClass('active');
+	$('#tab-' + name).addClass('active');
+	//「忘记密码」在顶部标签里没有对应项，这一句对它是空操作；回到登录/注册时才会点亮标签
+	$('.login-tabs a[href="#tab-' + name + '"]').parent().addClass('active');
+	return false;
+}
+
+var resetTimer = null;
+function sendResetCode(){
+	var email = $('#forget_email').val();
+	if(!email){ layer.msg('请先填写邮箱地址'); return; }
+	if($('#captchaQ2').length && !$('#forget_captcha').val()){ layer.msg('请先算出上面那道题'); return; }
+	var btn = $('#sendResetBtn');
+	if(btn.prop('disabled')) return;
+	btn.prop('disabled', true).text('发送中…');
+	var ii = layer.load(2, {shade:[0.1,'#fff']});
+	mailPost('sendresetcode', {email:email, captcha:$('#forget_captcha').val()}, function(res){
+		layer.close(ii);
+		if(res.code !== 0){
+			btn.prop('disabled', false).text('获取验证码');
+			layer.alert(res.msg || '发送失败', {icon:2});
+			return;
+		}
+		//这句话对"邮箱没注册"和"已经发出去了"是同一句，前端不要自作聪明改写它
+		layer.alert(res.msg || '验证码已发送', {icon:1});
+		//同上：重置密码这一步服务端不校验算术题，收起来，能重发时再放出来
+		captchaRow('#forget_captcha', false);
+		var left = 60;
+		btn.text(left + ' 秒后重发');
+		resetTimer = setInterval(function(){
+			left--;
+			if(left <= 0){
+				clearInterval(resetTimer);
+				btn.prop('disabled', false).text('重新获取');
+				captchaRow('#forget_captcha', true);
+			}else{
+				btn.text(left + ' 秒后重发');
+			}
+		}, 1000);
+	});
+}
+
+function doReset(){
+	var p1 = $('#forget_pwd').val(), p2 = $('#forget_pwd2').val();
+	if(p1 !== p2){ layer.msg('两次输入的新密码不一致'); return false; }
+	var ii = layer.load(2, {shade:[0.1,'#fff']});
+	mailPost('resetpwd', {
+		email: $('#forget_email').val(),
+		code: $('#forget_code').val(),
+		password: p1
+	}, function(res){
+		layer.close(ii);
+		if(res.code !== 0){ layer.alert(res.msg || '重置失败', {icon:2}); return; }
+		//不自动登录：让用户拿新密码真登一次，自己确认改对了
+		layer.alert(res.msg || '密码已重置，请用新密码登录', {icon:1}, function(index){
+			layer.close(index);
+			//邮箱替用户填好，光标落在密码框上，直接用新密码登一次
+			$('#login_email').val($('#forget_email').val());
+			$('#login_pwd').val('');
+			showTab('mail');
+			$('#login_pwd').focus();
+		});
+	});
+	return false;
 }
 
 function doRegister(){

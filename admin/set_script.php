@@ -104,7 +104,17 @@ $file_reward_image = isset($conf['file_reward_image']) && $conf['file_reward_ima
 .script-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:18px 0 14px;padding:16px 18px;border:1px solid rgba(148,163,184,.16);border-radius:14px;background:rgba(255,255,255,.56);flex-wrap:wrap}
 .script-toolbar strong{display:flex;align-items:center;gap:8px;font-size:15px}
 .script-toolbar strong:before{content:"\f0ce";font-family:FontAwesome;color:var(--admin-primary)}
-.script-ad-table-wrap{border:1px solid rgba(148,163,184,.16);border-radius:16px;overflow:hidden;background:rgba(255,255,255,.72)}
+/* 这张表 8 列，里面还都是输入控件，宽度下不来。原来包裹层为了圆角写了 overflow:hidden，
+   它同时盖掉了 .table-responsive 自带的 overflow-x:auto——装不下的列不是能滑，是直接被
+   裁掉：窄屏上从「广告文字」往右全没了，桌面端在 1080px 的页面壳里也会把「操作」列和
+   「广告类型」下拉框的右半边吃掉。改成需要时才出现的横向滚动，圆角照样裁得住。
+   min-width 是防止浏览器把列压扁——auto 布局下列宽不够时会硬挤，控件就溢出到格子外面被裁。
+   和上传API设置页的 .api-table 是同一套做法。 */
+.script-ad-table-wrap{border:1px solid rgba(148,163,184,.16);border-radius:16px;overflow-x:auto;-webkit-overflow-scrolling:touch;background:rgba(255,255,255,.72)}
+.script-ad-table{min-width:1040px}
+/* 「广告类型」那一列是原生 select：文字右边还要留出箭头的位置，给够宽度才不会把
+   「图片广告」裁成「图片广」 */
+.script-ad-table>tbody>tr>td:nth-child(2) .form-control{min-width:136px}
 .script-ad-table{margin-bottom:0}
 .script-ad-table>thead>tr>th{font-size:13px;font-weight:800;text-align:center;vertical-align:middle}
 .script-ad-table>tbody>tr>td{vertical-align:middle;text-align:center;padding:14px 10px}
@@ -204,7 +214,7 @@ body.admin-theme-onefour.admin-body .script-ad-table-wrap{border-color:rgba(148,
 }
 </style>
 <div class="container script-settings-page">
-  <div class="admin-page script-settings-shell">
+  <div class="admin-page-wide script-settings-shell">
 	<?php if($saved){?>
 	<div class="alert alert-success">&#35774;&#32622;&#20445;&#23384;&#25104;&#21151;&#65292;&#21069;&#21488;&#21047;&#26032;&#21518;&#20250;&#31435;&#21363;&#35835;&#21462;&#26032;&#30340;&#20869;&#23481;&#12290;</div>
 	<?php }?>
@@ -274,7 +284,7 @@ body.admin-theme-onefour.admin-body .script-ad-table-wrap{border-color:rgba(148,
 		      <thead>
 		        <tr>
 		          <th style="width:70px;">&#26174;&#31034;</th>
-		          <th style="width:120px;">&#24191;&#21578;&#31867;&#22411;</th>
+		          <th style="width:140px;">&#24191;&#21578;&#31867;&#22411;</th>
 		          <th style="width:180px;">&#24191;&#21578;&#25991;&#23383;</th>
 		          <th>&#38142;&#25509;</th>
 		          <th>&#22270;&#29255;&#38142;&#25509;</th>
@@ -292,8 +302,8 @@ body.admin-theme-onefour.admin-body .script-ad-table-wrap{border-color:rgba(148,
 		          </td>
 		          <td>
 		            <select class="form-control" name="ad_mode[<?php echo $i;?>]">
-		              <option value="text" <?php echo (!isset($ad['mode']) || $ad['mode'] !== 'image')?'selected':null;?>>&nbsp;&#25991;&#23383;&#24191;&#21578;</option>
-		              <option value="image" <?php echo (isset($ad['mode']) && $ad['mode'] === 'image')?'selected':null;?>>&nbsp;&#22270;&#29255;&#24191;&#21578;</option>
+		              <option value="text" <?php echo (!isset($ad['mode']) || $ad['mode'] !== 'image')?'selected':null;?>>&#25991;&#23383;&#24191;&#21578;</option>
+		              <option value="image" <?php echo (isset($ad['mode']) && $ad['mode'] === 'image')?'selected':null;?>>&#22270;&#29255;&#24191;&#21578;</option>
 		            </select>
 		          </td>
 		          <td><textarea class="form-control script-ad-cell" rows="1" name="ad_text[<?php echo $i;?>]"><?php echo mpimg_admin_form_h($ad['text']);?></textarea></td>

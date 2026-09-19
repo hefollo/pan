@@ -2480,10 +2480,13 @@ body.theme-sunset .buy-plan-btn,body.theme-sunset .buy-plan-btn:hover{color:#3d0
 .uc-bind .uc-dim{flex:none;font-size:12px;white-space:nowrap}
 /* 绑定邮箱的表单：验证码和按钮并排一行，其余各占一行 */
 .uc-bindmail-form{margin-top:14px}
-.uc-form-row{display:flex;gap:8px;width:100%}
-/* .uc-form-col 给输入框设了 width:100%，在这一行里会把按钮挤出去，收回 auto */
-.uc-form-row .uc-input{flex:1 1 auto;width:auto;min-width:0;max-width:none}
-.uc-form-row .uc-btn{flex:none;white-space:nowrap}
+.uc-form-row{display:flex;flex-wrap:wrap;gap:8px;width:100%}
+/* .uc-form-col 给这一行里的输入框和按钮都设了 width:100%，两个都要收回 auto。
+   原来只收了输入框那一个：按钮仍然是整行宽，把验证码输入框压成了一条缝
+   （flex:1 1 auto + min-width:0 允许它一路缩到 0），根本点不进去也输不了字。
+   basis 给 140px 而不是 auto：真放不下时让按钮换行到下一行，而不是继续压输入框。 */
+.uc-form-row .uc-input{flex:1 1 140px;width:auto;min-width:0;max-width:none}
+.uc-form-row .uc-btn{flex:none;width:auto;white-space:nowrap}
 /* 和 .uc-batchbar 同一个道理：.uc-form 的 display:flex 会把 [hidden] 顶掉 */
 .uc-form[hidden]{display:none}
 .uc-api-about{display:flex;align-items:flex-start;gap:16px;margin:0 0 20px;padding:18px;border:1px solid var(--line);border-left:4px solid var(--primary);border-radius:12px;background:var(--surface)}

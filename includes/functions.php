@@ -710,6 +710,39 @@ function is_mail_reg_open(){
 	return is_mail_ready();
 }
 
+
+/*
+ * 站里有没有邮箱账号（注册时用邮箱的、以及快捷登录后来绑了邮箱的，都算）。
+ * 结果在会话里缓存 5 分钟，不用每次打开登录页都查两次表。
+ *
+ * 关掉注册之后，邮箱登录入口和找回密码入口都要靠它：新人不再进来，
+ * 但老用户还得能登录、能把密码找回来。
+ */
+function has_mail_user(){
+	global $DB;
+	if(isset($_SESSION['has_mail_user']) && isset($_SESSION['has_mail_user_time']) && $_SESSION['has_mail_user_time'] + 300 > time()){
+		return (bool)$_SESSION['has_mail_user'];
+	}
+	$has = ($DB->getColumn("SELECT uid FROM pre_user WHERE type='mail' LIMIT 1")
+		|| $DB->getColumn("SELECT uid FROM pre_user_bind WHERE type='mail' LIMIT 1")) ? true : false;
+	$_SESSION['has_mail_user'] = $has;
+	$_SESSION['has_mail_user_time'] = time();
+	return $has;
+}
+
+/*
+ * 找回密码是否可用。
+ *
+ * 门槛故意不跟着 mail_reg_open 走：关掉注册只是不再收新用户，
+ * 已经注册的人仍然要能把密码找回来，否则他们就被永久锁在门外了。
+ * 相关决定：DEC-20260919-003。
+ */
+function is_mail_reset_open(){
+	global $conf;
+	if(empty($conf['userlogin']))return false;
+	if(!is_mail_ready())return false;
+	return has_mail_user();
+}
 /*
  * 邮箱域名是否在黑名单里（后台按行或逗号填一次性邮箱域名）
  */
@@ -833,7 +866,18 @@ function send_mail_code($email, $purpose, $uid = 0){
  * 校验验证码。校验通过会把它标记成已用，不能重复使用。
  * 输错累计 5 次直接作废，防止拿 6 位数字硬撞。
  */
-function verify_mail_code($email, $code, $purpose){
+/*
+ * 校验验证码。
+ *
+ * $consume=false 表示只校验、先不作废：调用方后面还有别的校验（比如找回密码要判断
+ * 新密码是不是和当前密码一样），那些校验失败时这张码必须还能再用一次，否则用户改一下
+ * 密码重新提交就会撞上「请先获取验证码」——码在上一次失败里已经被吃掉了。
+ * 真正生效之后由调用方自己调 consume_mail_code() 作废。
+ *
+ * 不作废也不会被拿来爆破：走到这一步说明码已经对了，攻击者手上必须先有正确的码；
+ * 输错的那几次照样计 trycount，满 5 次仍然直接作废。
+ */
+function verify_mail_code($email, $code, $purpose, $consume = true){
 	global $DB;
 	$email = normalize_email($email);
 	$code = trim((string)$code);
@@ -854,9 +898,18 @@ function verify_mail_code($email, $code, $purpose){
 		$DB->exec("UPDATE pre_mailcode SET trycount=trycount+1 WHERE id=:id", [':id'=>$row['id']]);
 		return ['code'=>-1, 'msg'=>'验证码不正确'];
 	}
-	//用掉就作废
-	$DB->exec("UPDATE pre_mailcode SET used=1, status=1 WHERE id=:id", [':id'=>$row['id']]);
+	//用掉就作废；$consume=false 时留给调用方在真正生效之后再作废
+	if($consume)consume_mail_code($row['id']);
 	return ['code'=>0, 'msg'=>'验证通过', 'row'=>$row];
+}
+
+/*
+ * 作废一张已经校验通过的验证码。配合 verify_mail_code($email,$code,$purpose,false) 使用：
+ * 业务真正做完（比如密码已经落库）之后再调，中途失败的话码还留着，用户不用重新要一遍。
+ */
+function consume_mail_code($id){
+	global $DB;
+	return $DB->exec("UPDATE pre_mailcode SET used=1, status=1 WHERE id=:id", [':id'=>intval($id)]);
 }
 
 /*
@@ -1855,6 +1908,9 @@ function admin_setting_keys(){
 		'green_video', 'green_video_block', 'green_video_review', 'green_video_hit',
 		'green_video_interval', 'green_video_frames', 'green_video_maxlen',
 		'green_video_maxsize', 'green_video_timeout', 'green_video_shot',
+		//检测命中后给站长发信：green_notify_last / green_notify_skip 是合并间隔的
+		//运行时状态，由 green_notify_send() 自己写，不从表单进来
+		'green_notify', 'green_notify_mail', 'green_notify_interval',
 		'green_label_terrorism', 'ip_type', 'keywords', 'login_apiurl',
 		'login_appid', 'login_appkey', 'login_qq', 'login_wx',
 		'name_block', 'obs_ak', 'obs_bucket', 'obs_endpoint',
@@ -2570,7 +2626,160 @@ function add_green_log($row){
 		$err = $DB->error();
 		writeLog('检测记录写入失败：'.(is_array($err) && isset($err[2]) ? $err[2] : '未知错误'));
 	}
+	//命中了就通知站长。写记录失败也照样通知——记录没落库反而更需要有人知道
+	green_notify_send($row);
 	return $ok;
+}
+
+
+/*
+ * 站点根地址（带结尾斜杠）。
+ *
+ * 不能直接用 $siteurl：它是「当前脚本所在目录」的地址，不是站点根。上传走的是根目录下的
+ * ajax.php，看起来一样；但后台页面里也会触发检测收尾（green_log.php 打开时会 poll 一次
+ * 视频任务），那时候 $siteurl 是 .../admin/，再拼一次路径就成了 /admin/admin/xxx。
+ *
+ * 优先用后台填的「检测访问网址」：那是站长自己写死的站点地址，不受 Host 头影响。
+ * 没填才按当前请求推算——顺带把脚本比站点根深的那几层目录削掉。
+ */
+function site_root_url(){
+	global $conf, $siteurl;
+	if(!empty($conf['apiurl']))return rtrim((string)$conf['apiurl'], '/').'/';
+	$root = rtrim((string)$siteurl, '/').'/';
+	if(!empty($_SERVER['SCRIPT_FILENAME'])){
+		$here = @realpath(dirname($_SERVER['SCRIPT_FILENAME']));
+		$base = @realpath(ROOT);
+		if($here !== false && $base !== false && strpos($here, $base) === 0){
+			$rel = trim(str_replace('\\', '/', substr($here, strlen($base))), '/');
+			if($rel !== ''){
+				//脚本在站点根下面几层，就从地址尾部削掉几段
+				foreach(explode('/', $rel) as $ignore){
+					$root = preg_replace('#[^/]+/$#', '', $root);
+				}
+			}
+		}
+	}
+	return $root;
+}
+
+/*
+ * 后台页面的完整地址。
+ *
+ * 后台目录默认叫 admin，但改名是最常见的一种后台隐藏手段，写死 /admin/ 会给出 404 地址。
+ * 真实目录名由后台请求自己记下来（见 common.php 里 IN_ADMIN 那段），这里只负责拼；
+ * 一次都没记录过（比如刚装完还没进过后台）就退回默认值。
+ */
+function admin_url($page = ''){
+	global $conf;
+	$dir = isset($conf['admin_dir']) && trim((string)$conf['admin_dir']) !== '' ? trim((string)$conf['admin_dir'], '/') : 'admin';
+	return site_root_url().$dir.'/'.ltrim((string)$page, '/');
+}
+
+/*
+ * 检测命中后给站长发一封通知邮件。
+ *
+ * 只有「已拦截」和「待人工」两种结果会发：放行的没人要看；检测失败是服务本身的毛病，
+ * 记录页和状态行里都看得见，不值得为它专门发信。
+ *
+ * 为什么挂在写记录这一步：图片上传、覆盖上传、视频回调、视频轮询四条路都会落一条
+ * 检测记录，判定逻辑却各写各的。挂在这里等于跟着记录走，四条路自动都有通知，
+ * 以后再多一条也不用记得补。
+ *
+ * 发信是同步的，会给这次请求多加一次 SMTP 往返——但只在命中时才发生，放行的不受影响。
+ * 发不出去只写日志，绝不能让通知失败反过来影响上传。
+ */
+function green_notify_send($row){
+	global $DB, $conf, $siteurl;
+	if(empty($conf['green_notify']))return false;
+
+	$verdict = isset($row['verdict']) ? (string)$row['verdict'] : '';
+	if($verdict !== 'block' && $verdict !== 'review')return false;
+
+	//没单独填收件人就发给发件邮箱自己，站长填过的那个地址至少是能收信的
+	$to = isset($conf['green_notify_mail']) ? trim((string)$conf['green_notify_mail']) : '';
+	if($to === '')$to = isset($conf['mail_from']) ? trim((string)$conf['mail_from']) : '';
+	if(!filter_var($to, FILTER_VALIDATE_EMAIL))return false;
+	if(!is_mail_ready())return false;
+
+	/*
+	 * 合并间隔。一次传几十张图、里面十几张命中的场面很常见，一条一封会把信箱刷爆，
+	 * 也会把发信通道的日额度烧掉。窗口内的命中不单独发，只累加条数，
+	 * 等下一封通知里一起报出来，不会悄悄丢掉。
+	 */
+	$interval = isset($conf['green_notify_interval']) ? max(0, intval($conf['green_notify_interval'])) : 0;
+	$skipped = 0;
+	if($interval > 0){
+		/*
+		 * 这两个值必须现查数据库：$conf 是请求开始时一次性读出来的，同一时刻的并发上传
+		 * 各自拿到的都是同一份旧值，照它判断等于没限流。
+		 */
+		$last = intval($DB->getColumn("SELECT v FROM pre_config WHERE k='green_notify_last' LIMIT 1"));
+		if($last > 0 && $last + $interval * 60 > time()){
+			$n = intval($DB->getColumn("SELECT v FROM pre_config WHERE k='green_notify_skip' LIMIT 1"));
+			saveSetting('green_notify_skip', $n + 1);
+			return false;
+		}
+		$skipped = intval($DB->getColumn("SELECT v FROM pre_config WHERE k='green_notify_skip' LIMIT 1"));
+	}
+	//先占住窗口再发信：发信要花几秒，这期间并发进来的请求不能也判成「该发」
+	saveSetting('green_notify_last', time());
+	saveSetting('green_notify_skip', 0);
+
+	$site = isset($conf['title']) && $conf['title'] !== '' ? $conf['title'] : '本站';
+	$what = $verdict === 'block' ? '已拦截' : '待人工复核';
+	$name = isset($row['name']) && $row['name'] !== '' ? (string)$row['name'] : '（未记录文件名）';
+	$engine_text = ['aliyun'=>'阿里云', 'qcloud'=>'腾讯云', 'self'=>'自建模型（图片）', 'self-video'=>'自建模型（视频）'];
+	$engine = isset($row['engine']) ? (string)$row['engine'] : '';
+	$engine = isset($engine_text[$engine]) ? $engine_text[$engine] : ($engine === '' ? '未知' : $engine);
+
+	$lines = [];
+	$lines[] = ['文件名', $name];
+	$lines[] = ['类型', isset($row['type']) && $row['type'] !== '' ? (string)$row['type'] : '未知'];
+	$lines[] = ['检测引擎', $engine];
+	if(isset($row['score']) && floatval($row['score']) > 0)$lines[] = ['评分', (string)round(floatval($row['score']), 4)];
+	if(!empty($row['frames']))$lines[] = ['命中帧', (string)$row['frames'].' 帧'];
+	if(!empty($row['detail']))$lines[] = ['模型明细', (string)$row['detail']];
+	$lines[] = ['上传者', intval(isset($row['uid']) ? $row['uid'] : 0) > 0 ? 'UID '.intval($row['uid']) : '游客'];
+	$lines[] = ['来源 IP', isset($row['ip']) && $row['ip'] !== '' ? (string)$row['ip'] : '未记录'];
+	$lines[] = ['时间', date('Y-m-d H:i:s')];
+
+	$rows_html = '';
+	foreach($lines as $one){
+		$rows_html .= '<tr><td style="padding:4px 14px 4px 0;color:#888;white-space:nowrap">'.htmlspecialchars($one[0], ENT_QUOTES, 'UTF-8').'</td>'
+			.'<td style="padding:4px 0;word-break:break-all">'.htmlspecialchars($one[1], ENT_QUOTES, 'UTF-8').'</td></tr>';
+	}
+
+	$tip = $verdict === 'block'
+		? '文件已经自动封禁，前台下载不了，并已留档到违规公示管理等你确认。误伤的话在后台把状态改回正常即可。'
+		: '文件已经置成<b>待审核</b>，前台暂时下载不了，<b>需要你人工确认</b>——确认没问题就把状态改成正常，有问题就改成封禁。';
+	//后台目录可能被改过名，而且这段代码在后台页面里也会跑到，两件事都不能靠拼 $siteurl 解决
+	$link = admin_url('green_log.php');
+
+	$subject = '【'.$site.'】内容检测'.$what.'：'.mb_substr($name, 0, 40, 'UTF-8');
+	$html = '<div style="font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Arial,sans-serif;font-size:14px;color:#333;line-height:1.8">'
+		.'<p>站点 <b>'.htmlspecialchars($site, ENT_QUOTES, 'UTF-8').'</b> 有一个文件被内容检测判成 <b>'.$what.'</b>：</p>'
+		.'<table style="font-size:13px;border-collapse:collapse;margin:14px 0">'.$rows_html.'</table>'
+		.'<p>'.$tip.'</p>';
+	if($skipped > 0){
+		$html .= '<p style="color:#b45309">同一时间窗内还有 <b>'.$skipped.'</b> 条命中没有单独发信（通知合并间隔 '.$interval.' 分钟），一并去后台查看。</p>';
+	}
+	$html .= '<p style="margin-top:18px"><a href="'.htmlspecialchars($link, ENT_QUOTES, 'UTF-8').'">打开后台「内容检测记录」</a></p>'
+		.'<p style="color:#888;font-size:12px;margin-top:20px">这封信由内容检测通知功能自动发出。不想再收可以在后台「内容检测设置」里关掉。</p>'
+		.'</div>';
+
+	$mailer = mailer();
+	$res = $mailer->send($to, $subject, $html);
+	if(empty($res['ok'])){
+		/*
+		 * 故意不写进 pre_mailcode：那张表兼作发信记录，而验证码的站点级限额
+		 * （mail_hour_limit / mail_site_daily）是按这张表的行数算的。通知信一多，
+		 * 会把用户注册要用的验证码额度顶掉，那就本末倒置了。
+		 */
+		log_mail_error($to, 'greennotify', $res['msg'], $mailer->attempts());
+		writeLog('内容检测通知发送失败：'.(string)$res['msg']);
+		return false;
+	}
+	return true;
 }
 
 /*

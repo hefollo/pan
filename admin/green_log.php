@@ -86,6 +86,12 @@ function render_greenlog_stats(){
 	$v_block = isset($conf['green_video_block']) && $conf['green_video_block'] !== '' ? $conf['green_video_block'] : '0.85';
 	$v_hit = isset($conf['green_video_hit']) && $conf['green_video_hit'] !== '' ? intval($conf['green_video_hit']) : 2;
 	$v_timeout = isset($conf['green_video_timeout']) && $conf['green_video_timeout'] !== '' ? intval($conf['green_video_timeout']) : 30;
+	//命中通知的当前状态。开没开、发给谁、会不会合并，在这一页直接说清楚——
+	//不然站长以为开着、其实没配发信通道，等着等着就漏了一批待人工的文件
+	$notify_on = !empty($conf['green_notify']);
+	$notify_to = isset($conf['green_notify_mail']) && trim((string)$conf['green_notify_mail']) !== '' ? trim((string)$conf['green_notify_mail']) : (isset($conf['mail_from']) ? trim((string)$conf['mail_from']) : '');
+	$notify_gap = isset($conf['green_notify_interval']) ? max(0, intval($conf['green_notify_interval'])) : 0;
+	$notify_ready = $notify_on ? is_mail_ready() : false;
 	ob_start();
 ?>
   <div class="row greenlog-stats">
@@ -103,7 +109,9 @@ if($video_on){?>
   <p class="greenlog-line">视频：抽帧打分，<b><?php echo htmlspecialchars($v_block, ENT_QUOTES, 'UTF-8')?></b> 以上的帧算命中，够 <b><?php echo $v_hit?></b> 帧才封禁，只命中 1 帧转人工。
   当前 <b<?php echo $queued > 0 ? ' class="text-warning"' : ''?>><?php echo $queued?></b> 个任务在等结果<?php if($queued > 0){?>（超过 <?php echo $v_timeout?> 分钟没结果的会自动放行）<?php }?>。
   <?php if($queued > 5){?><span class="text-danger">积压这么多通常是回调没通或者检测服务挂了，去设置页看看「检测服务状态」那行。</span><?php }?></p>
-<?php }
+<?php }?>
+  <p class="greenlog-line">命中通知：<?php if(!$notify_on){?><b>未开启</b>——拦截和待人工只在这一页显示，不会主动告诉你，去<a href="./set.php?mod=green">内容检测设置</a>可以打开。<?php }else{?><b class="text-success">已开启</b>，<b>已拦截</b>和<b>待人工</b>会发邮件到 <b><?php echo htmlspecialchars($notify_to !== '' ? $notify_to : '（没填收件人，发件邮箱也是空的）', ENT_QUOTES, 'UTF-8')?></b><?php if($notify_gap > 0){?>，同一 <?php echo $notify_gap?> 分钟内只发一封、期间的条数并进下一封<?php }else{?>，每命中一条发一封<?php }?>。<?php if(!$notify_ready){?><span class="text-danger">但发信通道还没配好，信发不出去（只写日志，不影响上传）。</span><?php }?><?php }?></p>
+<?php
 	return ob_get_clean();
 }
 

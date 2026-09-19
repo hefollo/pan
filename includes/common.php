@@ -65,6 +65,28 @@ if (!$conf['version'] || $conf['version'] < DB_VERSION) {
 $scriptpath=str_replace('\\','/',$_SERVER['SCRIPT_NAME']);
 $sitepath = substr($scriptpath, 0, strrpos($scriptpath, '/'));
 $siteurl = (is_https() ? 'https://' : 'http://').$_SERVER['HTTP_HOST'].$sitepath.'/';
+/*
+ * 记下后台目录的真实名字。
+ *
+ * 默认是 admin，但改名几乎是唯一一种后台隐藏手段，不少站长都会改。站内链接都是相对
+ * 路径，改名没影响；麻烦的是要发到站外去的链接（比如内容检测的命中通知邮件）——那里
+ * 拿不到当前请求路径，写死 /admin/ 就会给出一个打不开的地址。
+ *
+ * 只有后台目录里的脚本才会走到这段（IN_ADMIN 由各后台文件自己定义），目录名是从脚本在
+ * 磁盘上的真实位置推出来的，外部伪造不了。值只在发生变化时才写一次库，平时一次都不写。
+ */
+if(defined('IN_ADMIN') && !empty($_SERVER['SCRIPT_FILENAME'])){
+	$admin_here = @realpath(dirname($_SERVER['SCRIPT_FILENAME']));
+	$admin_base = @realpath(ROOT);
+	if($admin_here !== false && $admin_base !== false && strpos($admin_here, $admin_base) === 0){
+		$admin_dir_now = trim(str_replace(DIRECTORY_SEPARATOR, '/', substr($admin_here, strlen($admin_base))), '/');
+		if($admin_dir_now !== '' && $admin_dir_now !== (isset($conf['admin_dir']) ? (string)$conf['admin_dir'] : '')){
+			saveSetting('admin_dir', $admin_dir_now);
+			$conf['admin_dir'] = $admin_dir_now;
+		}
+	}
+}
+
 
 $clientip=real_ip($conf['ip_type']?$conf['ip_type']:0);
 if(isset($_COOKIE["admin_token"]))

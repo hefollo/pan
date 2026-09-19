@@ -325,7 +325,12 @@ body.admin-body .admin-block-opts>a.on.v2,body.admin-body .admin-block-opts>a.on
 #searchToolbar .form-group{flex-wrap:wrap;gap:8px}
 #searchToolbar label{flex:0 0 100%;width:100%;margin:0;line-height:1.8}
 #searchToolbar .form-control{width:100%!important}
-#searchToolbar .form-group .btn{flex:1 1 0;width:auto;min-width:0}
+/* 按钮可以长、可以换行，但不能被压到比文字还窄。原来写的是 flex:1 1 0 + min-width:0：
+   两个按钮时正好平分一行，可一旦同一个 form-group 里塞了三个长按钮（违规公示页的
+   查看公示页 / 导入已封禁文件 / 手动补录），每个只分到三分之一，文字直接被裁掉。
+   改成 flex:1 1 auto 并去掉 min-width:0（弹性项目默认 min-width:auto，即内容宽度），
+   两个按钮照样平分，三个放不下时换行。 */
+#searchToolbar .form-group .btn{flex:1 1 auto;width:auto}
 }
 
 :root{--admin-bg:#f4f3ec;--admin-surface:#fffefa;--admin-soft:#f8f8f1;--admin-text:#171c18;--admin-muted:#64706a;--admin-line:#d8ddd0;--admin-primary:#119a8f;--admin-primary-dark:#0b7770;--admin-green:#119a8f;--admin-yellow:#d97706;--admin-red:#d9463e;--admin-shadow:none}

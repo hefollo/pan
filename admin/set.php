@@ -781,6 +781,30 @@ $(document).ready(function(){
 	  <div id="greenhealth" class="green-health">检测服务状态查询中…</div>
 	</div>
 
+	<div class="green-sec">
+	  <div class="green-sec-h">检测通知<small>命中「已拦截」或「待人工」时给站长发一封邮件</small></div>
+	  <div class="green-grid">
+		<div class="green-f">
+		  <label>命中后邮件通知</label>
+		  <select class="form-control" name="green_notify" default="<?php echo isset($conf['green_notify'])?$conf['green_notify']:0?>"><option value="0">关闭</option><option value="1">开启</option></select>
+		  <p>只有<b>已拦截</b>和<b>待人工</b>会发信。放行的不发（没人要看），检测失败也不发（那是检测服务本身的毛病，看状态行就行）。三种引擎都适用。</p>
+		</div>
+		<div class="green-f">
+		  <label>收件邮箱</label>
+		  <input type="text" name="green_notify_mail" value="<?php echo htmlspecialchars(isset($conf['green_notify_mail'])?$conf['green_notify_mail']:'', ENT_QUOTES, 'UTF-8'); ?>" class="form-control" placeholder="留空就发给发件邮箱自己"/>
+		  <p>留空则发给<a href="./set_mail.php">邮件发信设置</a>里的发件邮箱。</p>
+		</div>
+		<div class="green-f">
+		  <label>通知合并间隔</label>
+		  <div class="input-group"><input type="text" name="green_notify_interval" value="<?php echo htmlspecialchars(isset($conf['green_notify_interval']) && $conf['green_notify_interval']!==''?$conf['green_notify_interval']:'0', ENT_QUOTES, 'UTF-8'); ?>" class="form-control" placeholder="0"/><span class="input-group-addon">分钟</span></div>
+		  <p><b>0 = 每命中一条就发一封。</b>一次传几十张、命中十几张的时候这会刷爆信箱，也会烧掉发信通道的日额度；填个 5 或 10，同一窗口内只发一封，期间漏掉的条数会写在下一封信里，不会悄悄丢。</p>
+		</div>
+	  </div>
+<?php if(!empty($conf['green_notify']) && !is_mail_ready()){?>
+	  <div class="green-health" style="color:#d9534f">通知开着，但<b>发信通道还没配好</b>——去<a href="./set_mail.php">邮件发信设置</a>勾一个通道并填完参数，否则这封信发不出去（只会写进日志，不影响上传）。</div>
+<?php }?>
+	</div>
+
 	<div id="green_aliyun" class="green-sec" style="<?php echo $conf['green_check']!='1'?'display:none;':null; ?>">
 	  <div class="green-sec-h">阿里云内容安全</div>
 	  <div class="green-grid">

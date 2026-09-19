@@ -241,9 +241,9 @@ $mail_names = implode('、', $mail_names);
 	<div class="form-group">
 	  <label class="col-sm-3 control-label">收件地址</label>
 	  <div class="col-sm-9">
-		<div class="row">
-		  <div class="col-xs-8"><input type="email" name="to" id="testTo" class="form-control" placeholder="填一个你能收到信的邮箱" required/></div>
-		  <div class="col-xs-4"><button type="submit" class="btn btn-primary form-control">发送测试邮件</button></div>
+		<div class="row mail-test-row">
+		  <div class="col-xs-12 col-sm-8"><input type="email" name="to" id="testTo" class="form-control" placeholder="填一个你能收到信的邮箱" required/></div>
+		  <div class="col-xs-12 col-sm-4 mail-test-send"><button type="submit" class="btn btn-primary form-control">发送测试邮件</button></div>
 		</div>
 	  <p class="help-block">改完设置记得先保存再测试。失败时会显示每个通道的具体原因（含 SMTP 会话记录），照着提示改就行。</p></div>
 	</div>
@@ -271,6 +271,9 @@ $mail_names = implode('、', $mail_names);
 .mail-attempt-fail{background:rgba(220,53,69,.08);color:#b02a37}
 .mail-attempt b{display:block;margin-bottom:2px}
 .mail-attempt pre{margin:8px 0 0;padding:8px;max-height:180px;overflow:auto;background:rgba(0,0,0,.05);border:0;border-radius:6px;font-size:12px;line-height:1.6;color:#444}
+/* 窄屏：原来输入框和按钮是写死的 8:4，手机上按钮只剩三分之一宽，「发送测试邮件」五个字
+   放不下被裁。xs 断点改成各占一行，sm 以上还是并排 */
+@media (max-width:767px){.mail-test-row .mail-test-send{margin-top:8px}}
 </style>
 <script>
 
