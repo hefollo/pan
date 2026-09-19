@@ -17,6 +17,19 @@ define('LAYOUT_TEXT_PREVIEW_MAX', 256 * 1024);
 function layout_cache_file($key){
 	$dir = sys_get_temp_dir();
 	if(!$dir || !is_dir($dir) || !is_writable($dir)) return null;
+	/*
+	 * 缓存键里带着列表的 WHERE 片段，而这个片段有两处是访客说了算的：
+	 *   ① 搜索关键词 ?kw= 会拼成 name LIKE '%...%'
+	 *   ② 游客「我的文件」会拼成 id IN (本次会话传过的文件id)
+	 * 每换一个值就在临时目录里多留一批 json，而且从不回收，随手刷几万个不同的 kw
+	 * 就能把 inode 占满。这两种都是一次性视图，本来就要全表扫，缓存不了也没损失，
+	 * 直接不给文件名（上面两个函数拿到 null 就会跳过读写）。
+	 *
+	 * 类型筛选拼出来的是 type IN ('jpg',...)，取值只有固定那几组，是有界的，
+	 * 所以这里只认 " id IN (" 而不是笼统的 " IN ("，别把它一起误伤了。
+	 * 首页、按类型筛选这些反复打开的固定视图照常走缓存。
+	 */
+	if(strpos($key, 'LIKE') !== false || strpos($key, ' id IN (') !== false) return null;
 	return rtrim($dir, '/\\').'/mpimg_layout_'.md5(SYSTEM_ROOT.'|'.$key).'.json';
 }
 

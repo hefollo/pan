@@ -54,17 +54,32 @@ $conf=getAllSetting();
 define('SYS_KEY', $conf['syskey']);
 $password_hash='!@#%!s!0';
 
-if (!$conf['version'] || $conf['version'] < DB_VERSION) {
-    if (!$install) {
-		header('Content-type:text/html;charset=utf-8');
-        echo '请先完成网站升级！<a href="/install/update.php"><font color=red>点此升级</font></a>';
-        exit;
-    }
-}
-
+/*
+ * 这三行原来排在下面的版本门禁后面，现在提到前面来。
+ * 它们只依赖 is_https() 和 $_SERVER，跟 $conf 无关，位置提前没有副作用；
+ * 而门禁里的「点此升级」链接要靠 site_root_url() 拼，那个函数读的正是 $siteurl。
+ */
 $scriptpath=str_replace('\\','/',$_SERVER['SCRIPT_NAME']);
 $sitepath = substr($scriptpath, 0, strrpos($scriptpath, '/'));
 $siteurl = (is_https() ? 'https://' : 'http://').$_SERVER['HTTP_HOST'].$sitepath.'/';
+
+if (!$conf['version'] || $conf['version'] < DB_VERSION) {
+    if (!$install) {
+		header('Content-type:text/html;charset=utf-8');
+		/*
+		 * 升级地址必须按站点实际位置拼，不能写死 /install/update.php。
+		 * 写死的是「域名根目录」下的绝对路径，站点装在子目录里（比如 https://x.com/pan/）
+		 * 时那个链接指向 https://x.com/install/update.php，直接 404，而此时整站被门禁拦着，
+		 * 前台后台都进不去，用户会以为网站彻底坏了。
+		 *
+		 * site_root_url() 会把当前脚本所在层级削掉，后台页面（/admin/xxx.php）触发门禁时
+		 * 也能得到正确的站点根地址。
+		 */
+		$update_url = site_root_url().'install/update.php';
+		echo '请先完成网站升级！<a href="'.htmlspecialchars($update_url, ENT_QUOTES, 'UTF-8').'"><font color=red>点此升级</font></a>';
+		exit;
+    }
+}
 /*
  * 记下后台目录的真实名字。
  *
@@ -130,6 +145,28 @@ if(in_array($clientip,$denyip) && !$islogin){
 }
 
 include_once(SYSTEM_ROOT."vendor/autoload.php");
+
+/*
+ * 腾讯云 COS、华为云 OBS、七牛云这三个驱动要靠 includes/vendor/ 里的 Guzzle 才能工作。
+ *
+ * 那个目录是 composer 装出来的，按 .gitignore 不进版本库，所以更新包漏传、或者换了台新机器
+ * 没跑过 composer install，它就会缺。缺了之后上面那句 include_once 只产生一条被 error_reporting
+ * 屏蔽掉的警告，真正的报错要等到下面构造存储驱动时才抛「Class GuzzleHttp\... not found」——
+ * COS 和 OBS 是在构造函数里就炸，也就是说每个前台页面都会 500，而线上 display_errors 关着，
+ * 站长看到的只有一片白屏，完全没有线索。所以这里提前查一次，把原因和办法直接写出来。
+ *
+ * 用 class_exists 而不是 file_exists：目录传了一半、或者 autoload 映射坏掉也能一并查出来。
+ * 本地存储、阿里云 OSS 等不依赖 Guzzle，缺了也照常跑，不要误伤。
+ */
+if(in_array($conf['storage'], ['qcloud','obs','qiniu'], true) && !class_exists('GuzzleHttp\Client')){
+	sysmsg('<h2>缺少依赖目录 includes/vendor/</h2>'
+		.'<p>当前存储方式是<b>'.\lib\StorHelper::name($conf['storage']).'</b>，它需要 <b>includes/vendor/</b> 里的依赖库，但该目录不存在或不完整。</p>'
+		.'<p>处理办法（任选其一）：</p><ul>'
+		.'<li>把更新包里的 <b>includes/vendor/</b> 整个目录补传到服务器；</li>'
+		.'<li>或在服务器的 <b>includes</b> 目录下执行 <code>composer install</code>。</li>'
+		.'</ul><p>在恢复之前，可以先到后台把存储方式切回<b>本地存储</b>，让网站继续对外服务。</p>');
+	exit;
+}
 
 //加载存储模块
 $stor = \lib\StorHelper::getModel($conf['storage']);

@@ -5,7 +5,18 @@ create table `pre_config` (
   PRIMARY KEY  (`k`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-INSERT INTO `pre_config` VALUES ('version', '1009');
+-- 这个版本号必须和 includes/common.php 的 DB_VERSION 保持一致。
+-- 本文件的建表语句已经是最新结构（1010~1023 的表、字段、配置项都已并入），
+-- 填旧版本号会让每一次全新安装装完立刻撞上 common.php 的版本门禁，
+-- 前台后台一起被「请先完成网站升级」拦住，必须再跑一次 /install/update.php 才能进站，
+-- 而那趟升级其实什么都不改（全是 CREATE TABLE IF NOT EXISTS / INSERT IGNORE 空转）。
+--
+-- 维护规则：以后新增 update_XXXX.sql 时，
+--   · 如果顺手把它的结构也并进了本文件 → 这里跟着改成 XXXX；
+--   · 如果没有并进来 → 这里保持旧值不动，让全新安装照常跑一次升级把它补上。
+-- 改错方向（并进来了却不改版本号）只是多跑一趟空升级；
+-- 改反了（没并进来却改了版本号）会让新装的站永久缺表缺字段，且毫无报错。
+INSERT INTO `pre_config` VALUES ('version', '1023');
 INSERT INTO `pre_config` VALUES ('admin_user', 'admin');
 INSERT INTO `pre_config` VALUES ('admin_pwd', '123456');
 INSERT INTO `pre_config` VALUES ('blackip', '');

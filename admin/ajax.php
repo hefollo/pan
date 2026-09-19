@@ -77,7 +77,6 @@ case 'iptype':
 break;
 case 'userList':
 	$sql=" 1=1";
-	$type_arr = ['qq'=>'QQ','wx'=>'微信'];
 	if(isset($_POST['dstatus']) && $_POST['dstatus']>-1) {
 		$dstatus = intval($_POST['dstatus']);
 		$sql.=" AND `enable`={$dstatus}";
@@ -101,7 +100,9 @@ case 'userList':
 	$list = $DB->getAll("SELECT * FROM pre_user WHERE{$sql} order by uid desc limit $offset,$limit");
 	$list2 = [];
 	foreach($list as $row){
-		$row['type'] = $type_arr[$row['type']];
+		//登录方式的显示名统一走 login_type_name()：原来这里自带一张只有 qq/wx 的表，
+		//加了邮箱注册之后 type='mail' 查不到，列表里那一列就是空的
+		$row['type'] = login_type_name($row['type']);
 		$list2[] = $row;
 	}
 

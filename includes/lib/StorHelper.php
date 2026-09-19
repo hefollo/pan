@@ -121,12 +121,26 @@ class StorHelper
         global $conf, $stor;
         $current = isset($conf['storage']) ? $conf['storage'] : 'local';
         if($storage === null || $storage === '')$storage = $current;
-        if($storage === $current)return $stor;
+        /*
+         * 全局 $stor 只在前台有值：includes/common.php 里给它赋值那句排在
+         * 「if(defined('IN_ADMIN')) return;」后面，所以后台脚本走到这儿时它是 null。
+         * 直接 return null 的话，调用方一个 ->exists() 就是白屏。
+         * 目前后台真正会走到这条路的是 admin/green_log.php 的视频检测轮询
+         * （green_file_source() 用 is_object() 兜住了，表现为「提交失败的任务永远重试不了」），
+         * 但这是个随时会被下一处改动引爆的坑，所以在这里就地补齐：$stor 不可用时自己 new 一个。
+         */
+        if($storage === $current){
+            if(is_object($stor))return $stor;
+            if(!isset(self::$models[$current])){
+                self::$models[$current] = self::getModel($current);
+            }
+            return self::$models[$current];
+        }
         if(!isset(self::$models[$storage])){
             $model = self::getModel($storage);
             if(!$model){
                 trigger_error('文件记录里的存储类型「'.$storage.'」不认识，已回落到当前存储');
-                $model = $stor;
+                $model = is_object($stor) ? $stor : self::getModel($current);
             }
             self::$models[$storage] = $model;
         }
