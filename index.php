@@ -74,11 +74,33 @@ include SYSTEM_ROOT.'header.php';
 <?php echo mpimg_render_ads_html($conf);?>
 <?php
 //上传门户风的首屏大上传区：只有这套外观会输出，其它外观保持原来的纯列表首页
-if($site_theme === 'portal' && !$kw && (!isset($_GET['m']) || $_GET['m'] !== 'mine')){
+$portal_hero = ($site_theme === 'portal' && !$kw && (!isset($_GET['m']) || $_GET['m'] !== 'mine'));
+if($portal_hero){
     $hero_size = get_effective_upload_size_limit();
     $hero_size_text = $hero_size > 0 ? ('单个文件最大 '.$hero_size.' MB，支持任意格式') : '不限制文件大小，支持任意格式';
+    /*
+     * 首屏这块原来只是个跳到 upload.php 的链接，拖文件进来没反应、点一下也是跳页。
+     * 现在直接把上传页那套 Vue 组件挂在这儿（同一个 assets/js/uploadnew.js），
+     * 需要的 DOM 就四个：#app、#fileInput（拖拽区）、#file（隐藏的文件框）、#csrf_token。
+     *
+     * 外层仍然保留 <a href="./upload.php">：Vue 或 CDN 没加载成功时，@click.prevent 不会生效，
+     * 点击就退回原来的跳转行为，不会变成一个点了没反应的死区。
+     *
+     * 首屏只做「拖进来就传」，密码、存储位置这些选项仍然在上传页设置。
+     */
+    $hero_limit = get_effective_upload_count_limit();
+    //今日已传数量走会话缓存（2 分钟），只用于前端预检，真正的限额由服务端再判一次
+    $hero_used = function_exists('layout_today_upload_count') ? layout_today_upload_count($DB) : 0;
+    $hero_remaining = $hero_limit > 0 ? max(0, $hero_limit - $hero_used) : -1;
+    //开了多存储时跟上传页口径一致：默认落到第一个可用存储；没开就留空，由服务端用默认存储
+    $hero_storage_default = '';
+    if(function_exists('storage_multi_open') && storage_multi_open()){
+        $hero_storage_list = storage_allowed_list();
+        if(count($hero_storage_list) > 1)$hero_storage_default = $hero_storage_list[0];
+    }
+    $hero_forbid = (isset($conf['forcelogin']) && $conf['forcelogin'] == 1 && empty($islogin2));
 ?>
-<div class="portal-hero">
+<div class="portal-hero" id="app">
   <div class="portal-hero-inner">
     <div class="portal-hero-copy">
       <span class="portal-kicker">快速 · 安全 · 长期可用</span>
@@ -90,13 +112,64 @@ if($site_theme === 'portal' && !$kw && (!isset($_GET['m']) || $_GET['m'] !== 'mi
         <span><i class="fa fa-check" aria-hidden="true"></i> 多种存储可选</span>
       </div>
     </div>
-    <a class="portal-drop" href="./upload.php">
-      <span class="portal-drop-icon"><i class="fa fa-cloud-upload" aria-hidden="true"></i></span>
-      <strong>把文件拖到这里上传</strong>
-      <small><?php echo htmlspecialchars($hero_size_text, ENT_QUOTES, 'UTF-8')?></small>
-      <span class="portal-drop-btn"><i class="fa fa-upload" aria-hidden="true"></i> 选择本地文件</span>
-    </a>
+    <div class="portal-drop-wrap">
+<?php if($hero_forbid){
+      //站点要求登录才能上传：这里不挂上传组件，整块就是一个去登录的入口
+      ?>
+      <a class="portal-drop" href="./login.php">
+        <span class="portal-drop-icon"><i class="fa fa-cloud-upload" aria-hidden="true"></i></span>
+        <strong>登录后即可上传</strong>
+        <small>本站要求登录后才能上传文件</small>
+        <span class="portal-drop-btn"><i class="fa fa-sign-in" aria-hidden="true"></i> 去登录</span>
+      </a>
+<?php }else{?>
+      <a class="portal-drop" id="fileInput" href="./upload.php" @click.prevent="clickUpload" :class="{'is-dragover':dragging, 'is-busy':isBlock}">
+        <span class="portal-drop-icon"><i class="fa fa-cloud-upload" aria-hidden="true"></i></span>
+        <strong v-text="dragging ? '释放鼠标立即上传' : '把文件拖到这里上传'">把文件拖到这里上传</strong>
+        <small><?php echo htmlspecialchars($hero_size_text, ENT_QUOTES, 'UTF-8')?>，也可以 Ctrl+V 粘贴</small>
+        <span class="portal-drop-btn"><i class="fa fa-upload" aria-hidden="true"></i> 选择本地文件</span>
+      </a>
+<?php }?>
+      <?php //进度、结果和队列：Vue 没挂上时整块靠 v-cloak 藏着，不会露出没渲染的模板 ?>
+      <div class="portal-upload-panel" v-cloak v-if="showtype>0 || batchQueue.length>0">
+        <div class="upload-main-progress" v-if="showtype==1">
+          <div class="progress"><div class="progress-bar" :style="{ width: totalProgress + '%' }">{{progress_tip}}</div></div>
+          <div class="portal-upload-meta"><span class="portal-upload-name">{{filename}}</span><span>{{uploadspeed}}</span></div>
+        </div>
+        <div class="upload-message" :class="'upload-message-'+alert.type" v-if="showtype==2">
+          <div class="upload-message-icon"><i class="fa" :class="alertIconClass"></i></div>
+          <div class="upload-message-body" v-html="alert.msg"></div>
+          <button type="button" class="upload-message-close" @click="showtype=0">×</button>
+        </div>
+        <div class="upload-result-actions" v-if="showtype==2 && successfulQueueItems().length>1">
+          <button type="button" class="upload-link-btn upload-link-btn-secondary" @click="copyAllViewLinks"><i class="fa fa-copy"></i> 全部查看链接</button>
+          <button type="button" class="upload-link-btn" @click="copyAllDownloadLinks"><i class="fa fa-copy"></i> 全部下载链接</button>
+        </div>
+        <div class="upload-queue" v-if="batchQueue.length>0">
+          <div class="upload-queue-item" v-for="(item, index) in batchQueue" :key="item.id">
+            <div class="upload-queue-index">{{index + 1}}</div>
+            <div class="upload-queue-main">
+              <div class="upload-queue-name" :title="item.name">{{item.name}}</div>
+              <div class="upload-queue-meta">{{item.sizeText}}<span v-if="item.msg"> · {{item.msg}}</span></div>
+              <div class="upload-queue-progress" v-if="item.status==='reading' || item.status==='uploading' || item.status==='saving'">
+                <span :style="{width: item.progress + '%'}"></span>
+              </div>
+            </div>
+            <div class="upload-queue-actions" v-if="item.status==='success' && item.downloadUrl && item.viewUrl">
+              <button type="button" class="upload-link-btn upload-link-btn-secondary" @click.stop="copyText(item.viewUrl)"><i class="fa fa-eye"></i> 查看链接</button>
+              <button type="button" class="upload-link-btn" @click.stop="copyText(item.downloadUrl)"><i class="fa fa-download"></i> 下载链接</button>
+            </div>
+            <div class="upload-queue-status">
+              <span class="label" :class="queueStatusClass(item.status)">{{queueStatusText(item.status)}}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="portal-drop-tip">要设访问密码、选存储位置，或者查看完整上传说明，去 <a href="./upload.php">上传页</a>。</p>
+    </div>
   </div>
+  <input type="hidden" id="csrf_token" value="<?php echo htmlspecialchars($csrf_token, ENT_QUOTES, 'UTF-8')?>">
+  <input type="file" id="file" name="myfile[]" @change="selectFile" multiple style="display:none">
 </div>
 <?php }?>
 <?php
@@ -358,6 +431,22 @@ if(in_array($layout_key, studio_family_keys(), true)){echo layout_render_studio_
 <?php }?>
 <?php if($layout_key === 'mac'){?>
 <script src="./assets/js/layout-mac.js?v=<?php echo VERSION?>"></script>
+<?php }?>
+<?php //上传门户风的首屏上传区：用的就是上传页那套脚本，只有这套外观的首页才加载。
+//强制登录又没登录时首屏是个去登录的入口，不需要这些脚本
+if(!empty($portal_hero) && empty($hero_forbid)){?>
+<link rel="stylesheet" href="https://s4.zstatic.net/ajax/libs/layer/3.1.1/theme/default/layer.css">
+<script src="https://s4.zstatic.net/ajax/libs/vue/2.6.14/vue.min.js"></script>
+<script src="https://s4.zstatic.net/ajax/libs/layer/3.1.1/layer.js"></script>
+<script src="https://s4.zstatic.net/ajax/libs/spark-md5/3.0.2/spark-md5.min.js"></script>
+<script>
+var upload_max_filesize = '<?php echo intval($hero_size)?>';
+var upload_count_limit = <?php echo intval($hero_limit)?>;
+var upload_count_used = <?php echo intval($hero_used)?>;
+var upload_count_remaining = <?php echo intval($hero_remaining)?>;
+var upload_storage_default = <?php echo json_encode($hero_storage_default)?>;
+</script>
+<script src="./assets/js/uploadnew.js?v=<?php echo VERSION?>"></script>
 <?php }?>
 <?php if(isset($_GET['m']) && $_GET['m']=='mine'){?>
 <link rel="stylesheet" href="https://s4.zstatic.net/ajax/libs/layer/3.1.1/theme/default/layer.css">

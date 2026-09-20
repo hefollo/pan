@@ -3,6 +3,9 @@ new Vue({
     data: {
         uploadTitle: '选择文件/Ctrl+V粘贴/拖拽到此上传',
         background: '#fff',
+        //正在往拖拽区里拖文件。上传页靠 uploadTitle / background 表现，
+        //首页那块上传区是另一套样式，直接用这个布尔值切文案和高亮
+        dragging: false,
         showtype: 0,
         isBlock: false,
         alert: {
@@ -62,18 +65,21 @@ new Vue({
             elemetnNode=e.originalEvent.target;
             that.uploadTitle = '释放鼠标立即上传';
             that.background = '#ccc';
+            that.dragging = true;
             fileInput.addClass('is-dragover');
         });
         fileInput.on("dragleave",function(e){
             if(elemetnNode===e.originalEvent.target){
                 that.uploadTitle = '选择文件/Ctrl+V粘贴/拖拽到此上传';
                 that.background = '#fff';
+                that.dragging = false;
                 fileInput.removeClass('is-dragover');
             }
         });
         fileInput.on('dragover', false).on("drop",function(e){
             that.uploadTitle = '选择文件/Ctrl+V粘贴/拖拽到此上传';
             that.background = '#fff';
+            that.dragging = false;
             fileInput.removeClass('is-dragover');
             var fs = e.originalEvent.dataTransfer.files;
             if(fs.length>0){
