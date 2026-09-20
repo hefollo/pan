@@ -97,7 +97,7 @@ if(!function_exists('admin_sub_active')){
               <li class="<?php echo admin_sub_active('mail_log.php')?>"><a href="./mail_log.php"><i class="fa fa-envelope-o fa-fw"></i> 发信记录</a></li>
             </ul>
           </li>
-          <li class="dropdown <?php echo checkIfActive('set,set_stor,set_script,set_sponsor,set_violation,set_pay,set_mail')?>">
+          <li class="dropdown <?php echo checkIfActive('set,set_stor,set_script,set_sponsor,set_violation,set_pay,set_mail,update')?>">
             <a href="#" class="dropdown-toggle" data-toggle="dropdown"><i class="fa fa-cog"></i> 设置<b class="caret"></b></a>
             <ul class="dropdown-menu admin-settings-menu">
               <li class="dropdown-header">站点</li>
@@ -126,6 +126,7 @@ if(!isset($conf['sponsor_open']) || $conf['sponsor_open'] == 1){?>
               <li class="<?php echo admin_sub_active('set_sponsor.php')?>"><a href="./set_sponsor.php"><i class="fa fa-money fa-fw"></i> 赞助名单管理</a></li>
 <?php }?>
               <li class="<?php echo admin_sub_active('set.php','account')?>"><a href="./set.php?mod=account"><i class="fa fa-key fa-fw"></i> 管理账号设置</a></li>
+              <li class="<?php echo admin_sub_active('update.php')?>"><a href="./update.php"><i class="fa fa-cloud-download fa-fw"></i> 程序更新日志</a></li>
             </ul>
           </li>
           <li><a href="./login.php?logout=1" onclick="return confirm('是否确定退出登录？')"><i class="fa fa-sign-out"></i> 退出登录</a></li>

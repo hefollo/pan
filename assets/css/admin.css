@@ -161,6 +161,76 @@ body.admin-body>.container>.center-block,body.admin-body>.container-fluid>.cente
 .stat-panel .huge{font-size:36px;line-height:1.15;white-space:nowrap}
 .stat-panel .text-right>div:last-child{margin-top:6px;font-size:14px;white-space:nowrap}
 .stat-panel .panel-footer{padding:12px 16px}
+/* ===== 首页「文件类型分布」=====
+   原来是一行六张 col-lg-2 的统计卡，一张卡只有 165px 宽，数字、占用空间和
+   「全部文件占用」的 GB 全挤在一起还会被裁掉。改成一整块列表：一类一行，
+   每行有占比条，数量 / 占用空间 / 占比各占一列，宽度够、也比六个数字更有信息量。
+   颜色沿用前台个人中心「文件类型分布」那一套，前后台看着是同一回事。
+   只用 --admin-* 变量取文字和描边颜色，十几套外观（含深色的 night/neon/aurora）都能跟着变。 */
+.filetype-panel>.panel-heading{display:flex;align-items:center;justify-content:space-between;gap:12px 20px;flex-wrap:wrap}
+/* 面板标题的颜色：文件里有一条没加外观作用域的 `.panel-title{color:#142642}`，
+   深色外观（night/neon/aurora）下会把标题压成看不见的深蓝。这里按当前外观的文字色取回来 */
+.filetype-panel>.panel-heading .panel-title{display:flex;align-items:center;gap:8px;color:var(--admin-text)}
+.filetype-tools{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.filetype-total{display:flex;align-items:baseline;gap:8px;color:var(--admin-muted);font-size:13px}
+.filetype-total b{color:var(--admin-text);font-size:21px;font-weight:800}
+.filetype-switch .btn{padding:4px 12px;font-size:12px;font-weight:700}
+.filetype-body{padding:4px 18px 10px}
+.filetype-row{display:flex;align-items:center;gap:16px;padding:13px 0;border-bottom:1px solid var(--admin-line)}
+.filetype-icon{flex:0 0 36px;width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px}
+.filetype-name{flex:0 0 72px;width:72px;color:var(--admin-text);font-size:14px;font-weight:700}
+.filetype-track{flex:1 1 auto;min-width:80px;height:10px;border-radius:999px;background:rgba(128,128,128,.16);overflow:hidden}
+.filetype-track>i{display:block;width:0;height:100%;border-radius:999px;transition:width .45s ease}
+.filetype-num{flex:0 0 116px;width:116px;text-align:right;color:var(--admin-muted);font-size:13px;white-space:nowrap}
+.filetype-num b{margin-right:3px;color:var(--admin-text);font-size:18px;font-weight:800}
+.filetype-size{flex:0 0 96px;width:96px;text-align:right;color:var(--admin-muted);font-size:13px;white-space:nowrap}
+.filetype-pct{flex:0 0 62px;width:62px;text-align:right;color:var(--admin-text);font-size:13px;font-weight:700;white-space:nowrap}
+.filetype-note{margin:12px 0 4px;color:var(--admin-muted);font-size:12px;line-height:1.7}
+.filetype-row[data-group=image] .filetype-icon,.filetype-row[data-group=image] .filetype-track>i{background:#4285f4}
+.filetype-row[data-group=video] .filetype-icon,.filetype-row[data-group=video] .filetype-track>i{background:#f4544c}
+.filetype-row[data-group=audio] .filetype-icon,.filetype-row[data-group=audio] .filetype-track>i{background:#2fb457}
+.filetype-row[data-group=doc] .filetype-icon,.filetype-row[data-group=doc] .filetype-track>i{background:#e8971b}
+.filetype-row[data-group=archive] .filetype-icon,.filetype-row[data-group=archive] .filetype-track>i{background:#7c5cff}
+.filetype-row[data-group=other] .filetype-icon,.filetype-row[data-group=other] .filetype-track>i{background:#8a8a8f}
+/* 窄屏：占比条自己占一行，其余信息挤在第一行，别让数字被压到换行 */
+@media (max-width:767px){
+.filetype-body{padding:2px 14px 8px}
+.filetype-row{flex-wrap:wrap;gap:8px 12px;padding:12px 0}
+.filetype-name{flex:0 0 auto;width:auto}
+.filetype-num,.filetype-size,.filetype-pct{flex:0 0 auto;width:auto;text-align:left}
+.filetype-num{margin-left:auto}
+.filetype-track{flex:1 1 100%;order:9}
+}
+/* ===== 程序更新日志（admin/update.php）与首页「版本信息」里的更新检查 =====
+   提交列表做成时间线：左边一条竖线带圆点，右边是短 sha、标题、作者时间和提交正文。
+   文字颜色只用 --admin-* 变量，深色外观（night/neon/aurora）下跟着变 */
+.update-head{display:flex;align-items:center;justify-content:space-between;gap:10px 16px;flex-wrap:wrap}
+.update-head .panel-title{display:flex;align-items:center;gap:8px}
+.update-head-btns{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.update-head-btns .btn{margin:0}
+/* 面板标题栏在各外观下有深有浅（蓝色渐变或纯白），写死颜色总有一边看不见，跟着标题色走 */
+.update-head-note{color:inherit;opacity:.72;font-size:12px}
+.update-state{display:flex;align-items:center;gap:10px 22px;flex-wrap:wrap}
+.update-state .label{padding:5px 12px;font-size:13px;font-weight:700}
+.update-state-kv{color:var(--admin-muted);font-size:13px}
+.update-state-kv b{color:var(--admin-text);font-size:16px;font-weight:800}
+.update-log{padding:6px 18px 10px}
+.update-item{position:relative;padding:14px 0 14px 24px;border-bottom:1px solid var(--admin-line)}
+.update-item:last-child{border-bottom:0}
+.update-item:before{content:"";position:absolute;left:3px;top:21px;width:9px;height:9px;border-radius:50%;background:var(--admin-primary)}
+.update-item:after{content:"";position:absolute;left:7px;top:32px;bottom:0;width:1px;background:var(--admin-line)}
+.update-item:last-child:after{display:none}
+.update-item-top{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.update-sha{flex:none;padding:2px 8px;border:1px solid var(--admin-line);border-radius:6px;background:var(--admin-soft);color:var(--admin-muted)!important;font-family:Consolas,Monaco,monospace;font-size:12px}
+.update-sha:hover,.update-sha:focus{border-color:var(--admin-primary);color:var(--admin-primary)!important;text-decoration:none}
+.update-title{color:var(--admin-text);font-size:14px;font-weight:700;word-break:break-word}
+.update-meta{margin-top:5px;color:var(--admin-muted);font-size:12px}
+.update-body{margin-top:8px;padding:10px 12px;border-radius:8px;background:var(--admin-soft);color:var(--admin-muted);font-size:12px;line-height:1.75;white-space:pre-wrap;word-break:break-word}
+.update-empty{margin:10px 0;color:var(--admin-muted)}
+.update-line{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.update-line-link{white-space:nowrap}
+.update-latest{color:var(--admin-muted);font-size:12px;word-break:break-word}
+@media (max-width:767px){.update-log{padding:4px 14px 8px}.update-head-note{display:none}}
 .btn{border-radius:6px;border:0;font-weight:700;box-shadow:none!important}
 .btn-primary{background:var(--admin-primary);color:#fff}
 .btn-primary:hover,.btn-primary:focus{background:var(--admin-primary-dark);color:#fff}

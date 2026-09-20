@@ -17,8 +17,71 @@ case 'getcount':
 	$count3=$DB->getColumn("SELECT count(*) from pre_file WHERE addtime>='$lastday' AND addtime<'$thtime'");
 	$count4=$DB->getColumn("SELECT count(*) from pre_user");
 
+	/*
+	 * 首页第二行的按类型统计和全站占用空间。
+	 * 分组口径直接复用前台 layout_blocks.php 里的那张扩展名表，后台不再自己抄一份，
+	 * 否则站长在「文件设置」里改了图片/视频格式，前后台就会给出两套数字。
+	 * 该文件只有函数定义，没有输出，admin 下 include 是安全的。
+	 *
+	 * 查询用一次 GROUP BY type 带 SUM(size) 全查回来，在 PHP 里归组：
+	 * pre_file 上没有 type 索引，按五个分组各查一次就是五次全表扫描。
+	 */
+	include_once SYSTEM_ROOT.'layout_blocks.php';
 	$result=["code"=>0,"count1"=>$count1,"count2"=>$count2,"count3"=>$count3,"count4"=>$count4];
+	//只传了部分文件、layout_blocks.php 还是旧版时，分组表取不到就跳过类型统计：
+	//上面四个数字照常返回，首页那六张卡留占位符，不会整个接口报错
+	if(function_exists('layout_type_group_lookup')){
+		$type_count = ["image"=>0,"video"=>0,"audio"=>0,"doc"=>0,"archive"=>0,"other"=>0];
+		$type_bytes = $type_count;
+		$total_bytes = 0;
+		$group_lookup = layout_type_group_lookup();
+		$type_rs = $DB->query("SELECT type, count(*) AS num, COALESCE(SUM(size),0) AS bytes FROM pre_file GROUP BY type");
+		if($type_rs){
+			while($type_row = $type_rs->fetch()){
+				$ext = strtolower((string)$type_row['type']);
+				$g = isset($group_lookup[$ext]) ? $group_lookup[$ext] : 'other';
+				$type_count[$g] += intval($type_row['num']);
+				$type_bytes[$g] += floatval($type_row['bytes']);
+				$total_bytes += floatval($type_row['bytes']);
+			}
+		}
+		$type_size = [];
+		foreach($type_bytes as $g => $bytes){
+			$type_size[$g] = size_format($bytes);
+		}
+		$result["types"] = $type_count;      //各分组文件数
+		$result["sizes"] = $type_size;       //各分组占用空间（已带单位，直接显示）
+		$result["bytes"] = $type_bytes;      //各分组原始字节数，前端算「按占用」的占比要用
+		$result["totalsize"] = size_format($total_bytes);
+	}
 	exit(json_encode($result));
+break;
+case 'checkupdate':
+	/*
+	 * 后台首页「版本信息」里的更新检查。
+	 * 结果在服务端缓存半小时（失败缓存 5 分钟），所以这里不加节流也不会反复打 GitHub；
+	 * 首页是异步调的，就算服务器连不上 GitHub 卡满超时，也只是这一行显示失败，不挡页面。
+	 */
+	include_once SYSTEM_ROOT.'update_check.php';
+	/*
+	 * 先把会话写回并解锁：PHP 的文件会话是独占锁，这一步要去访问 GitHub，
+	 * 慢的时候十几秒，锁不放开的话同一个管理员的其它请求（首页那几个统计数字）
+	 * 会一直排队等着。后面只读 $conf 和写 pre_config，不再动 $_SESSION。
+	 */
+	if(function_exists('session_write_close') && session_status() === PHP_SESSION_ACTIVE)session_write_close();
+	$u = update_status(false);
+	$latest = (!empty($u['commits']) && isset($u['commits'][0])) ? $u['commits'][0] : null;
+	exit(json_encode([
+		'code'    => 0,
+		'state'   => $u['state'],
+		'text'    => $u['text'],
+		'local'   => $u['local_version'],
+		'remote'  => $u['remote_version'],
+		'checked' => $u['checked_text'],
+		'error'   => $u['error'],
+		'needdb'  => !empty($u['need_db_update']),
+		'latest'  => $latest ? ($latest['title'].'（'.update_time_ago($latest['date']).'）') : '',
+	], JSON_UNESCAPED_UNICODE));
 break;
 case 'set':
 	if(isset($_POST['green_label_porn'])){

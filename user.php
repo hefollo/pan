@@ -431,8 +431,9 @@ if($tab === 'overview'){
         $qs .= '&ft='.urlencode($uc_ft);
     }
 
-    //筛选标签上的计数：只统计当前用户，数据量小，不用像首页那样走缓存
-    $uc_counts = ['' => 0, 'image'=>0, 'video'=>0, 'doc'=>0, 'archive'=>0];
+    //筛选标签上的计数：只统计当前用户，数据量小，不用像首页那样走缓存。
+    //这里的键要跟 layout_type_filters() 一一对应，少一个（以前少了 audio）那个标签就恒为 0
+    $uc_counts = ['' => 0, 'image'=>0, 'video'=>0, 'audio'=>0, 'doc'=>0, 'archive'=>0];
     $uc_crs = $DB->query("SELECT type, count(*) AS num FROM pre_file WHERE{$where_base} GROUP BY type");
     if($uc_crs){
         while($r = $uc_crs->fetch()){

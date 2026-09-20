@@ -182,6 +182,24 @@ function layout_type_group_exts($group){
 }
 
 /**
+ * 扩展名 -> 分组 的反查表，一次建好给按 type 归组的地方复用。
+ * 同一个扩展名可能出现在多张表里（后台的「图片格式」「视频格式」是站长自己填的），
+ * 先出现的分组优先，顺序跟筛选标签一致；后台首页的类型统计也用这张表，
+ * 保证前台标签和后台首页算出来的是同一套数字。
+ */
+function layout_type_group_lookup(){
+	static $lookup = null;
+	if($lookup !== null) return $lookup;
+	$lookup = [];
+	foreach(['image','video','audio','doc','archive'] as $g){
+		foreach(layout_type_group_exts($g) as $ext){
+			if(!isset($lookup[$ext])) $lookup[$ext] = $g;
+		}
+	}
+	return $lookup;
+}
+
+/**
  * 类型筛选的可选项；键要跟 URL 上的 ft 参数一致
  */
 function layout_type_filters(){
@@ -214,20 +232,19 @@ function layout_type_filter_sql($ft){
  */
 function layout_type_counts($DB, $where_sql){
 	$counts = ['' => 0, 'image' => 0, 'video' => 0, 'audio' => 0, 'doc' => 0, 'archive' => 0];
-	//GROUP BY type 在没有 type 索引的大表上是全表扫描，缓存 5 分钟
-	$cache_key = 'counts|'.$where_sql;
+	/*
+	 * GROUP BY type 在没有 type 索引的大表上是全表扫描，缓存 5 分钟。
+	 * 缓存键里的 counts2 是第二版：第一版漏统计音频，标签上的「音频」恒为 0，
+	 * 换个键让旧缓存直接作废，不用等 5 分钟过期。
+	 */
+	$cache_key = 'counts2|'.$where_sql;
 	$hit = layout_cache_get($cache_key, 300);
 	if($hit !== null){
 		foreach($counts as $k => $v){ if(isset($hit[$k])) $counts[$k] = intval($hit[$k]); }
 		return $counts;
 	}
-	$groups = ['image','video','doc','archive'];
-	$lookup = [];
-	foreach($groups as $g){
-		foreach(layout_type_group_exts($g) as $ext){
-			if(!isset($lookup[$ext])) $lookup[$ext] = $g;
-		}
-	}
+	//分组表统一从 layout_type_group_lookup() 取，漏掉某一组就会像以前的音频那样恒为 0
+	$lookup = layout_type_group_lookup();
 	$rs = $DB->query("SELECT type, count(*) as num FROM pre_file WHERE{$where_sql} GROUP BY type");
 	if(!$rs) return $counts;
 	while($row = $rs->fetch()){
@@ -244,11 +261,9 @@ function layout_type_counts($DB, $where_sql){
  * 文件所属分组，用来给列表行加 data-group，CSS 靠它给图标上色
  */
 function layout_type_group($type){
+	$lookup = layout_type_group_lookup();
 	$type = strtolower((string)$type);
-	foreach(['image','video','audio','doc','archive'] as $g){
-		if(in_array($type, layout_type_group_exts($g), true)) return $g;
-	}
-	return 'other';
+	return isset($lookup[$type]) ? $lookup[$type] : 'other';
 }
 
 /**
