@@ -58,7 +58,7 @@ if(!function_exists('admin_sub_active')){
           <span class="icon-bar"></span>
           <span class="icon-bar"></span>
         </button>
-        <a class="navbar-brand" href="./"><?php echo htmlspecialchars($conf['title'], ENT_QUOTES, 'UTF-8') ?>管理中心</a>
+        <a class="navbar-brand" href="./"><?php echo htmlspecialchars($conf['title'], ENT_QUOTES, 'UTF-8') ?></a>
       </div><!-- /.navbar-header -->
       <div id="navbar" class="collapse navbar-collapse">
         <?php

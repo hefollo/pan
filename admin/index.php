@@ -1,7 +1,7 @@
 <?php
 define('IN_ADMIN', true);
 include("../includes/common.php");
-$title='管理中心';
+$title='后台首页';
 include './head.php';
 if($islogin==1){}else exit("<script language='javascript'>window.location.href='./login.php';</script>");
 ?>
