@@ -28,7 +28,7 @@ if(!function_exists('admin_sub_active')){
   <meta charset="utf-8"/>
   <meta name="renderer" content="webkit">
   <meta name="viewport" content="width=device-width,height=device-height,initial-scale=1.0,maximum-scale=1.0,user-scalable=no;">
-  <title><?php echo $title ?> - <?php echo htmlspecialchars($conf['title'], ENT_QUOTES, 'UTF-8') ?></title>
+  <title><?php echo htmlspecialchars($conf['title'], ENT_QUOTES, 'UTF-8') ?></title>
   <link href="https://s4.zstatic.net/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css" rel="stylesheet"/>
   <link href="https://s4.zstatic.net/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet"/>
   <link href="../assets/css/bootstrap-table.css?v=1" rel="stylesheet"/>

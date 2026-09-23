@@ -22,7 +22,7 @@ $view_type = get_view_type($type);
   <meta charset="utf-8"/>
   <meta name="renderer" content="webkit">
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title><?php echo $title ?></title>
+  <title><?php echo htmlspecialchars($conf['title'], ENT_QUOTES, 'UTF-8') ?></title>
   <link rel="stylesheet" href="https://s4.zstatic.net/ajax/libs/aplayer/1.10.1/APlayer.min.css">
   <link href="../assets/css/ckplayer.css" rel="stylesheet">
   <script src="https://s4.zstatic.net/ajax/libs/jquery/2.1.4/jquery.min.js"></script>

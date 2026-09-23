@@ -76,7 +76,7 @@ if(!in_array($site_theme, site_theme_keys(), true)){
 	<meta charset="UTF-8">
 	<meta name="renderer" content="webkit">
 	<meta name="viewport" content="width=device-width,height=device-height,inital-scale=1.0,maximum-scale=1.0,user-scalable=no;">
-	<title>管理员登录 - <?php echo htmlspecialchars($conf['title'], ENT_QUOTES, 'UTF-8') ?></title>
+	<title><?php echo htmlspecialchars($conf['title'], ENT_QUOTES, 'UTF-8') ?></title>
 	<link href="https://s4.zstatic.net/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css" rel="stylesheet"/>
 	<link href="https://s4.zstatic.net/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet"/>
 	<link href="../assets/css/admin.css?v=<?php echo asset_ver('assets/css/admin.css')?>" rel="stylesheet"/>
