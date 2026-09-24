@@ -8,7 +8,7 @@ if(!in_array($site_theme, site_theme_keys(), true)){
 $is_sidebar_admin = in_array($site_theme, ['console', 'dashboard', 'workspace', 'cockpit', 'studio', 'nebula', 'royal', 'crisp', 'azure', 'neo'], true);
 //内容检测没开的话，检测记录整项不显示（设置页仍在「安全与合规」组里，用来开它）
 $green_log_on = !empty($conf['green_check']);
-$admin_body_class = !empty($islogin) ? 'admin-body' : 'admin-login-body';
+$admin_body_class = 'admin-body';
 $admin_body_class .= ' admin-theme-' . $site_theme;
 //固定侧栏的后台外观不加这个类，顶部导航那套响应式规则（收汉堡、悬停展开）只给顶栏外观用
 if(!$is_sidebar_admin)$admin_body_class .= ' top-nav-admin';
