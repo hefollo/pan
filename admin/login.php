@@ -119,10 +119,10 @@ body {
 .login-page {
     position: relative; z-index: 1;
     min-height: 100vh; display: flex; flex-direction: column;
-    align-items: center; justify-content: center; padding: 28px 16px 18px;
+    align-items: center; padding: 28px 16px;
 }
 .login-shell {
-    width: 100%; max-width: 960px;
+    width: 100%; max-width: 960px; margin: auto 0;
     display: grid; grid-template-columns: 1.08fr 1fr;
     background: rgba(255,255,255,.92);
     backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
@@ -141,7 +141,7 @@ body {
 }
 
 .login-banner {
-    position: relative; min-height: 540px; overflow: hidden;
+    position: relative; min-height: 480px; overflow: hidden;
     background:
         radial-gradient(circle at 80% 16%, rgba(255,255,255,.13) 0%, transparent 34%),
         radial-gradient(circle at 12% 88%, rgba(0,20,60,.30) 0%, transparent 42%),
@@ -249,13 +249,6 @@ body {
 }
 .login-submit:active { transform: translateY(0); box-shadow: 0 4px 12px rgba(22,119,255,.24); }
 
-.login-social {
-    margin-top: 24px; padding-top: 20px; border-top: 1px dashed var(--c-border-light);
-}
-.login-social__row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.login-social__label { font-size: 13px; color: var(--c-text-3); }
-.login-social__list { display: flex; align-items: center; gap: 10px; }
-
 .login-footer {
     margin-top: 22px; text-align: center; font-size: 12px; color: var(--c-text-3); line-height: 1.6;
 }
@@ -321,13 +314,6 @@ body {
                 <?php }?>
                 <button type="submit" class="login-submit">登 录 系 统</button>
             </form>
-
-            <div class="login-social">
-                <div class="login-social__row">
-                    <div class="login-social__label">其他登录方式</div>
-                    <div class="login-social__list"></div>
-                </div>
-            </div>
         </div>
     </div>
 
