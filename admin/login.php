@@ -80,13 +80,37 @@ if(!in_array($site_theme, site_theme_keys(), true)){
 	<link href="https://s4.zstatic.net/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css" rel="stylesheet"/>
 	<link href="https://s4.zstatic.net/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet"/>
 	<link href="../assets/css/admin.css?v=<?php echo asset_ver('assets/css/admin.css')?>" rel="stylesheet"/>
+	<?php //登录页同样跟随「外观设置」里自定义的主题配色，与后台其它页面保持一致 ?>
+	<?php echo theme_recolor_tag($site_theme, 'admin', '../');?>
+	<?php echo theme_gradient_style($site_theme, 'admin');?>
+	<style>
+	/* 登录页美化：全部用主题 CSS 变量驱动，换外观或自定义配色时自动跟随 */
+	.admin-login-top{position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(90deg,var(--admin-primary),var(--admin-primary-dark))}
+	.admin-login-brand{margin:0 0 34px}
+	.admin-login-logo{width:64px;height:64px;line-height:64px;margin:0 auto 14px;border-radius:50%;color:#fff;font-size:26px;background:linear-gradient(135deg,var(--admin-primary),var(--admin-primary-dark));box-shadow:0 10px 24px rgba(0,0,0,.16)}
+	.admin-login-name{color:var(--admin-text);font-size:23px;font-weight:700;margin:0 0 6px;letter-spacing:1px}
+	.admin-login-sub{color:var(--admin-muted);font-size:12px;letter-spacing:4px;margin:0}
+	.admin-login-captcha .form-control{width:calc(100% - 134px)}
+	.admin-login-captcha img{height:40px;width:120px;margin-left:10px;float:right;border-radius:6px;cursor:pointer;border:1px solid var(--admin-line)}
+	.admin-login-foot{margin-top:6px;padding-top:16px;border-top:1px solid var(--admin-line)}
+	.admin-login-foot a{color:var(--admin-muted);font-size:13px;display:inline-block;padding:3px 10px;border-radius:6px;transition:all .25s}
+	.admin-login-foot a:hover{color:var(--admin-primary);text-decoration:none}
+	/* mac 外观自带窗口标题栏（红黄绿圆点），不再叠加顶部色条 */
+	body.admin-theme-mac .admin-login-top{display:none}
+	body.admin-theme-mac .admin-login-brand{margin-top:10px}
+	</style>
 </head>
 <body class="admin-login-body admin-theme-<?php echo $site_theme;?>">
   <div class="container">
       <div class="row">
           <div class="col-md-offset-4 col-md-4 col-sm-offset-3 col-sm-6">
               <form class="form-horizontal admin-login-form" method="post">
-                  <div class="heading">管理员登录</div>
+                  <div class="admin-login-top"></div>
+                  <div class="admin-login-brand">
+                      <div class="admin-login-logo"><i class="fa fa-cloud"></i></div>
+                      <div class="admin-login-name"><?php echo htmlspecialchars($conf['title'], ENT_QUOTES, 'UTF-8') ?></div>
+                      <div class="admin-login-sub">管理后台登录</div>
+                  </div>
                   <div class="form-group">
                       <i class="fa fa-user"></i><input required name="user" type="text" class="form-control" placeholder="用户名">
                   </div>
@@ -94,12 +118,15 @@ if(!in_array($site_theme, site_theme_keys(), true)){
                       <i class="fa fa-lock"></i><input required name="pass" type="password" class="form-control" placeholder="密码"/>
                   </div>
                   <?php if($verifycode==1){?>
-                  <div class="form-group">
-                      <i class="fa fa-shield"></i><input required name="code" type="text" class="form-control" placeholder="验证码" autocomplete="off" maxlength="6" style="width:55%"/><img src="./code.php" alt="验证码" title="点击更换" onclick="this.src='./code.php?'+Math.random()" style="height:40px;vertical-align:middle;cursor:pointer;border-radius:6px;margin-left:6px"/>
+                  <div class="form-group admin-login-captcha">
+                      <i class="fa fa-shield"></i><input required name="code" type="text" class="form-control" placeholder="验证码" autocomplete="off" maxlength="6"/><img src="./code.php" alt="验证码" title="点击更换" onclick="this.src='./code.php?'+Math.random()"/>
                   </div>
                   <?php }?>
                   <div class="form-group">
-                      <button type="submit" class="btn btn-default"><i class="fa fa-arrow-right"></i></button>
+                      <button type="submit" class="btn btn-default"><i class="fa fa-arrow-right"></i> 登 录</button>
+                  </div>
+                  <div class="admin-login-foot">
+                      <a href="../"><i class="fa fa-home"></i> 返回网站首页</a>
                   </div>
               </form>
           </div>
