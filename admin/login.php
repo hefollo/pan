@@ -14,6 +14,10 @@ include("../includes/common.php");
 $login_max_fail = 5;
 $login_lock_time = 900;
 $login_ip = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '0.0.0.0';
+//登录提示直接渲染在登录页上：成功/失败都就地显示，不再用 alert 弹窗二次确认
+$login_msg = '';
+$login_msg_type = '';
+$login_auto_jump = 0;
 
 if(isset($_POST['user']) && isset($_POST['pass'])){
 	if(!isset($_SESSION['pass_error']))$_SESSION['pass_error']=0;
@@ -27,16 +31,16 @@ if(isset($_POST['user']) && isset($_POST['pass'])){
 	unset($_SESSION['vc_code']);
 	$locked = login_throttle_locked($login_ip, $login_max_fail, $login_lock_time);
 	if ($locked > 0) {
-		@header('Content-Type: text/html; charset=UTF-8');
-		exit("<script language='javascript'>alert('登录失败次数过多，请在".ceil($locked/60)."分钟后重试！');history.go(-1);</script>");
+		$login_msg = '登录失败次数过多，请在'.ceil($locked/60).'分钟后重试！';
+		$login_msg_type = 'error';
 	}elseif ($verifycode==1 && ($code === '' || $vc_code === '' || strtolower($code) !== strtolower($vc_code))) {
 		//验证码错误也计入失败次数，否则可以靠刷验证码把限速耗过去
 		login_throttle_fail($login_ip, $login_lock_time);
-		@header('Content-Type: text/html; charset=UTF-8');
-		exit("<script language='javascript'>alert('验证码错误！');history.go(-1);</script>");
+		$login_msg = '验证码错误！';
+		$login_msg_type = 'error';
 	}elseif($_SESSION['pass_error']>$login_max_fail) {
-		@header('Content-Type: text/html; charset=UTF-8');
-		exit("<script language='javascript'>alert('用户名或密码不正确！');history.go(-1);</script>");
+		$login_msg = '用户名或密码不正确！';
+		$login_msg_type = 'error';
 	}elseif(hash_equals((string)$conf['admin_user'], $user) && hash_equals((string)$conf['admin_pwd'], $pass)) {
 		//必须用 hash_equals 做二进制比较：== 会把两个纯数字串按数值比，'0123456' == '123456' 为真
 		login_throttle_reset($login_ip);
@@ -50,20 +54,22 @@ if(isset($_POST['user']) && isset($_POST['pass'])){
 		//$sitepath 就是浏览器原本给这个 cookie 算出来的默认 path（/admin 或 /子目录/admin），
 		//显式传进去既不改变作用域，又能带上 HttpOnly/Secure/SameSite
 		set_auth_cookie("admin_token", $token, time() + 2592000, $sitepath);
-		@header('Content-Type: text/html; charset=UTF-8');
-		exit("<script language='javascript'>alert('登录管理中心成功！');window.location.href='./';</script>");
+		$login_msg = '登录管理中心成功！';
+		$login_msg_type = 'success';
+		$login_auto_jump = 1;
 	}else {
 		login_throttle_fail($login_ip, $login_lock_time);
 		$_SESSION['pass_error']++;
-		@header('Content-Type: text/html; charset=UTF-8');
-		exit("<script language='javascript'>alert('用户名或密码不正确！');history.go(-1);</script>");
+		$login_msg = '用户名或密码不正确！';
+		$login_msg_type = 'error';
 	}
 }elseif(isset($_GET['logout'])){
 	set_auth_cookie("admin_token", "", time() - 2592000, $sitepath);
-	@header('Content-Type: text/html; charset=UTF-8');
-	exit("<script language='javascript'>alert('您已成功注销本次登录！');window.location.href='./login.php';</script>");
+	$login_msg = '您已成功注销本次登录！';
+	$login_msg_type = 'success';
 }elseif($islogin==1){
-	exit("<script language='javascript'>alert('您已登录！');window.location.href='./';</script>");
+	@header('Location: ./');
+	exit;
 }
 $site_theme = isset($conf['site_theme']) ? $conf['site_theme'] : default_site_theme();
 if(!in_array($site_theme, site_theme_keys(), true)){
@@ -204,6 +210,13 @@ body {
 .login-brand__title { font-size: 16px; font-weight: 600; color: var(--c-text); line-height: 1.35; }
 .login-brand__meta { font-size: 12px; color: var(--c-text-3); margin-top: 2px; }
 
+.login-alert {
+    margin-bottom: 16px; padding: 10px 14px; border-radius: 10px;
+    font-size: 13px; line-height: 1.5; text-align: center; word-break: break-all;
+}
+.login-alert--error { background: #fff1f0; border: 1px solid #ffccc7; color: #cf1322; }
+.login-alert--success { background: #f6ffed; border: 1px solid #b7eb8f; color: #389e0d; }
+
 .login-form { display: flex; flex-direction: column; gap: 16px; }
 .login-field { position: relative; }
 .login-field__icon {
@@ -294,10 +307,14 @@ body {
                 </div>
             </div>
 
+            <?php if($login_msg !== ''){?>
+            <div class="login-alert login-alert--<?php echo $login_msg_type?>"><?php echo htmlspecialchars($login_msg, ENT_QUOTES, 'UTF-8')?></div>
+            <?php if($login_auto_jump){?><script>setTimeout(function(){location.href='./';},1500);</script><?php }?>
+            <?php }?>
             <form class="login-form" method="post">
                 <div class="login-field">
                     <svg class="login-field__icon" viewBox="0 0 1024 1024" fill="currentColor"><path d="M288 320a224 224 0 1 0 448 0 224 224 0 1 0-448 0zm544 608H160a32 32 0 0 1-32-32v-96a160 160 0 0 1 160-160h448a160 160 0 0 1 160 160v96a32 32 0 0 1-32 32z"/></svg>
-                    <input class="login-field__input" type="text" autocomplete="off" placeholder="请输入账号" name="user">
+                    <input class="login-field__input" type="text" autocomplete="off" placeholder="请输入账号" name="user" value="<?php echo isset($_POST['user']) ? htmlspecialchars($_POST['user'], ENT_QUOTES, 'UTF-8') : '' ?>">
                 </div>
                 <div class="login-field">
                     <svg class="login-field__icon" viewBox="0 0 1024 1024" fill="currentColor"><path d="M512 64a256 256 0 0 1 256 256v128H256V320A256 256 0 0 1 512 64zm192 160v-64a192 192 0 1 0-384 0v64h384zM224 448h576a96 96 0 0 1 96 96v384a96 96 0 0 1-96 96H224a96 96 0 0 1-96-96V544a96 96 0 0 1 96-96z"/></svg>
