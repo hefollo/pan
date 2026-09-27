@@ -24,7 +24,7 @@ if($mod=='site'){
   <form onsubmit="return saveSetting(this)" method="post" class="form-horizontal" role="form">
 	<div class="form-group">
 	  <label class="col-sm-2 control-label">网站标题</label>
-	  <div class="col-sm-10"><input type="text" name="title" value="<?php echo $conf['title']; ?>" class="form-control" required/></div>
+	  <div class="col-sm-10"><input type="text" name="title" value="<?php echo htmlspecialchars($conf['title'], ENT_QUOTES, 'UTF-8'); ?>" class="form-control" required/></div>
 	</div><br/>
 	<div class="form-group">
 	  <label class="col-sm-2 control-label">关键字</label>

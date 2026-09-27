@@ -58,7 +58,7 @@ if(!function_exists('admin_sub_active')){
           <span class="icon-bar"></span>
           <span class="icon-bar"></span>
         </button>
-        <a class="navbar-brand" href="./">彩虹外链网盘管理中心</a>
+        <a class="navbar-brand" href="./"><?php echo htmlspecialchars(isset($conf['title']) ? $conf['title'] : '彩虹外链网盘', ENT_QUOTES, 'UTF-8');?>管理中心</a>
       </div><!-- /.navbar-header -->
       <div id="navbar" class="collapse navbar-collapse">
         <?php
@@ -142,6 +142,8 @@ if(!isset($conf['sponsor_open']) || $conf['sponsor_open'] == 1){?>
  * 存储设置页在提交前还要多校验一次下载域名，那一份仍留在它自己页面里覆盖这个默认实现。
  */
 function saveSetting(obj){
+	//记录本次提交的标题，避免请求期间继续编辑导致显示未保存的值。
+	var siteTitle = $(obj).find('[name="title"]').val();
 	var ii = layer.load(2, {shade:[0.1,'#fff']});
 	$.ajax({
 		type : 'POST',
@@ -151,6 +153,9 @@ function saveSetting(obj){
 		success : function(data){
 			layer.close(ii);
 			if(data.code == 0){
+				if(typeof siteTitle === 'string' && $.inArray('title', data.skipped || []) === -1){
+					$('.navbar-brand').text(siteTitle + '管理中心');
+				}
 				layer.alert('设置保存成功！', {icon:1, closeBtn:false}, function(){ window.location.reload(); });
 			}else{
 				layer.alert(data.msg, {icon:2});
