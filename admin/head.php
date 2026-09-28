@@ -12,6 +12,11 @@ $admin_body_class = !empty($islogin) ? 'admin-body' : 'admin-login-body';
 $admin_body_class .= ' admin-theme-' . $site_theme;
 //固定侧栏的后台外观不加这个类，顶部导航那套响应式规则（收汉堡、悬停展开）只给顶栏外观用
 if(!$is_sidebar_admin)$admin_body_class .= ' top-nav-admin';
+//后台名称跟着「网站标题」走：左上角和浏览器标签共用这一份。
+//标签：首页就是「网站标题管理中心」，其它页面前面加上页面名。
+//网站标题是站长填的，要转义；各页面自己的 $title 是写死的文字（有的用 HTML 实体写），原样输出
+$admin_brand = htmlspecialchars((isset($conf['title']) && $conf['title'] !== '') ? $conf['title'] : '彩虹外链网盘', ENT_QUOTES, 'UTF-8').'管理中心';
+$admin_doc_title = (isset($title) && $title !== '') ? $title.' - '.$admin_brand : $admin_brand;
 //子菜单要精确到 set.php 的 mod 参数，checkIfActive 只认文件名区分不了，这里单独判断
 if(!function_exists('admin_sub_active')){
 	function admin_sub_active($file, $mod = null){
@@ -28,7 +33,7 @@ if(!function_exists('admin_sub_active')){
   <meta charset="utf-8"/>
   <meta name="renderer" content="webkit">
   <meta name="viewport" content="width=device-width,height=device-height,initial-scale=1.0,maximum-scale=1.0,user-scalable=no;">
-  <title><?php echo $title ?></title>
+  <title><?php echo $admin_doc_title ?></title>
   <link href="https://s4.zstatic.net/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css" rel="stylesheet"/>
   <link href="https://s4.zstatic.net/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet"/>
   <link href="../assets/css/bootstrap-table.css?v=1" rel="stylesheet"/>
@@ -58,7 +63,7 @@ if(!function_exists('admin_sub_active')){
           <span class="icon-bar"></span>
           <span class="icon-bar"></span>
         </button>
-        <a class="navbar-brand" href="./"><?php echo htmlspecialchars(isset($conf['title']) ? $conf['title'] : '彩虹外链网盘', ENT_QUOTES, 'UTF-8');?>管理中心</a>
+        <a class="navbar-brand" href="./"><?php echo $admin_brand;?></a>
       </div><!-- /.navbar-header -->
       <div id="navbar" class="collapse navbar-collapse">
         <?php
@@ -154,7 +159,12 @@ function saveSetting(obj){
 			layer.close(ii);
 			if(data.code == 0){
 				if(typeof siteTitle === 'string' && $.inArray('title', data.skipped || []) === -1){
-					$('.navbar-brand').text(siteTitle + '管理中心');
+					//浏览器标签末尾也是这个名字，一起换掉，不用等下面的刷新
+					var oldBrand = $.trim($('.navbar-brand').text()), newBrand = siteTitle + '管理中心';
+					$('.navbar-brand').text(newBrand);
+					if(oldBrand && document.title.slice(-oldBrand.length) === oldBrand){
+						document.title = document.title.slice(0, -oldBrand.length) + newBrand;
+					}
 				}
 				layer.alert('设置保存成功！', {icon:1, closeBtn:false}, function(){ window.location.reload(); });
 			}else{

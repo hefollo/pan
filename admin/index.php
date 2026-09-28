@@ -1,7 +1,8 @@
 <?php
 define('IN_ADMIN', true);
 include("../includes/common.php");
-$title='彩虹外链网盘管理中心';
+//首页标签直接显示「网站标题管理中心」，由 head.php 拼（$title 留空）
+$title='';
 include './head.php';
 if($islogin==1){}else exit("<script language='javascript'>window.location.href='./login.php';</script>");
 ?>
