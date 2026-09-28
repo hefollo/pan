@@ -13,8 +13,8 @@ case 'getcount':
 	$thtime=date("Y-m-d").' 00:00:00';
 	$lastday=date("Y-m-d",strtotime("-1 day")).' 00:00:00';
 	$count1=$DB->getColumn("SELECT count(*) from pre_file");
-	$count2=$DB->getColumn("SELECT count(*) from pre_file WHERE addtime>='$thtime'");
-	$count3=$DB->getColumn("SELECT count(*) from pre_file WHERE addtime>='$lastday' AND addtime<'$thtime'");
+	$count2=$DB->getColumn("SELECT count(*) from pre_file WHERE addtime>='$thtime' AND copied=0");
+	$count3=$DB->getColumn("SELECT count(*) from pre_file WHERE addtime>='$lastday' AND addtime<'$thtime' AND copied=0");
 	$count4=$DB->getColumn("SELECT count(*) from pre_user");
 
 	/*
@@ -209,6 +209,9 @@ case 'delUser':
 	if($DB->exec($sql)){
 		//绑定表的 (type,openid) 上是唯一索引，留着孤儿行会让那个 QQ / 邮箱以后再也绑不上任何账号
 		delete_user_binds($uid);
+		//文件记录本来就不随账号删；他建的文件夹删掉，文件的 folder_id 归零，免得指向不存在的文件夹
+		$DB->exec("UPDATE pre_file SET folder_id=0 WHERE uid=:uid", [':uid'=>$uid]);
+		$DB->exec("DELETE FROM pre_folder WHERE uid=:uid", [':uid'=>$uid]);
 		exit('{"code":0,"msg":"删除用户成功！"}');
 	}
 	else exit('{"code":-1,"msg":"删除用户失败['.$DB->error().']"}');

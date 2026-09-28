@@ -950,6 +950,8 @@ function user_login_session($uid, $row){
 		$ids = implode(',', array_map('intval', $ids));
 		if($ids !== '')$DB->exec("UPDATE pre_file SET uid='{$uid}' WHERE id IN ({$ids}) AND uid=0");
 	}
+	//游客建的文件夹一起转过去，上面转过去的文件 folder_id 不变，登录后还在原来的文件夹里
+	if(function_exists('folder_transfer_guest'))folder_transfer_guest($uid);
 	$expiretime = time() + 2592000;
 	$token = authcode("{$uid}\t".user_session_hash($row)."\t{$expiretime}", 'ENCODE', SYS_KEY);
 	set_auth_cookie("user_token", $token, $expiretime, '/');
@@ -1903,6 +1905,8 @@ function admin_setting_keys(){
 		'downfile_protocol', 'downfile_type', 'down_speed_guest', 'down_speed_guest_unit',
 		'down_speed_user', 'down_speed_user_unit', 'down_speed_vip', 'down_speed_vip_unit',
 		'filepath', 'filesearch',
+		//用户文件夹（虚拟目录）：总开关 + 开放范围，相关决定 DEC-20260928-001
+		'folder_open', 'folder_mode', 'folder_uids',
 		'forcelogin', 'gg_file', 'gonggao', 'green_check',
 		'green_check_porn', 'green_check_region', 'green_check_terrorism', 'green_label_porn',
 		'green_self_api', 'green_self_token', 'green_self_block', 'green_self_review',
@@ -2343,7 +2347,25 @@ function get_online_edit_mode(){
 
 function get_online_edit_uid_whitelist(){
 	global $conf;
-	$value = isset($conf['online_edit_uids']) ? trim((string)$conf['online_edit_uids']) : '';
+	return parse_uid_list(isset($conf['online_edit_uids']) ? $conf['online_edit_uids'] : '');
+}
+
+/*
+ * 页面用的 csrf 令牌。平时每次打开页面都换一个新的；
+ * 但「我的文件」局部刷新（assets/js/filelist-live.js 带 X-Pan-Partial 请求头取整页）时沿用会话里现有的，
+ * 否则换回来的列表还没用，当前页面手里的令牌（uc_csrf、replace_csrf_token、PAN_FOLDER.csrf）就全失效了。
+ */
+function page_csrf_token(){
+	if(!empty($_SERVER['HTTP_X_PAN_PARTIAL']) && !empty($_SESSION['csrf_token']) && is_string($_SESSION['csrf_token'])){
+		return $_SESSION['csrf_token'];
+	}
+	$_SESSION['csrf_token'] = bin2hex(random_bytes(16));
+	return $_SESSION['csrf_token'];
+}
+
+//后台「指定 UID」输入框的解析：中英文逗号、竖线、空白都当分隔符，非数字丢掉。在线编辑和用户文件夹共用
+function parse_uid_list($value){
+	$value = trim((string)$value);
 	if($value === '') return [];
 	$value = str_replace(['，', '|'], [',', ','], $value);
 	$items = preg_split('/[\s,]+/', $value);

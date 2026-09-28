@@ -63,10 +63,16 @@
     });
   }
 
-  // 提示后刷新：改完名字、密码、公开状态都要让列表重新渲染一次，省得局部更新漏掉状态角标
+  // 提示后刷新：改完名字、密码、公开状态都要让列表重新渲染一次，省得局部更新漏掉状态角标。
+  // 文件页上由 filelist-live.js 局部刷新列表，不整页闪；别的页签（API 密钥等）没有它，照旧整页刷新
   function reloadAfter(res) {
     if (res.code === 0) {
-      layer.msg(res.msg, { icon: 1, time: 1200 }, function () { location.reload(); });
+      if (window.PanList) {
+        layer.msg(res.msg, { icon: 1, time: 1200 });
+        window.PanList.refresh();
+      } else {
+        layer.msg(res.msg, { icon: 1, time: 1200 }, function () { location.reload(); });
+      }
     } else {
       layer.msg(res.msg || '操作失败', { icon: 2 });
     }
@@ -84,34 +90,60 @@
     return ids;
   }
 
+  // 文件夹行（后台开了用户文件夹才有）的勾选框是 .fd-check，和文件行分开，免得文件夹 id 混进删文件的请求
+  function selectedFolderIds() {
+    var ids = [];
+    $list.find('tbody .fd-check:checked').each(function () {
+      ids.push($(this).closest('tr').data('folder-id'));
+    });
+    return ids;
+  }
+
   function refreshBatchBar() {
-    var n = selectedIds().length;
+    var n = selectedIds().length + selectedFolderIds().length;
     $('#ucSelCount').text(n);
     $('#ucBatchBar').prop('hidden', n === 0);
     // 本页可选的都选上了，全选框才算选中；有禁用项（已冻结）时不计入
-    var $boxes = $list.find('tbody .uc-check:not(:disabled)');
+    var $boxes = $list.find('tbody .uc-check:not(:disabled), tbody .fd-check');
     $('#ucCheckAll').prop('checked', $boxes.length > 0 && n === $boxes.length);
   }
 
   $('#ucCheckAll').on('change', function () {
-    $list.find('tbody .uc-check:not(:disabled)').prop('checked', this.checked);
+    $list.find('tbody .uc-check:not(:disabled), tbody .fd-check').prop('checked', this.checked);
     refreshBatchBar();
   });
-  $list.on('change', '.uc-check', refreshBatchBar);
+  $list.on('change', '.uc-check, .fd-check', refreshBatchBar);
+  // 列表局部刷新后勾选都没了，批量条跟着收起
+  $(document).on('pan:listrefresh', refreshBatchBar);
   $('#ucSelClear').on('click', function () {
-    $list.find('tbody .uc-check').prop('checked', false);
+    $list.find('tbody .uc-check, tbody .fd-check').prop('checked', false);
     $('#ucCheckAll').prop('checked', false);
     refreshBatchBar();
   });
 
   $('#ucBatchDelete').on('click', function () {
     var ids = selectedIds();
-    if (!ids.length) { layer.msg('请先选择文件'); return; }
-    layer.confirm('确定删除选中的 ' + ids.length + ' 个文件？删除后外链立即失效，且无法恢复。',
-      { icon: 3, title: '批量删除' }, function (idx) {
-        layer.close(idx);
-        post('deleteFiles', { ids: ids }, reloadAfter);
+    var fids = selectedFolderIds();
+    if (!ids.length && !fids.length) { layer.msg('请先选择文件'); return; }
+    var tip = '确定删除选中的 ' + ids.length + ' 个文件？删除后外链立即失效，且无法恢复。';
+    if (fids.length) {
+      tip = '确定删除选中的 ' + (ids.length ? ids.length + ' 个文件和 ' : '') + fids.length + ' 个文件夹？<br>'
+        + '文件夹里的文件<b>不会被删除</b>，会移到根目录'
+        + (ids.length ? '；选中的文件删除后外链立即失效，且无法恢复。' : '。');
+    }
+    layer.confirm(tip, { icon: 3, title: '批量删除' }, function (idx) {
+      layer.close(idx);
+      if (!fids.length) { post('deleteFiles', { ids: ids }, reloadAfter); return; }
+      if (!window.PanFolders) { layer.msg('页面脚本没有加载完整，请刷新后重试'); return; }
+      // 先删文件夹（里面的文件回根目录），再删勾选的文件，两步的结果合在一起提示
+      window.PanFolders.deleteFolders(fids, function (res) {
+        if (res.code !== 0 || !ids.length) { reloadAfter(res); return; }
+        post('deleteFiles', { ids: ids }, function (r2) {
+          r2.msg = res.msg + '；' + (r2.msg || '');
+          reloadAfter(r2);
+        });
       });
+    });
   });
 
   $list.on('click', '[data-uc]', function () {

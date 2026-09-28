@@ -536,6 +536,8 @@ new Vue({
                 pwd: this.input.pwd,
                 //服务端会拿允许列表校验这个值，非法的一律回落到默认存储
                 storage: this.input.storage,
+                //从「我的文件」某个文件夹点「上传到这里」进来时才有值；服务端会再校验归属，不对就放根目录
+                folder_id: (typeof upload_folder_id !== 'undefined' ? upload_folder_id : 0),
             };
             var that = this;
             var timing = this.startFrontendTiming('pre_upload', ctx ? ctx.file : this.currentFile);

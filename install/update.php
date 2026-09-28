@@ -228,7 +228,20 @@ if(!$q || !$q->fetchColumn()){
  * 版本号统一在它之后写入，旧版本分支里先写 1022 也不会影响最终结果。
  */
 $sqls = array_merge($sqls, read_sql('update_1023.sql'));
-$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1023')";
+
+/*
+ * 1024 用户文件夹：新表 pre_folder 同 1023，可以每次跑；文件表的 folder_id / copied 两个字段
+ * 和 1022 一样是 ALTER，先查表结构，两个里缺任何一个就跑一遍（已有的那条会报重复结构被跳过）。
+ */
+$sqls = array_merge($sqls, read_sql('update_1024.sql'));
+$q1 = $db->query("SHOW COLUMNS FROM `pre_file` LIKE 'folder_id'");
+$q2 = $db->query("SHOW COLUMNS FROM `pre_file` LIKE 'copied'");
+if(!$q1 || !$q1->fetchColumn() || !$q2 || !$q2->fetchColumn()){
+	$sqls = array_merge($sqls, read_sql('update_1024_file.sql'));
+}
+$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1024')";
+//上面 else 分支只按 1022 判断「已是最新」，从 1022/1023 升上来时要改回「升级完成」的提示
+if($version < 1024)$uptodate = false;
 
 $success=0;$skipped=0;$error=0;$errorMsg=null;
 foreach ($sqls as $value) {
@@ -267,7 +280,7 @@ if($errorMsg){
  * 出过"版本号写上去了、表却没建出来"的情况，页面还提示升级成功，
  * 站长要等到用那个功能才会看见 1146 报错，这里提前说清楚。
  */
-$need_tables = ['pre_greenlog', 'pre_greenjob', 'pre_user_bind', 'pre_api_key'];
+$need_tables = ['pre_greenlog', 'pre_greenjob', 'pre_user_bind', 'pre_api_key', 'pre_folder'];
 $lost = [];
 foreach($need_tables as $t){
 	//ERRMODE_SILENT 下 query 出错会返回 false，不能直接往后链 fetchColumn
@@ -295,6 +308,19 @@ if(!$q || !$q->fetchColumn()){
 	echo '<p style="font:14px/1.7 system-ui;padding:16px 24px"><a href="../">返回首页</a></p>';
 	exit;
 }
-$done_msg = $uptodate ? '数据库结构已是最新，表结构校验通过！' : '网站数据库升级完成！';
+//1024 的两个字段同理：缺了 copied，每日上传计数的 SQL 会直接报错；缺了 folder_id，文件夹里一个文件都显示不出来
+$lost_cols = [];
+foreach(['folder_id', 'copied'] as $col){
+	$q = $db->query("SHOW COLUMNS FROM `pre_file` LIKE '".$col."'");
+	if(!$q || !$q->fetchColumn())$lost_cols[] = $col;
+}
+if($lost_cols){
+	echo '<div style="font:13px/1.7 system-ui;margin:0 24px;padding:14px;border:1px solid #f0c2c2;background:#fff5f5;border-radius:8px;color:#a33">'
+		.'<b>升级没有完成：</b><code>pre_file</code> 表缺少 <code>'.htmlspecialchars(implode('、', $lost_cols), ENT_QUOTES, 'UTF-8').'</code> 字段。<br>'
+		.'请确认 <code>install/update_1024_file.sql</code> 已上传，以及数据库账号有改表权限，然后重新打开本页再升级一次。</div>';
+	echo '<p style="font:14px/1.7 system-ui;padding:16px 24px"><a href="../">返回首页</a></p>';
+	exit;
+}
+$done_msg =$uptodate ? '数据库结构已是最新，表结构校验通过！' : '网站数据库升级完成！';
 exit("<script language='javascript'>alert('".$done_msg."');window.location.href='../';</script>");
 ?>

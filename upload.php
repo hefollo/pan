@@ -40,13 +40,36 @@ if(storage_multi_open() && count($upload_storages) > 1){
 if($effective_upload_limit > 0){
     $thisday = date("Y-m-d 00:00:00");
     if($islogin2){
-        $effective_upload_used = intval($DB->getColumn("SELECT count(*) from pre_file WHERE uid='$uid' AND addtime>='".$thisday."'"));
+        $effective_upload_used = intval($DB->getColumn("SELECT count(*) from pre_file WHERE uid='$uid' AND addtime>='".$thisday."' AND copied=0"));
     }else{
-        $effective_upload_used = intval($DB->getColumn("SELECT count(*) from pre_file WHERE ip='$clientip' AND addtime>='".$thisday."'"));
+        $effective_upload_used = intval($DB->getColumn("SELECT count(*) from pre_file WHERE ip='$clientip' AND addtime>='".$thisday."' AND copied=0"));
     }
     $effective_upload_remaining = max(0, $effective_upload_limit - $effective_upload_used);
 }
+/*
+ * 从「我的文件」某个文件夹点「上传到这里」进来的：页面上标出目标位置，并把 id 交给上传脚本。
+ * 这里只管显示，真正放哪儿由 ajax.php 的 folder_upload_target() 再校验一次归属。
+ */
+$upload_folder_id = 0;
+$upload_folder_path = [];
+if(isset($_GET['folder']) && can_use_folders()){
+    $upload_folder_all = folder_all(folder_owner(false));
+    $upload_folder_id = folder_current($upload_folder_all);
+    if($upload_folder_id > 0) $upload_folder_path = folder_path($upload_folder_all, $upload_folder_id);
+}
+$upload_folder_back = $islogin2 ? './user.php?tab=files' : './?m=mine';
 ?>
+<?php //目标文件夹这一条放在 Vue 挂载点外面：文件夹名是用户输入的，放进 #app 会被当成模板解析（{{ }} 注入）
+if($upload_folder_id > 0){?>
+<div class="container">
+    <div class="fd-upload-target"><i class="fa fa-folder-open" aria-hidden="true"></i> 上传到：
+        <a href="<?php echo folder_h($upload_folder_back)?>">我的文件</a>
+<?php foreach($upload_folder_path as $f){?>
+        <i class="fa fa-angle-right" aria-hidden="true"></i> <a href="<?php echo folder_h($upload_folder_back.'&folder='.$f['id'])?>"><?php echo folder_h($f['name'])?></a>
+<?php }?>
+    </div>
+</div>
+<?php }?>
 <?php //上传界面的进度条、结果提示和队列样式原来写在这里，首页的上传区要用同一套，已经搬进 assets/css/style.css ?>
 <div class="container" id="app" v-cloak>
     <div class="row">
@@ -194,6 +217,7 @@ var upload_max_filesize = '<?php echo $effective_upload_size?>';
 var upload_count_limit = <?php echo intval($effective_upload_limit)?>;
 var upload_count_used = <?php echo intval($effective_upload_used)?>;
 var upload_count_remaining = <?php echo intval($effective_upload_remaining)?>;
+var upload_folder_id = <?php echo intval($upload_folder_id)?>;
 /*
  * 存储下拉的默认选中项。必须在这儿给出，不能等 Vue 挂载后再去读 select 的值：
  * v-model 会在首次渲染时按数据（空串）把 select 刷成「未选中」，那时再读就是 null 了。

@@ -4,8 +4,8 @@ if (version_compare(PHP_VERSION, '7.1.0', '<')) {
 }
 include("./includes/common.php");
 
-$csrf_token = bin2hex(random_bytes(16));
-$_SESSION['csrf_token'] = $csrf_token;
+//游客「我的文件」局部刷新取页面时沿用现有令牌，见 page_csrf_token()
+$csrf_token = page_csrf_token();
 
 //老的 ?m=mine 链接（书签、外部引用）继续可用：已登录的转去个人中心，
 //那边才有重命名/删除/公开私密这些管理操作；游客没有账号，留在这里看浏览器缓存记录
@@ -65,6 +65,18 @@ $sort = (isset($_GET['sort']) && is_string($_GET['sort']) && isset($sort_map[$_G
 $order_sql = $sort_map[$sort];
 if($sort !== 'new'){
     $link .= '&sort='.$sort;
+}
+//游客「我的文件」的文件夹（登录用户在文件开头已经跳去个人中心了）。
+//搜索或按类型筛选时跨全部文件夹查、结果里标出所在文件夹；否则只列当前这一层
+$fd_on = isset($_GET['m']) && $_GET['m'] === 'mine' && !$islogin2 && can_use_folders();
+$fd_all = $fd_on ? folder_all(folder_owner(false)) : [];
+$fd_cur = $fd_on ? folder_current($fd_all) : 0;
+$fd_searching = $fd_on && (($conf['filesearch']==1 && $kw) || $ft !== '');
+$fd_url = './?m=mine';
+$fd_rows = '';
+if($fd_on && !$fd_searching){
+    $sql .= " AND folder_id=".$fd_cur;
+    if($fd_cur > 0) $link .= '&folder='.$fd_cur;
 }
 
 include_once SYSTEM_ROOT.'script_manager.php';
@@ -241,8 +253,10 @@ echo layout_render_stats($layout_counts, layout_today_total($DB, $sql_base), $st
         <input type="file" id="replaceFileInput" style="display:none">
         <?php }?>
 <?php if($guest_mine){?>
+<?php if($fd_on) echo folder_render_bar($fd_all, $fd_cur, $fd_url, $fd_searching, './upload.php'.($fd_cur > 0 ? '?folder='.$fd_cur : ''));?>
         <div class="uc-batchbar" id="guestBatchBar" hidden>
-            <span>已选中 <b id="guestSelCount">0</b> 个文件</span>
+            <span>已选中 <b id="guestSelCount">0</b> <?php echo $fd_on ? '项' : '个文件'?></span>
+<?php if($fd_on) echo folder_render_batch_buttons();?>
             <button type="button" class="uc-btn uc-btn-danger" id="guestBatchDelete"><i class="fa fa-trash" aria-hidden="true"></i> 批量删除</button>
             <button type="button" class="uc-btn" id="guestSelClear">取消选择</button>
         </div>
@@ -281,6 +295,11 @@ $offset=$pagesize*($page - 1);
 
 $rs=$DB->query("SELECT * FROM pre_file WHERE{$sql} ORDER BY {$order_sql} LIMIT $offset,$pagesize");
 $i=1;
+//游客开了文件夹：当前层的子文件夹排在最前面，只在第一页出现，不占分页
+if($fd_on && !$fd_searching && $page <= 1){
+	$fd_rows = folder_render_rows($fd_all, $fd_cur, $fd_url);
+	echo $fd_rows;
+}
 while($res = $rs->fetch())
 {
 	$fileurl = './down.php/'.$res['token'].'.'.($res['type']?$res['type']:'file');
@@ -345,6 +364,10 @@ if($guest_mine){
 	if(can_edit_file_online($res)){
 		$guest_actions .= '<a class="uc-act" href="./edit.php?id='.intval($res['id']).'" title="在线编辑"><i class="fa fa-code" aria-hidden="true"></i></a>';
 	}
+	//改名是跟文件夹一起加的，开了文件夹才有，关掉时游客页面和原来一样
+	if($fd_on && $can_manage && !$blocked){
+		$guest_actions .= '<button type="button" class="uc-act" data-guest="rename" title="重命名"><i class="fa fa-pencil" aria-hidden="true"></i></button>';
+	}
 	if($can_manage){
 		$guest_actions .= '<button type="button" class="uc-act" data-guest="replace" title="重新上传替换"><i class="fa fa-refresh" aria-hidden="true"></i></button>';
 	}
@@ -360,7 +383,7 @@ if($guest_mine){
 	if($haspwd) $state .= '<span class="uc-badge uc-badge-warn"><i class="fa fa-lock" aria-hidden="true"></i> 有密码</span>';
 	echo '<tr data-id="'.intval($res['id']).'" data-token="'.htmlspecialchars($res['token'], ENT_QUOTES, 'UTF-8').'"'.($blocked ? ' class="is-blocked"' : '').'>'
 		.'<td class="uc-col-check"><input type="checkbox" class="guest-check"'.$check_attr.'></td>'
-		.'<td class="uc-col-name"><i class="fa '.type_to_icon($res['type']).' fa-fw"></i><span class="uc-name">'.$res['name'].'</span></td>'
+		.'<td class="uc-col-name"><i class="fa '.type_to_icon($res['type']).' fa-fw"></i><span class="uc-name">'.$res['name'].'</span>'.($fd_searching ? folder_render_loc($fd_all, $res['folder_id'], $fd_url) : '').'</td>'
 		.'<td class="uc-col-size">'.size_format($res['size']).'</td>'
 		.'<td class="uc-col-state">'.$state.'</td>'
 		.'<td class="uc-col-time">'.$res['addtime'].'</td>'
@@ -373,8 +396,8 @@ $cell_rest = '<td><i class="fa '.type_to_icon($res['type']).' fa-fw"></i>'.$res[
 echo '<tr'.$row_attr.'><td><b>'.$i++.'</b></td>'
 	.(in_array($layout_key, studio_family_keys(), true) ? $cell_rest.$cell_action : $cell_action.$cell_rest).'</tr>';
 }
-if($numrows == 0) echo $guest_mine
-	? '<tr><td colspan="6" class="uc-empty">还没上传过任何文件</td></tr>'
+if($numrows == 0 && $fd_rows === '') echo $guest_mine
+	? '<tr><td colspan="6" class="uc-empty">'.($fd_on && $fd_cur > 0 && !$fd_searching ? '这个文件夹是空的' : '还没上传过任何文件').'</td></tr>'
 	: '<tr><td colspan="7" align="center">还没上传过任何文件</td></tr>';
 ?>
             </tbody>
@@ -452,6 +475,8 @@ var upload_storage_default = <?php echo json_encode($hero_storage_default)?>;
 <link rel="stylesheet" href="https://s4.zstatic.net/ajax/libs/layer/3.1.1/theme/default/layer.css">
 <script src="https://s4.zstatic.net/ajax/libs/layer/3.1.1/layer.js"></script>
 <script src="https://s4.zstatic.net/ajax/libs/spark-md5/3.0.2/spark-md5.min.js"></script>
+<?php //游客「我的文件」：操作完、切文件夹、翻页都只局部换列表，不整页刷新
+if($guest_mine){?><script src="./assets/js/filelist-live.js?v=<?php echo VERSION?>"></script><?php }?>
 <script>
 var replace_csrf_token = '<?php echo $csrf_token?>';
 var replace_target_id = 0;
@@ -461,20 +486,31 @@ var replace_target_id = 0;
 function guest_selected_rows(){
   return $('.guest-filelist tbody .guest-check:checked').closest('tr');
 }
+//开了文件夹时表格里还有文件夹行，勾选框是 .fd-check，和文件的 .guest-check 分开算
+function guest_selected_folder_ids(){
+  return $('.guest-filelist tbody .fd-check:checked').map(function(){ return $(this).closest('tr').data('folder-id'); }).get();
+}
+//操作完局部刷新列表（assets/js/filelist-live.js），不整页闪；那个脚本没加载时退回整页刷新
+function guest_list_reload(){
+  if(window.PanList) window.PanList.refresh();
+  else window.location.reload();
+}
 function guest_refresh_batchbar(){
-  var $selected = guest_selected_rows();
-  var $available = $('.guest-filelist tbody .guest-check:not(:disabled)');
-  $('#guestSelCount').text($selected.length);
-  $('#guestBatchBar').prop('hidden', $selected.length === 0);
-  $('#guestCheckAll').prop('checked', $available.length > 0 && $selected.length === $available.length);
+  var n = guest_selected_rows().length + guest_selected_folder_ids().length;
+  var $available = $('.guest-filelist tbody .guest-check:not(:disabled), .guest-filelist tbody .fd-check');
+  $('#guestSelCount').text(n);
+  $('#guestBatchBar').prop('hidden', n === 0);
+  $('#guestCheckAll').prop('checked', $available.length > 0 && n === $available.length);
 }
 $('#guestCheckAll').on('change', function(){
-  $('.guest-filelist tbody .guest-check:not(:disabled)').prop('checked', this.checked);
+  $('.guest-filelist tbody .guest-check:not(:disabled), .guest-filelist tbody .fd-check').prop('checked', this.checked);
   guest_refresh_batchbar();
 });
-$('.guest-filelist').on('change', '.guest-check', guest_refresh_batchbar);
+$('.guest-filelist').on('change', '.guest-check, .fd-check', guest_refresh_batchbar);
+//局部刷新换掉列表后勾选都没了，批量条跟着收起
+$(document).on('pan:listrefresh', guest_refresh_batchbar);
 $('#guestSelClear').on('click', function(){
-  $('.guest-filelist tbody .guest-check').prop('checked', false);
+  $('.guest-filelist tbody .guest-check, .guest-filelist tbody .fd-check').prop('checked', false);
   $('#guestCheckAll').prop('checked', false);
   guest_refresh_batchbar();
 });
@@ -489,9 +525,11 @@ function guest_delete_files(tokens){
       if(index >= tokens.length){
         layer.close(loading);
         if(failed.length === 0){
-          layer.msg('已删除 '+ok+' 个文件', {icon:1, time:1200}, function(){ window.location.reload(); });
+          layer.msg('已删除 '+ok+' 个文件', {icon:1, time:1200});
+          guest_list_reload();
         }else{
-          layer.alert('已删除 '+ok+' 个文件，'+failed.length+' 个删除失败：'+failed.join('；'), {icon: ok ? 0 : 2}, function(){ window.location.reload(); });
+          layer.alert('已删除 '+ok+' 个文件，'+failed.length+' 个删除失败：'+failed.join('；'), {icon: ok ? 0 : 2});
+          guest_list_reload();
         }
         return;
       }
@@ -517,11 +555,23 @@ function guest_delete_files(tokens){
 
 $('#guestBatchDelete').on('click', function(){
   var tokens = guest_selected_rows().map(function(){ return $(this).attr('data-token'); }).get();
-  if(!tokens.length){ layer.msg('请先选择文件'); return; }
-  layer.confirm('确定删除选中的 '+tokens.length+' 个文件？删除后外链立即失效，且无法恢复。',
-    {icon:3, title:'批量删除'}, function(index){
+  var fids = guest_selected_folder_ids();
+  if(!tokens.length && !fids.length){ layer.msg('请先选择文件'); return; }
+  var tip = '确定删除选中的 '+tokens.length+' 个文件？删除后外链立即失效，且无法恢复。';
+  if(fids.length){
+    tip = '确定删除选中的 '+(tokens.length ? tokens.length+' 个文件和 ' : '')+fids.length+' 个文件夹？<br>文件夹里的文件<b>不会被删除</b>，会移到根目录'
+      +(tokens.length ? '；选中的文件删除后外链立即失效，且无法恢复。' : '。');
+  }
+  layer.confirm(tip, {icon:3, title:'批量删除'}, function(index){
       layer.close(index);
-      guest_delete_files(tokens);
+      if(!fids.length){ guest_delete_files(tokens); return; }
+      if(!window.PanFolders){ layer.msg('页面脚本没有加载完整，请刷新后重试'); return; }
+      //先删文件夹（里面的文件回根目录），再逐个删勾选的文件
+      window.PanFolders.deleteFolders(fids, function(res){
+        if(res.code !== 0){ layer.alert(res.msg || '删除文件夹失败', {icon:2}); return; }
+        if(!tokens.length){ layer.msg(res.msg, {icon:1, time:1300}); guest_list_reload(); return; }
+        guest_delete_files(tokens);
+      });
     });
 });
 
@@ -532,6 +582,24 @@ $('.guest-filelist').on('click', '[data-guest]', function(){
     return;
   }
   var name = $row.find('.uc-name').text();
+  //改名只在开了文件夹时出现，接口和文件夹共用 ajax.php，规则和个人中心的改名是同一份
+  if($(this).data('guest') === 'rename'){
+    layer.open({
+      type: 1, title: '重命名', area: Math.min(340, $(window).width() - 24) + 'px', btn: ['确定', '取消'],
+      content: '<div class="uc-dialog"><input type="text" class="uc-input uc-dialog-input" maxlength="120"></div>',
+      success: function(layero){ var $el = layero.find('.uc-dialog-input').val(name); setTimeout(function(){ $el.focus(); }, 30); },
+      yes: function(idx, layero){
+        var val = $.trim(layero.find('.uc-dialog-input').val());
+        if(!val){ layer.msg('文件名不能为空'); return; }
+        layer.close(idx);
+        $.post('ajax.php?act=fileRename', {id: $row.data('id'), name: val, csrf_token: (window.PAN_FOLDER ? PAN_FOLDER.csrf : replace_csrf_token)}, function(res){
+          if(res && res.code === 0){ layer.msg(res.msg, {icon:1, time:1200}); guest_list_reload(); }
+          else layer.alert((res && res.msg) || '重命名失败', {icon:2});
+        }, 'json').fail(function(){ layer.msg('网络错误，请稍后再试'); });
+      }
+    });
+    return;
+  }
   layer.confirm('确定删除《'+name+'》？删除后外链立即失效，且无法恢复。',
     {icon:3, title:'删除文件'}, function(index){
       layer.close(index);
@@ -578,7 +646,8 @@ function replace_startUpload(file, fileId, ii){
         if(data.csrf_token) replace_csrf_token = data.csrf_token;
         if(data.code == 1){
           layer.close(ii);
-          layer.alert(data.msg || '替换成功，链接保持不变', {icon:1}, function(){ window.location.reload(); });
+          layer.msg(data.msg || '替换成功，链接保持不变', {icon:1, time:1600});
+          guest_list_reload();
         }else if(data.code == 0){
           replace_uploadBody(data, file, ii);
         }else{
@@ -658,7 +727,8 @@ function replace_uploadBody(preResult, file, ii){
           uploadChunk(chunk + 1);
         }else if(res.code == 1){
           layer.close(ii);
-          layer.alert(res.msg || '替换成功，链接保持不变', {icon:1}, function(){ window.location.reload(); });
+          layer.msg(res.msg || '替换成功，链接保持不变', {icon:1, time:1600});
+          guest_list_reload();
         }
       },
       error: function(){ layer.close(ii); layer.msg('上传失败，请稍后再试'); }
@@ -672,7 +742,8 @@ function replace_completeUpload(hash, ii){
     success: function(res){
       layer.close(ii);
       if(res.code == 1){
-        layer.alert(res.msg || '替换成功，链接保持不变', {icon:1}, function(){ window.location.reload(); });
+        layer.msg(res.msg || '替换成功，链接保持不变', {icon:1, time:1600});
+        guest_list_reload();
       }else{
         layer.alert(res.msg || '替换失败', {icon:2});
       }
@@ -681,6 +752,7 @@ function replace_completeUpload(hash, ii){
   });
 }
 </script>
+<?php if($fd_on) echo folder_render_script($fd_cur, $csrf_token, $fd_searching, '.guest-check');?>
 <?php }?>
 <?php if(!empty($conf['gonggao'])){?>
 <link href="https://s4.zstatic.net/ajax/libs/snackbarjs/1.1.0/snackbar.min.css" rel="stylesheet">

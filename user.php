@@ -45,20 +45,6 @@ function uc_own_file($id){
 	return $row;
 }
 
-/*
- * 文件名清洗，规则必须和 ajax.php 的 pre_upload 完全一致：
- * 先 htmlspecialchars（带 ENT_QUOTES，文件名会被拼进播放器的 JS 字符串），
- * 再去掉路径分隔符和 Windows 非法字符。库里存的就是转义后的形式，
- * 列表页是直接 echo 出来的，这里要是漏了同样的处理就成了存储型 XSS。
- */
-function uc_clean_filename($name){
-	$name = trim(htmlspecialchars((string)$name, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'));
-	$name = str_replace(['/','\\',':','*','"','<','>','|','?'], '', $name);
-	//控制字符在下载时会被拼进 Content-Disposition 头，必须清掉
-	$name = preg_replace('/[\x00-\x1f\x7f]/', '', $name);
-	return trim($name);
-}
-
 $act = isset($_GET['act']) ? $_GET['act'] : '';
 if($act !== ''){
 	if(!checkRefererHost()) uc_json(-1, '来源校验失败');
@@ -154,30 +140,12 @@ if($act !== ''){
 		uc_json(0, '访问密码已设置', ['haspwd'=>1]);
 	break;
 
-	//重命名。只改显示用的文件名，token 和外链地址都不动
+	//重命名。只改显示用的文件名，token 和外链地址都不动。
+	//清洗、违禁词、扩展名跟随 type 这些规则在 file_rename_record()，游客「我的文件」的改名也走它
 	case 'rename':
 		$row = uc_own_file(isset($_POST['id']) ? $_POST['id'] : 0);
-		if(intval($row['block']) === 1) uc_json(-1, '文件已被冻结，无法重命名');
-		$name = uc_clean_filename(isset($_POST['name']) ? $_POST['name'] : '');
-		if($name === '') uc_json(-1, '文件名不能为空');
-		if(mb_strlen($name, 'UTF-8') > 120) uc_json(-1, '文件名不能超过 120 个字');
-		//后台配置的违禁文件名同样要拦，不然改个名就绕过去了
-		if(!empty($conf['name_block'])){
-			foreach(explode('|', $conf['name_block']) as $bad){
-				if($bad !== '' && strpos($name, $bad) !== false) uc_json(-1, '文件名包含不允许的内容');
-			}
-		}
-		//扩展名跟着原文件的 type 走：外链是 down.php/{token}.{type}，
-		//让用户把 a.png 改成 a.jpg 只会造成"下载下来打不开"的困惑
-		$ext = $row['type'] ? strtolower($row['type']) : '';
-		if($ext !== ''){
-			$cur = strtolower(get_file_ext($name));
-			if($cur !== $ext) $name = preg_replace('/\.[^.]*$/', '', $name).'.'.$ext;
-		}
-		if(!$DB->exec("UPDATE pre_file SET name=:name WHERE id=:id AND uid=:uid",
-			[':name'=>$name, ':id'=>$row['id'], ':uid'=>$uid])){
-			uc_json(-1, '重命名失败['.$DB->error().']');
-		}
+		list($err, $name) = file_rename_record($row, isset($_POST['name']) ? $_POST['name'] : '');
+		if($err !== '') uc_json(-1, $err);
 		uc_json(0, '重命名成功', ['name'=>$name]);
 	break;
 
@@ -291,8 +259,8 @@ if($act !== ''){
 
 /* ---------------- 页面渲染 ---------------- */
 
-$csrf_token = bin2hex(random_bytes(16));
-$_SESSION['csrf_token'] = $csrf_token;
+//「我的文件」局部刷新取页面时沿用现有令牌，见 page_csrf_token()
+$csrf_token = page_csrf_token();
 
 $tabs = [
 	'overview' => ['概览', 'fa-dashboard'],
@@ -418,6 +386,13 @@ if($tab === 'overview'){
 }elseif($tab === 'files'){
     $uc_kw = (isset($_GET['kw']) && is_string($_GET['kw'])) ? trim(strip_tags($_GET['kw'])) : '';
     $uc_ft = (isset($_GET['ft']) && is_string($_GET['ft']) && array_key_exists($_GET['ft'], layout_type_filters())) ? $_GET['ft'] : '';
+    //用户文件夹（虚拟目录）：开关打开且当前账号在开放范围内才有。
+    //搜索或按类型筛选时跨全部文件夹查，结果里标出所在文件夹；否则按当前文件夹这一层显示
+    $fd_on = can_use_folders();
+    $fd_all = $fd_on ? folder_all(folder_owner(false)) : [];
+    $fd_cur = $fd_on ? folder_current($fd_all) : 0;
+    $fd_searching = ($uc_kw !== '' || $uc_ft !== '');
+    $fd_url = './user.php?tab=files';
 
     $where = " uid=".$uid;
     $qs = 'tab=files';
@@ -429,6 +404,11 @@ if($tab === 'overview'){
     if($uc_ft !== ''){
         $where .= layout_type_filter_sql($uc_ft);
         $qs .= '&ft='.urlencode($uc_ft);
+    }
+    //放在 $where_base 之后：筛选标签上的计数仍按全部文件算
+    if($fd_on && !$fd_searching){
+        $where .= " AND folder_id=".$fd_cur;
+        if($fd_cur > 0) $qs .= '&folder='.$fd_cur;
     }
 
     //筛选标签上的计数：只统计当前用户，数据量小，不用像首页那样走缓存。
@@ -457,7 +437,7 @@ if($tab === 'overview'){
             <input class="uc-search" type="search" name="kw" value="<?php echo htmlspecialchars($uc_kw, ENT_QUOTES, 'UTF-8')?>" placeholder="搜索我的文件名">
             <button class="uc-btn" type="submit"><i class="fa fa-search" aria-hidden="true"></i> 搜索</button>
 <?php if($uc_kw !== ''){?><a class="uc-btn" href="./user.php?tab=files">清除</a><?php }?>
-            <a class="uc-btn uc-btn-primary" href="./upload.php"><i class="fa fa-plus" aria-hidden="true"></i> 上传文件</a>
+            <a class="uc-btn uc-btn-primary" href="./upload.php<?php echo ($fd_on && $fd_cur > 0 && !$fd_searching) ? '?folder='.$fd_cur : ''?>"><i class="fa fa-plus" aria-hidden="true"></i> <?php echo ($fd_on && $fd_cur > 0 && !$fd_searching) ? '上传到这里' : '上传文件'?></a>
         </form>
 
         <div class="uc-filters">
@@ -472,8 +452,11 @@ if($tab === 'overview'){
 
         <p class="uc-tip uc-hint"><i class="fa fa-info-circle" aria-hidden="true"></i> 「私密」只是不在首页公共列表里出现，外链本身照样能打开；真要限制访问，请给文件设置访问密码。</p>
 
+<?php if($fd_on) echo folder_render_bar($fd_all, $fd_cur, $fd_url, $fd_searching);?>
+
         <div class="uc-batchbar" id="ucBatchBar" hidden>
-            <span>已选中 <b id="ucSelCount">0</b> 个文件</span>
+            <span>已选中 <b id="ucSelCount">0</b> <?php echo $fd_on ? '项' : '个文件'?></span>
+<?php if($fd_on) echo folder_render_batch_buttons();?>
             <button type="button" class="uc-btn uc-btn-danger" id="ucBatchDelete"><i class="fa fa-trash" aria-hidden="true"></i> 批量删除</button>
             <button type="button" class="uc-btn" id="ucSelClear">取消选择</button>
         </div>
@@ -492,6 +475,9 @@ if($tab === 'overview'){
             </thead>
             <tbody>
 <?php
+    //当前层的子文件夹排在最前面，只在第一页出现，不占分页
+    $fd_rows = ($fd_on && !$fd_searching && intval($page) === 1) ? folder_render_rows($fd_all, $fd_cur, $fd_url) : '';
+    echo $fd_rows;
     $rs = $DB->query("SELECT * FROM pre_file WHERE{$where} ORDER BY id DESC LIMIT {$offset},{$pagesize}");
     $rowcount = 0;
     while($rs && $res = $rs->fetch()){
@@ -507,7 +493,7 @@ if($tab === 'overview'){
 ?>
                 <tr data-id="<?php echo intval($res['id'])?>" data-name="<?php echo $res['name']?>" data-hide="<?php echo $hidden ? 1 : 0?>" data-haspwd="<?php echo $haspwd ? 1 : 0?>" data-view="<?php echo htmlspecialchars($viewurl, ENT_QUOTES, 'UTF-8')?>" data-down="<?php echo htmlspecialchars($fileurl, ENT_QUOTES, 'UTF-8')?>"<?php echo $blocked ? ' class="is-blocked"' : ''?>>
                     <td class="uc-col-check"><input type="checkbox" class="uc-check"<?php echo $nodelete !== '' ? ' disabled title="'.htmlspecialchars($nodelete, ENT_QUOTES, 'UTF-8').'"' : ''?>></td>
-                    <td class="uc-col-name"><i class="fa <?php echo type_to_icon($res['type'])?> fa-fw"></i><span class="uc-name"><?php echo $res['name']?></span></td>
+                    <td class="uc-col-name"><i class="fa <?php echo type_to_icon($res['type'])?> fa-fw"></i><span class="uc-name"><?php echo $res['name']?></span><?php if($fd_on && $fd_searching) echo folder_render_loc($fd_all, $res['folder_id'], $fd_url);?></td>
                     <td class="uc-col-size"><?php echo size_format($res['size'])?></td>
                     <td class="uc-col-state">
 <?php if($blocked){?><span class="uc-badge uc-badge-danger">已冻结</span><?php }?>
@@ -537,8 +523,11 @@ if($tab === 'overview'){
                     </td>
                 </tr>
 <?php }
-    if($rowcount === 0){
-        echo '<tr><td colspan="6" class="uc-empty">'.($uc_kw !== '' || $uc_ft !== '' ? '没有符合条件的文件' : '还没有上传过文件').'</td></tr>';
+    if($rowcount === 0 && $fd_rows === ''){
+        if($uc_kw !== '' || $uc_ft !== '') $uc_empty = '没有符合条件的文件';
+        elseif($fd_on && $fd_cur > 0) $uc_empty = '这个文件夹是空的';
+        else $uc_empty = '还没有上传过文件';
+        echo '<tr><td colspan="6" class="uc-empty">'.$uc_empty.'</td></tr>';
     }
 ?>
             </tbody>
@@ -952,6 +941,9 @@ var uc_csrf = '<?php echo $csrf_token?>';
 if($tab === 'files'){?>
 <script src="https://s4.zstatic.net/ajax/libs/spark-md5/3.0.2/spark-md5.min.js"></script>
 <script src="./assets/js/replace-upload.js?v=<?php echo VERSION?>"></script>
+<?php //操作完、切文件夹、翻页都只局部换列表，不整页刷新 ?>
+<script src="./assets/js/filelist-live.js?v=<?php echo VERSION?>"></script>
+<?php if($fd_on) echo folder_render_script($fd_cur, $csrf_token, $fd_searching, '.uc-check');?>
 <?php }?>
 <script src="./assets/js/usercenter.js?v=<?php echo VERSION?>"></script>
 </body>

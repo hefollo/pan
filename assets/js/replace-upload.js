@@ -29,8 +29,14 @@
     layer.alert(msg || '替换失败', { icon: 2 });
   }
 
+  // 在「我的文件」上替换时局部刷新列表（filelist-live.js），不整页闪；别的页面照旧整页刷新
   function succeed(ii, msg) {
     layer.close(ii);
+    if (window.PanList) {
+      layer.msg(msg || '替换成功，链接保持不变', { icon: 1, time: 1600 });
+      window.PanList.refresh();
+      return;
+    }
     layer.alert(msg || '替换成功，链接保持不变', { icon: 1 }, function () {
       window.location.reload();
     });

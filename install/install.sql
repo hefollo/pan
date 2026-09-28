@@ -16,7 +16,7 @@ create table `pre_config` (
 --   · 如果没有并进来 → 这里保持旧值不动，让全新安装照常跑一次升级把它补上。
 -- 改错方向（并进来了却不改版本号）只是多跑一趟空升级；
 -- 改反了（没并进来却改了版本号）会让新装的站永久缺表缺字段，且毫无报错。
-INSERT INTO `pre_config` VALUES ('version', '1023');
+INSERT INTO `pre_config` VALUES ('version', '1024');
 INSERT INTO `pre_config` VALUES ('admin_user', 'admin');
 INSERT INTO `pre_config` VALUES ('admin_pwd', '123456');
 INSERT INTO `pre_config` VALUES ('blackip', '');
@@ -116,12 +116,28 @@ CREATE TABLE `pre_file` (
   `block` int(1) NOT NULL DEFAULT '0',
   `count` int(11) unsigned NOT NULL DEFAULT '0',
   `uid` int(11) unsigned NOT NULL DEFAULT '0',
+  `folder_id` int(11) unsigned NOT NULL DEFAULT '0' COMMENT '所在的用户文件夹，0 表示根目录',
+  `copied` tinyint(1) NOT NULL DEFAULT '0' COMMENT '用户复制出来的记录，不计入每日上传数',
    PRIMARY KEY (`id`),
    UNIQUE KEY `token` (`token`),
    KEY `hash` (`hash`),
    KEY `ipkey` (`ipkey`,`addtime`),
-   KEY `uid` (`uid`)
+   KEY `uid` (`uid`),
+   KEY `folder_id` (`folder_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+DROP TABLE IF EXISTS `pre_folder`;
+CREATE TABLE `pre_folder` (
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `uid` int(11) unsigned NOT NULL DEFAULT '0',
+  `gkey` varchar(32) NOT NULL DEFAULT '' COMMENT '游客文件夹归属的会话标识，登录用户的文件夹为空',
+  `parent_id` int(11) unsigned NOT NULL DEFAULT '0',
+  `name` varchar(100) NOT NULL,
+  `addtime` datetime NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `owner` (`uid`,`gkey`),
+  KEY `addtime` (`addtime`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户文件夹（虚拟目录）';
 
 DROP TABLE IF EXISTS `pre_sponsor`;
 CREATE TABLE `pre_sponsor` (

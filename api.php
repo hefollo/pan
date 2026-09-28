@@ -120,9 +120,9 @@ $upload_limit = get_effective_upload_count_limit();
 if($upload_limit > 0){
 	$thisday = date("Y-m-d 00:00:00");
 	if($uid > 0){
-		$today_count = $DB->getColumn("SELECT count(*) from pre_file WHERE uid=:uid AND addtime>=:day", [':uid'=>$uid, ':day'=>$thisday]);
+		$today_count = $DB->getColumn("SELECT count(*) from pre_file WHERE uid=:uid AND addtime>=:day AND copied=0", [':uid'=>$uid, ':day'=>$thisday]);
 	}else{
-		$today_count = $DB->getColumn("SELECT count(*) from pre_file WHERE ip=:ip AND addtime>=:day", [':ip'=>$clientip, ':day'=>$thisday]);
+		$today_count = $DB->getColumn("SELECT count(*) from pre_file WHERE ip=:ip AND addtime>=:day AND copied=0", [':ip'=>$clientip, ':day'=>$thisday]);
 	}
 	if($today_count >= $upload_limit){
 		showresult(['code'=>-1, 'msg'=>'你今天上传文件的数量已超过限制']);
@@ -133,9 +133,9 @@ $minute_limit = isset($conf['upload_per_minute']) ? max(0, intval($conf['upload_
 if($minute_limit > 0){
 	$since = date('Y-m-d H:i:s', time() - 60);
 	if($uid > 0){
-		$minute_count = $DB->getColumn("SELECT count(*) from pre_file WHERE uid=:uid AND addtime>=:since", [':uid'=>$uid, ':since'=>$since]);
+		$minute_count = $DB->getColumn("SELECT count(*) from pre_file WHERE uid=:uid AND addtime>=:since AND copied=0", [':uid'=>$uid, ':since'=>$since]);
 	}else{
-		$minute_count = $DB->getColumn("SELECT count(*) from pre_file WHERE ip=:ip AND addtime>=:since", [':ip'=>$clientip, ':since'=>$since]);
+		$minute_count = $DB->getColumn("SELECT count(*) from pre_file WHERE ip=:ip AND addtime>=:since AND copied=0", [':ip'=>$clientip, ':since'=>$since]);
 	}
 	if($minute_count >= $minute_limit)showresult(['code'=>-1, 'msg'=>'上传太频繁，请稍后再试', 'error'=>'rate_limit']);
 }

@@ -698,6 +698,25 @@ $(document).ready(function(){
 	  <label class="col-sm-3 control-label">可用UID</label>
 	  <div class="col-sm-9"><input type="text" name="online_edit_uids" value="<?php echo isset($conf['online_edit_uids']) ? htmlspecialchars($conf['online_edit_uids']) : ''; ?>" class="form-control" placeholder="例如：1,2,1001"/><font color="green">多个UID用英文逗号分隔，只有这些登录用户可以使用在线编辑。</font></div>
 	</div><br/>
+<?php
+//用户文件夹：显隐直接由 PHP 按当前配置写死在 style 上，不靠下面的 change 事件，
+//从侧栏动态换页进来时脚本执行顺序不一样，靠事件初始化会出现该显示的没显示。
+//两行各自显隐、不包外层 div：后台样式按表单下直接挂 .form-group 排版，包一层就对不齐了
+$folder_open_now = !empty($conf['folder_open']);
+$folder_mode_now = (isset($conf['folder_mode']) && in_array($conf['folder_mode'], ['all', 'login', 'uid'], true)) ? $conf['folder_mode'] : 'login';
+?>
+	<div class="form-group">
+	  <label class="col-sm-3 control-label">用户文件夹</label>
+	  <div class="col-sm-9"><select class="form-control" name="folder_open" id="folder_open" default="<?php echo $folder_open_now ? 1 : 0?>"><option value="0">关闭</option><option value="1">开启</option></select><font color="green">开启后「我的文件」里可以建多级文件夹，文件能在文件夹之间移动、复制粘贴。文件夹只是分类记录，不改变文件在存储里的实际位置，外链地址也不会变；复制出来的文件不占当天的上传数量。关闭后列表恢复平铺，已建的文件夹保留，再次开启即可恢复。</font></div>
+	</div><br/>
+	<div class="form-group" id="folder_mode_row" style="<?php echo $folder_open_now ? '' : 'display:none;'?>">
+	  <label class="col-sm-3 control-label">文件夹开放范围</label>
+	  <div class="col-sm-9"><select class="form-control" name="folder_mode" id="folder_mode" default="<?php echo $folder_mode_now?>"><option value="all">所有人（含游客）</option><option value="login">仅登录用户</option><option value="uid">仅指定UID</option></select><font color="green">游客没有账号，文件夹和游客上传的文件一样只保存在当前浏览器会话里，换浏览器或清除缓存后就找不到了；游客登录后，文件夹会连同文件一起转到账号名下。</font></div>
+	</div><br/>
+	<div class="form-group" id="folder_uids_group" style="<?php echo ($folder_open_now && $folder_mode_now === 'uid') ? '' : 'display:none;'?>">
+	  <label class="col-sm-3 control-label">文件夹可用UID</label>
+	  <div class="col-sm-9"><input type="text" name="folder_uids" value="<?php echo isset($conf['folder_uids']) ? htmlspecialchars($conf['folder_uids']) : ''; ?>" class="form-control" placeholder="例如：1,2,1001"/><font color="green">多个UID用英文逗号分隔，只有这些登录用户可以使用文件夹。</font></div>
+	</div><br/>
 	<div class="form-group">
 	  <div class="col-sm-offset-3 col-sm-9"><input type="submit" name="submit" value="修改" class="btn btn-primary form-control"/><br/>
 	 </div>
@@ -1038,6 +1057,11 @@ $("#online_edit_mode").on('change', function(){
 	}else{
 		$("#online_edit_uids_group").hide();
 	}
+});
+$("#folder_open, #folder_mode").on('change', function(){
+	var open = $("#folder_open").val() === '1';
+	$("#folder_mode_row").toggle(open);
+	$("#folder_uids_group").toggle(open && $("#folder_mode").val() === 'uid');
 });
 
 </script>

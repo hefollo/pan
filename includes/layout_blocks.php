@@ -64,10 +64,10 @@ function layout_today_upload_count($DB){
 	}
 	$since = $day.' 00:00:00';
 	if(!empty($islogin2)){
-		$num = intval($DB->getColumn("SELECT count(*) from pre_file WHERE uid='".intval($uid)."' AND addtime>='".$since."'"));
+		$num = intval($DB->getColumn("SELECT count(*) from pre_file WHERE uid='".intval($uid)."' AND addtime>='".$since."' AND copied=0"));
 	}else{
 		//和上传接口用同一个维度统计，否则卡片上显示的数字和实际能不能传对不上
-		$num = intval($DB->getColumn("SELECT count(*) from pre_file WHERE ipkey=:k AND addtime>=:t", [':k'=>client_ip_key(), ':t'=>$since]));
+		$num = intval($DB->getColumn("SELECT count(*) from pre_file WHERE ipkey=:k AND addtime>=:t AND copied=0", [':k'=>client_ip_key(), ':t'=>$since]));
 	}
 	$_SESSION['layout_today'] = ['who'=>$who, 'day'=>$day, 'num'=>$num, 'time'=>time()];
 	return $num;
@@ -160,7 +160,7 @@ function layout_today_total($DB, $where_sql){
 	$key = 'today|'.$where_sql.'|'.date('Y-m-d');
 	$hit = layout_cache_get($key, 300);
 	if($hit !== null && isset($hit['num'])) return intval($hit['num']);
-	$num = intval($DB->getColumn("SELECT count(*) from pre_file WHERE{$where_sql} AND addtime>='".date('Y-m-d 00:00:00')."'"));
+	$num = intval($DB->getColumn("SELECT count(*) from pre_file WHERE{$where_sql} AND addtime>='".date('Y-m-d 00:00:00')."' AND copied=0"));
 	layout_cache_set($key, ['num'=>$num]);
 	return $num;
 }

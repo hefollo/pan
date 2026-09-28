@@ -160,6 +160,9 @@ case 'pre_upload':
 		if(!can_manage_file($replace_row))exit('{"code":-1,"msg":"无权覆盖该文件"}');
 		if($replace_row['block']==1)exit('{"code":-1,"msg":"文件已被冻结，无法覆盖"}');
 	}
+	//上传进哪个文件夹：表单只在这里认一次，校验过的值存进上传状态，分片、直传完成都按它放。
+	//覆盖上传保持原位置；功能没开、文件夹不是自己的一律回根目录
+	$upload_folder = $replace_row ? 0 : folder_upload_target(isset($_POST['folder_id']) ? $_POST['folder_id'] : 0);
 	/*
 	 * 这次写到哪个存储，必须在这里就定死，后面几步全按它走。
 	 * 原因是直传：下面拿某个存储的密钥签好参数发给浏览器，浏览器直接把文件 POST 进那个桶，
@@ -183,9 +186,9 @@ case 'pre_upload':
 		if($per_minute > 0){
 			$since = date("Y-m-d H:i:s", time() - 60);
 			if($islogin2){
-				$mincount = $DB->getColumn("SELECT count(*) from pre_file WHERE uid=:uid AND addtime>=:t", [':uid'=>intval($uid), ':t'=>$since]);
+				$mincount = $DB->getColumn("SELECT count(*) from pre_file WHERE uid=:uid AND addtime>=:t AND copied=0", [':uid'=>intval($uid), ':t'=>$since]);
 			}else{
-				$mincount = $DB->getColumn("SELECT count(*) from pre_file WHERE ipkey=:k AND addtime>=:t", [':k'=>client_ip_key(), ':t'=>$since]);
+				$mincount = $DB->getColumn("SELECT count(*) from pre_file WHERE ipkey=:k AND addtime>=:t AND copied=0", [':k'=>client_ip_key(), ':t'=>$since]);
 			}
 			if(intval($mincount) >= $per_minute){
 				exit('{"code":-1,"msg":"上传太频繁了，请稍后再试"}');
@@ -196,10 +199,10 @@ case 'pre_upload':
 	if(!$replace_row && $upload_limit>0){
 		$thisday = date("Y-m-d 00:00:00");
 		if($islogin2){
-			$ipcount=$DB->getColumn("SELECT count(*) from pre_file WHERE uid='$uid' AND addtime>='".$thisday."'");
+			$ipcount=$DB->getColumn("SELECT count(*) from pre_file WHERE uid='$uid' AND addtime>='".$thisday."' AND copied=0");
 		}else{
 			//按 ipkey 统计：伪造 X-Forwarded-For 换不掉这个值，IPv6 也不会一人一个额度
-			$ipcount=$DB->getColumn("SELECT count(*) from pre_file WHERE ipkey=:k AND addtime>=:t", [':k'=>client_ip_key(), ':t'=>$thisday]);
+			$ipcount=$DB->getColumn("SELECT count(*) from pre_file WHERE ipkey=:k AND addtime>=:t AND copied=0", [':k'=>client_ip_key(), ':t'=>$thisday]);
 		}
 		if($ipcount >= $upload_limit){
 			exit('{"code":-1,"msg":"你今天上传文件的数量已超过限制"}');
@@ -220,6 +223,7 @@ case 'pre_upload':
 		$record = create_file_record_from_existing($row, $name, $size, $ext, $hide, $pwd, $uid, $clientip);
 		if(!$record)exit('{"code":-1,"msg":"上传失败'.$DB->error().'","error":"database"}');
 		$_SESSION['fileids'][] = $record['id'];
+		folder_place_file($record['id'], $upload_folder);
 		$result = ['code'=>1, 'msg'=>'本站已存在该文件', 'exists'=>1, 'hash'=>$hash, 'token'=>$record['token'], 'name'=>$name, 'size'=>$size, 'type'=>$ext, 'id'=>$record['id']];
 		set_upload_csrf_token($result);
 		exit(json_encode($result));
@@ -240,7 +244,8 @@ case 'pre_upload':
 			'hide' => $hide,
 			'pwd' => $pwd,
 			'storage' => $target_stor,
-			'replace_id' => $replace_id
+			'replace_id' => $replace_id,
+			'folder_id' => $upload_folder
 		]);
 		$result = ['code'=>0, 'third'=>true, 'hash'=>$hash, 'url'=>$param['url'], 'post'=>$param['post']];
 		exit(json_encode($result));
@@ -257,7 +262,8 @@ case 'pre_upload':
 			'hide' => $hide,
 			'pwd' => $pwd,
 			'storage' => $target_stor,
-			'replace_id' => $replace_id
+			'replace_id' => $replace_id,
+			'folder_id' => $upload_folder
 		]);
 		$result = ['code'=>0, 'third'=>false, 'hash'=>$hash, 'chunksize'=>$chunksize, 'chunks'=>$chunks];
 		exit(json_encode($result));
@@ -292,6 +298,7 @@ case 'upload_part':
 	 */
 	$target_stor = isset($upload_state['storage']) ? $upload_state['storage'] : $conf['storage'];
 	$target_model = \lib\StorHelper::get($target_stor);
+	$upload_folder = isset($upload_state['folder_id']) ? intval($upload_state['folder_id']) : 0;
 	$debug = upload_debug_start();
 	$lock_hashes = [$hash];
 	if(!empty($upload_state['replace_id'])){
@@ -401,6 +408,7 @@ case 'upload_part':
 		$record = create_file_record_from_existing($row, $name, $size, $ext, $hide, $pwd, $uid, $clientip, $target_stor);
 		if(!$record)exit('{"code":-1,"msg":"上传失败'.$DB->error().'","error":"database"}');
 		$_SESSION['fileids'][] = $record['id'];
+		folder_place_file($record['id'], $upload_folder);
 		$result = ['code'=>1, 'msg'=>'本站已存在该文件', 'exists'=>1, 'hash'=>$hash, 'token'=>$record['token'], 'name'=>$name, 'size'=>$size, 'type'=>$ext, 'id'=>$record['id']];
 		$result['debug_timing'] = upload_debug_finish($debug);
 		set_upload_csrf_token($result);
@@ -418,6 +426,7 @@ case 'upload_part':
 	upload_debug_step($debug, 'db_insert_ms');
 
 	$_SESSION['fileids'][] = $id;
+	folder_place_file($id, $upload_folder);
 	clear_upload_state($hash);
 	$result = ['code'=>1, 'msg'=>'文件上传成功！', 'exists'=>0, 'hash'=>$hash, 'token'=>$record['token'], 'name'=>$name, 'size'=>$size, 'type'=>$ext, 'id'=>$id];
 	$result['debug_timing'] = upload_debug_finish($debug);
@@ -438,6 +447,7 @@ case 'complete_upload':
 	//浏览器是直接把文件传进 pre_upload 签好参数的那个存储的，要回同一个地方去确认
 	$target_stor = isset($upload_state['storage']) ? $upload_state['storage'] : $conf['storage'];
 	$target_model = \lib\StorHelper::get($target_stor);
+	$upload_folder = isset($upload_state['folder_id']) ? intval($upload_state['folder_id']) : 0;
 	//拒绝升级前签发的最终对象凭证，以及把中转上传状态提交给直传完成接口。
 	if(empty($upload_state['staging_key'])){
 		clear_upload_state($hash);
@@ -491,6 +501,7 @@ case 'complete_upload':
 		$record = create_file_record_from_existing($row, $name, $size, $ext, $hide, $pwd, $uid, $clientip, $target_stor);
 		if(!$record)exit('{"code":-1,"msg":"上传失败'.$DB->error().'","error":"database"}');
 		$_SESSION['fileids'][] = $record['id'];
+		folder_place_file($record['id'], $upload_folder);
 		$result = ['code'=>1, 'msg'=>'本站已存在该文件', 'exists'=>1, 'hash'=>$hash, 'token'=>$record['token'], 'name'=>$name, 'size'=>$size, 'type'=>$ext, 'id'=>$record['id']];
 		$result['debug_timing'] = upload_debug_finish($debug);
 		set_upload_csrf_token($result);
@@ -508,6 +519,7 @@ case 'complete_upload':
 	upload_debug_step($debug, 'db_insert_ms');
 
 	$_SESSION['fileids'][] = $id;
+	folder_place_file($id, $upload_folder);
 	clear_upload_state($hash);
 	$result = ['code'=>1, 'msg'=>'文件上传成功！', 'exists'=>0, 'hash'=>$hash, 'token'=>$record['token'], 'name'=>$name, 'size'=>$size, 'type'=>$ext, 'id'=>$id];
 	$result['debug_timing'] = upload_debug_finish($debug);
@@ -570,6 +582,58 @@ case 'saveFileContent':
 	add_replace_log($row, ['name'=>$row['name'], 'type'=>$row['type'], 'size'=>$size, 'hash'=>$hash], $uid, $clientip, 'edit');
 
 	exit(json_encode(['code'=>0, 'msg'=>'保存成功', 'hash'=>$hash, 'size'=>size_format($size)], JSON_UNESCAPED_UNICODE));
+break;
+
+/*
+ * 用户文件夹（虚拟目录），个人中心和游客「我的文件」共用这一组接口，相关决定 DEC-20260928-001。
+ * 这里只做入口校验（CSRF、总开关与开放范围），逻辑在 includes/folders.php，
+ * 每个操作都按当前访客重新查一遍文件夹和文件的归属，不信前端传来的任何东西。
+ */
+case 'folderTree':
+case 'folderCreate':
+case 'folderRename':
+case 'folderDelete':
+case 'folderMove':
+case 'folderCopy':
+case 'fileRename':
+	if(!isset($_POST['csrf_token']) || !isset($_SESSION['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token'])exit('{"code":-1,"msg":"CSRF TOKEN ERROR"}');
+	if(!can_use_folders())exit(json_encode(['code'=>-1, 'msg'=>'当前账号不能使用文件夹功能'], JSON_UNESCAPED_UNICODE));
+	$result = ['code'=>-1, 'msg'=>'未知操作'];
+	switch($act){
+	case 'folderTree':
+		$list = [];
+		foreach(folder_all(folder_owner(false)) as $f){
+			$list[] = ['id'=>$f['id'], 'parent_id'=>$f['parent_id'], 'name'=>$f['name']];
+		}
+		$result = ['code'=>0, 'folders'=>$list];
+	break;
+	case 'folderCreate':
+		$result = folder_create(isset($_POST['parent_id']) ? $_POST['parent_id'] : 0, isset($_POST['name']) ? $_POST['name'] : '');
+	break;
+	case 'folderRename':
+		$result = folder_rename(isset($_POST['id']) ? $_POST['id'] : 0, isset($_POST['name']) ? $_POST['name'] : '');
+	break;
+	case 'folderDelete':
+		$result = folder_delete(isset($_POST['ids']) ? $_POST['ids'] : []);
+	break;
+	case 'folderMove':
+	case 'folderCopy':
+		$fn = $act === 'folderMove' ? 'folder_move' : 'folder_copy';
+		$result = $fn(isset($_POST['file_ids']) ? $_POST['file_ids'] : [], isset($_POST['folder_ids']) ? $_POST['folder_ids'] : [], isset($_POST['target']) ? $_POST['target'] : 0);
+	break;
+	//游客「我的文件」原来没有改名；开了文件夹之后整理文件要用，规则和个人中心的改名是同一份
+	case 'fileRename':
+		$id = isset($_POST['id']) ? intval($_POST['id']) : 0;
+		$row = $id > 0 ? $DB->getRow("SELECT * FROM pre_file WHERE id=:id LIMIT 1", [':id'=>$id]) : null;
+		if(!$row || !folder_can_touch_file($row)){
+			$result = ['code'=>-1, 'msg'=>'文件不存在，或已超过游客七天的管理期限'];
+			break;
+		}
+		list($err, $name) = file_rename_record($row, isset($_POST['name']) ? $_POST['name'] : '');
+		$result = $err === '' ? ['code'=>0, 'msg'=>'重命名成功', 'name'=>$name] : ['code'=>-1, 'msg'=>$err];
+	break;
+	}
+	exit(json_encode($result, JSON_UNESCAPED_UNICODE));
 break;
 
 default:

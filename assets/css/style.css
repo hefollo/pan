@@ -2562,6 +2562,47 @@ body.theme-sunset .buy-plan-btn,body.theme-sunset .buy-plan-btn:hover{color:#3d0
 .uc-act{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;padding:0;border:0;border-radius:8px;background:var(--surface-soft);color:var(--muted)!important;font-size:13px;text-decoration:none!important;cursor:pointer;transition:background .16s ease,color .16s ease}
 .uc-act:hover{background:var(--primary);color:#fff!important}
 .uc-act-danger:hover{background:var(--danger);color:#fff!important}
+/* 用户文件夹（虚拟目录）：路径条、文件夹行、剪切淡化、拖放高亮、「移动或复制到」对话框、上传页目标位置 */
+.fd-bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin:0 0 14px;padding:7px 10px;border:1px solid var(--line);border-radius:11px;background:var(--surface-soft)}
+.fd-crumb{display:flex;flex-wrap:wrap;align-items:center;gap:2px;min-width:0;font-size:13px}
+.fd-crumb-item{display:inline-block;max-width:220px;padding:4px 8px;border-radius:7px;overflow:hidden;color:var(--muted)!important;font-weight:700;text-decoration:none!important;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle}
+.fd-crumb-item .fa{margin-right:4px}
+a.fd-crumb-item:hover{background:var(--surface);color:var(--primary)!important}
+.fd-crumb-item.is-current{color:var(--text)!important}
+.fd-crumb-sep{color:var(--muted);font-size:12px;opacity:.6}
+.fd-bar-acts{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.fd-bar-acts .uc-btn{padding:6px 12px;font-size:12px}
+/* 和 .uc-batchbar 同一个道理：inline-flex 会把 [hidden] 顶掉 */
+.fd-bar-acts .uc-btn[hidden]{display:none}
+.uc-filelist .uc-col-name .fd-icon{color:#e3a008}
+.fd-link{color:inherit!important;text-decoration:none!important}
+.fd-link:hover .uc-name{color:var(--primary)}
+.fd-count{color:var(--muted);font-size:12px}
+.fd-loc{display:block;max-width:290px;margin:3px 0 0 30px;overflow:hidden;color:var(--muted)!important;font-size:12px;text-decoration:none!important;text-overflow:ellipsis;white-space:nowrap}
+.fd-loc:hover{color:var(--primary)!important}
+.uc-filelist tr.fd-cut>td,.uc-filelist tr.fd-dragging>td{opacity:.45}
+.uc-filelist tr.fd-drop-over>td{background:var(--surface-soft)!important}
+.uc-filelist tr.fd-drop-over,.fd-crumb-item.fd-drop-over{outline:2px dashed var(--primary);outline-offset:-2px}
+.fd-picker{max-height:60vh;padding:6px 0;overflow:auto}
+.fd-node{display:flex;align-items:center;gap:8px;padding:8px 14px;color:var(--popup-text);font-size:13px;cursor:pointer;-webkit-user-select:none;user-select:none}
+.fd-node span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fd-node .fa{flex:none;color:#e3a008}
+.fd-node em{flex:none;margin-left:auto;font-size:11px;font-style:normal;opacity:.65}
+.fd-node:hover{background:var(--popup-soft)}
+.fd-node.is-on{background:var(--popup-primary);color:var(--popup-on-primary)}
+.fd-node.is-on .fa{color:inherit}
+.fd-node.is-disabled{cursor:not-allowed;opacity:.4}
+.fd-node.is-disabled:hover{background:transparent}
+/* 局部刷新（filelist-live.js）请求慢于 250ms 时才压暗列表，快的时候什么都不变，免得又闪一下 */
+.uc-filelist.fl-loading>tbody{opacity:.55;pointer-events:none;transition:opacity .15s ease}
+.fd-upload-target{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 12px;padding:9px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--muted);font-size:13px}
+.fd-upload-target .fa-folder-open{color:#e3a008}
+.fd-upload-target a{color:var(--primary)!important;font-weight:700}
+@media (max-width:767px){
+.fd-bar{padding:7px 8px}
+.fd-crumb-item{max-width:130px}
+.fd-loc{max-width:160px;margin-left:0}
+}
 /* 订单表格 */
 .uc-orderlist .uc-order-no{font-family:Consolas,Monaco,"Courier New",monospace;font-size:12px;color:var(--muted)}
 .uc-orderlist .uc-order-price{color:var(--text);font-weight:800;white-space:nowrap}
