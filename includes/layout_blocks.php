@@ -40,13 +40,18 @@ function layout_cache_get($key, $ttl){
 	$raw = @file_get_contents($file);
 	if($raw === false) return null;
 	$data = json_decode($raw, true);
-	return is_array($data) ? $data : null;
+	//算出这份缓存之后文件又有变动（上传、删除、改状态……，见 layout_cache_bump()），作废
+	if(!is_array($data) || !isset($data['__t'], $data['d']) || !is_array($data['d'])) return null;
+	if(floatval($data['__t']) < layout_cache_stamp()) return null;
+	return $data['d'];
 }
 
 function layout_cache_set($key, $data){
 	$file = layout_cache_file($key);
 	if(!$file) return;
-	@file_put_contents($file, json_encode($data), LOCK_EX);
+	//记本次请求开始的时刻，不记写入时刻：算到一半有人删了文件，这份结果也得作废
+	$t = isset($_SERVER['REQUEST_TIME_FLOAT']) ? floatval($_SERVER['REQUEST_TIME_FLOAT']) : microtime(true);
+	@file_put_contents($file, json_encode(['__t'=>$t, 'd'=>$data]), LOCK_EX);
 }
 
 /**

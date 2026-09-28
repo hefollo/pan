@@ -79,6 +79,7 @@ case 'setBlock':
 		//把公示撤下来（is_show=0，记录本身保留，方便回头复查）
 		if($status == 1)add_violation_log($row);
 		else revoke_violation_log($id);
+		layout_cache_bump();
 		exit(json_encode(['code'=>0, 'msg'=>'已改为'.$status_name[$status]]));
 	}
 	else exit('{"code":-1,"msg":"修改失败['.$DB->error().']"}');
@@ -118,6 +119,8 @@ case 'operation':
 		}
 		$i++;
 	}
+	//删除走 delete_file_record 已经清过；封禁 / 解封在这里清
+	if($i > 0)layout_cache_bump();
 	if($status == 0)exit(json_encode(['code'=>$i > 0 ? 0 : -1, 'msg'=>'成功删除'.$i.'个文件，失败'.$failed.'个', 'ok'=>$i, 'fail'=>$failed], JSON_UNESCAPED_UNICODE));
 	exit('{"code":0,"msg":"成功'.$opname.$i.'个文件"}');
 break;
@@ -156,7 +159,7 @@ case 'saveFileInfo':
 		$data[':uid'] = $uid;
 	}
 	$sql .= " WHERE `id`=:id";
-	if($DB->exec($sql, $data)!==false)exit('{"code":0,"msg":"修改文件信息成功！"}');
+	if($DB->exec($sql, $data)!==false){ layout_cache_bump(); exit('{"code":0,"msg":"修改文件信息成功！"}'); }
 	else exit('{"code":-1,"msg":"修改文件信息失败['.$DB->error().']"}');
 break;
 default:

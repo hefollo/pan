@@ -14,6 +14,10 @@ include("../includes/common.php");
 $login_max_fail = 5;
 $login_lock_time = 900;
 $login_ip = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '0.0.0.0';
+//登录提示直接渲染在登录页上：成功/失败都就地显示，不再用 alert 弹窗二次确认
+$login_msg = '';
+$login_msg_type = '';
+$login_auto_jump = 0;
 
 if(isset($_POST['user']) && isset($_POST['pass'])){
 	if(!isset($_SESSION['pass_error']))$_SESSION['pass_error']=0;
@@ -27,16 +31,16 @@ if(isset($_POST['user']) && isset($_POST['pass'])){
 	unset($_SESSION['vc_code']);
 	$locked = login_throttle_locked($login_ip, $login_max_fail, $login_lock_time);
 	if ($locked > 0) {
-		@header('Content-Type: text/html; charset=UTF-8');
-		exit("<script language='javascript'>alert('登录失败次数过多，请在".ceil($locked/60)."分钟后重试！');history.go(-1);</script>");
+		$login_msg = '登录失败次数过多，请在'.ceil($locked/60).'分钟后重试！';
+		$login_msg_type = 'error';
 	}elseif ($verifycode==1 && ($code === '' || $vc_code === '' || strtolower($code) !== strtolower($vc_code))) {
 		//验证码错误也计入失败次数，否则可以靠刷验证码把限速耗过去
 		login_throttle_fail($login_ip, $login_lock_time);
-		@header('Content-Type: text/html; charset=UTF-8');
-		exit("<script language='javascript'>alert('验证码错误！');history.go(-1);</script>");
+		$login_msg = '验证码错误！';
+		$login_msg_type = 'error';
 	}elseif($_SESSION['pass_error']>$login_max_fail) {
-		@header('Content-Type: text/html; charset=UTF-8');
-		exit("<script language='javascript'>alert('用户名或密码不正确！');history.go(-1);</script>");
+		$login_msg = '用户名或密码不正确！';
+		$login_msg_type = 'error';
 	}elseif(hash_equals((string)$conf['admin_user'], $user) && hash_equals((string)$conf['admin_pwd'], $pass)) {
 		//必须用 hash_equals 做二进制比较：== 会把两个纯数字串按数值比，'0123456' == '123456' 为真
 		login_throttle_reset($login_ip);
@@ -50,60 +54,286 @@ if(isset($_POST['user']) && isset($_POST['pass'])){
 		//$sitepath 就是浏览器原本给这个 cookie 算出来的默认 path（/admin 或 /子目录/admin），
 		//显式传进去既不改变作用域，又能带上 HttpOnly/Secure/SameSite
 		set_auth_cookie("admin_token", $token, time() + 2592000, $sitepath);
-		@header('Content-Type: text/html; charset=UTF-8');
-		exit("<script language='javascript'>alert('登录管理中心成功！');window.location.href='./';</script>");
+		$login_msg = '登录管理中心成功！';
+		$login_msg_type = 'success';
+		$login_auto_jump = 1;
 	}else {
 		login_throttle_fail($login_ip, $login_lock_time);
 		$_SESSION['pass_error']++;
-		@header('Content-Type: text/html; charset=UTF-8');
-		exit("<script language='javascript'>alert('用户名或密码不正确！');history.go(-1);</script>");
+		$login_msg = '用户名或密码不正确！';
+		$login_msg_type = 'error';
 	}
 }elseif(isset($_GET['logout'])){
 	set_auth_cookie("admin_token", "", time() - 2592000, $sitepath);
-	@header('Content-Type: text/html; charset=UTF-8');
-	exit("<script language='javascript'>alert('您已成功注销本次登录！');window.location.href='./login.php';</script>");
+	$login_msg = '您已成功注销本次登录！';
+	$login_msg_type = 'success';
 }elseif($islogin==1){
-	exit("<script language='javascript'>alert('您已登录！');window.location.href='./';</script>");
+	@header('Location: ./');
+	exit;
 }
 $site_theme = isset($conf['site_theme']) ? $conf['site_theme'] : default_site_theme();
 if(!in_array($site_theme, site_theme_keys(), true)){
 	$site_theme = default_site_theme();
 }
-?>
-<!DOCTYPE html>
-<html lang="zh">
+/*
+ * 登录页外观（改自 GitHub PR #1，txziyuan 的双栏登录页），配色跟着站点外观走：
+ * 主色、页面背景用 admin.css 里各外观给 .admin-login-body 定义的变量和背景，后台自定义配色由 theme_recolor_tag() 覆盖。
+ * 卡片分深浅两类：admin.css 里 celadon、lilac 这几套外观的登录页 --admin-text 是浅色、卡片却是白的，
+ * 直接用会白底白字，所以浅色卡片的文字写死成深色；只有深色 / 玻璃外观才用外观自己的文字和底色变量。
+ */
+$login_dark_themes = ['night', 'neon', 'onefour', 'workspace', 'nebula', 'aurora', 'sunset', 'abyss', 'emerald'];
+$login_scheme = in_array($site_theme, $login_dark_themes, true) ? 'dark' : 'light';
+//主色偏浅的外观，实心按钮和左栏上要用深色字（名单和前台 style.css 里的一致）
+$login_on_brand_map = ['workspace'=>'#221a05', 'neon'=>'#06101f', 'onefour'=>'#050505', 'aurora'=>'#10204a', 'abyss'=>'#062434', 'emerald'=>'#07301f', 'sunset'=>'#3d0f2e'];
+$login_on_brand = isset($login_on_brand_map[$site_theme]) ? $login_on_brand_map[$site_theme] : '#ffffff';
+//用白字的外观，按钮和左栏的主色上压一层暗色：sky、mint、neo 的主色偏亮，night、nebula 的 primary-dark 反而更亮，白字不压看不清
+$login_shade = $login_on_brand === '#ffffff' ? 'rgba(0,0,0,.18)' : 'rgba(0,0,0,0)';
+$login_site = htmlspecialchars((isset($conf['title']) && $conf['title'] !== '') ? $conf['title'] : '彩虹外链网盘', ENT_QUOTES, 'UTF-8');
+$login_desc = trim(isset($conf['description']) ? (string)$conf['description'] : '');
+?><!DOCTYPE html>
+<html lang="zh-CN">
 <head>
-	<meta charset="UTF-8">
-	<meta name="renderer" content="webkit">
-	<meta name="viewport" content="width=device-width,height=device-height,inital-scale=1.0,maximum-scale=1.0,user-scalable=no;">
-	<title>管理员登录</title>
-	<link href="https://s4.zstatic.net/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css" rel="stylesheet"/>
-	<link href="https://s4.zstatic.net/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet"/>
-	<link href="../assets/css/admin.css?v=<?php echo asset_ver('assets/css/admin.css')?>" rel="stylesheet"/>
+<meta charset="utf-8">
+<title>管理员登录 - <?php echo admin_brand_html()?></title>
+<meta name="renderer" content="webkit">
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=0">
+<link href="../assets/css/admin.css?v=<?php echo asset_ver('assets/css/admin.css')?>" rel="stylesheet"/>
+<?php echo theme_recolor_tag($site_theme, 'admin', '../');?>
+<style>
+body.login-v2 {
+    --c-brand: var(--admin-primary, #1677ff);
+    --c-brand-2: var(--admin-primary-dark, #0958d9);
+    --c-on-brand: <?php echo $login_on_brand?>;
+    --c-shade: <?php echo $login_shade?>;
+    --radius: 12px;
+}
+body.login-v2.login-light {
+    --c-surface: #fff; --c-input: #fff;
+    --c-text: #1f1f1f; --c-text-2: #666; --c-text-3: #999;
+    --c-border: #d9d9d9; --c-border-light: #f0f0f0;
+}
+body.login-v2.login-dark {
+    --c-surface: var(--admin-surface, #101926); --c-input: var(--admin-soft, #151f2d);
+    --c-text: var(--admin-text, #d7e3f4); --c-text-2: var(--admin-muted, #8fa2bd); --c-text-3: var(--admin-muted, #8fa2bd);
+    --c-border: var(--admin-line, #26354f); --c-border-light: var(--admin-line, #26354f);
+}
+/* 重置只能用零优先级的 *：写成 body.login-v2 * 会比下面 .login-panel 这些类选择器还高，把它们的内边距全清掉 */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body.login-v2 { height: 100%; }
+body.login-v2 {
+    min-height: 100vh;
+    background-color: var(--admin-bg, #eef3ff);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    color: var(--c-text); -webkit-font-smoothing: antialiased; overflow-x: hidden;
+}
+
+/* 背景只留两团跟主色走的光晕，底色交给外观自己的登录页背景 */
+.login-bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.login-bg::before,
+.login-bg::after {
+    content: ''; position: absolute; border-radius: 50%; filter: blur(60px); opacity: .35;
+    background: var(--c-brand);
+}
+.login-bg::before { width: 420px; height: 420px; top: -120px; right: -80px; animation: floatA 12s ease-in-out infinite; }
+.login-bg::after { width: 360px; height: 360px; bottom: -100px; left: -60px; opacity: .22; animation: floatB 14s ease-in-out infinite; }
+@keyframes floatA { 0%,100%{ transform: translate(0,0); } 50%{ transform: translate(-24px, 18px); } }
+@keyframes floatB { 0%,100%{ transform: translate(0,0); } 50%{ transform: translate(20px, -16px); } }
+
+.login-page {
+    position: relative; z-index: 1;
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; padding: 28px 16px;
+}
+.login-shell {
+    width: 100%; max-width: 960px; margin: auto 0;
+    display: grid; grid-template-columns: 1.08fr 1fr;
+    background: var(--c-surface);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border-radius: 18px; overflow: hidden;
+    border: 1px solid var(--c-border-light);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, .12), 0 4px 16px rgba(0, 0, 0, .06);
+    animation: cardIn .55s cubic-bezier(.22,1,.36,1) both;
+}
+@keyframes cardIn {
+    from { opacity: 0; transform: translateY(18px) scale(.985); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.login-banner {
+    position: relative; min-height: 480px; overflow: hidden;
+    background:
+        radial-gradient(circle at 80% 16%, rgba(255,255,255,.14) 0%, transparent 34%),
+        radial-gradient(circle at 12% 88%, rgba(0,0,0,.18) 0%, transparent 42%),
+        linear-gradient(var(--c-shade), var(--c-shade)),
+        linear-gradient(155deg, var(--c-brand-2) 0%, var(--c-brand) 100%);
+    color: var(--c-on-brand);
+}
+.login-banner__decor { position: absolute; border-radius: 50%; border: 1px solid currentColor; opacity: .16; }
+.login-banner__decor--1 { width: 220px; height: 220px; top: 12%; right: -40px; }
+.login-banner__decor--2 { width: 140px; height: 140px; top: 42%; left: -30px; background: currentColor; opacity: .06; }
+.login-banner__mask {
+    position: relative; z-index: 1; height: 100%; padding: 42px 36px;
+    display: flex; flex-direction: column; justify-content: space-between;
+}
+.login-banner__badge {
+    display: inline-flex; align-items: center; align-self: flex-start;
+    height: 28px; padding: 0 12px; border-radius: 999px;
+    border: 1px solid currentColor; font-size: 12px; font-weight: 500; opacity: .85;
+}
+.login-banner__bottom { margin-top: auto; }
+.login-banner__title { font-size: 30px; font-weight: 700; line-height: 1.3; letter-spacing: .02em; word-break: break-all; }
+.login-banner__desc {
+    margin-top: 12px; font-size: 14px; line-height: 1.7; opacity: .88;
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+
+.login-panel { padding: 40px 40px 32px; display: flex; flex-direction: column; justify-content: center; }
+.login-panel__head { margin-bottom: 26px; }
+.login-panel__welcome { font-size: 13px; color: var(--c-brand); font-weight: 600; margin-bottom: 6px; }
+.login-panel__title { font-size: 24px; font-weight: 700; color: var(--c-text); line-height: 1.2; margin-bottom: 6px; }
+.login-panel__sub { font-size: 13px; color: var(--c-text-3); }
+
+/* 品牌块只在窄屏出现：宽屏左栏已经写着网站名，重复一遍没必要 */
+.login-brand {
+    display: none; align-items: center; gap: 14px;
+    padding: 12px 14px; margin-bottom: 22px;
+    border: 1px solid var(--c-border-light); border-radius: 12px;
+}
+.login-brand__logo-wrap {
+    flex-shrink: 0; width: 52px; height: 52px; border-radius: 12px; padding: 3px;
+    background: linear-gradient(var(--c-shade), var(--c-shade)), linear-gradient(135deg, var(--c-brand), var(--c-brand-2));
+    color: var(--c-on-brand);
+}
+.login-brand__logo { width: 100%; height: 100%; padding: 13px; border-radius: 9px; display: block; }
+.login-brand__title { font-size: 16px; font-weight: 600; color: var(--c-text); line-height: 1.35; word-break: break-all; }
+.login-brand__meta { font-size: 12px; color: var(--c-text-3); margin-top: 2px; }
+
+.login-alert {
+    margin-bottom: 16px; padding: 10px 14px; border-radius: 10px;
+    font-size: 13px; line-height: 1.5; text-align: center; word-break: break-all;
+}
+.login-alert--error { background: #fff1f0; border: 1px solid #ffccc7; color: #cf1322; }
+.login-alert--success { background: #f6ffed; border: 1px solid #b7eb8f; color: #389e0d; }
+
+.login-form { display: flex; flex-direction: column; gap: 16px; }
+.login-field { position: relative; }
+.login-field__icon {
+    position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+    width: 18px; height: 18px; color: var(--c-text-3); pointer-events: none;
+    transition: color .2s;
+}
+.login-field:focus-within .login-field__icon { color: var(--c-brand); }
+.login-field__input {
+    width: 100%; height: 44px; padding: 0 14px 0 42px;
+    font-size: 14px; color: var(--c-text);
+    border: 1px solid var(--c-border); border-radius: 10px; background: var(--c-input);
+    outline: none; transition: border-color .2s, box-shadow .2s; font-family: inherit;
+}
+.login-field__input:hover { border-color: var(--c-brand); }
+.login-field__input:focus { border-color: var(--c-brand); box-shadow: 0 0 0 3px rgba(0, 0, 0, .06); }
+.login-field__input::placeholder { color: var(--c-text-3); opacity: .8; }
+
+.login-captcha { display: flex; gap: 10px; align-items: stretch; }
+.login-captcha .login-field { flex: 1; }
+.login-captcha__img {
+    flex-shrink: 0; height: 44px; min-width: 118px; border-radius: 10px;
+    border: 1px solid var(--c-border); cursor: pointer; background: #fafafa;
+    transition: border-color .2s, transform .15s;
+}
+.login-captcha__img:hover { border-color: var(--c-brand); transform: translateY(-1px); }
+
+.login-submit {
+    width: 100%; height: 44px; margin-top: 4px;
+    border: none; border-radius: 10px; cursor: pointer;
+    background: linear-gradient(var(--c-shade), var(--c-shade)), linear-gradient(135deg, var(--c-brand) 0%, var(--c-brand-2) 100%);
+    color: var(--c-on-brand); font-size: 15px; font-weight: 600; letter-spacing: .08em; font-family: inherit;
+    transition: transform .15s, box-shadow .2s, filter .2s;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, .16);
+}
+.login-submit:hover { filter: brightness(1.05); box-shadow: 0 8px 20px rgba(0, 0, 0, .2); transform: translateY(-1px); }
+.login-submit:active { transform: translateY(0); box-shadow: 0 4px 12px rgba(0, 0, 0, .14); }
+
+/* 页脚压在外观背景上，背景有深有浅，给个半透明底保证看得清 */
+.login-footer { margin-top: 22px; text-align: center; font-size: 12px; line-height: 1.6; }
+.login-footer span {
+    display: inline-block; padding: 4px 12px; border-radius: 999px;
+    background: var(--c-surface); color: var(--c-text-3); opacity: .9;
+}
+
+@media (max-width: 860px) {
+    .login-shell { grid-template-columns: 1fr; max-width: 460px; }
+    .login-banner { display: none; }
+    .login-brand { display: flex; }
+}
+@media (max-width: 420px) {
+    .login-panel { padding: 32px 22px 26px; }
+}
+</style>
 </head>
-<body class="admin-login-body admin-theme-<?php echo $site_theme;?>">
-  <div class="container">
-      <div class="row">
-          <div class="col-md-offset-4 col-md-4 col-sm-offset-3 col-sm-6">
-              <form class="form-horizontal admin-login-form" method="post">
-                  <div class="heading">管理员登录</div>
-                  <div class="form-group">
-                      <i class="fa fa-user"></i><input required name="user" type="text" class="form-control" placeholder="用户名">
-                  </div>
-                  <div class="form-group">
-                      <i class="fa fa-lock"></i><input required name="pass" type="password" class="form-control" placeholder="密码"/>
-                  </div>
-                  <?php if($verifycode==1){?>
-                  <div class="form-group">
-                      <i class="fa fa-shield"></i><input required name="code" type="text" class="form-control" placeholder="验证码" autocomplete="off" maxlength="6" style="width:55%"/><img src="./code.php" alt="验证码" title="点击更换" onclick="this.src='./code.php?'+Math.random()" style="height:40px;vertical-align:middle;cursor:pointer;border-radius:6px;margin-left:6px"/>
-                  </div>
-                  <?php }?>
-                  <div class="form-group">
-                      <button type="submit" class="btn btn-default"><i class="fa fa-arrow-right"></i></button>
-                  </div>
-              </form>
-          </div>
-      </div>
-  </div>
+<body class="admin-login-body admin-theme-<?php echo $site_theme;?> login-v2 login-<?php echo $login_scheme;?>">
+<div class="login-bg"></div>
+<div class="login-page">
+    <div class="login-shell">
+        <div class="login-banner">
+            <div class="login-banner__decor login-banner__decor--1"></div>
+            <div class="login-banner__decor login-banner__decor--2"></div>
+            <div class="login-banner__mask">
+                <div class="login-banner__badge">管理中心</div>
+                <div class="login-banner__bottom">
+                    <div class="login-banner__title"><?php echo $login_site?></div>
+                    <?php if($login_desc !== ''){?><div class="login-banner__desc"><?php echo htmlspecialchars($login_desc, ENT_QUOTES, 'UTF-8')?></div><?php }?>
+                </div>
+            </div>
+        </div>
+
+        <div class="login-panel">
+            <div class="login-panel__head">
+                <div class="login-panel__welcome">Welcome back</div>
+                <div class="login-panel__title">欢迎登录后台</div>
+                <div class="login-panel__sub">请输入账号信息以继续访问管理中心</div>
+            </div>
+
+            <div class="login-brand">
+                <div class="login-brand__logo-wrap">
+                    <svg class="login-brand__logo" viewBox="0 0 24 24" fill="currentColor"><path d="M19.35 10.04A7.49 7.49 0 0 0 12 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 0 0 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM19 18H6c-2.21 0-4-1.79-4-4s1.79-4 4-4h.71C7.37 7.69 9.48 6 12 6c3.04 0 5.5 2.46 5.5 5.5v.5H19c1.66 0 3 1.34 3 3s-1.34 3-3 3z"/></svg>
+                </div>
+                <div>
+                    <div class="login-brand__title"><?php echo $login_site?></div>
+                    <div class="login-brand__meta">管理中心</div>
+                </div>
+            </div>
+
+            <?php if($login_msg !== ''){?>
+            <div class="login-alert login-alert--<?php echo $login_msg_type?>"><?php echo htmlspecialchars($login_msg, ENT_QUOTES, 'UTF-8')?></div>
+            <?php if($login_auto_jump){?><script>setTimeout(function(){location.href='./';},1500);</script><?php }?>
+            <?php }?>
+            <form class="login-form" method="post">
+                <div class="login-field">
+                    <svg class="login-field__icon" viewBox="0 0 1024 1024" fill="currentColor"><path d="M288 320a224 224 0 1 0 448 0 224 224 0 1 0-448 0zm544 608H160a32 32 0 0 1-32-32v-96a160 160 0 0 1 160-160h448a160 160 0 0 1 160 160v96a32 32 0 0 1-32 32z"/></svg>
+                    <input class="login-field__input" type="text" autocomplete="off" placeholder="请输入账号" name="user" value="<?php echo isset($_POST['user']) ? htmlspecialchars($_POST['user'], ENT_QUOTES, 'UTF-8') : '' ?>" required>
+                </div>
+                <div class="login-field">
+                    <svg class="login-field__icon" viewBox="0 0 1024 1024" fill="currentColor"><path d="M512 64a256 256 0 0 1 256 256v128H256V320A256 256 0 0 1 512 64zm192 160v-64a192 192 0 1 0-384 0v64h384zM224 448h576a96 96 0 0 1 96 96v384a96 96 0 0 1-96 96H224a96 96 0 0 1-96-96V544a96 96 0 0 1 96-96z"/></svg>
+                    <input class="login-field__input" type="password" autocomplete="off" placeholder="请输入密码" name="pass" required>
+                </div>
+                <?php if($verifycode==1){?>
+                <div class="login-captcha">
+                    <div class="login-field">
+                        <svg class="login-field__icon" viewBox="0 0 1024 1024" fill="currentColor"><path d="M512 128 180 320v384l332 192 332-192V320L512 128zm0 71.2 245.5 141.6-245.5 141.6L266.5 340.8 512 199.2zM246 389.5l251 145.1v290.2L246 679.7V389.5zm532 0v290.2L527 824.8V534.6l251-145.1z"/></svg>
+                        <input class="login-field__input" type="text" autocomplete="off" placeholder="图形验证码" name="code" maxlength="6" required>
+                    </div>
+                    <img class="login-captcha__img" src="./code.php" title="点击刷新验证码" alt="验证码" onclick="this.src='./code.php?'+Math.random()">
+                </div>
+                <?php }?>
+                <button type="submit" class="login-submit">登 录 系 统</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="login-footer">
+        <span>copyright © <?php echo date('Y') ?> <?php echo $login_site ?> · All Rights Reserved</span>
+    </div>
+</div>
 </body>
 </html>

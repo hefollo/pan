@@ -576,6 +576,7 @@ case 'saveFileContent':
 	if(!$DB->exec($sql, [':size'=>$size, ':hash'=>$hash, ':storage'=>$conf['storage'], ':id'=>$row['id']])){
 		exit('{"code":-1,"msg":"保存数据库失败['.$DB->error().']"}');
 	}
+	layout_cache_bump();
 	//旧内容要回它原来所在的存储去清
 	if($old_hash !== $hash)delete_file_blob_if_orphaned($old_hash, $row['id'], $row['storage']);
 	//在线编辑同样是内容替换，一并纳入后台“覆盖记录”审计

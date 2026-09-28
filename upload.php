@@ -224,6 +224,8 @@ var upload_folder_id = <?php echo intval($upload_folder_id)?>;
  * 没开多存储时这里是空串，服务端会落到默认存储。
  */
 var upload_storage_default = <?php echo json_encode($upload_storage_options ? $upload_storage_options[0]['key'] : '')?>;
+//「在首页文件列表显示」默认勾不勾，后台「文件上传设置」里改
+var upload_show_default = <?php echo upload_show_default() ? 'true' : 'false'?>;
 </script>
 <script src="./assets/js/uploadnew.js?v=<?php echo VERSION?>"></script>
 </body>

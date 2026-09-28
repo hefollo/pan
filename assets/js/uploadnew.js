@@ -32,7 +32,8 @@ new Vue({
         currentFile: null,
         input: {
             csrf_token:'',
-            show: true,
+            //「在首页文件列表显示」的初始状态，由页面按后台设置给出；老页面没给就按勾选，和原来一样
+            show: (typeof upload_show_default !== 'undefined' ? !!upload_show_default : true),
             pwd: '',
             hash: '',
             name: '',

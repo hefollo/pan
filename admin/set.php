@@ -691,6 +691,10 @@ $(document).ready(function(){
 	  <div class="col-sm-9"><select class="form-control" name="forcelogin" default="<?php echo $conf['forcelogin']?>"><option value="0">0_否</option><option value="1">1_是</option></select></div>
 	</div><br/>
 	<div class="form-group">
+	  <label class="col-sm-3 control-label">上传时默认在首页公开</label>
+	  <div class="col-sm-9"><select class="form-control" name="upload_show_default" default="<?php echo upload_show_default() ? 1 : 0?>"><option value="1">开启：默认勾选「在首页文件列表显示」</option><option value="0">关闭：默认不勾选，上传的文件不出现在首页公共列表</option></select><font color="green">只决定上传页那个勾选框一打开是勾上还是不勾，用户上传时仍可以自己改；首页的快捷上传区也按这里。不勾选的文件只是不在首页列表出现，外链照样能打开。通过上传 API 上传的文件不受影响。</font></div>
+	</div><br/>
+	<div class="form-group">
 	  <label class="col-sm-3 control-label">在线编辑权限</label>
 	  <div class="col-sm-9"><select class="form-control" name="online_edit_mode" id="online_edit_mode" default="<?php echo isset($conf['online_edit_mode']) ? $conf['online_edit_mode'] : 'all'?>"><option value="all">所有用户都可用</option><option value="login">仅登录用户可用</option><option value="uid">仅指定UID可用</option></select><font color="green">这里只控制在线编辑功能入口与保存权限，文件本身是否属于当前用户，仍按原来的文件管理规则判断。</font></div>
 	</div><br/>

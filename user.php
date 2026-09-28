@@ -118,6 +118,7 @@ if($act !== ''){
 			[':hide'=>$hide, ':id'=>$row['id'], ':uid'=>$uid])){
 			uc_json(-1, '修改失败['.$DB->error().']');
 		}
+		layout_cache_bump();
 		uc_json(0, $hide ? '已设为私密，不再显示在首页列表' : '已设为公开', ['hide'=>$hide]);
 	break;
 

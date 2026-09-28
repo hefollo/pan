@@ -441,6 +441,8 @@ function folder_copy_file($row, $folder_id, $name){
 	$record = create_file_record_from_existing($row, $name, $row['size'], $row['type'], $row['hide'], $row['pwd'], !empty($islogin2) ? intval($uid) : 0, $clientip);
 	if(!$record) return false;
 	$DB->exec("UPDATE pre_file SET folder_id=:f, copied=1 WHERE id=:id LIMIT 1", [':f'=>intval($folder_id), ':id'=>intval($record['id'])]);
+	//标成复制之后「今日上传」要把它去掉，建记录时清过的那次不算数
+	layout_cache_bump();
 	//游客靠会话记录认领文件，不记进去复制出来的这条就成了没人能管的孤儿
 	if(empty($islogin2)) $_SESSION['fileids'][] = intval($record['id']);
 	return $record;
@@ -560,6 +562,8 @@ function file_rename_record($row, $raw_name){
 	if($DB->exec("UPDATE pre_file SET name=:name WHERE id=:id LIMIT 1", [':name'=>$name, ':id'=>intval($row['id'])]) === false){
 		return ['重命名失败['.$DB->error().']', ''];
 	}
+	//首页「最近上传」里显示着文件名
+	layout_cache_bump();
 	return ['', $name];
 }
 

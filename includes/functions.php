@@ -1933,7 +1933,7 @@ function admin_setting_keys(){
 		'openlist_url', 'openlist_user', 'openlist_pass', 'openlist_token', 'openlist_path',
 		'site_theme', 'theme_gradient', 'storage', 'storage_multi', 'storage_pool', 'storagename', 'title',
 		'tongji', 'type_audio', 'type_block', 'type_image',
-		'type_video', 'upload_limit', 'upload_per_minute', 'upload_size', 'uploadfile_type',
+		'type_video', 'upload_limit', 'upload_per_minute', 'upload_show_default', 'upload_size', 'uploadfile_type',
 		'upyun_name', 'upyun_pwd', 'upyun_user', 'userlogin',
 		'videoreview', 'violation_notice', 'violation_open', 'sponsor_open',
 		'alipay_open', 'alipay_appid', 'alipay_public_key', 'alipay_private_key',
@@ -2348,6 +2348,50 @@ function get_online_edit_mode(){
 function get_online_edit_uid_whitelist(){
 	global $conf;
 	return parse_uid_list(isset($conf['online_edit_uids']) ? $conf['online_edit_uids'] : '');
+}
+
+/*
+ * 后台名称：网站标题 +「管理中心」，已经转义过，可以直接输出。
+ * 后台 head.php 的左上角和浏览器标签、后台登录页都用它，改名规则只有这一处。
+ */
+function admin_brand_html(){
+	global $conf;
+	$title = (isset($conf['title']) && $conf['title'] !== '') ? $conf['title'] : '彩虹外链网盘';
+	return htmlspecialchars($title, ENT_QUOTES, 'UTF-8').'管理中心';
+}
+
+/*
+ * 上传页「在首页文件列表显示」默认勾不勾。没设置过按勾选算，和加这个开关之前一样。
+ * 只管界面上的初始状态，用户上传时仍可以自己改；上传 API 另有自己的默认（私密），不受影响。
+ */
+function upload_show_default(){
+	global $conf;
+	return !(isset($conf['upload_show_default']) && (string)$conf['upload_show_default'] === '0');
+}
+
+/*
+ * 首页统计缓存（layout_blocks.php 的 layout_cache_get/set）的「最后变更时间」。
+ * 原来缓存只按 5 分钟过期，删文件、封禁、上传之后首页统计卡和筛选计数要等几分钟才变。
+ * 现在文件新增、删除、覆盖、改状态 / 公开 / 名字时调 layout_cache_bump()，早于它算出来的缓存一律作废。
+ * 放在 functions.php 而不是 layout_blocks.php：改文件的地方（上传接口、后台、检测回调）不一定引了后者。
+ */
+function layout_cache_stamp_file(){
+	$dir = sys_get_temp_dir();
+	if(!$dir || !is_dir($dir) || !is_writable($dir)) return null;
+	return rtrim($dir, '/\\').'/mpimg_layout_stamp_'.md5(SYSTEM_ROOT).'.txt';
+}
+
+function layout_cache_stamp(){
+	$file = layout_cache_stamp_file();
+	if(!$file || !is_file($file)) return 0.0;
+	return floatval(@file_get_contents($file));
+}
+
+function layout_cache_bump(){
+	$file = layout_cache_stamp_file();
+	if($file) @file_put_contents($file, sprintf('%.6F', microtime(true)), LOCK_EX);
+	//当前访客自己的「今日已上传」也缓存在会话里（2 分钟），一起清掉
+	if(session_status() === PHP_SESSION_ACTIVE) unset($_SESSION['layout_today']);
 }
 
 /*
@@ -3002,6 +3046,7 @@ function checkVideo($hash, $ext, $ctx = []){
 		add_green_log(['verdict'=>'error', 'detail'=>'当前存储方式取不到文件地址'] + $base);
 		if($conf['videoreview'] != 1){
 			$DB->exec("UPDATE `pre_file` SET `block`=0 WHERE `hash`=:hash AND `block`=2", [':hash'=>$hash]);
+			layout_cache_bump();
 		}
 		return false;
 	}
@@ -3024,6 +3069,7 @@ function checkVideo($hash, $ext, $ctx = []){
 		writeLog('video green check: pre_greenjob 写入失败，可能没执行数据库升级');
 		if($conf['videoreview'] != 1){
 			$DB->exec("UPDATE `pre_file` SET `block`=0 WHERE `hash`=:hash AND `block`=2", [':hash'=>$hash]);
+			layout_cache_bump();
 		}
 		return false;
 	}
@@ -3059,6 +3105,7 @@ function green_video_give_up($job_id, $hash, $ext, $ctx, $msg){
 		'verdict'=>'error', 'detail'=>mb_substr($msg, 0, 100, 'UTF-8')] + $ctx);
 	if($conf['videoreview'] != 1){
 		$DB->exec("UPDATE `pre_file` SET `block`=0 WHERE `hash`=:hash AND `block`=2", [':hash'=>$hash]);
+		layout_cache_bump();
 	}
 	writeLog('video green check 不可用，已放行：'.$msg);
 }
@@ -3154,6 +3201,7 @@ function apply_video_verdict($job, $res){
 		//先把要封的记录捞出来再更新，不然更新完就分不清哪些是这次封的了
 		$rows = $DB->getAll("SELECT * FROM `pre_file` WHERE `hash`=:hash AND `block`<>1", [':hash'=>$hash]);
 		$DB->exec("UPDATE `pre_file` SET `block`=1 WHERE `hash`=:hash AND `block`<>1", [':hash'=>$hash]);
+		layout_cache_bump();
 		if(is_array($rows)){
 			foreach($rows as $row){
 				//机器判定可能误伤，先留档但不公示，等后台在违规公示管理里确认后再放出
@@ -3164,6 +3212,7 @@ function apply_video_verdict($job, $res){
 		//videoreview 是站长主动要求「所有视频都人工过一遍」，机器说没问题也不能替他放行
 		if($conf['videoreview'] != 1){
 			$DB->exec("UPDATE `pre_file` SET `block`=0 WHERE `hash`=:hash AND `block`=2", [':hash'=>$hash]);
+			layout_cache_bump();
 		}
 	}
 	//review 就是保持 block=2 不动，等人工在文件管理里筛「待审核文件」确认
@@ -3473,6 +3522,7 @@ function delete_file_record($row, $log_violation = false){
 	$stmt = $DB->query("DELETE FROM pre_file WHERE id=:id AND hash=:hash AND storage=:storage AND uid=:uid AND block=:block",
 		[':id'=>$current['id'], ':hash'=>$current['hash'], ':storage'=>$current['storage'], ':uid'=>$current['uid'], ':block'=>$current['block']]);
 	if(!$stmt || $stmt->rowCount() !== 1)return false;
+	layout_cache_bump();
 	try{
 		//记录已经删除，不能再排除某条记录；计数失败必须保留对象。
 		delete_file_blob_if_orphaned($current['hash'], null, $current['storage']);
@@ -3567,6 +3617,7 @@ function replace_file_record($old, $name, $hash, $size, $ext, $uid, $ip, $source
 	}
 
 	add_replace_log($old, ['name'=>$name, 'type'=>$ext, 'size'=>$size, 'hash'=>$hash], $uid, $ip, $source);
+	layout_cache_bump();
 	return true;
 }
 
@@ -3587,6 +3638,7 @@ function create_file_record_from_existing($existing, $name, $size, $ext, $hide, 
 	$block = isset($existing['block']) ? intval($existing['block']) : 0;
 	if($block >= 1){
 		$DB->exec("UPDATE `pre_file` SET `block`=:block WHERE `id`=:id LIMIT 1", [':block'=>$block, ':id'=>$record['id']]);
+		layout_cache_bump();
 	}
 	return $record;
 }
@@ -3671,6 +3723,7 @@ function create_file_record($name, $hash, $size, $ext, $hide, $pwd, $uid, $ip, $
 	$sds = $DB->exec("INSERT INTO `pre_file` (`name`,`type`,`size`,`hash`,`storage`,`token`,`addtime`,`ip`,`ipkey`,`hide`,`pwd`,`uid`) values (:name,:type,:size,:hash,:storage,:token,NOW(),:ip,:ipkey,:hide,:pwd,:uid)", [':name'=>$name, ':type'=>$ext, ':size'=>$size, ':hash'=>$hash, ':storage'=>$storage, ':token'=>$token, ':ip'=>$ip, ':ipkey'=>client_ip_key($ip), ':hide'=>$hide, ':pwd'=>$pwd, ':uid'=>($uid?$uid:0)]);
 	if(!$sds)return false;
 	$id = $DB->lastInsertId();
+	layout_cache_bump();
 	if(!$review)return ['id'=>$id, 'token'=>$token, 'storage'=>$storage];
 
 	$type_image = explode('|',$conf['type_image']);
@@ -3703,7 +3756,8 @@ function create_file_record($name, $hash, $size, $ext, $hide, $pwd, $uid, $ip, $
 			green_video_poll_tick();
 		}
 	}
-
+	//上面图片 / 视频审核可能把状态改成封禁或待审，首页统计要按改后的算
+	layout_cache_bump();
 	return ['id'=>$id, 'token'=>$token, 'storage'=>$storage];
 }
 

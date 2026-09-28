@@ -171,7 +171,8 @@ a:hover,a:focus{color:var(--primary-dark);text-decoration:none}
 #fileInput #pwd::placeholder{color:#8aa0ba!important}
 #fileInput #pwd:focus,#fileInput #storage_select:focus{background:#ffffff!important;border-color:#93c5ff!important;box-shadow:0 0 0 4px rgba(47,134,255,.12)!important}
 #fileInput .help-block{color:#7b8ea8!important}
-#upload_frame .checkbox .checkbox-material{display:inline-flex!important;align-items:center;justify-content:center;margin:0 2px 0 0}
+/* Material 的样式给勾选框加了 position:relative;top:3px，方框会比文字低一截，这里归零，交给 label 的 align-items:center 居中 */
+#upload_frame .checkbox .checkbox-material{display:inline-flex!important;align-items:center;justify-content:center;margin:0 2px 0 0;top:0}
 #upload_frame .checkbox .checkbox-material .check{width:18px;height:18px;border:2px solid var(--primary)!important;border-radius:4px;background:transparent!important}
 #upload_frame .checkbox input[type="checkbox"]:checked+.checkbox-material .check{background:var(--primary)!important;border-color:var(--primary)!important}
 #upload_frame .checkbox .checkbox-material .check:before{color:#fff!important}

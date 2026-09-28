@@ -15,7 +15,7 @@ if(!$is_sidebar_admin)$admin_body_class .= ' top-nav-admin';
 //后台名称跟着「网站标题」走：左上角和浏览器标签共用这一份。
 //标签：首页就是「网站标题管理中心」，其它页面前面加上页面名。
 //网站标题是站长填的，要转义；各页面自己的 $title 是写死的文字（有的用 HTML 实体写），原样输出
-$admin_brand = htmlspecialchars((isset($conf['title']) && $conf['title'] !== '') ? $conf['title'] : '彩虹外链网盘', ENT_QUOTES, 'UTF-8').'管理中心';
+$admin_brand = admin_brand_html();
 $admin_doc_title = (isset($title) && $title !== '') ? $title.' - '.$admin_brand : $admin_brand;
 //子菜单要精确到 set.php 的 mod 参数，checkIfActive 只认文件名区分不了，这里单独判断
 if(!function_exists('admin_sub_active')){

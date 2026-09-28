@@ -39,7 +39,9 @@ if(isset($_GET['m']) && $_GET['m']=='mine'){
 }else{
     $title = $conf['title'];
     $htext = '文件列表';
-    $sql = " hide=0";
+    //公共列表只列正常状态：封禁（block=1）和待审核（block=2）的都不上首页。
+    //统计卡、筛选计数、占用空间、最近上传都用这个条件（$sql_base），会跟着一起排除
+    $sql = " hide=0 AND block=0";
     $link = '';
 }
 //搜索词要分三种用途保存：入SQL的转义版、进URL的编码版、进HTML的实体版，混用会出漏洞
@@ -468,6 +470,7 @@ var upload_count_limit = <?php echo intval($hero_limit)?>;
 var upload_count_used = <?php echo intval($hero_used)?>;
 var upload_count_remaining = <?php echo intval($hero_remaining)?>;
 var upload_storage_default = <?php echo json_encode($hero_storage_default)?>;
+var upload_show_default = <?php echo upload_show_default() ? 'true' : 'false'?>;
 </script>
 <script src="./assets/js/uploadnew.js?v=<?php echo VERSION?>"></script>
 <?php }?>
