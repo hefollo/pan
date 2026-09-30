@@ -1932,10 +1932,13 @@ function admin_setting_keys(){
 		//openlist_cache_token / token_expire 由驱动登录后自己写，不从表单进来
 		'openlist_url', 'openlist_user', 'openlist_pass', 'openlist_token', 'openlist_path',
 		'site_theme', 'theme_gradient', 'storage', 'storage_multi', 'storage_pool', 'storagename', 'title',
-		'tongji', 'type_audio', 'type_block', 'type_image',
+		//tongji 是老的单条「统计代码」，现在由 footer_codes 列表接替，留着只为兼容没保存过新列表的站点
+		'tongji', 'footer_codes', 'type_audio', 'type_block', 'type_image',
 		'type_video', 'upload_limit', 'upload_per_minute', 'upload_show_default', 'upload_size', 'uploadfile_type',
 		'upyun_name', 'upyun_pwd', 'upyun_user', 'userlogin',
 		'videoreview', 'violation_notice', 'violation_open', 'sponsor_open',
+		//页脚「本站已安全运行」：开关与起算时间
+		'runtime_open', 'runtime_start',
 		'alipay_open', 'alipay_appid', 'alipay_public_key', 'alipay_private_key',
 		'epay_open', 'epay_apiurl', 'epay_pid', 'epay_key', 'epay_type', 'epay_charset',
 		'pay_subject',
@@ -2367,6 +2370,81 @@ function admin_brand_html(){
 function upload_show_default(){
 	global $conf;
 	return !(isset($conf['upload_show_default']) && (string)$conf['upload_show_default'] === '0');
+}
+
+//页脚「本站已安全运行」开关：未设置视为开启
+function site_runtime_open(){
+	global $conf;
+	return !(isset($conf['runtime_open']) && (string)$conf['runtime_open'] === '0');
+}
+
+//页脚运行时间的起算时刻（时间戳）。后台存的是 datetime-local 的值，按服务器时区（北京时间）解析；
+//没设置或解析不了就用默认的 2024-07-28 16:30:59
+function site_runtime_start(){
+	global $conf;
+	$raw = isset($conf['runtime_start']) ? trim($conf['runtime_start']) : '';
+	$ts = $raw === '' ? false : strtotime($raw);
+	return $ts === false ? strtotime('2024-07-28 16:30:59') : $ts;
+}
+
+/*
+ * 页脚代码：原来只有一个「统计代码」文本框，现在像广告位一样一条一条加，每条可以单独关。
+ * 存在 footer_codes 里，是 [{enabled, name, code}, ...] 的 JSON。code 是站长自己贴的 HTML/JS，原样输出。
+ * 没保存过新列表的老站点，把原来的 tongji 当成一条开启的条目，升级后页脚不会突然少东西。
+ */
+function footer_codes_normalize($list){
+	$result = [];
+	if(!is_array($list))return $result;
+	foreach($list as $item){
+		if(!is_array($item))continue;
+		$name = isset($item['name']) ? trim((string)$item['name']) : '';
+		$code = isset($item['code']) ? (string)$item['code'] : '';
+		if($name === '' && trim($code) === '')continue;
+		$result[] = [
+			'enabled' => !empty($item['enabled']) ? 1 : 0,
+			'name' => mb_substr($name, 0, 50, 'UTF-8'),
+			'code' => $code,
+		];
+		if(count($result) >= 50)break;
+	}
+	return $result;
+}
+
+function footer_codes(){
+	global $conf;
+	if(isset($conf['footer_codes']) && $conf['footer_codes'] !== ''){
+		return footer_codes_normalize(json_decode($conf['footer_codes'], true));
+	}
+	$old = isset($conf['tongji']) ? (string)$conf['tongji'] : '';
+	return trim($old) === '' ? [] : [['enabled'=>1, 'name'=>'原统计代码', 'code'=>$old]];
+}
+
+/*
+ * 旧的「本站已安全运行」代码：以前都是贴在统计代码里的，一个 id="sitetime" 的 span 加一段更新它的 <script>。
+ * 现在运行时间由内置的「页脚运行时间」开关管，这部分一律剥掉：留着的话开关关了它还在显示，
+ * 开着又会出现两份，而且同一个 id 会让其中一行一直是空的。
+ */
+function footer_code_strip_runtime($code){
+	$code = preg_replace('~(?:<br\s*/?>\s*)?(?:本站已(?:安全)?运行\s*[：:]\s*)?<span\b[^>]*\bid\s*=\s*["\']?sitetime\b[^>]*>.*?</span>~isu', '', $code);
+	$code = preg_replace('~<script\b[^>]*>(?:(?!</script>).)*?\bsitetime\b(?:(?!</script>).)*</script>~isu', '', $code);
+	return $code;
+}
+
+//这条页脚代码里有没有旧的运行时间片段（后台列表里提示用）
+function footer_code_has_runtime($code){
+	return preg_match('~\bid\s*=\s*["\']?sitetime\b~i', $code) === 1;
+}
+
+//页脚里要输出的代码：只取开启的条目，按列表顺序拼起来，旧的运行时间片段去掉
+function footer_codes_html(){
+	$html = [];
+	foreach(footer_codes() as $item){
+		if(!$item['enabled'])continue;
+		$code = footer_code_strip_runtime($item['code']);
+		if(trim(preg_replace('~<br\s*/?>|&nbsp;~i', '', $code)) === '')continue;
+		$html[] = $code;
+	}
+	return implode("\n", $html);
 }
 
 /*

@@ -23,6 +23,7 @@ a:hover,a:focus{color:var(--primary-dark);text-decoration:none}
 .dropdown-menu>li>a:hover,.dropdown-menu>li>a:focus{background:#eaf4ff!important;color:var(--primary)!important}
 .footer{margin-top:36px;padding:28px 0;background:transparent}
 .footer p{margin:0;color:#94a3b8}
+.footer p.site-runtime{margin-top:6px}
 .well,.panel{border:0;border-radius:8px;background:var(--surface);box-shadow:var(--shadow)}
 .well.bs-component{padding:24px}
 .well.bs-component h2{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin:0 0 20px;color:#111827;font-size:26px;font-weight:700;line-height:1.25}
@@ -2686,6 +2687,9 @@ body.theme-mac .footer p.text-muted{display:flex;align-items:center;justify-cont
 body.theme-mac .footer p.text-muted:before{content:"";flex:0 0 7px;width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px rgba(52,199,89,.18)}
 body.theme-mac .footer a{color:#6e6e73}
 body.theme-mac .footer a:hover{color:var(--primary)}
+/* 运行时间那一行贴着版权行，不要第二个小圆点 */
+body.theme-mac .footer p.site-runtime{display:block;min-height:0;margin:-6px 0 0;padding-bottom:10px}
+body.theme-mac .footer p.site-runtime:before{display:none}
 /* 内容区里的卡片：窗口本身已经是一张卡了，.well 一律拍平，.panel 保留浅描边 */
 body.theme-mac .well,body.theme-mac .well.bs-component{padding:0;margin:0;background:transparent;border:0;border-radius:0;box-shadow:none}
 body.theme-mac .panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 1px 2px rgba(20,26,45,.05)}

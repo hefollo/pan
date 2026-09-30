@@ -94,6 +94,23 @@ case 'set':
 	if(isset($_POST['theme_gradient'])){
 		$_POST['theme_gradient'] = normalize_theme_gradient($_POST['theme_gradient']);
 	}
+	//页脚代码列表是后台表格汇总出来的 JSON，落库前洗一遍；解析不了就不存，保留原值
+	if(isset($_POST['footer_codes'])){
+		$footer_codes = json_decode($_POST['footer_codes'], true);
+		if(!is_array($footer_codes)){
+			unset($_POST['footer_codes']);
+		}else{
+			$_POST['footer_codes'] = json_encode(footer_codes_normalize($footer_codes), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+			//配置值是 TEXT，超长会被静默截断，截断后的 JSON 整个读不出来，所以宁可不存
+			if(strlen($_POST['footer_codes']) > 60000)exit(json_encode(['code'=>-1, 'msg'=>'页脚代码总长度超过 60000 字节，请删减后再保存']));
+		}
+	}
+	//页脚运行时间的起算时刻：datetime-local 传来的是 2024-07-28T16:30:59，统一存成 Y-m-d H:i:s；解析不了就不存，保留原值
+	if(isset($_POST['runtime_start'])){
+		$runtime_ts = strtotime(trim($_POST['runtime_start']));
+		if($runtime_ts === false) unset($_POST['runtime_start']);
+		else $_POST['runtime_start'] = date('Y-m-d H:i:s', $runtime_ts);
+	}
 	//下载限速只接受非负数字和固定单位，避免绕过页面校验写入异常配置。
 	foreach(['guest', 'user', 'vip'] as $speed_tier){
 		$speed_key = 'down_speed_'.$speed_tier;

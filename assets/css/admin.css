@@ -2807,3 +2807,12 @@ body.admin-theme-neo.admin-body .navbar-nav .dropdown-header{color:#8b8071!impor
 body.admin-theme-neo.admin-body .navbar-nav .divider{background:#2f2f2f!important}
 body.admin-theme-neo.admin-body .navbar-nav>li>.dropdown-menu>li>a i{color:#8b8071}
 }
+/* 网站信息设置 → 页脚代码列表（写法参照广告位列表） */
+.footer-code-table{min-width:560px;margin-bottom:0}
+.footer-code-table>thead>tr>th{text-align:center;vertical-align:middle}
+.footer-code-table>tbody>tr>td{vertical-align:middle;padding:10px 8px}
+.footer-code-table input[type="checkbox"]{width:18px;height:18px;margin:0}
+.footer-code-table textarea.footer-code-input{min-height:38px;font-family:Consolas,Monaco,monospace;font-size:12px;resize:vertical}
+.footer-code-table .footer-code-empty td{padding:22px 14px;color:#71839c;text-align:center}
+.footer-code-add{margin-top:10px}
+.footer-code-table .footer-code-note{display:block;margin-top:6px;color:#b7791f;font-size:12px;line-height:1.5;text-align:left}

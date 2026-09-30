@@ -58,9 +58,38 @@ if($mod=='site'){
 	  <label class="col-sm-2 control-label">公示页说明</label>
 	  <div class="col-sm-10"><textarea class="form-control" name="violation_notice" rows="3" placeholder="显示在违规公示页顶部的说明文字"><?php echo htmlspecialchars(isset($conf['violation_notice'])?$conf['violation_notice']:'')?></textarea></div>
 	</div><br/>
+<?php $footer_code_list = footer_codes();?>
 	<div class="form-group">
-	  <label class="col-sm-2 control-label">统计代码</label>
-	  <div class="col-sm-10"><textarea class="form-control" name="tongji" rows="3" placeholder="不填写则不显示统计代码"><?php echo htmlspecialchars($conf['tongji'])?></textarea></div>
+	  <label class="col-sm-2 control-label">页脚代码</label>
+	  <div class="col-sm-10">
+	    <?php /* 表格里的控件都不带 name，由下面的脚本汇总成这一个 JSON 字段提交；初始值就是现有列表，脚本万一没跑起来也不会把列表存丢 */ ?>
+	    <input type="hidden" name="footer_codes" id="footerCodesField" value="<?php echo htmlspecialchars(json_encode($footer_code_list, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8')?>"/>
+	    <div class="table-responsive footer-code-wrap">
+	      <table class="table table-bordered footer-code-table">
+	        <thead><tr><th style="width:64px">显示</th><th style="width:180px">名称</th><th>代码</th><th style="width:84px">操作</th></tr></thead>
+	        <tbody id="footerCodeRows">
+	        <?php foreach($footer_code_list as $item){?>
+	          <tr data-code-row>
+	            <td class="text-center"><input type="checkbox" data-f="enabled" <?php echo $item['enabled'] ? 'checked' : ''?>></td>
+	            <td><input type="text" class="form-control" data-f="name" maxlength="50" placeholder="如：百度统计" value="<?php echo htmlspecialchars($item['name'], ENT_QUOTES, 'UTF-8')?>"></td>
+	            <td><textarea class="form-control footer-code-input" data-f="code" rows="2" placeholder="粘贴 HTML 或 &lt;script&gt; 代码"><?php echo htmlspecialchars($item['code'], ENT_QUOTES, 'UTF-8')?></textarea><?php if(footer_code_has_runtime($item['code'])){?><small class="footer-code-note">这段里有旧的「本站已安全运行」代码，这部分已由下面的「页脚运行时间」接管，前台不再输出，可以删掉。</small><?php }?></td>
+	            <td class="text-center"><button type="button" class="btn btn-danger btn-xs" data-code-del><i class="fa fa-trash"></i> 删除</button></td>
+	          </tr>
+	        <?php }?>
+	        </tbody>
+	      </table>
+	    </div>
+	    <button type="button" class="btn btn-success btn-sm footer-code-add" id="footerCodeAdd"><i class="fa fa-plus"></i> 添加代码</button>
+	    <span class="help-block">每条代码按列表顺序原样输出在前台页脚版权信息后面，可以放统计代码（百度统计、51LA 等）、备案号、徽章链接等。取消勾选「显示」可暂时停用而不删除；删除或修改后点下面「修改」才会保存。</span>
+	  </div>
+	</div><br/>
+	<div class="form-group">
+	  <label class="col-sm-2 control-label">页脚运行时间</label>
+	  <div class="col-sm-10"><select class="form-control" name="runtime_open" default="<?php echo isset($conf['runtime_open'])?$conf['runtime_open']:1?>"><option value="0">关闭</option><option value="1">开启</option></select><span class="help-block">开启后前台页脚版权信息下方显示“本站已安全运行：x年x天x时x分钟x秒”，每秒刷新</span></div>
+	</div><br/>
+	<div class="form-group">
+	  <label class="col-sm-2 control-label">建站时间</label>
+	  <div class="col-sm-10"><input type="datetime-local" step="1" name="runtime_start" value="<?php echo date('Y-m-d\TH:i:s', site_runtime_start())?>" class="form-control"/><span class="help-block">运行时间从这一刻开始计算，按北京时间，精确到秒</span></div>
 	</div><br/>
 	<div class="form-group">
 	  <label class="col-sm-2 control-label">文件搜索功能</label>
@@ -73,6 +102,58 @@ if($mod=='site'){
   </form>
 </div>
 </div>
+<script>
+//页脚代码列表：行内控件不带 name，每次改动都把整张表汇总成 JSON 写进隐藏字段，saveSetting 序列化表单时带上它
+(function(){
+	var tbody = document.getElementById('footerCodeRows'), field = document.getElementById('footerCodesField'), addBtn = document.getElementById('footerCodeAdd');
+	if(!tbody || !field || !addBtn)return;
+	function rows(){ return tbody.querySelectorAll('tr[data-code-row]'); }
+	function sync(){
+		var list = [];
+		for(var i = 0, r = rows(); i < r.length; i++){
+			list.push({
+				enabled: r[i].querySelector('[data-f="enabled"]').checked ? 1 : 0,
+				name: r[i].querySelector('[data-f="name"]').value,
+				code: r[i].querySelector('[data-f="code"]').value
+			});
+		}
+		field.value = JSON.stringify(list);
+	}
+	function toggleEmpty(){
+		var empty = tbody.querySelector('tr.footer-code-empty');
+		if(rows().length){ if(empty)empty.parentNode.removeChild(empty); return; }
+		if(empty)return;
+		empty = document.createElement('tr');
+		empty.className = 'footer-code-empty';
+		empty.innerHTML = '<td colspan="4">还没有页脚代码，点下面的「添加代码」新建一条。</td>';
+		tbody.appendChild(empty);
+	}
+	addBtn.addEventListener('click', function(){
+		var row = document.createElement('tr');
+		row.setAttribute('data-code-row', '1');
+		row.innerHTML =
+			'<td class="text-center"><input type="checkbox" data-f="enabled" checked></td>' +
+			'<td><input type="text" class="form-control" data-f="name" maxlength="50" placeholder="如：百度统计"></td>' +
+			'<td><textarea class="form-control footer-code-input" data-f="code" rows="2" placeholder="粘贴 HTML 或 &lt;script&gt; 代码"></textarea></td>' +
+			'<td class="text-center"><button type="button" class="btn btn-danger btn-xs" data-code-del><i class="fa fa-trash"></i> 删除</button></td>';
+		tbody.appendChild(row);
+		toggleEmpty();
+		sync();
+		row.querySelector('[data-f="name"]').focus();
+	});
+	tbody.addEventListener('input', sync);
+	tbody.addEventListener('change', sync);
+	tbody.addEventListener('click', function(e){
+		var btn = e.target.closest ? e.target.closest('[data-code-del]') : null;
+		if(!btn || !tbody.contains(btn))return;
+		var row = btn.closest('tr');
+		row.parentNode.removeChild(row);
+		toggleEmpty();
+		sync();
+	});
+	toggleEmpty();
+})();
+</script>
 <?php
 }elseif($mod=='appearance'){
 $site_theme = isset($conf['site_theme']) ? $conf['site_theme'] : default_site_theme();
