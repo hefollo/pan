@@ -3874,6 +3874,83 @@ body.theme-portal .portal-upload-name{min-width:0;overflow:hidden;text-overflow:
 body.theme-portal .portal-drop-tip{margin:0;color:#7e8a84;font-size:12px;text-align:center}
 body.theme-portal .portal-drop-tip a{color:var(--primary);font-weight:800}
 @media (max-width:860px){body.theme-portal .portal-upload-panel{padding:12px}body.theme-portal .portal-upload-panel .upload-queue{max-height:160px}}
+/* ==== 手机端适配（多套外观共用）开始 ==== */
+/*
+ * 首页公开文件列表和违规公示列表（外层带 .filelist-wrap 的 .filelist）在手机上原来是桌面表格塞进横向滚动框：
+ * 文件名被截断，大小 / 时间甚至下载、查看按钮要横着滑才看得到，个别外观文件名整列都被挤没了。
+ * 窄屏下把每一行排成一张卡片：第一行文件名（可换行），第二行 大小 · 格式 · 时间，第三行操作按钮。
+ * 各列靠 index.php 输出的 fl-* 类名定位，不依赖「操作」列在第几个（工作台家族在最右，其余在第二列）。
+ * 门户风和 macOS 窗口风的首页列表本来就是卡片网格：index.php 不给它们加 .filelist-wrap，所以不受这里影响。
+ * 选择器故意写得长：各外观给这张表的列写过带 !important 的宽度 / 隐藏规则，这里要压过它们。
+ */
+@media (max-width:767px){
+body .table-responsive.filelist-wrap{overflow:visible!important;border:0!important;margin-bottom:0}
+body .table-responsive.filelist-wrap>.table.filelist{display:block!important;width:100%!important;min-width:0!important;margin-bottom:0}
+body .table-responsive.filelist-wrap>.table.filelist>thead{display:none!important}
+body .table-responsive.filelist-wrap>.table.filelist>tbody{display:block!important}
+body .table-responsive.filelist-wrap>.table.filelist>tbody>tr{display:grid!important;grid-template-columns:auto auto minmax(0,1fr);gap:6px 10px;align-items:center;width:auto!important;height:auto!important;padding:12px 10px!important;border-bottom:1px solid rgba(128,138,158,.22)}
+body .table-responsive.filelist-wrap>.table.filelist>tbody>tr:last-child{border-bottom:0}
+body .table-responsive.filelist-wrap>.table.filelist>tbody>tr>td{display:block!important;width:auto!important;min-width:0!important;max-width:none!important;height:auto!important;padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important;text-align:left!important;white-space:normal!important;overflow:visible!important;text-overflow:clip!important;position:static!important}
+body .table-responsive.filelist-wrap>.table.filelist>tbody>tr>td.fl-num,
+body .table-responsive.filelist-wrap>.table.filelist>tbody>tr>td.fl-ip{display:none!important}
+body .table-responsive.filelist-wrap>.table.filelist>tbody>tr>td.fl-name{grid-column:1/-1;grid-row:1;display:flex!important;align-items:flex-start;gap:8px;font-size:14px;font-weight:600;line-height:1.45;word-break:break-all;overflow-wrap:anywhere}
+body .table-responsive.filelist-wrap>.table.filelist>tbody>tr>td.fl-name>.fa-fw{flex:none;margin:0!important}
+body .table-responsive.filelist-wrap>.table.filelist>tbody>tr>td.fl-name>.filelist-lock{flex:none;margin-top:3px}
+body .table-responsive.filelist-wrap>.table.filelist>tbody>tr>td.fl-size,
+body .table-responsive.filelist-wrap>.table.filelist>tbody>tr>td.fl-type,
+body .table-responsive.filelist-wrap>.table.filelist>tbody>tr>td.fl-time{grid-row:2;font-size:12px!important;font-weight:400!important;line-height:1.5;opacity:.78;white-space:nowrap!important}
+body .table-responsive.filelist-wrap>.table.filelist>tbody>tr>td.fl-size{grid-column:1}
+body .table-responsive.filelist-wrap>.table.filelist>tbody>tr>td.fl-type{grid-column:2}
+body .table-responsive.filelist-wrap>.table.filelist>tbody>tr>td.fl-time{grid-column:3;overflow:hidden!important;text-overflow:ellipsis!important}
+body .table-responsive.filelist-wrap>.table.filelist>tbody>tr>td.filelist-actions-cell{grid-column:1/-1;grid-row:3}
+body .table-responsive.filelist-wrap>.table.filelist>tbody>tr>td.filelist-actions-cell .file-actions{display:flex!important;flex-wrap:wrap;justify-content:flex-start!important;gap:8px;opacity:1!important;visibility:visible!important}
+body .table-responsive.filelist-wrap>.table.filelist>tbody>tr>td.filelist-actions-cell .file-action{flex:0 0 auto;min-height:32px;margin:0!important}
+body .table-responsive.filelist-wrap>.table.filelist>tbody>tr>td.filelist-actions-cell .file-action-label{display:inline!important}
+body .table-responsive.filelist-wrap>.table.filelist>tbody>tr>td.fl-name>span{display:block;min-width:0}
+/* 违规公示页没有操作列，第三行放上传者 IP（列名靠 data-label 补出来） */
+body .table-responsive.filelist-wrap>.table.filelist>tbody>tr>td.fl-extra{grid-column:1/-1;grid-row:3;font-size:12px!important;line-height:1.5;opacity:.78;word-break:break-all}
+body .table-responsive.filelist-wrap>.table.filelist>tbody>tr>td.fl-extra[data-label]:before{content:attr(data-label) "：";opacity:.85}
+/* 工作台家族的操作按钮在桌面上是 32px 的纯图标方块，手机卡片里显示文字，要放开宽度 */
+body.studio-layout .filelist-wrap .filelist>tbody>tr>td.filelist-actions-cell .file-action{width:auto!important;height:32px;padding:0 12px!important;gap:5px;white-space:nowrap}
+body .table-responsive.filelist-wrap>.table.filelist>tbody>tr.fl-empty{display:block!important;text-align:center}
+body .table-responsive.filelist-wrap>.table.filelist>tbody>tr.fl-empty>td{text-align:center!important;padding:18px 0!important}
+/*
+ * 工作台家族：手机上导航栏下面多一条顶栏（搜索 + 上传）。公告条自带 margin-top:-28px 去贴普通导航栏的下边距，
+ * 在这里会压住顶栏的下半截，「上传文件」按钮被盖掉一半；导航栏和顶栏之间那段空白也一并收掉。
+ */
+body.studio-layout .theme-announcement-bar{margin-top:0!important}
+body.studio-layout>.navbar{margin-bottom:0!important}
+/* 文件列表面板里的搜索框：窄屏下和下面的搜索按钮一样占满整行（原来只有二百来像素宽，有的外观还偏到一边） */
+.searchbox .form-inline .form-group{display:block!important;flex:1 1 100%;width:100%!important;margin-left:0!important;margin-right:0!important}
+.searchbox .form-inline .form-group .form-control{width:100%!important;max-width:none!important}
+body.studio-layout .searchbox .form-inline{flex-wrap:wrap}
+body.studio-layout .searchbox .form-inline>.btn{flex:1 1 100%}
+/*
+ * 展开的导航菜单：布局型外观展开后的折叠区是 flex（前面已有 body.layout-theme .navbar-collapse.collapse.in 那条），
+ * 但渐变仪表盘风、座舱风和工作台家族的「纵向排列」只写在桌面断点里，手机上就成了横排：
+ * 左菜单、右菜单、侧栏卡片三块并排挤在一屏里，文字折行、互相压住。窄屏下给这几套指定纵向堆叠。
+ * 只管「已展开」的状态，收起时仍由 Bootstrap 的 .collapse 隐藏。
+ */
+body.theme-dashboard .navbar-collapse.collapse.in,body.theme-cockpit .navbar-collapse.collapse.in,body.studio-layout .navbar-collapse.collapse.in{flex-direction:column!important;align-items:stretch!important;flex-wrap:nowrap!important}
+.navbar .navbar-collapse.collapse.in>.navbar-nav,.navbar .navbar-collapse.collapsing>.navbar-nav{float:none!important;width:auto!important;max-width:none!important;flex:none!important}
+.navbar .navbar-collapse.collapse.in>.navbar-nav>li,.navbar .navbar-collapse.collapsing>.navbar-nav>li{float:none!important;width:auto!important}
+.navbar .navbar-collapse.collapse.in>.navbar-nav>li>a,.navbar .navbar-collapse.collapsing>.navbar-nav>li>a{white-space:nowrap}
+.navbar .navbar-collapse.collapse.in>.studio-upsell,.navbar .navbar-collapse.collapse.in>.layout-side-card,
+.navbar .navbar-collapse.collapsing>.studio-upsell,.navbar .navbar-collapse.collapsing>.layout-side-card{width:auto!important;max-width:none!important;flex:none!important;margin:10px 14px!important}
+/* 霓虹风、星云风、涂鸦风：导航是深色底、菜单字是浅色，折叠区却沿用了浅色外观的白底，展开后几乎看不见字 */
+body.theme-neon .navbar .navbar-collapse{background:rgba(7,16,36,.98)!important}
+body.theme-nebula .navbar .navbar-collapse{background:rgba(8,19,42,.98)!important}
+body.theme-neo .navbar .navbar-collapse{background:#141414!important}
+/* 星云风手机导航是深色的，站名却还是浅色外观的深色字 */
+body.theme-nebula .navbar .navbar-brand{color:#eaf3ff!important}
+/* 门户风：导航头部左右各有 3px 的负边距，窄屏下会越出屏幕 */
+body.theme-portal .navbar-header{margin-left:0!important;margin-right:0!important}
+}
+/* 违规公示页为了手机卡片把「文件名 + 备注」包了一层 span；桌面上让它不产生盒子，表格排版和原来分毫不差 */
+.filelist-wrap>.filelist>tbody>tr>td.fl-name>span{display:contents}
+/* 工作台家族：选中的类型筛选标签文字被链接色盖成了和底色一样的颜色，「全部」两个字看不见（桌面端同样）。涂鸦风自有一套黑底配色，不动 */
+body.studio-layout:not(.theme-neo) .layout-filter.active{color:#fff!important}
+/* ==== 手机端适配（多套外观共用）结束 ==== */
 
 /*
  * 首屏守卫的收尾（见 includes/header.php 的 #css-guard）：守卫在本文件到达前把 body 藏起来、

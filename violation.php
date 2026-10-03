@@ -18,7 +18,8 @@ include SYSTEM_ROOT.'header.php';
     <div class="well bs-component">
         <h2>违规文件公示</h2>
         <p class="text-muted"><?php echo htmlspecialchars($notice)?></p>
-        <div class="table-responsive">
+        <?php /* filelist-wrap / fl-* 是给手机端用的：窄屏下 style.css 把每一行排成卡片（和首页文件列表同一套规则） */ ?>
+        <div class="table-responsive filelist-wrap">
         <table class="table table-striped table-hover filelist">
             <thead>
                 <tr>
@@ -46,9 +47,9 @@ while($res = $rs->fetch())
     //公示只输出脱敏后的信息，不输出 token 和任何可访问链接，避免公示页反过来变成违规内容的索引
     $type_text = $res['type'] ? $res['type'] : '未知';
     $remark = $res['remark'] ? '<br/><small class="text-muted">'.htmlspecialchars($res['remark']).'</small>' : '';
-    echo '<tr><td><b>'.$i++.'</b></td><td><i class="fa '.type_to_icon($res['type']).' fa-fw"></i>'.htmlspecialchars(violation_mask_name($res['name'])).$remark.'</td><td>'.size_format($res['size']).'</td><td><span class="file-type-badge">'.htmlspecialchars($type_text).'</span></td><td>'.htmlspecialchars(violation_mask_ip($res['ip'])).'</td><td>'.$res['addtime'].'</td></tr>';
+    echo '<tr><td class="fl-num"><b>'.$i++.'</b></td><td class="fl-name"><i class="fa '.type_to_icon($res['type']).' fa-fw"></i><span>'.htmlspecialchars(violation_mask_name($res['name'])).$remark.'</span></td><td class="fl-size">'.size_format($res['size']).'</td><td class="fl-type"><span class="file-type-badge">'.htmlspecialchars($type_text).'</span></td><td class="fl-extra" data-label="上传者IP">'.htmlspecialchars(violation_mask_ip($res['ip'])).'</td><td class="fl-time">'.$res['addtime'].'</td></tr>';
 }
-if($numrows == 0) echo '<tr><td colspan="6" align="center">暂无违规封禁记录</td></tr>';
+if($numrows == 0) echo '<tr class="fl-empty"><td colspan="6" align="center">暂无违规封禁记录</td></tr>';
 ?>
             </tbody>
         </table>

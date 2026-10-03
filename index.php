@@ -263,7 +263,11 @@ echo layout_render_stats($layout_counts, layout_today_total($DB, $sql_base), $st
             <button type="button" class="uc-btn" id="guestSelClear">取消选择</button>
         </div>
 <?php }?>
-        <div class="table-responsive">
+        <?php /* filelist-wrap / fl-* 这些类名是给手机端用的：窄屏下 style.css 把每一行排成卡片，
+                 靠类名定位各列，不用管不同外观里「操作」列排在第几个。
+                 门户风和 macOS 窗口风的公开列表本来就是卡片网格，不加 filelist-wrap，保持它们自己的排法 */
+        $filelist_cards = !$guest_mine && !in_array($layout_key, ['portal', 'mac'], true); ?>
+        <div class="table-responsive<?php echo $filelist_cards ? ' filelist-wrap' : ''?>">
        <table class="table table-hover <?php echo $guest_mine ? 'uc-filelist guest-filelist' : 'table-striped filelist filelist-main'?>">
             <thead>
                 <tr>
@@ -393,14 +397,14 @@ if($guest_mine){
 	continue;
 }
 $cell_action = '<td class="filelist-actions-cell">'.$actions.'</td>';
-$cell_rest = '<td><i class="fa '.type_to_icon($res['type']).' fa-fw"></i>'.$res['name'].$lock_icon.'</td><td>'.size_format($res['size']).'</td><td><span class="file-type-badge">'.htmlspecialchars($type_text).'</span></td><td>'.$res['addtime'].'</td><td>'.$row_ip.'</td>';
+$cell_rest = '<td class="fl-name"><i class="fa '.type_to_icon($res['type']).' fa-fw"></i>'.$res['name'].$lock_icon.'</td><td class="fl-size">'.size_format($res['size']).'</td><td class="fl-type"><span class="file-type-badge">'.htmlspecialchars($type_text).'</span></td><td class="fl-time">'.$res['addtime'].'</td><td class="fl-ip">'.$row_ip.'</td>';
 //操作列的位置跟着表头走：蓝白工作台风在最右，其余外观在第二列
-echo '<tr'.$row_attr.'><td><b>'.$i++.'</b></td>'
+echo '<tr'.$row_attr.'><td class="fl-num"><b>'.$i++.'</b></td>'
 	.(in_array($layout_key, studio_family_keys(), true) ? $cell_rest.$cell_action : $cell_action.$cell_rest).'</tr>';
 }
 if($numrows == 0 && $fd_rows === '') echo $guest_mine
 	? '<tr><td colspan="6" class="uc-empty">'.($fd_on && $fd_cur > 0 && !$fd_searching ? '这个文件夹是空的' : '还没上传过任何文件').'</td></tr>'
-	: '<tr><td colspan="7" align="center">还没上传过任何文件</td></tr>';
+	: '<tr class="fl-empty"><td colspan="7" align="center">还没上传过任何文件</td></tr>';
 ?>
             </tbody>
         </table>
