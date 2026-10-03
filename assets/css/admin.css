@@ -70,6 +70,8 @@ body.admin-body>.container,body.admin-body>.container-fluid{max-width:none;width
 body.admin-body .admin-page,body.admin-body .admin-page-wide{width:100%!important;float:none;margin-left:auto;margin-right:auto;padding-left:0;padding-right:0}
 body.admin-body .admin-page{max-width:1080px}
 body.admin-body .admin-page-wide{max-width:1560px}
+/* 手机上外层容器的内边距是 12px，Bootstrap 的 .row 却往两边各拉出 15px，后台首页会左右各越出屏幕 3px、出现横向滚动 */
+@media (max-width:767px){body.admin-body .admin-page>.row,body.admin-body .admin-page-wide>.row{margin-left:-12px;margin-right:-12px}}
 /* 带鱼屏（3440 这类超宽屏）上，固定上限的内容两边会空出一大片。
    试过把内容锁到侧栏左边，结果右边空一大块，比居中更难看——空白挪个位置解决不了问题。
    现在的做法是让能用宽度的内容真正用起来：表格类页面上限放宽到 2400，

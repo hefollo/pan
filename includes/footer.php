@@ -38,5 +38,16 @@ if(isset($site_theme) && in_array($site_theme, studio_family_keys(), true)){?>
 <script src="https://s4.zstatic.net/ajax/libs/bootstrap-material-design/0.5.10/js/ripples.min.js"></script>
 <script>
   $.material.init();
+  /*
+   * 手机上点了导航菜单里的链接，就把展开的菜单收起来。
+   * 一般的链接是整页跳转，新页面的菜单本来就是收着的；但「我的文件」页会把指向本列表的链接
+   * 改成局部刷新（assets/js/filelist-live.js，导航里的「我的文件」也在内），页面不重载，菜单就一直开着。
+   * 带 data-toggle 的是下拉开关本身，点它是为了展开下拉，不收。桌面端菜单没有 .in，这里不会触发。
+   */
+  $(document).on('click', '.navbar-collapse.in a[href]', function(){
+    if(this.getAttribute('data-toggle'))return;
+    var $menu = $(this).closest('.navbar-collapse');
+    if($.fn.collapse)$menu.collapse('hide');
+  });
 </script>
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6112564004010114"crossorigin="anonymous"></script>

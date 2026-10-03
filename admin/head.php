@@ -347,6 +347,31 @@ jQuery(function($){
 		$submenu.children('li').removeClass('active');
 		$item.addClass('active');
 	}
+	/*
+	 * 手机上导航是折叠菜单。后台是动态换页，点菜单项不会整页刷新，折叠区和里面展开的下拉都得手动收起来，
+	 * 不然新页面出来了菜单还盖在上面。桌面端（含侧栏外观）折叠区没有 .in，这里什么都不做。
+	 * done 在收起动画结束后调用（没展开就立刻调用），给「先收菜单再滚到某一节」用。
+	 */
+	function closeAdminMobileNav(done){
+		var $nav = $('#navbar');
+		$('.navbar-nav .dropdown.open').removeClass('open').children('.dropdown-toggle').attr('aria-expanded', 'false');
+		if($nav.hasClass('in') && $.fn.collapse){
+			if(done){
+				//收起动画结束再回调；万一结束事件没触发（正在动画中被打断之类），600 毫秒后照样回调，只调一次
+				var called = false, once = function(){
+					if(called)return;
+					called = true;
+					$nav.off('hidden.bs.collapse', once);
+					done();
+				};
+				$nav.on('hidden.bs.collapse', once);
+				setTimeout(once, 600);
+			}
+			$nav.collapse('hide');
+		}else if(done){
+			done();
+		}
+	}
 	function loadAdminSetting(url, addHistory){
 		var target;
 		try{ target = new URL(url, window.location.href); }catch(e){ return; }
@@ -388,6 +413,7 @@ jQuery(function($){
 		if(e.which !== 1 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || this.target === '_blank')return;
 		if(this.href.indexOf('logout=1') !== -1)return;
 		e.preventDefault();
+		closeAdminMobileNav();
 		loadAdminSetting(this.href, true);
 	});
 	$(document).on('click.adminDynamicNav', '.admin-section-submenu>li>a', function(e){
@@ -396,7 +422,8 @@ jQuery(function($){
 		if(!target)return;
 		history.replaceState({adminDynamic:true}, '', window.location.pathname + window.location.search + '#' + id);
 		syncAdminSectionMenu();
-		target.scrollIntoView({behavior:'smooth', block:'start'});
+		//手机上先把菜单收起来再滚：菜单收起会让页面整体上移，先滚的话位置就不准了
+		closeAdminMobileNav(function(){ target.scrollIntoView({behavior:'smooth', block:'start'}); });
 	});
 	$(window).on('popstate.adminDynamicNav', function(){
 		var target = new URL(window.location.href);
