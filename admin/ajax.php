@@ -83,6 +83,26 @@ case 'checkupdate':
 		'latest'  => $latest ? ($latest['title'].'（'.update_time_ago($latest['date']).'）') : '',
 	], JSON_UNESCAPED_UNICODE));
 break;
+case 'onlineupdate_prepare':
+case 'onlineupdate_apply':
+case 'onlineupdate_restore':
+	/*
+	 * 后台在线更新（DEC-20261003-001），逻辑都在 includes/online_update.php。
+	 * 这三个动作会下载代码、覆盖站点文件，除了上面的 Referer 校验，
+	 * 还要求 POST 并带上「程序更新日志」页面给的令牌。
+	 */
+	include_once SYSTEM_ROOT.'online_update.php';
+	if($_SERVER['REQUEST_METHOD'] !== 'POST' || !oupd_check_token(isset($_POST['token']) ? $_POST['token'] : ''))exit('{"code":-1,"msg":"令牌无效，请刷新页面后再试"}');
+	//下载和覆盖可能要几十秒，先放开会话锁，别把同一管理员的其它标签页堵住
+	if(function_exists('session_write_close') && session_status() === PHP_SESSION_ACTIVE)session_write_close();
+	if($act == 'onlineupdate_restore'){
+		$result = oupd_restore(isset($_POST['name']) ? (string)$_POST['name'] : '');
+	}else{
+		$sha = isset($_POST['sha']) ? strtolower(trim((string)$_POST['sha'])) : '';
+		$result = $act == 'onlineupdate_prepare' ? oupd_prepare($sha) : oupd_apply($sha);
+	}
+	exit(json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+break;
 case 'set':
 	if(isset($_POST['green_label_porn'])){
 		$_POST['green_label_porn'] = implode(',',$_POST['green_label_porn']);

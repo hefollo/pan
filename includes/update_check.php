@@ -258,6 +258,34 @@ function update_status($force = false){
 		$d['state'] = 'latest';
 		$d['text']  = '已是最新版本';
 	}
+
+	/*
+	 * 用在线更新装过的站点记着自己装的是哪个提交（update_installed_sha，见 online_update.php），
+	 * 这比 VERSION 准：只改 PHP 的提交不提 VERSION，光看版本号会一直显示「已是最新」。
+	 * 能在提交列表里找到这个提交时，就按「落后几个提交」下结论；找不到（太旧或手工传过包）仍按版本号。
+	 * 「本地比仓库新」不在这里改判：那说明站点上有仓库里没有的改动，更要提醒。
+	 */
+	$d['installed_sha'] = '';
+	$d['behind'] = -1;
+	$installed = (string)getSetting('update_installed_sha');
+	if(preg_match('/^[0-9a-f]{40}$/', $installed)){
+		$d['installed_sha'] = $installed;
+		if(in_array($d['state'], ['latest', 'new', 'unknown'], true) && !empty($d['commits'])){
+			foreach($d['commits'] as $i => $c){
+				if(isset($c['sha']) && $c['sha'] === $installed){
+					$d['behind'] = $i;
+					break;
+				}
+			}
+			if($d['behind'] === 0 && !$d['need_db_update']){
+				$d['state'] = 'latest';
+				$d['text']  = '已是最新提交';
+			}elseif($d['behind'] > 0){
+				$d['state'] = 'new';
+				$d['text']  = '落后 '.$d['behind'].' 个提交';
+			}
+		}
+	}
 	return $d;
 }
 

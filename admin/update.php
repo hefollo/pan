@@ -6,16 +6,21 @@ $title = '程序更新日志';
 /*
  * 这一页做两件事：
  *   ① 把本地装的版本号和 GitHub 上 main 分支的版本号摆在一起，告诉站长有没有新版本；
- *   ② 列出 main 分支最近的提交，等于把 GitHub 的 commits 页面搬进后台，能看到改了什么。
+ *   ② 列出 main 分支最近的提交，等于把 GitHub 的 commits 页面搬进后台，能看到改了什么；
+ *   ③ 在线更新：下载仓库最新提交的 zip 覆盖站点文件，带备份和还原（includes/online_update.php，DEC-20261003-001）。
  *
  * 数据全部在服务端取（includes/update_check.php），结果缓存半小时。
  * GitHub 未登录时每个 IP 每小时只有 60 次额度，所以不要在页面里做轮询，
  * 「重新检查」也有 60 秒的最小间隔。
  */
 include_once SYSTEM_ROOT.'update_check.php';
+include_once SYSTEM_ROOT.'online_update.php';
 
 include './head.php';
 if($islogin==1){}else exit("<script language='javascript'>window.location.href='./login.php';</script>");
+
+//在线更新的令牌存在会话里，必须在下面关会话之前取
+$oupd_token = oupd_token();
 
 /*
  * 先把会话写回并解锁：下面要去访问 GitHub，慢的时候十几秒，
@@ -27,6 +32,12 @@ if(function_exists('session_write_close') && session_status() === PHP_SESSION_AC
 $u = update_status(isset($_GET['force']) && $_GET['force'] == '1');
 $badge = ['new'=>'label-warning', 'latest'=>'label-success', 'ahead'=>'label-info', 'unknown'=>'label-default', 'error'=>'label-default'];
 $badge = isset($badge[$u['state']]) ? $badge[$u['state']] : 'label-default';
+
+$oupd_errs = oupd_requirements();
+$oupd_target = (!empty($u['commits']) && isset($u['commits'][0]['sha']) && preg_match('/^[0-9a-f]{40}$/', $u['commits'][0]['sha'])) ? $u['commits'][0] : null;
+$oupd_installed = isset($u['installed_sha']) ? $u['installed_sha'] : '';
+$oupd_backups = $oupd_errs ? [] : oupd_backups();
+$oupd_last = json_decode((string)getSetting('update_last'), true);
 ?>
 <div class="container">
 <div class="admin-page">
@@ -59,7 +70,7 @@ $badge = isset($badge[$u['state']]) ? $badge[$u['state']] : 'label-default';
     </div>
 <?php }elseif($u['state'] === 'new'){?>
     <div class="alert alert-warning" style="margin:14px 0 0">
-      <b>仓库里有比当前站点更新的代码。</b>更新方式还是老样子：拿到新的全量包覆盖上传，<b>不要只传改动的几个文件</b>。
+      <b>仓库里有比当前站点更新的代码。</b>可以用下面的「在线更新」，或者照老办法拿新的全量包覆盖上传（<b>不要只传改动的几个文件</b>）。
 <?php if(!empty($u['need_db_update'])){?>
       <br/><b style="color:#b45309">这次动过数据库</b>（仓库 <?php echo intval($u['remote_db'])?> &gt; 本地 <?php echo intval($u['local_db'])?>）：传完文件必须再跑一次 <code>/install/update.php</code>，否则版本门禁会把整站拦住。
 <?php }?>
@@ -68,9 +79,63 @@ $badge = isset($badge[$u['state']]) ? $badge[$u['state']] : 'label-default';
     <div class="alert alert-info" style="margin:14px 0 0">
       当前站点的版本号比仓库还高，一般是本地改完还没推到 GitHub。
     </div>
+<?php }elseif(isset($u['behind']) && $u['behind'] === 0){?>
+    <div class="alert alert-success" style="margin:14px 0 0">
+      站点装的就是仓库最新的提交 <code><?php echo substr($u['installed_sha'], 0, 7)?></code>（上次在线更新时记下的）。
+    </div>
 <?php }else{?>
     <div class="alert alert-success" style="margin:14px 0 0">
       版本号和仓库一致。<b>但版本号一样不代表代码一定一样</b>：<code>VERSION</code> 只在改了 <code>assets/js/</code> 这类静态资源时才提，只改 PHP 的提交不会动它。具体改了什么看下面的提交列表。
+    </div>
+<?php }?>
+  </div>
+</div>
+
+<div class="panel panel-primary">
+  <div class="panel-heading update-head">
+    <h3 class="panel-title"><i class="fa fa-download" aria-hidden="true"></i> 在线更新</h3>
+  </div>
+  <div class="panel-body">
+<?php if($oupd_errs){?>
+    <div class="alert alert-warning" style="margin:0">
+      <b>这台服务器暂时用不了在线更新：</b><br/><?php echo implode('<br/>', array_map(function($e){ return htmlspecialchars($e, ENT_QUOTES, 'UTF-8'); }, $oupd_errs))?><br/>
+      还是可以照老办法上传全量包。
+    </div>
+<?php }elseif(!$oupd_target){?>
+    <div class="alert alert-warning" style="margin:0">
+      没取到仓库的提交列表，不知道该更新到哪个提交。等上面的版本检查恢复正常后再来。
+    </div>
+<?php }else{?>
+    <div class="oupd-kv">
+      <div><span>站点当前</span><?php if($oupd_installed !== ''){?><code><?php echo substr($oupd_installed, 0, 7)?></code><?php }else{?><em>未知（之前是手工上传的包）</em><?php }?></div>
+      <div><span>更新到</span><code><?php echo substr($oupd_target['sha'], 0, 7)?></code> <?php echo htmlspecialchars($oupd_target['title'], ENT_QUOTES, 'UTF-8')?></div>
+<?php   if(is_array($oupd_last) && !empty($oupd_last['time'])){?>
+      <div><span>上次在线更新</span><?php echo date('Y-m-d H:i', intval($oupd_last['time']))?>，改 <?php echo intval(isset($oupd_last['changed']) ? $oupd_last['changed'] : 0)?> 个、新增 <?php echo intval(isset($oupd_last['added']) ? $oupd_last['added'] : 0)?> 个文件</div>
+<?php   }?>
+    </div>
+    <div class="oupd-btns">
+      <button type="button" class="btn btn-primary btn-sm" id="oupd-check" data-sha="<?php echo $oupd_target['sha']?>"><i class="fa fa-search" aria-hidden="true"></i> <?php echo $oupd_installed === $oupd_target['sha'] ? '重新核对站点文件' : '检查要更新哪些文件'?></button>
+    </div>
+    <div id="oupd-result"></div>
+    <ul class="oupd-notes">
+      <li>先「检查」只下载和比对，不改任何文件；确认后才覆盖。</li>
+      <li>覆盖前会把要被替换的旧文件打成备份，下方可以一键还原；写到一半出错会自动退回原样。</li>
+      <li>不会动：<code>config.php</code>、<code>install/install.lock</code>、<code>includes/vendor/</code>、上传的文件和自定义配色；仓库里删掉的文件也不会从站点删除。</li>
+      <li>站点上直接改过的程序文件会被仓库版本覆盖（备份里有原件）。</li>
+    </ul>
+<?php }?>
+<?php if($oupd_backups){?>
+    <div class="oupd-backups">
+      <div class="oupd-sub">更新备份（保留最近 <?php echo OUPD_KEEP_BACKUPS?> 份）</div>
+<?php   foreach($oupd_backups as $b){?>
+      <div class="oupd-backup">
+        <div>
+          <b><?php echo date('Y-m-d H:i', intval($b['time']))?></b>
+          <span class="oupd-muted"><?php echo $b['from_sha'] ? substr($b['from_sha'], 0, 7) : '未知'?> → <?php echo $b['to_sha'] ? substr($b['to_sha'], 0, 7) : '?'?> · 覆盖 <?php echo intval($b['changed'])?> 个、新增 <?php echo intval($b['added'])?> 个 · <?php echo size_format($b['size'])?></span>
+        </div>
+        <button type="button" class="btn btn-default btn-xs oupd-restore" data-name="<?php echo htmlspecialchars($b['name'], ENT_QUOTES, 'UTF-8')?>"><i class="fa fa-undo" aria-hidden="true"></i> 还原到这次更新之前</button>
+      </div>
+<?php   }?>
     </div>
 <?php }?>
   </div>
@@ -110,5 +175,82 @@ $badge = isset($badge[$u['state']]) ? $badge[$u['state']] : 'label-default';
 
 </div>
 </div>
+<script>
+(function(){
+	var token = <?php echo json_encode($oupd_token)?>;
+	var dbUpdateUrl = <?php echo json_encode(site_root_url().'install/update.php', JSON_UNESCAPED_SLASHES)?>;
+	//接口返回的东西（文件名、提示）一律转义后再拼进页面
+	function esc(s){ return $('<div>').text(s == null ? '' : String(s)).html(); }
+	function list(title, arr, total){
+		if(!arr || !arr.length)return '';
+		var more = total > arr.length ? '<li>…… 共 ' + total + ' 个</li>' : '';
+		return '<div class="oupd-sub">' + esc(title) + '（' + total + '）</div><ul class="oupd-files"><li>' + $.map(arr, esc).join('</li><li>') + '</li>' + more + '</ul>';
+	}
+	function warnings(d){
+		var w = [];
+		if(d.need_db)w.push('这次改过数据库（仓库 ' + esc(d.db_version) + ' &gt; 站点 ' + esc(d.local_db) + '）：更新完必须再跑一次 <a href="' + esc(dbUpdateUrl) + '" target="_blank">/install/update.php</a>，否则整站会被版本门禁拦住。');
+		if(d.composer_changed)w.push('<code>includes/composer.json</code> 有变化：在线更新不碰 <code>includes/vendor/</code>，依赖要另外补（上传全量包里的 vendor，或在 includes 目录执行 composer install）。');
+		if(d.admin_dir && d.admin_dir !== 'admin')w.push('仓库里的 <code>admin/</code> 会写到站点实际的后台目录 <code>' + esc(d.admin_dir) + '/</code>。');
+		return w.length ? '<div class="alert alert-warning oupd-alert">' + w.join('<br/>') + '</div>' : '';
+	}
+	function post(act, data, done){
+		var ii = layer.load(2, {shade:[0.1,'#fff']});
+		data.token = token;
+		$.ajax({type:'POST', url:'ajax.php?act=' + act, data:data, dataType:'json', timeout:600000,
+			success:function(d){ layer.close(ii); done(d || {code:-1, msg:'返回内容为空'}); },
+			error:function(xhr, status){ layer.close(ii); done({code:-1, msg: status === 'timeout' ? '请求超时。如果是在更新途中，请刷新页面看结果，必要时用下方备份还原' : '服务器错误（HTTP ' + xhr.status + '）'}); }
+		});
+	}
+	$('#oupd-check').on('click', function(){
+		var sha = String($(this).data('sha')), $out = $('#oupd-result');
+		post('onlineupdate_prepare', {sha:sha}, function(d){
+			if(d.code != 0){
+				$out.html('<div class="alert alert-danger oupd-alert">' + esc(d.msg) + '</div>');
+				return;
+			}
+			var total = d.changed_count + d.added_count;
+			var html = '<div class="oupd-summary">仓库版本 <b>' + esc(d.version) + '</b>（数据库 ' + esc(d.db_version) + '）：'
+				+ '修改 <b>' + d.changed_count + '</b> 个、新增 <b>' + d.added_count + '</b> 个，'
+				+ d.unchanged + ' 个和站点一致，' + d.skipped_count + ' 个不随站点发布。</div>';
+			if(d.unwritable && d.unwritable.length){
+				html += '<div class="alert alert-danger oupd-alert">下面这些文件或目录 PHP 写不了，修好权限前不能更新：</div>' + list('不可写', d.unwritable, d.unwritable.length);
+			}else{
+				html += warnings(d) + list('将修改', d.changed, d.changed_count) + list('将新增', d.added, d.added_count);
+				html += '<div class="oupd-btns"><button type="button" class="btn btn-success btn-sm" id="oupd-apply"><i class="fa fa-check" aria-hidden="true"></i> '
+					+ (total ? '确认更新这 ' + total + ' 个文件' : '文件已一致，记为已更新到此提交') + '</button></div>';
+			}
+			$out.html(html);
+			$('#oupd-apply').on('click', function(){
+				var short = esc(sha.substr(0, 7));
+				layer.confirm(total ? '确定用仓库提交 ' + short + ' 覆盖这 ' + total + ' 个文件？<br/>旧文件会先备份。' : '记为已更新到 ' + short + '？', {icon:3, title:'在线更新'}, function(idx){
+					layer.close(idx);
+					post('onlineupdate_apply', {sha:sha}, function(r){
+						if(r.code != 0){
+							var h = '<div class="alert alert-danger oupd-alert">' + esc(r.msg) + '</div>';
+							if(r.unwritable && r.unwritable.length)h += list('不可写', r.unwritable, r.unwritable.length);
+							$out.html(h);
+							return;
+						}
+						var ok = '<div class="alert alert-success oupd-alert"><b>' + esc(r.msg) + '</b>'
+							+ (r.backup ? '：修改 ' + r.changed_count + ' 个、新增 ' + r.added_count + ' 个文件，旧文件已备份。' : '。')
+							+ ' <a href="./update.php">刷新本页</a></div>';
+						$out.html(ok + warnings(r));
+						$('#oupd-check').prop('disabled', true);
+					});
+				});
+			});
+		});
+	});
+	$('.oupd-restore').on('click', function(){
+		var name = $(this).data('name');
+		layer.confirm('把这次更新覆盖掉的文件写回去、删掉这次新增的文件？<br/>数据库不会跟着退回。', {icon:3, title:'还原'}, function(idx){
+			layer.close(idx);
+			post('onlineupdate_restore', {name:name}, function(r){
+				layer.alert(esc(r.msg), {icon: r.code == 0 ? 1 : 2, closeBtn:false}, function(){ window.location.reload(); });
+			});
+		});
+	});
+})();
+</script>
 </body>
 </html>
