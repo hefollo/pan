@@ -484,7 +484,7 @@ $cap_now = $stor_caps[$storage];
 						</div>
 					<?php }?>
 					</div>
-					<p class="help-block">填写 <b>0</b> 表示不限速。高级用户必须权限仍在有效期内；权限到期后自动按普通登录用户速度计算。限速用户会强制走网站中转，不再跳转到对象存储直链。整站使用 CDN 时，请勿对 <b>down.php</b> 和 <b>view.php</b> 设置强制缓存，否则命中 CDN 缓存后将绕过本站限速。</p>
+					<p class="help-block">填写 <b>0</b> 表示不限速。高级用户必须权限仍在有效期内；权限到期后自动按普通登录用户速度计算。买了带下载限速的套餐（或在用户管理里单独设了速度）的用户，有效期内按自己的速度，不看这里的档位。限速用户会强制走网站中转，不再跳转到对象存储直链。整站使用 CDN 时，请勿对 <b>down.php</b> 和 <b>view.php</b> 设置强制缓存，否则命中 CDN 缓存后将绕过本站限速。</p>
 				</div>
 			</div>
 			<div class="form-group" id="row_domain"<?php echo ($conf['downfile_type']=='1' && $cap_now['domain']) ? '' : ' style="display:none"'?>>

@@ -1288,6 +1288,37 @@ function plan_result_size_text($plan){
 }
 
 /*
+ * 下载速度文案。速度一律按 KB/s 存，0 是不限速，满 1 MB/s 的换成 MB/s 显示
+ */
+function speed_text($kbps){
+	$kbps = intval($kbps);
+	if($kbps <= 0)return '不限速';
+	if($kbps >= 1024){
+		$mb = $kbps / 1024;
+		return (floor($mb) == $mb ? intval($mb) : round($mb, 1)).' MB/s';
+	}
+	return $kbps.' KB/s';
+}
+
+/*
+ * 后台套餐列表、订单列表上的下载限速：-1 表示这个套餐不改动下载速度
+ */
+function plan_speed_text($value){
+	$value = intval($value);
+	if($value < 0)return '不改动';
+	return speed_text($value);
+}
+
+/*
+ * 购买页卡片：买完之后的下载速度，套餐不动这一项就写“不变”（和单文件大小一个口径）
+ */
+function plan_result_speed_text($plan){
+	$value = isset($plan['down_speed']) ? intval($plan['down_speed']) : -1;
+	if($value < 0)return '不变';
+	return speed_text($value);
+}
+
+/*
  * 购买页按分类把套餐分组，分类的先后顺序按套餐排序里第一次出现的顺序来，
  * 没填分类的归到最后一组，这样老站点不填分类也能照常显示（全都没填时购买页不显示分组标题）
  */
@@ -1328,7 +1359,7 @@ function grant_plan_to_user($uid, $order, $lock_user = false){
 
 	$days = intval($order['days']);
 	//没有到期时间、但已经有付费权限的，算永久权限
-	$has_forever = empty($user['expiretime']) && (intval($user['upload_limit']) >= 0 || intval($user['upload_size']) >= 0 || intval($user['level']) > 0);
+	$has_forever = user_has_forever_permission($user);
 
 	if($days <= 0 || $has_forever){
 		$expiretime = null;
@@ -1345,6 +1376,7 @@ function grant_plan_to_user($uid, $order, $lock_user = false){
 		'upload_limit' => resolve_plan_upload_limit($user, $order),
 		'bonus_limit' => resolve_plan_bonus_limit($user, $order),
 		'upload_size' => resolve_plan_upload_size($user, $order),
+		'down_speed' => resolve_plan_down_speed($user, $order),
 	];
 	/*
 	 * 已经是永久权限的用户再买时长套餐，时间上没什么可加的（还是永久），
@@ -1354,6 +1386,7 @@ function grant_plan_to_user($uid, $order, $lock_user = false){
 	if($has_forever){
 		$data['upload_limit'] = better_permission($user['upload_limit'], $data['upload_limit'], isset($conf['upload_limit']) ? $conf['upload_limit'] : 0);
 		$data['upload_size'] = better_permission($user['upload_size'], $data['upload_size'], isset($conf['upload_size']) ? $conf['upload_size'] : 0);
+		$data['down_speed'] = better_speed(isset($user['down_speed']) ? $user['down_speed'] : -1, $data['down_speed'], user_tier_speed_kbps($user));
 	}
 	//DB->update 会把空字符串写成 NULL，正好用来表示永久
 	$data['expiretime'] = $expiretime === null ? '' : $expiretime;
@@ -1361,9 +1394,9 @@ function grant_plan_to_user($uid, $order, $lock_user = false){
 	unset($_SESSION['layout_plan']);
 	$ok = $DB->update('user', $data, ['uid'=>$uid]);
 	if($ok === false && isset($data['bonus_limit']) && !$lock_user){
-		//站点还没执行 install/update.php 的话没有 bonus_limit 这一列，
-		//这时候宁可少发加量额度，也不能因为一个字段就把整笔权限卡住不发
-		unset($data['bonus_limit']);
+		//站点还没执行 install/update.php 的话没有 bonus_limit / down_speed 这两列，
+		//这时候宁可少发加量额度和下载速度，也不能因为一个字段就把整笔权限卡住不发
+		unset($data['bonus_limit'], $data['down_speed']);
 		$ok = $DB->update('user', $data, ['uid'=>$uid]);
 	}
 	return $ok !== false;
@@ -1439,6 +1472,54 @@ function resolve_plan_upload_size($user, $order){
 }
 
 /*
+ * 算出这一单发放后的“下载限速”（KB/s），规则和单文件大小一样：
+ * 套餐填了 0 或具体速度就用套餐的；填 -1 表示不改动，保持用户现在的速度，
+ * 权限已经过期的话回到 -1，也就是跟随身份档位（游客 / 普通登录用户 / 有效高级用户）的速度。
+ * 老订单没有这个字段，按 -1 处理。
+ */
+function resolve_plan_down_speed($user, $order){
+	$value = isset($order['down_speed']) ? intval($order['down_speed']) : -1;
+	if($value >= 0)return $value;
+	$active = empty($user['expiretime']) || strtotime($user['expiretime']) > time();
+	return ($active && isset($user['down_speed'])) ? intval($user['down_speed']) : -1;
+}
+
+/*
+ * 没有到期时间、但已经有付费权限的，算永久权限（发放和购买页判断共用）
+ */
+function user_has_forever_permission($user){
+	return empty($user['expiretime']) && (intval($user['upload_limit']) >= 0 || intval($user['upload_size']) >= 0 || intval($user['level']) > 0
+		|| (isset($user['down_speed']) && intval($user['down_speed']) >= 0));
+}
+
+/*
+ * 这个用户不看自己的 down_speed 时，按身份档位能拿到的速度：
+ * level>0 且权限有效算高级用户，其余登录用户算普通登录用户
+ */
+function user_tier_speed_kbps($user){
+	$active = empty($user['expiretime']) || strtotime($user['expiretime']) > time();
+	$vip = isset($user['level']) && intval($user['level']) > 0 && $active;
+	return download_tier_speed_kbps($vip ? 2 : 1);
+}
+
+/*
+ * 速度的强弱：0 不限速最强，其余数字越大越快；-1 先换算成身份档位的速度再比。
+ * 不能复用 permission_weight()：那里 -1 换算出来的 0 会被当成最弱，而速度的 0 是不限速。
+ */
+function speed_weight($value, $tier_kbps){
+	$value = intval($value);
+	if($value < 0)$value = intval($tier_kbps);
+	return $value === 0 ? PHP_INT_MAX : $value;
+}
+
+/*
+ * 取更快的那个速度（用于永久用户，避免买了低档套餐反而被降速）
+ */
+function better_speed($current, $new_value, $tier_kbps){
+	return speed_weight($new_value, $tier_kbps) >= speed_weight($current, $tier_kbps) ? intval($new_value) : intval($current);
+}
+
+/*
  * 套餐卡片和后台列表上显示的每日数量文案
  */
 function plan_limit_display($plan){
@@ -1459,12 +1540,13 @@ function plan_effect($user, $plan){
 		'upload_limit' => intval($plan['upload_limit']),
 		'limit_mode' => isset($plan['limit_mode']) ? $plan['limit_mode'] : 'set',
 		'upload_size' => intval($plan['upload_size']),
+		'down_speed' => isset($plan['down_speed']) ? intval($plan['down_speed']) : -1,
 		'days' => intval($plan['days']),
 	];
 	$site_limit = isset($conf['upload_limit']) ? intval($conf['upload_limit']) : 0;
 	$site_size = isset($conf['upload_size']) ? intval($conf['upload_size']) : 0;
 	$active = empty($user['expiretime']) || strtotime($user['expiretime']) > time();
-	$has_forever = empty($user['expiretime']) && (intval($user['upload_limit']) >= 0 || intval($user['upload_size']) >= 0 || intval($user['level']) > 0);
+	$has_forever = user_has_forever_permission($user);
 
 	//现在实际能用到的额度：-1 要换算成全站的值，加量额度要算进去
 	$now_base = ($active && intval($user['upload_limit']) >= 0) ? intval($user['upload_limit']) : $site_limit;
@@ -1484,8 +1566,18 @@ function plan_effect($user, $plan){
 	$after_limit = $after_base === 0 ? 0 : $after_base + max(0, $new_bonus);
 	$after_size = $new_size >= 0 ? $new_size : $site_size;
 
+	//下载速度：用户自己的值有效时用它，否则是身份档位的速度；买完权限一定有效，高级用户按高级档位算
+	$now_tier_speed = user_tier_speed_kbps($user);
+	$user_speed = isset($user['down_speed']) ? intval($user['down_speed']) : -1;
+	$now_speed = ($active && $user_speed >= 0) ? $user_speed : $now_tier_speed;
+	$after_tier_speed = download_tier_speed_kbps(intval($user['level']) > 0 ? 2 : 1);
+	$new_speed = resolve_plan_down_speed($user, $order);
+	if($has_forever)$new_speed = better_speed($user_speed, $new_speed, $after_tier_speed);
+	$after_speed = $new_speed >= 0 ? $new_speed : $after_tier_speed;
+
 	$improved = permission_weight($after_limit, $site_limit) > permission_weight($now_limit, $site_limit)
-		|| permission_weight($after_size, $site_size) > permission_weight($now_size, $site_size);
+		|| permission_weight($after_size, $site_size) > permission_weight($now_size, $site_size)
+		|| speed_weight($after_speed, 0) > speed_weight($now_speed, 0);
 	/*
 	 * 时长上的收益只对“当前就是限时权限”的用户成立：续期或换成永久都算。
 	 * 本来就没有到期时间的用户（新用户、跟随全站的用户、已经永久的用户），
@@ -1496,10 +1588,12 @@ function plan_effect($user, $plan){
 	$lower = [];
 	if(permission_weight($after_limit, $site_limit) < permission_weight($now_limit, $site_limit))$lower[] = '每日上传数量';
 	if(permission_weight($after_size, $site_size) < permission_weight($now_size, $site_size))$lower[] = '单文件大小';
+	if(speed_weight($after_speed, 0) < speed_weight($now_speed, 0))$lower[] = '下载速度';
 
 	return [
 		'limit' => $after_limit,
 		'size' => $after_size,
+		'speed' => $after_speed,
 		'days' => $time_gain,
 		'changed' => $improved || $time_gain,
 		'lower' => $lower,
@@ -2049,10 +2143,23 @@ function storage_user_tier(){
 	return 1;
 }
 
-/* 当前下载者的速度上限，统一返回 KB/s。0 表示不限速。 */
+/*
+ * 当前下载者的速度上限，统一返回 KB/s。0 表示不限速。
+ * 买过带下载限速的套餐（或后台给用户单独设了速度）、并且权限还在有效期内时，按用户自己的速度；
+ * 否则按身份档位。权限到期后自动回到档位速度。
+ */
 function get_effective_download_speed_kbps(){
+	global $islogin2, $userrow;
+	if(!empty($islogin2) && is_user_permission_active() && isset($userrow['down_speed']) && $userrow['down_speed'] !== null && intval($userrow['down_speed']) >= 0){
+		return intval($userrow['down_speed']);
+	}
+	return download_tier_speed_kbps(storage_user_tier());
+}
+
+/* 某一档身份的速度上限（KB/s），0 不限速。档位：2 有效高级用户、1 普通登录用户、0 游客 */
+function download_tier_speed_kbps($tier){
 	global $conf;
-	$tier = storage_user_tier();
+	$tier = intval($tier);
 	$key = $tier >= 2 ? 'vip' : ($tier === 1 ? 'user' : 'guest');
 	$value = isset($conf['down_speed_'.$key]) ? floatval($conf['down_speed_'.$key]) : 0;
 	if($value <= 0 || !is_finite($value))return 0;

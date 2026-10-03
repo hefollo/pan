@@ -96,6 +96,7 @@ if($act === 'create' || $act === 'query'){
 			&& number_format(floatval($exist['price']), 2, '.', '') === number_format($price, 2, '.', '')
 			&& intval($exist['upload_limit']) === intval($plan['upload_limit'])
 			&& intval($exist['upload_size']) === intval($plan['upload_size'])
+			&& intval(isset($exist['down_speed']) ? $exist['down_speed'] : -1) === intval(isset($plan['down_speed']) ? $plan['down_speed'] : -1)
 			&& intval($exist['days']) === intval($plan['days'])
 			&& (isset($exist['limit_mode']) ? $exist['limit_mode'] : 'set') === $limit_mode){
 			$trade_no = $exist['trade_no'];
@@ -123,6 +124,7 @@ if($act === 'create' || $act === 'query'){
 				'upload_limit' => intval($plan['upload_limit']),
 				'limit_mode' => $limit_mode,
 				'upload_size' => intval($plan['upload_size']),
+				'down_speed' => isset($plan['down_speed']) ? intval($plan['down_speed']) : -1,
 				'days' => intval($plan['days']),
 				'status' => 0,
 				'ip' => $clientip,
@@ -238,11 +240,12 @@ include SYSTEM_ROOT.'header.php';
 <?php if($islogin2){
 	$cur_limit = limit_number_text(get_effective_upload_count_limit(), '个/天');
 	$cur_size = limit_number_text(get_effective_upload_size_limit(), 'MB');
+	$cur_speed = speed_text(get_effective_download_speed_kbps());
 	$cur_expire = empty($userrow['expiretime']) ? '永久有效' : (is_user_permission_active() ? ($userrow['expiretime'].' 到期') : ($userrow['expiretime'].' 已过期'));
 ?>
         <div class="buy-current">
             <span>当前权限</span>
-            <strong>每日上传 <?php echo htmlspecialchars($cur_limit)?><?php if(!empty($userrow['bonus_limit']) && is_user_permission_active()){?>（含加量包 +<?php echo intval($userrow['bonus_limit'])?>）<?php }?>　单文件 <?php echo htmlspecialchars($cur_size)?>　<?php echo htmlspecialchars($cur_expire)?></strong>
+            <strong>每日上传 <?php echo htmlspecialchars($cur_limit)?><?php if(!empty($userrow['bonus_limit']) && is_user_permission_active()){?>（含加量包 +<?php echo intval($userrow['bonus_limit'])?>）<?php }?>　单文件 <?php echo htmlspecialchars($cur_size)?>　下载 <?php echo htmlspecialchars($cur_speed)?>　<?php echo htmlspecialchars($cur_expire)?></strong>
         </div>
 <?php }?>
 <?php if(count($methods) > 1){?>
@@ -280,6 +283,9 @@ include SYSTEM_ROOT.'header.php';
                 <ul class="buy-plan-list">
                     <li><i class="fa fa-check" aria-hidden="true"></i> 每日上传 <?php echo htmlspecialchars(plan_result_limit_text($plan))?></li>
                     <li><i class="fa fa-check" aria-hidden="true"></i> 单文件大小 <?php echo htmlspecialchars(plan_result_size_text($plan))?></li>
+<?php if(isset($plan['down_speed']) && intval($plan['down_speed']) >= 0){?>
+                    <li><i class="fa fa-check" aria-hidden="true"></i> 下载速度 <?php echo htmlspecialchars(plan_result_speed_text($plan))?></li>
+<?php }?>
                     <li><i class="fa fa-check" aria-hidden="true"></i> <?php echo htmlspecialchars(plan_days_text($plan['days']))?></li>
 <?php if(!empty($plan['remark'])){?>
                     <li><i class="fa fa-check" aria-hidden="true"></i> <?php echo htmlspecialchars($plan['remark'], ENT_QUOTES, 'UTF-8')?></li>
@@ -303,6 +309,7 @@ include SYSTEM_ROOT.'header.php';
 <?php }?>
         <p class="buy-tip">有效期一律在现有剩余时间上叠加，买到永久套餐则直接变为永久有效。<br/>
         时长套餐（周卡月卡这类）会把每日数量和单文件大小换成该套餐的额度；加量包只加数量，大文件包只提大小，都不会动其它项。<br/>
+        标了下载速度的套餐，有效期内按套餐的速度下载；没标的不改动你现在的下载速度。<br/>
         所以建议先买时长套餐，再买加量包和大文件包。</p>
     </div>
 </div>

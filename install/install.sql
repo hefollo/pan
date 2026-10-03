@@ -16,7 +16,7 @@ create table `pre_config` (
 --   · 如果没有并进来 → 这里保持旧值不动，让全新安装照常跑一次升级把它补上。
 -- 改错方向（并进来了却不改版本号）只是多跑一趟空升级；
 -- 改反了（没并进来却改了版本号）会让新装的站永久缺表缺字段，且毫无报错。
-INSERT INTO `pre_config` VALUES ('version', '1024');
+INSERT INTO `pre_config` VALUES ('version', '1025');
 INSERT INTO `pre_config` VALUES ('admin_user', 'admin');
 INSERT INTO `pre_config` VALUES ('admin_pwd', '123456');
 INSERT INTO `pre_config` VALUES ('blackip', '');
@@ -207,6 +207,7 @@ CREATE TABLE `pre_user` (
   `upload_size` int(11) NOT NULL DEFAULT '-1',
   `upload_limit` int(11) NOT NULL DEFAULT '-1',
   `bonus_limit` int(11) NOT NULL DEFAULT '0' COMMENT '加量包累计的每日额度',
+  `down_speed` int(11) NOT NULL DEFAULT '-1' COMMENT '下载限速KB/s：-1跟随身份档位 0不限速 N每秒N KB',
   `expiretime` datetime DEFAULT NULL,
   `addtime` datetime NOT NULL,
   `lasttime` datetime NOT NULL,
@@ -319,6 +320,7 @@ CREATE TABLE `pre_plan` (
   `upload_limit` int(11) NOT NULL DEFAULT '-1' COMMENT '每日上传数量：-1继承全站 0不限 N每天N个',
   `limit_mode` varchar(8) NOT NULL DEFAULT 'set' COMMENT '每日数量发放方式：set设为 add在现有基础上增加',
   `upload_size` int(11) NOT NULL DEFAULT '-1' COMMENT '单文件大小MB：-1继承全站 0不限',
+  `down_speed` int(11) NOT NULL DEFAULT '-1' COMMENT '下载限速KB/s：-1不改动 0不限速 N每秒N KB',
   `days` int(11) NOT NULL DEFAULT '0' COMMENT '有效期天数，0为永久',
   `remark` varchar(255) DEFAULT NULL COMMENT '套餐说明',
   `sort` int(11) NOT NULL DEFAULT '0' COMMENT '排序，小的在前',
@@ -341,6 +343,7 @@ CREATE TABLE `pre_order` (
   `upload_limit` int(11) NOT NULL DEFAULT '-1',
   `limit_mode` varchar(8) NOT NULL DEFAULT 'set',
   `upload_size` int(11) NOT NULL DEFAULT '-1',
+  `down_speed` int(11) NOT NULL DEFAULT '-1' COMMENT '下单时的套餐下载限速快照',
   `days` int(11) NOT NULL DEFAULT '0',
   `status` tinyint(1) NOT NULL DEFAULT '0' COMMENT '0待支付 1已支付并发放 2已关闭',
   `ip` varchar(46) DEFAULT NULL,

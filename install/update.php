@@ -239,9 +239,20 @@ $q2 = $db->query("SHOW COLUMNS FROM `pre_file` LIKE 'copied'");
 if(!$q1 || !$q1->fetchColumn() || !$q2 || !$q2->fetchColumn()){
 	$sqls = array_merge($sqls, read_sql('update_1024_file.sql'));
 }
-$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1024')";
-//上面 else 分支只按 1022 判断「已是最新」，从 1022/1023 升上来时要改回「升级完成」的提示
-if($version < 1024)$uptodate = false;
+/*
+ * 1025 套餐下载限速：套餐、订单、用户三张表各加 down_speed，同样是 ALTER，
+ * 三张表里缺任何一列就整份跑一遍（已有的那条会报重复字段被跳过）。
+ */
+foreach(['pre_plan', 'pre_order', 'pre_user'] as $speed_table){
+	$q = $db->query("SHOW COLUMNS FROM `".$speed_table."` LIKE 'down_speed'");
+	if(!$q || !$q->fetchColumn()){
+		$sqls = array_merge($sqls, read_sql('update_1025.sql'));
+		break;
+	}
+}
+$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1025')";
+//上面 else 分支只按 1022 判断「已是最新」，从 1022～1024 升上来时要改回「升级完成」的提示
+if($version < 1025)$uptodate = false;
 
 $success=0;$skipped=0;$error=0;$errorMsg=null;
 foreach ($sqls as $value) {
@@ -318,6 +329,19 @@ if($lost_cols){
 	echo '<div style="font:13px/1.7 system-ui;margin:0 24px;padding:14px;border:1px solid #f0c2c2;background:#fff5f5;border-radius:8px;color:#a33">'
 		.'<b>升级没有完成：</b><code>pre_file</code> 表缺少 <code>'.htmlspecialchars(implode('、', $lost_cols), ENT_QUOTES, 'UTF-8').'</code> 字段。<br>'
 		.'请确认 <code>install/update_1024_file.sql</code> 已上传，以及数据库账号有改表权限，然后重新打开本页再升级一次。</div>';
+	echo '<p style="font:14px/1.7 system-ui;padding:16px 24px"><a href="../">返回首页</a></p>';
+	exit;
+}
+//1025 的 down_speed：缺了它，后台保存套餐、下单、发放权限都会因为字段不存在而失败
+$lost_speed = [];
+foreach(['pre_plan', 'pre_order', 'pre_user'] as $speed_table){
+	$q = $db->query("SHOW COLUMNS FROM `".$speed_table."` LIKE 'down_speed'");
+	if(!$q || !$q->fetchColumn())$lost_speed[] = $speed_table;
+}
+if($lost_speed){
+	echo '<div style="font:13px/1.7 system-ui;margin:0 24px;padding:14px;border:1px solid #f0c2c2;background:#fff5f5;border-radius:8px;color:#a33">'
+		.'<b>升级没有完成：</b><code>'.htmlspecialchars(implode('、', $lost_speed), ENT_QUOTES, 'UTF-8').'</code> 表缺少 <code>down_speed</code> 字段。<br>'
+		.'请确认 <code>install/update_1025.sql</code> 已上传，以及数据库账号有改表权限，然后重新打开本页再升级一次。</div>';
 	echo '<p style="font:14px/1.7 system-ui;padding:16px 24px"><a href="../">返回首页</a></p>';
 	exit;
 }

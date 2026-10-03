@@ -17,7 +17,7 @@ if($islogin==1){}else exit("<script language='javascript'>window.location.href='
 				<h4 class="modal-title" id="modal-title">用户信息修改</h4>
 			</div>
 			<div class="modal-body">
-			<div class="alert alert-info">上传大小限制、每日上传数量留空或填 -1 表示继承全站设置；填 0 表示不限制。到期时间为空表示永久有效；到期后自动按普通用户权限生效。</div>
+			<div class="alert alert-info">上传大小限制、每日上传数量留空或填 -1 表示继承全站设置；填 0 表示不限制。下载限速留空或填 -1 表示按身份（普通 / 高级）的速度。到期时间为空表示永久有效；到期后自动按普通用户权限生效。</div>
 				<form class="form-horizontal" id="form-store">
 					<input type="hidden" name="action" id="action"/>
 					<input type="hidden" name="uid" id="uid"/>
@@ -46,6 +46,15 @@ if($islogin==1){}else exit("<script language='javascript'>window.location.href='
 						<label class="col-sm-2 control-label no-padding-right">加量额度</label>
 						<div class="col-sm-10">
 							<input type="number" class="form-control" id="bonus_limit" name="bonus_limit" min="0" step="1" placeholder="加量包累计的每日额度，会加在上面的每日数量之上"/>
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label no-padding-right">下载限速</label>
+						<div class="col-sm-10">
+							<div class="input-group">
+								<input type="number" class="form-control" id="down_speed" name="down_speed" min="-1" step="1" placeholder="-1 按身份速度，0 不限速；1024 KB/s = 1 MB/s">
+								<span class="input-group-addon">KB/s</span>
+							</div>
 						</div>
 					</div>
 					<div class="form-group">
@@ -194,7 +203,7 @@ $(document).ready(function(){
 					window.userRows[row.uid] = row;
 					var bonus = parseInt(row.bonus_limit || 0, 10);
 					return '大小：'+formatLimitValue(row.upload_size, 'MB')+'<br/>数量：'+formatLimitValue(row.upload_limit, '个/天')
-						+ (bonus > 0 ? '（加量 +'+bonus+'）' : '')+'<br/>到期：'+formatExpireTime(row.expiretime);
+						+ (bonus > 0 ? '（加量 +'+bonus+'）' : '')+'<br/>下载：'+formatSpeedValue(row.down_speed)+'<br/>到期：'+formatExpireTime(row.expiretime);
 				}
 			},
 			{
@@ -247,6 +256,18 @@ function formatLimitValue(value, unit){
 	return value + unit;
 }
 
+//下载限速按 KB/s 存，-1 跟随身份速度；满 1 MB/s 的换成 MB/s 显示，和 PHP 的 speed_text() 一致
+function formatSpeedValue(value){
+	value = parseLimitValue(value);
+	if(value < 0) return '按身份';
+	if(value == 0) return '不限速';
+	if(value >= 1024){
+		var mb = value / 1024;
+		return (Math.floor(mb) === mb ? mb : Math.round(mb * 10) / 10) + ' MB/s';
+	}
+	return value + ' KB/s';
+}
+
 function isPermissionExpired(expiretime){
 	if(!expiretime) return false;
 	return new Date(String(expiretime).replace(/-/g, '/')).getTime() <= new Date().getTime();
@@ -271,6 +292,7 @@ function setLevel(uid){
 	$("#form-store #upload_size").val(parseLimitValue(row.upload_size));
 	$("#form-store #upload_limit").val(parseLimitValue(row.upload_limit));
 	$("#form-store #bonus_limit").val(row.bonus_limit ? row.bonus_limit : 0);
+	$("#form-store #down_speed").val(parseLimitValue(row.down_speed));
 	$("#form-store #expire_days").val('');
 	$("#form-store #expiretime").val(toDatetimeLocal(row.expiretime));
 }

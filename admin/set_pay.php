@@ -9,6 +9,16 @@ $title = '购买套餐设置';
  * 整个页面不用刷新。没有 JS 时表单照常整页提交，逻辑完全一样。
  */
 $is_ajax = isset($_POST['ajax']) && $_POST['ajax'] === '1';
+
+/*
+ * 下载限速在库里一律存 KB/s，表单上让站长按 KB/s 或 MB/s 填。
+ * 回填时整 MB 的显示成 MB/s，其余显示 KB/s；-1（不改动）和 0（不限速）原样显示。
+ */
+function plan_speed_input($kbps){
+	$kbps = intval($kbps);
+	if($kbps >= 1024 && $kbps % 1024 === 0)return [strval($kbps / 1024), 'MB'];
+	return [strval($kbps), 'KB'];
+}
 /*
  * 套餐列表的表格内容。整页渲染和 AJAX 刷新都用它，保证两边显示完全一致
  */
@@ -16,7 +26,7 @@ function render_plan_rows($plans){
 	ob_start();
 ?>
 <?php if(!$plans){?>
-    <tr><td colspan="10" align="center">还没有添加套餐</td></tr>
+    <tr><td colspan="11" align="center">还没有添加套餐</td></tr>
 <?php } foreach($plans as $p){?>
     <tr class="plan-row" data-id="<?php echo intval($p['id'])?>">
       <td><?php echo intval($p['id'])?></td>
@@ -25,6 +35,7 @@ function render_plan_rows($plans){
       <td>¥<?php echo htmlspecialchars(number_format(floatval($p['price']), 2, '.', ''))?></td>
       <td><?php echo htmlspecialchars(plan_limit_display($p))?></td>
       <td><?php echo htmlspecialchars(plan_limit_text($p['upload_size'], 'MB'))?></td>
+      <td><?php echo htmlspecialchars(plan_speed_text(isset($p['down_speed']) ? $p['down_speed'] : -1))?></td>
       <td><?php echo htmlspecialchars(plan_days_text($p['days']))?></td>
       <td><?php echo intval($p['sort'])?></td>
       <td><?php echo intval($p['enable']) === 1 ? '<span class="label label-success">上架</span>' : '<span class="label label-default">下架</span>'?></td>
@@ -38,6 +49,7 @@ function render_plan_rows($plans){
            data-limit-mode="<?php echo (isset($p['limit_mode']) && $p['limit_mode']==='add') ? 'add' : 'set'?>"
            data-upload-limit="<?php echo intval($p['upload_limit'])?>"
            data-upload-size="<?php echo intval($p['upload_size'])?>"
+           data-down-speed="<?php echo isset($p['down_speed']) ? intval($p['down_speed']) : -1?>"
            data-sort="<?php echo intval($p['sort'])?>"
            data-enable="<?php echo intval($p['enable'])?>"
            data-remark="<?php echo htmlspecialchars($p['remark'], ENT_QUOTES, 'UTF-8')?>">编辑</a>
@@ -71,6 +83,17 @@ if($islogin != 1){
 		$upload_limit = intval($_POST['upload_limit']);
 		$limit_mode = (isset($_POST['limit_mode']) && $_POST['limit_mode'] === 'add') ? 'add' : 'set';
 		$upload_size = intval($_POST['upload_size']);
+		//下载限速：负数一律当 -1（不改动），0 不限速，其余按单位换成整数 KB/s，最少 1 KB/s
+		$down_speed_raw = isset($_POST['down_speed']) ? trim((string)$_POST['down_speed']) : '';
+		$down_speed_num = is_numeric($down_speed_raw) ? floatval($down_speed_raw) : -1;
+		if(!is_finite($down_speed_num) || $down_speed_num < 0){
+			$down_speed = -1;
+		}elseif($down_speed_num == 0){
+			$down_speed = 0;
+		}else{
+			$down_speed_unit = (isset($_POST['down_speed_unit']) && strtoupper($_POST['down_speed_unit']) === 'MB') ? 1024 : 1;
+			$down_speed = max(1, min(2147483647, intval(round($down_speed_num * $down_speed_unit))));
+		}
 		$sort = intval($_POST['sort']);
 		$enable = intval($_POST['enable']) === 1 ? 1 : 0;
 		$remark = trim($_POST['remark']);
@@ -90,6 +113,7 @@ if($islogin != 1){
 				'upload_limit' => $upload_limit < -1 ? -1 : $upload_limit,
 				'limit_mode' => $limit_mode,
 				'upload_size' => $upload_size < -1 ? -1 : $upload_size,
+				'down_speed' => $down_speed,
 				'sort' => $sort,
 				'enable' => $enable,
 				'remark' => $remark,
@@ -339,17 +363,33 @@ if(isset($_GET['tab']) && $_GET['tab'] === 'epay')$pay_tab = 'epay';
 	  </div>
 	</div>
 	<div class="row">
+<?php list($speed_val, $speed_unit) = plan_speed_input($edit && isset($edit['down_speed']) ? $edit['down_speed'] : -1);?>
+	  <div class="col-sm-4 form-group">
+		<label>下载限速</label>
+		<div class="row plan-inline">
+		  <div class="col-xs-7">
+			<input type="number" name="down_speed" value="<?php echo htmlspecialchars($speed_val, ENT_QUOTES, 'UTF-8')?>" class="form-control" min="-1" step="0.1"/>
+		  </div>
+		  <div class="col-xs-5">
+			<select class="form-control" name="down_speed_unit">
+			  <option value="KB"<?php echo $speed_unit === 'KB' ? ' selected' : ''?>>KB/s</option>
+			  <option value="MB"<?php echo $speed_unit === 'MB' ? ' selected' : ''?>>MB/s</option>
+			</select>
+		  </div>
+		</div>
+		<span class="hint">0 不限速 / N 每秒 N / -1 不改动（按「存储类型设置」里该用户身份的速度）；有效期内优先于身份速度</span>
+	  </div>
 	  <div class="col-sm-4 form-group">
 		<label>套餐说明</label>
 		<input type="text" name="remark" value="<?php echo $edit ? htmlspecialchars($edit['remark'], ENT_QUOTES, 'UTF-8') : ''?>" class="form-control" placeholder="选填"/>
 		<span class="hint">作为一条卖点显示在卡片里</span>
 	  </div>
-	  <div class="col-sm-4 form-group">
+	  <div class="col-sm-2 form-group">
 		<label>排序</label>
 		<input type="number" name="sort" value="<?php echo $edit ? intval($edit['sort']) : 0?>" class="form-control" step="1"/>
-		<span class="hint">数字小的排前面，分类的先后顺序也看它</span>
+		<span class="hint">小的排前面</span>
 	  </div>
-	  <div class="col-sm-4 form-group">
+	  <div class="col-sm-2 form-group">
 		<label>是否上架</label>
 		<select class="form-control" name="enable">
 		  <option value="1" <?php echo (!$edit || intval($edit['enable'])===1)?'selected':''?>>上架</option>
@@ -376,7 +416,7 @@ if(isset($_GET['tab']) && $_GET['tab'] === 'epay')$pay_tab = 'epay';
 </h3></div>
 <div class="table-responsive">
 <table class="table table-striped table-hover">
-  <thead><tr><th>ID</th><th>名称</th><th>分类</th><th>价格</th><th>每日数量</th><th>单文件大小</th><th>有效期</th><th>排序</th><th>状态</th><th>操作</th></tr></thead>
+  <thead><tr><th>ID</th><th>名称</th><th>分类</th><th>价格</th><th>每日数量</th><th>单文件大小</th><th>下载速度</th><th>有效期</th><th>排序</th><th>状态</th><th>操作</th></tr></thead>
   <tbody id="planTbody">
 <?php echo render_plan_rows($plans);?>
   </tbody>
@@ -436,6 +476,16 @@ if(isset($_GET['tab']) && $_GET['tab'] === 'epay')$pay_tab = 'epay';
 		field('limit_mode').value = d.limitMode;
 		field('upload_limit').value = d.uploadLimit;
 		field('upload_size').value = d.uploadSize;
+		//库里存的是 KB/s，整 MB 的换成 MB/s 显示，和服务端 plan_speed_input() 同一个规则
+		var speed = parseInt(d.downSpeed, 10);
+		if(isNaN(speed))speed = -1;
+		if(speed >= 1024 && speed % 1024 === 0){
+			field('down_speed').value = speed / 1024;
+			field('down_speed_unit').value = 'MB';
+		}else{
+			field('down_speed').value = speed;
+			field('down_speed_unit').value = 'KB';
+		}
 		field('sort').value = d.sort;
 		field('enable').value = d.enable;
 		field('remark').value = d.remark;
@@ -456,6 +506,7 @@ if(isset($_GET['tab']) && $_GET['tab'] === 'epay')$pay_tab = 'epay';
 			limitMode: a.getAttribute('data-limit-mode'),
 			uploadLimit: a.getAttribute('data-upload-limit'),
 			uploadSize: a.getAttribute('data-upload-size'),
+			downSpeed: a.getAttribute('data-down-speed'),
 			sort: a.getAttribute('data-sort'),
 			enable: a.getAttribute('data-enable'),
 			remark: a.getAttribute('data-remark')
@@ -471,7 +522,7 @@ if(isset($_GET['tab']) && $_GET['tab'] === 'epay')$pay_tab = 'epay';
 	}
 
 	function toAdd(scroll){
-		fill({id:0, name:'', category:'', price:'', days:30, limitMode:'set', uploadLimit:0, uploadSize:-1, sort:0, enable:1, remark:''});
+		fill({id:0, name:'', category:'', price:'', days:30, limitMode:'set', uploadLimit:0, uploadSize:-1, downSpeed:-1, sort:0, enable:1, remark:''});
 		title.innerHTML = '添加套餐';
 		submit.innerHTML = '添加套餐';
 		cancel.style.display = 'none';
