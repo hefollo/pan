@@ -72,7 +72,7 @@ $oupd_last = json_decode((string)getSetting('update_last'), true);
     <div class="alert alert-warning" style="margin:14px 0 0">
       <b>仓库里有比当前站点更新的代码。</b>可以用下面的「在线更新」，或者照老办法拿新的全量包覆盖上传（<b>不要只传改动的几个文件</b>）。
 <?php if(!empty($u['need_db_update'])){?>
-      <br/><b style="color:#b45309">这次动过数据库</b>（仓库 <?php echo intval($u['remote_db'])?> &gt; 本地 <?php echo intval($u['local_db'])?>）：传完文件必须再跑一次 <code>/install/update.php</code>，否则版本门禁会把整站拦住。
+      <br/><b style="color:#b45309">这次动过数据库</b>（仓库 <?php echo intval($u['remote_db'])?> &gt; 本地 <?php echo intval($u['local_db'])?>）：先更新程序文件，再升级数据库。用下面的「在线更新」时，更新完成会直接出现「立即升级数据库」按钮；手工上传的话，传完打开后台会看到同样的按钮，也可以访问 <code>/install/update.php</code>。
 <?php }?>
     </div>
 <?php }elseif($u['state'] === 'ahead'){?>
@@ -186,9 +186,14 @@ $oupd_last = json_decode((string)getSetting('update_last'), true);
 		var more = total > arr.length ? '<li>…… 共 ' + total + ' 个</li>' : '';
 		return '<div class="oupd-sub">' + esc(title) + '（' + total + '）</div><ul class="oupd-files"><li>' + $.map(arr, esc).join('</li><li>') + '</li>' + more + '</ul>';
 	}
-	function warnings(d){
+	//done=true 表示文件已经更新完：这时版本门禁已经生效，提示里换成直接升级的按钮
+	function warnings(d, done){
 		var w = [];
-		if(d.need_db)w.push('这次改过数据库（仓库 ' + esc(d.db_version) + ' &gt; 站点 ' + esc(d.local_db) + '）：更新完必须再跑一次 <a href="' + esc(dbUpdateUrl) + '" target="_blank">/install/update.php</a>，否则整站会被版本门禁拦住。');
+		if(d.need_db && !done)w.push('这次改过数据库（仓库 ' + esc(d.db_version) + ' &gt; 站点 ' + esc(d.local_db) + '）：文件更新完会出现「立即升级数据库」按钮，点一下就行；升级前整站会被版本门禁拦住。');
+		if(d.need_db && done)w.push('这次改过数据库（仓库 ' + esc(d.db_version) + ' &gt; 站点 ' + esc(d.local_db) + '）：<b>现在整站被版本门禁拦着，请马上点下面的按钮升级数据库</b>。'
+			+ '<form method="post" action="./db_upgrade.php" style="margin:10px 0 2px"><input type="hidden" name="token" value="' + esc(token) + '"/>'
+			+ '<button type="submit" class="btn btn-warning btn-sm"><i class="fa fa-database" aria-hidden="true"></i> 立即升级数据库</button></form>'
+			+ '按钮不好用时，也可以打开 <a href="' + esc(dbUpdateUrl) + '" target="_blank">/install/update.php</a> 输入管理员账号密码升级。');
 		if(d.composer_changed)w.push('<code>includes/composer.json</code> 有变化：在线更新不碰 <code>includes/vendor/</code>，依赖要另外补（上传全量包里的 vendor，或在 includes 目录执行 composer install）。');
 		if(d.admin_dir && d.admin_dir !== 'admin')w.push('仓库里的 <code>admin/</code> 会写到站点实际的后台目录 <code>' + esc(d.admin_dir) + '/</code>。');
 		return w.length ? '<div class="alert alert-warning oupd-alert">' + w.join('<br/>') + '</div>' : '';
@@ -233,8 +238,8 @@ $oupd_last = json_decode((string)getSetting('update_last'), true);
 						}
 						var ok = '<div class="alert alert-success oupd-alert"><b>' + esc(r.msg) + '</b>'
 							+ (r.backup ? '：修改 ' + r.changed_count + ' 个、新增 ' + r.added_count + ' 个文件，旧文件已备份。' : '。')
-							+ ' <a href="./update.php">刷新本页</a></div>';
-						$out.html(ok + warnings(r));
+							+ (r.need_db ? '' : ' <a href="./update.php">刷新本页</a>') + '</div>';
+						$out.html(ok + warnings(r, true));
 						$('#oupd-check').prop('disabled', true);
 					});
 				});

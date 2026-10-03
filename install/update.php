@@ -75,7 +75,20 @@ function is_repeat_structure_error($errorInfo){
 $admin_user = update_conf($db, 'admin_user');
 $admin_pwd  = update_conf($db, 'admin_pwd');
 $auth_err = '';
-if(empty($_SESSION['update_auth'])){
+/*
+ * 后台已登录的管理员点「升级数据库」按钮过来的（admin/db_upgrade.php 核对过登录态和令牌），
+ * 这一次免输密码。标记只用一次、5 分钟内有效，读到就作废，不会让这个会话以后一直免密。
+ */
+$auth_once = !empty($_SESSION['update_auth_once']) && time() - intval($_SESSION['update_auth_once']) <= 300;
+unset($_SESSION['update_auth_once']);
+//升级完回哪里：只认 db_upgrade.php 写的「../后台目录/update.php」，其余一律回首页
+$update_back = '../';
+if($auth_once && isset($_SESSION['update_back']) && preg_match('#^\.\./[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*/update\.php$#', $_SESSION['update_back'])
+	&& strpos(substr($_SESSION['update_back'], 3), '..') === false){
+	$update_back = $_SESSION['update_back'];
+}
+unset($_SESSION['update_back']);
+if(empty($_SESSION['update_auth']) && !$auth_once){
 	$fail = isset($_SESSION['update_fail']) ? intval($_SESSION['update_fail']) : 0;
 	if(isset($_POST['user']) && isset($_POST['pass'])){
 		if($fail >= 5){
@@ -91,7 +104,7 @@ if(empty($_SESSION['update_auth'])){
 		}
 	}
 }
-if(empty($_SESSION['update_auth'])){
+if(empty($_SESSION['update_auth']) && !$auth_once){
 	echo '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
 		.'<title>网站升级</title></head><body style="font-family:system-ui,-apple-system,\'Microsoft YaHei\',sans-serif;background:#f5f6f8;margin:0">'
 		.'<div style="max-width:360px;margin:12vh auto;padding:28px;background:#fff;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.08)">'
@@ -346,5 +359,5 @@ if($lost_speed){
 	exit;
 }
 $done_msg =$uptodate ? '数据库结构已是最新，表结构校验通过！' : '网站数据库升级完成！';
-exit("<script language='javascript'>alert('".$done_msg."');window.location.href='../';</script>");
+exit("<script language='javascript'>alert('".$done_msg."');window.location.href=".json_encode($update_back).";</script>");
 ?>

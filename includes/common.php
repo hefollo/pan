@@ -78,6 +78,17 @@ if (!$conf['version'] || $conf['version'] < DB_VERSION) {
 		 */
 		$update_url = site_root_url().'install/update.php';
 		echo '请先完成网站升级！<a href="'.htmlspecialchars($update_url, ENT_QUOTES, 'UTF-8').'"><font color=red>点此升级</font></a>';
+		/*
+		 * 后台页面被拦时，多给一个「一键升级」按钮：已登录后台的管理员不用再输账号密码，
+		 * 由 admin/db_upgrade.php 核对登录态后直接执行升级，完了回到程序更新日志页。
+		 * 令牌和在线更新共用同一个（online_update.php 的 oupd_token），这里还没加载那个文件，就地生成。
+		 */
+		if(defined('IN_ADMIN') && !$nosession && isset($_SESSION)){
+			if(empty($_SESSION['oupd_token']))$_SESSION['oupd_token'] = bin2hex(random_bytes(16));
+			echo '<form method="post" action="./db_upgrade.php" style="margin-top:12px">'
+				.'<input type="hidden" name="token" value="'.htmlspecialchars($_SESSION['oupd_token'], ENT_QUOTES, 'UTF-8').'">'
+				.'<button type="submit" style="padding:6px 14px;cursor:pointer">已登录后台：一键升级数据库</button></form>';
+		}
 		exit;
     }
 }
