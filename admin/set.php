@@ -38,25 +38,39 @@ if($mod=='site'){
 	<div class="form-group">
 	  <label class="col-sm-2 control-label">禁止访问IP</label>
 	  <div class="col-sm-10">
-	    <?php /* 和页脚代码一样：行内控件不带 name，由下面的脚本汇总成这一个 JSON 字段提交；初始值就是现有列表 */ ?>
+	    <?php /* 和页脚代码一样：行内控件不带 name，由下面的脚本汇总成这一个 JSON 字段提交；初始值就是现有列表。
+	            IP 多了页面会被拉得很长，所以列表放在固定高度的框里滚动，上面给搜索、条数和批量添加 */ ?>
 	    <input type="hidden" name="blackip_list" id="blackipField" value="<?php echo htmlspecialchars(json_encode($blackip_rows, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8')?>"/>
-	    <div class="table-responsive footer-code-wrap">
-	      <table class="table table-bordered footer-code-table">
-	        <thead><tr><th style="width:64px">启用</th><th style="width:260px">IP 或网段</th><th>备注</th><th style="width:84px">操作</th></tr></thead>
+	    <div class="blackip-tools">
+	      <input type="search" class="form-control input-sm blackip-search" id="blackipSearch" placeholder="搜索 IP 或备注" autocomplete="off">
+	      <span class="blackip-count" id="blackipCount"></span>
+	      <button type="button" class="btn btn-default btn-sm" id="blackipBatchToggle"><i class="fa fa-list"></i> 批量添加</button>
+	      <button type="button" class="btn btn-success btn-sm" id="blackipAdd"><i class="fa fa-plus"></i> 添加 IP</button>
+	    </div>
+	    <div class="blackip-batch" id="blackipBatch" style="display:none">
+	      <textarea class="form-control input-sm" id="blackipBatchText" rows="4" placeholder="一次粘贴多个 IP 或网段，用换行、空格、逗号或 | 隔开都行"></textarea>
+	      <div class="blackip-batch-foot">
+	        <input type="text" class="form-control input-sm" id="blackipBatchNote" maxlength="50" placeholder="这一批的备注（选填）">
+	        <button type="button" class="btn btn-primary btn-sm" id="blackipBatchAdd">加入列表</button>
+	        <span class="blackip-batch-msg" id="blackipBatchMsg"></span>
+	      </div>
+	    </div>
+	    <div class="blackip-scroll" id="blackipScroll">
+	      <table class="table table-bordered footer-code-table blackip-table">
+	        <thead><tr><th style="width:56px">启用</th><th style="width:240px">IP 或网段</th><th>备注</th><th style="width:72px">操作</th></tr></thead>
 	        <tbody id="blackipRows">
 	        <?php foreach($blackip_rows as $item){?>
 	          <tr data-ip-row>
 	            <td class="text-center"><input type="checkbox" data-f="enabled" <?php echo $item['enabled'] ? 'checked' : ''?>></td>
-	            <td><input type="text" class="form-control" data-f="ip" maxlength="50" placeholder="如 1.2.3.4 或 1.2.3.0/24" value="<?php echo htmlspecialchars($item['ip'], ENT_QUOTES, 'UTF-8')?>"></td>
-	            <td><input type="text" class="form-control" data-f="note" maxlength="50" placeholder="选填，如：刷流量" value="<?php echo htmlspecialchars($item['note'], ENT_QUOTES, 'UTF-8')?>"></td>
-	            <td class="text-center"><button type="button" class="btn btn-danger btn-xs" data-ip-del><i class="fa fa-trash"></i> 删除</button></td>
+	            <td><input type="text" class="form-control input-sm" data-f="ip" maxlength="50" placeholder="如 1.2.3.4 或 1.2.3.0/24" value="<?php echo htmlspecialchars($item['ip'], ENT_QUOTES, 'UTF-8')?>"></td>
+	            <td><input type="text" class="form-control input-sm" data-f="note" maxlength="50" placeholder="选填，如：刷流量" value="<?php echo htmlspecialchars($item['note'], ENT_QUOTES, 'UTF-8')?>"></td>
+	            <td class="text-center"><button type="button" class="btn btn-danger btn-xs" data-ip-del title="删除"><i class="fa fa-trash"></i></button></td>
 	          </tr>
 	        <?php }?>
 	        </tbody>
 	      </table>
 	    </div>
-	    <button type="button" class="btn btn-success btn-sm footer-code-add" id="blackipAdd"><i class="fa fa-plus"></i> 添加 IP</button>
-	    <span class="help-block">列表里启用的 IP 访问前台会直接返回 403（已登录后台的管理员不受影响）。每条可以是单个 IP（IPv4 / IPv6），也可以是网段，如 <code>1.2.3.0/24</code>。取消勾选「启用」可暂时放行而不删除；改完点下面「修改」才会保存。你现在的 IP 是 <code><?php echo htmlspecialchars($clientip, ENT_QUOTES, 'UTF-8')?></code>。</span>
+	    <span class="help-block">列表里启用的 IP 访问前台会直接返回 403（已登录后台的管理员不受影响）。每条可以是单个 IP（IPv4 / IPv6），也可以是网段，如 <code>1.2.3.0/24</code>。取消勾选「启用」可暂时放行而不删除；搜索只是筛选显示，保存时整份列表都会存；改完点下面「修改」才会保存。你现在的 IP 是 <code><?php echo htmlspecialchars($clientip, ENT_QUOTES, 'UTF-8')?></code>。</span>
 	  </div>
 	</div><br/>
 	<div class="form-group">
@@ -170,43 +184,104 @@ if($mod=='site'){
 	});
 	toggleEmpty();
 })();
-//禁止访问 IP 列表：做法同上，汇总成 JSON 写进 #blackipField
+//禁止访问 IP 列表：做法同上，汇总成 JSON 写进 #blackipField。
+//IP 多的时候列表在固定高度的框里滚动；搜索只是把不匹配的行藏起来，汇总时照样带上，不会因为筛选把条目存丢
 (function(){
 	var tbody = document.getElementById('blackipRows'), field = document.getElementById('blackipField'), addBtn = document.getElementById('blackipAdd');
+	var box = document.getElementById('blackipScroll'), search = document.getElementById('blackipSearch'), countEl = document.getElementById('blackipCount');
+	var batch = document.getElementById('blackipBatch'), batchText = document.getElementById('blackipBatchText'), batchNote = document.getElementById('blackipBatchNote'), batchMsg = document.getElementById('blackipBatchMsg');
 	if(!tbody || !field || !addBtn)return;
 	function rows(){ return tbody.querySelectorAll('tr[data-ip-row]'); }
 	function sync(){
-		var list = [];
+		var list = [], on = 0;
 		for(var i = 0, r = rows(); i < r.length; i++){
+			var en = r[i].querySelector('[data-f="enabled"]').checked ? 1 : 0;
+			on += en;
 			list.push({
-				enabled: r[i].querySelector('[data-f="enabled"]').checked ? 1 : 0,
+				enabled: en,
 				ip: r[i].querySelector('[data-f="ip"]').value,
 				note: r[i].querySelector('[data-f="note"]').value
 			});
 		}
 		field.value = JSON.stringify(list);
+		if(countEl)countEl.textContent = list.length ? ('共 ' + list.length + ' 条，启用 ' + on + ' 条') : '';
 	}
-	function toggleEmpty(){
+	//空列表、筛选后没有匹配，都用同一行提示
+	function tip(text){
 		var empty = tbody.querySelector('tr.footer-code-empty');
-		if(rows().length){ if(empty)empty.parentNode.removeChild(empty); return; }
-		if(empty)return;
-		empty = document.createElement('tr');
-		empty.className = 'footer-code-empty';
-		empty.innerHTML = '<td colspan="4">没有禁止访问的 IP，点下面的「添加 IP」新建一条。</td>';
-		tbody.appendChild(empty);
+		if(!text){ if(empty)empty.parentNode.removeChild(empty); return; }
+		if(!empty){
+			empty = document.createElement('tr');
+			empty.className = 'footer-code-empty';
+			empty.innerHTML = '<td colspan="4"></td>';
+			tbody.appendChild(empty);
+		}
+		empty.firstChild.textContent = text;
 	}
-	addBtn.addEventListener('click', function(){
+	function filter(){
+		var kw = search ? search.value.replace(/^\s+|\s+$/g, '').toLowerCase() : '', shown = 0, r = rows();
+		for(var i = 0; i < r.length; i++){
+			var hay = (r[i].querySelector('[data-f="ip"]').value + ' ' + r[i].querySelector('[data-f="note"]').value).toLowerCase();
+			var hit = !kw || hay.indexOf(kw) !== -1;
+			r[i].style.display = hit ? '' : 'none';
+			if(hit)shown++;
+		}
+		if(!r.length)tip('没有禁止访问的 IP，点上面的「添加 IP」或「批量添加」。');
+		else if(!shown)tip('没有匹配「' + kw + '」的 IP。');
+		else tip('');
+	}
+	function makeRow(ip, note){
 		var row = document.createElement('tr');
 		row.setAttribute('data-ip-row', '1');
 		row.innerHTML =
 			'<td class="text-center"><input type="checkbox" data-f="enabled" checked></td>' +
-			'<td><input type="text" class="form-control" data-f="ip" maxlength="50" placeholder="如 1.2.3.4 或 1.2.3.0/24"></td>' +
-			'<td><input type="text" class="form-control" data-f="note" maxlength="50" placeholder="选填，如：刷流量"></td>' +
-			'<td class="text-center"><button type="button" class="btn btn-danger btn-xs" data-ip-del><i class="fa fa-trash"></i> 删除</button></td>';
+			'<td><input type="text" class="form-control input-sm" data-f="ip" maxlength="50" placeholder="如 1.2.3.4 或 1.2.3.0/24"></td>' +
+			'<td><input type="text" class="form-control input-sm" data-f="note" maxlength="50" placeholder="选填，如：刷流量"></td>' +
+			'<td class="text-center"><button type="button" class="btn btn-danger btn-xs" data-ip-del title="删除"><i class="fa fa-trash"></i></button></td>';
+		//用 value 属性赋值，不拼进 HTML，粘贴进来的内容不会被当成标签
+		row.querySelector('[data-f="ip"]').value = ip || '';
+		row.querySelector('[data-f="note"]').value = note || '';
 		tbody.appendChild(row);
-		toggleEmpty();
+		return row;
+	}
+	//新加的行在最底下：先清掉搜索，再把滚动框拉到底，免得加了却看不见
+	function reveal(row){
+		if(search && search.value){ search.value = ''; }
+		filter();
+		if(box)box.scrollTop = box.scrollHeight;
+		if(row)row.querySelector('[data-f="ip"]').focus();
+	}
+	addBtn.addEventListener('click', function(){
+		var row = makeRow('', '');
 		sync();
-		row.querySelector('[data-f="ip"]').focus();
+		reveal(row);
+	});
+	if(search)search.addEventListener('input', filter);
+	//搜索框里回车别把整张设置表单提交了
+	if(search)search.addEventListener('keydown', function(e){ if(e.keyCode === 13)e.preventDefault(); });
+	var batchToggle = document.getElementById('blackipBatchToggle');
+	if(batchToggle && batch)batchToggle.addEventListener('click', function(){
+		var open = batch.style.display === 'none';
+		batch.style.display = open ? '' : 'none';
+		if(open && batchText)batchText.focus();
+	});
+	var batchAdd = document.getElementById('blackipBatchAdd');
+	if(batchAdd && batchText)batchAdd.addEventListener('click', function(){
+		var parts = batchText.value.split(/[\s,，|;；]+/), seen = {}, added = 0, dup = 0, last = null;
+		for(var i = 0, r = rows(); i < r.length; i++)seen[r[i].querySelector('[data-f="ip"]').value.replace(/^\s+|\s+$/g, '').toLowerCase()] = 1;
+		for(var j = 0; j < parts.length; j++){
+			var ip = parts[j].replace(/^\s+|\s+$/g, '');
+			if(!ip)continue;
+			if(seen[ip.toLowerCase()]){ dup++; continue; }
+			seen[ip.toLowerCase()] = 1;
+			last = makeRow(ip, batchNote ? batchNote.value : '');
+			added++;
+		}
+		if(!added && !dup){ if(batchMsg)batchMsg.textContent = '没有可添加的内容'; return; }
+		batchText.value = '';
+		if(batchMsg)batchMsg.textContent = '加了 ' + added + ' 条' + (dup ? '，跳过已有的 ' + dup + ' 条' : '') + '；点下面「修改」才会保存，写法不对的保存时会提示';
+		sync();
+		reveal(null);
 	});
 	tbody.addEventListener('input', sync);
 	tbody.addEventListener('change', sync);
@@ -215,10 +290,11 @@ if($mod=='site'){
 		if(!btn || !tbody.contains(btn))return;
 		var row = btn.closest('tr');
 		row.parentNode.removeChild(row);
-		toggleEmpty();
 		sync();
+		filter();
 	});
-	toggleEmpty();
+	sync();
+	filter();
 })();
 </script>
 <?php

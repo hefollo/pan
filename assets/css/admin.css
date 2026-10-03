@@ -2831,3 +2831,19 @@ body.admin-theme-neo.admin-body .navbar-nav>li>.dropdown-menu>li>a i{color:#8b80
 .footer-code-table .footer-code-empty td{padding:22px 14px;color:#71839c;text-align:center}
 .footer-code-add{margin-top:10px}
 .footer-code-table .footer-code-note{display:block;margin-top:6px;color:#b7791f;font-size:12px;line-height:1.5;text-align:left}
+/* 网站信息设置：禁止访问 IP。条目多时在固定高度的框里滚动（表头吸顶），页面不再被拉长 */
+.blackip-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.blackip-tools .blackip-search{flex:1 1 180px;max-width:260px}
+.blackip-tools .btn{margin:0}
+.blackip-count{margin-right:auto;color:var(--admin-muted);font-size:12px;white-space:nowrap}
+.blackip-batch{margin-bottom:8px;padding:10px;border:1px dashed var(--admin-line);border-radius:8px}
+.blackip-batch textarea{font-family:Consolas,Monaco,monospace;font-size:12px;resize:vertical}
+.blackip-batch-foot{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px}
+.blackip-batch-foot input{flex:0 1 220px}
+.blackip-batch-foot .btn{margin:0}
+.blackip-batch-msg{color:var(--admin-muted);font-size:12px}
+.blackip-scroll{max-height:330px;overflow:auto;border:1px solid var(--admin-line);border-radius:6px}
+.blackip-scroll .blackip-table{margin:0;border:0}
+.blackip-scroll .blackip-table>thead>tr>th{position:sticky;top:0;z-index:2}
+.blackip-table>tbody>tr>td{padding:4px 6px}
+.blackip-table .input-sm{height:30px}
