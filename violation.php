@@ -94,6 +94,7 @@ echo '<li class="disabled"><a>尾页</a></li>';
 </nav>
 </div>
     </div>
+</div><?php /* 收掉最外层的 .container：页脚要直接挂在 body 下 */ ?>
 <?php include SYSTEM_ROOT.'footer.php';?>
 </body>
 </html>

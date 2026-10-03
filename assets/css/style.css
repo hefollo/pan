@@ -3874,6 +3874,51 @@ body.theme-portal .portal-upload-name{min-width:0;overflow:hidden;text-overflow:
 body.theme-portal .portal-drop-tip{margin:0;color:#7e8a84;font-size:12px;text-align:center}
 body.theme-portal .portal-drop-tip a{color:var(--primary);font-weight:800}
 @media (max-width:860px){body.theme-portal .portal-upload-panel{padding:12px}body.theme-portal .portal-upload-panel .upload-queue{max-height:160px}}
+/* ==== 页脚（统一位置与版式）开始 ==== */
+/*
+ * 页脚统一成一个样子（结构见 includes/footer.php 顶部的说明）：
+ *   - 位置：页脚直接挂在 body 下；前面的占位块 .site-footer-gap 提供内容和页脚之间的最小间距，
+ *     内容不满一屏时由脚本把它撑高，页脚落在窗口底部。所以页脚自己不再带上边距。
+ *   - 版式：上方一条细分隔线（画在版权那一行上，两端和内容区对齐）；第一行是版权和各条页脚代码，
+ *     一条一格、放不下自动换行；第二行是运行时间。
+ * 侧栏类外观给页脚留的左边距、各外观的页脚文字颜色都还在各自的规则里，这里只管位置和排版。
+ */
+.site-footer-gap{min-height:28px;pointer-events:none}
+body[class]>footer.footer{margin-top:0!important;padding-top:0;padding-bottom:26px;font-size:13px;line-height:1.7}
+.footer p.site-footer-line{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:2px 20px;margin:0;padding-top:18px;border-top:1px solid rgba(128,138,158,.22)}
+.footer .site-footer-item{display:inline-block;max-width:100%;overflow-wrap:anywhere}
+.footer .site-footer-item a{white-space:nowrap}
+.footer p.site-runtime{margin-top:4px;font-size:12px;opacity:.86}
+.footer .site-footer-extra{margin-top:4px;font-size:12px}
+.footer .site-footer-extra:empty{display:none}
+/* 页脚自带底色和上边线的外观（涂鸦风、天际风）：不再画里面那条分隔线，内容和上边线之间留出间距 */
+body.theme-neo>footer.footer,body.theme-skyline>footer.footer{padding-top:18px}
+body.theme-neo .footer p.site-footer-line,body.theme-skyline .footer p.site-footer-line{padding-top:0;border-top:0}
+/* macOS 窗口风：页脚是窗口底部的状态栏，要紧贴窗口，不需要占位块、分隔线和额外留白 */
+body.theme-mac .site-footer-gap{display:none}
+body.theme-mac>footer.footer{padding-bottom:0}
+body.theme-mac .footer p.site-footer-line{gap:0 8px;padding-top:0;border-top:0}
+/* 侧栏类外观原来只给页脚留了左边（让开侧栏），右边顶到窗口边缘，分隔线和文字都比内容区偏右；
+   右边距取各外观内容区（body>.container）的右内边距，页脚里的容器不再另加左右内边距，分隔线两端正好和内容区对齐 */
+@media (min-width:768px){
+body.theme-dashboard>footer.footer{padding-right:28px}
+body.theme-console>footer.footer{padding-right:32px}
+body.theme-workspace>footer.footer{padding-right:16px}
+body.theme-cockpit>footer.footer{padding-right:24px}
+body.studio-layout:not(.theme-skyline)>footer.footer{padding-right:26px}
+body.studio-layout:not(.theme-skyline)>footer.footer .container{width:auto;max-width:none}
+body.theme-dashboard>footer.footer .container,body.theme-console>footer.footer .container,body.theme-workspace>footer.footer .container,
+body.theme-cockpit>footer.footer .container,body.studio-layout:not(.theme-skyline)>footer.footer .container{padding-left:0;padding-right:0}
+/* 门户风的内容区比标准容器宽（1180px、无内边距），页脚里的容器跟它取同样的宽度 */
+body.theme-portal>footer.footer .container{width:min(1180px,calc(100% - 40px));max-width:none;padding-left:0;padding-right:0}
+}
+@media (max-width:767px){
+.site-footer-gap{min-height:20px}
+body[class]>footer.footer{padding-bottom:20px}
+.footer p.site-footer-line{gap:2px 14px;padding-top:14px}
+body.theme-neo .footer p.site-footer-line,body.theme-skyline .footer p.site-footer-line,body.theme-mac .footer p.site-footer-line{padding-top:0}
+}
+/* ==== 页脚（统一位置与版式）结束 ==== */
 /* ==== 手机端适配（多套外观共用）开始 ==== */
 /*
  * 首页公开文件列表和违规公示列表（外层带 .filelist-wrap 的 .filelist）在手机上原来是桌面表格塞进横向滚动框：

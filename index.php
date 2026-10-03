@@ -454,6 +454,7 @@ echo '<li class="disabled"><a>尾页</a></li>';
 <?php if($layout_key === 'cockpit'){?></div><?php echo layout_render_cockpit_side($DB, $layout_counts, $sql_base);?></div><?php }?>
 <?php //工作台家族：列表下面可能还有一条推广横幅，再收掉左列、输出右侧数据列
 if(in_array($layout_key, studio_family_keys(), true)){echo layout_render_studio_promo();?></div><?php echo layout_render_studio_side($DB, $sql_base, $layout_counts['']);?></div><?php }?>
+</div><?php /* 收掉最外层的 .container：页脚要直接挂在 body 下，各外观的页脚样式都是按这个位置写的 */ ?>
 <?php include SYSTEM_ROOT.'footer.php';?>
 <?php if($layout_key === 'workspace'){?>
 <script src="./assets/js/layout-workspace.js?v=<?php echo VERSION?>"></script>

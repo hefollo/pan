@@ -2632,16 +2632,32 @@ function ip_is_blocked($ip, $blackip){
 	return false;
 }
 
-//页脚里要输出的代码：只取开启的条目，按列表顺序拼起来，旧的运行时间片段去掉
-function footer_codes_html(){
-	$html = [];
+/*
+ * 这条页脚代码是不是「看不见的」：只有 <script> / <style> / 注释（统计代码就是这样）。
+ * 页脚里看得见的条目一条占一格排成一行；看不见的要是也占一格，行里就会凭空多出一段间隔。
+ */
+function footer_code_is_silent($code){
+	$rest = preg_replace('~<script\b[^>]*>.*?</script>|<style\b[^>]*>.*?</style>|<noscript\b[^>]*>.*?</noscript>|<!--.*?-->~is', '', (string)$code);
+	if($rest === null)return false;
+	//不带文字也看得见的元素（徽章图片之类）算可见
+	if(preg_match('~<(img|svg|iframe|canvas|video|object|embed|input|button)\b~i', $rest))return false;
+	return trim(str_replace('&nbsp;', '', strip_tags($rest))) === '';
+}
+
+/*
+ * 页脚要输出的代码，分成两组：shown 排进版权那一行，silent 放在页脚末尾单独输出
+ * （脚本自己往页面里写徽章的统计代码，写出来的东西就落在那里，不会挤进版权行）。
+ * 只取开启的条目，旧的运行时间片段去掉，顺序不变。
+ */
+function footer_code_groups(){
+	$groups = ['shown'=>[], 'silent'=>[]];
 	foreach(footer_codes() as $item){
 		if(!$item['enabled'])continue;
 		$code = footer_code_strip_runtime($item['code']);
 		if(trim(preg_replace('~<br\s*/?>|&nbsp;~i', '', $code)) === '')continue;
-		$html[] = $code;
+		$groups[footer_code_is_silent($code) ? 'silent' : 'shown'][] = $code;
 	}
-	return implode("\n", $html);
+	return $groups;
 }
 
 /*
