@@ -3874,3 +3874,11 @@ body.theme-portal .portal-upload-name{min-width:0;overflow:hidden;text-overflow:
 body.theme-portal .portal-drop-tip{margin:0;color:#7e8a84;font-size:12px;text-align:center}
 body.theme-portal .portal-drop-tip a{color:var(--primary);font-weight:800}
 @media (max-width:860px){body.theme-portal .portal-upload-panel{padding:12px}body.theme-portal .portal-upload-panel .upload-queue{max-height:160px}}
+
+/*
+ * 首屏守卫的收尾（见 includes/header.php 的 #css-guard）：守卫在本文件到达前把 body 藏起来、
+ * 给 html 铺上外观底色。这两条必须留在文件最末尾——本文件一到就放出页面，并把 html 背景清掉，
+ * 让 body 的背景照常铺满整个视口（html 有背景时 body 背景不会再往视口上传）。
+ */
+html{background:none}
+body{visibility:visible}

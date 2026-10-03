@@ -19,12 +19,31 @@ if(!in_array($site_theme, site_theme_keys(), true)){
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="format-detection" content="telephone=no">
   <meta name="google-adsense-account" content="ca-pub-6112564004010114">
+  <?php
+  /*
+   * 首屏守卫：style.css 到之前先把 body 藏起来，只露出当前外观的页面底色。
+   *
+   * style.css 装着全部外观，体积大，网速慢时比 CDN 上的 Bootstrap / Material 晚到很多。
+   * 有些浏览器（尤其国内 App 内置浏览器）不等样式表到齐就先渲染，那一刻页面只有
+   * Bootstrap + Material 的样子——正好是原版彩虹外链网盘的默认外观，看着像换肤失效。
+   *
+   * 放开的办法不靠 JS：style.css 最末尾有一条 body{visibility:visible}，样式表一到自然盖过这里。
+   * 兜底：style.css 加载失败（onerror）或 15 秒还没到，给 html 加 css-fail 直接放出来，
+   * 宁可看到没换肤的页面，也不能一直空白；禁用 JS 的访客不做隐藏。
+   */
+  $guard_spec = function_exists('theme_gradient_of') ? theme_gradient_of($site_theme) : false;
+  $guard_bg = $guard_spec ? (!empty($guard_spec['bg'][0]) ? $guard_spec['bg'][0] : $guard_spec['pg']) : '';
+  if(!preg_match('/^#[0-9a-fA-F]{6}$/', $guard_bg))$guard_bg = '#ffffff';
+  ?>
+  <style id="css-guard">html{background:<?php echo $guard_bg?>}body{visibility:hidden}html.css-fail{background:none}html.css-fail body{visibility:visible}</style>
+  <noscript><style>body{visibility:visible}</style></noscript>
+  <script>setTimeout(function(){document.documentElement.className+=' css-fail';},15000);</script>
   <link href="https://s4.zstatic.net/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
   <link href="https://s4.zstatic.net/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://s4.zstatic.net/ajax/libs/bootstrap-material-design/0.5.10/css/bootstrap-material-design.min.css" rel="stylesheet">
   <link href="https://s4.zstatic.net/ajax/libs/bootstrap-material-design/0.5.10/css/ripples.min.css" rel="stylesheet">
   <?php if($is_file){?><link rel="stylesheet" href="https://s4.zstatic.net/ajax/libs/aplayer/1.10.1/APlayer.min.css"><link href="assets/css/ckplayer.css" rel="stylesheet"><?php }?>
-  <link href="assets/css/style.css?v=<?php echo asset_ver('assets/css/style.css')?>" rel="stylesheet">
+  <link href="assets/css/style.css?v=<?php echo asset_ver('assets/css/style.css')?>" rel="stylesheet" onerror="document.documentElement.className+=' css-fail'">
   <?php //外观设置里给当前外观单独配过颜色才有输出，没配就都是空的：
   //先是整套换色（把这套外观用到的颜色全部按新主色重算），再是渐变角度等细节覆盖
   echo theme_recolor_tag($site_theme);
