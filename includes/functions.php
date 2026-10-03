@@ -1995,7 +1995,7 @@ function admin_setting_keys(){
 	return [
 		'aliyun_ak', 'aliyun_sk', 'api_open', 'api_referer', 'api_auth_mode',
 		'api_key_limit', 'api_key_expire_days',
-		'apiurl', 'blackip', 'description', 'downfile_domain',
+		'apiurl', 'blackip', 'blackip_list', 'description', 'downfile_domain',
 		'downfile_protocol', 'downfile_type', 'down_speed_guest', 'down_speed_guest_unit',
 		'down_speed_user', 'down_speed_user_unit', 'down_speed_vip', 'down_speed_vip_unit',
 		'filepath', 'filesearch',
@@ -2540,6 +2540,96 @@ function footer_code_strip_runtime($code){
 //这条页脚代码里有没有旧的运行时间片段（后台列表里提示用）
 function footer_code_has_runtime($code){
 	return preg_match('~\bid\s*=\s*["\']?sitetime\b~i', $code) === 1;
+}
+
+/*
+ * 禁止访问 IP：原来是一个「多个 IP 用 | 隔开」的文本框，现在像页脚代码一样一条一条加，
+ * 每条可以单独停用、写个备注。列表存在 blackip_list（[{enabled, ip, note}, ...] 的 JSON）。
+ *
+ * 真正拦截看的仍是 blackip 这个 | 分隔的字符串（includes/common.php 的 ip_is_blocked），
+ * 保存时由列表里开启的条目重新拼出来，所以老数据、老页面都兼容。
+ * 没保存过新列表的老站点，把原来的 blackip 拆成一条条开启的条目显示。
+ * 每条可以是单个 IP（v4 / v6），也可以是 CIDR 网段（如 1.2.3.0/24）。
+ */
+function blackip_entry_valid($ip){
+	$ip = trim((string)$ip);
+	if($ip === '')return false;
+	if(filter_var($ip, FILTER_VALIDATE_IP))return true;
+	if(preg_match('#^([0-9a-fA-F:.]+)/(\d{1,3})$#', $ip, $m) && filter_var($m[1], FILTER_VALIDATE_IP)){
+		return intval($m[2]) <= (strpos($m[1], ':') !== false ? 128 : 32);
+	}
+	return false;
+}
+
+//整理后台提交的列表：去空行、去重，无效的 IP 收进 $bad 交给调用方报错
+function blackip_list_normalize($list, &$bad = null){
+	$bad = [];
+	$result = [];
+	$seen = [];
+	if(!is_array($list))return $result;
+	foreach($list as $item){
+		if(!is_array($item))continue;
+		$ip = isset($item['ip']) ? trim((string)$item['ip']) : '';
+		$note = isset($item['note']) ? trim((string)$item['note']) : '';
+		if($ip === '' && $note === '')continue;
+		if(!blackip_entry_valid($ip)){
+			$bad[] = $ip === '' ? '（备注「'.mb_substr($note, 0, 20, 'UTF-8').'」那一行没填 IP）' : $ip;
+			continue;
+		}
+		$key = strtolower($ip);
+		if(isset($seen[$key]))continue;
+		$seen[$key] = 1;
+		$result[] = [
+			'enabled' => !empty($item['enabled']) ? 1 : 0,
+			'ip' => $ip,
+			'note' => mb_substr($note, 0, 50, 'UTF-8'),
+		];
+		if(count($result) >= 1000)break;
+	}
+	return $result;
+}
+
+function blackip_list(){
+	global $conf;
+	if(isset($conf['blackip_list']) && $conf['blackip_list'] !== ''){
+		return blackip_list_normalize(json_decode($conf['blackip_list'], true));
+	}
+	//老数据原样拆出来：哪怕有不合法的写法也照样列出，站长保存时会被提示改正，而不是悄悄丢掉
+	$list = [];
+	foreach(explode('|', isset($conf['blackip']) ? (string)$conf['blackip'] : '') as $ip){
+		$ip = trim($ip);
+		if($ip !== '')$list[] = ['enabled'=>1, 'ip'=>$ip, 'note'=>''];
+	}
+	return $list;
+}
+
+//列表 → 拦截用的 blackip 字符串：只取开启的条目
+function blackip_string($list){
+	$ips = [];
+	foreach($list as $item){
+		if(!empty($item['enabled']))$ips[] = $item['ip'];
+	}
+	return implode('|', $ips);
+}
+
+/*
+ * 这个访客是否在禁止名单里。单个 IP 按二进制地址比（IPv6 的不同写法也认得出），网段用 ip_in_cidr。
+ * 原来是 in_array 精确比字符串，单个 IP 的写法照样命中，行为不变。
+ */
+function ip_is_blocked($ip, $blackip){
+	$ip = trim((string)$ip);
+	if($ip === '' || trim((string)$blackip) === '')return false;
+	$bin = @inet_pton($ip);
+	foreach(explode('|', (string)$blackip) as $entry){
+		$entry = trim($entry);
+		if($entry === '')continue;
+		if(strpos($entry, '/') !== false){
+			if($bin !== false && ip_in_cidr($ip, $entry))return true;
+		}elseif($entry === $ip || ($bin !== false && @inet_pton($entry) === $bin)){
+			return true;
+		}
+	}
+	return false;
 }
 
 //页脚里要输出的代码：只取开启的条目，按列表顺序拼起来，旧的运行时间片段去掉

@@ -125,6 +125,25 @@ case 'set':
 			if(strlen($_POST['footer_codes']) > 60000)exit(json_encode(['code'=>-1, 'msg'=>'页脚代码总长度超过 60000 字节，请删减后再保存']));
 		}
 	}
+	//禁止访问 IP 列表：校验每一条，有无效的就整份不存并说出是哪几条；存列表的同时重新拼出拦截用的 blackip
+	if(isset($_POST['blackip_list'])){
+		$blackip_list = json_decode($_POST['blackip_list'], true);
+		if(!is_array($blackip_list)){
+			unset($_POST['blackip_list']);
+		}else{
+			$blackip_list = blackip_list_normalize($blackip_list, $blackip_bad);
+			if($blackip_bad){
+				//提示会被 layer.alert 当 HTML 显示，站长填的内容先转义
+				exit(json_encode(['code'=>-1, 'msg'=>'禁止访问 IP 里这些不是有效的 IP 或网段，没有保存：<br>'
+					.htmlspecialchars(implode('、', array_slice($blackip_bad, 0, 10)), ENT_QUOTES, 'UTF-8')
+					.(count($blackip_bad) > 10 ? ' 等 '.count($blackip_bad).' 条' : '')
+					.'<br>单个 IP 如 1.2.3.4，网段如 1.2.3.0/24'], JSON_UNESCAPED_UNICODE));
+			}
+			$_POST['blackip_list'] = json_encode($blackip_list, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+			if(strlen($_POST['blackip_list']) > 60000)exit(json_encode(['code'=>-1, 'msg'=>'禁止访问 IP 列表太长（超过 60000 字节），请删减后再保存'], JSON_UNESCAPED_UNICODE));
+			$_POST['blackip'] = blackip_string($blackip_list);
+		}
+	}
 	//页脚运行时间的起算时刻：datetime-local 传来的是 2024-07-28T16:30:59，统一存成 Y-m-d H:i:s；解析不了就不存，保留原值
 	if(isset($_POST['runtime_start'])){
 		$runtime_ts = strtotime(trim($_POST['runtime_start']));

@@ -757,20 +757,6 @@ function replace_completeUpload(hash, ii){
 </script>
 <?php if($fd_on) echo folder_render_script($fd_cur, $csrf_token, $fd_searching, '.guest-check');?>
 <?php }?>
-<?php if(!empty($conf['gonggao'])){?>
-<link href="https://s4.zstatic.net/ajax/libs/snackbarjs/1.1.0/snackbar.min.css" rel="stylesheet">
-<script src="https://s4.zstatic.net/ajax/libs/snackbarjs/1.1.0/snackbar.min.js"></script>
-<script src="https://s4.zstatic.net/ajax/libs/jquery-cookie/1.4.1/jquery.cookie.min.js"></script>
-<script>
-$(function() {
-    if(!$.cookie('gonggao')){
-        $.snackbar({content: "<?php echo $conf['gonggao']?>", timeout: 10000});
-        var cookietime = new Date(); 
-        cookietime.setTime(cookietime.getTime() + (60*60*1000));
-        $.cookie('gonggao', false, { expires: cookietime });
-    }
-});
-</script>
-<?php }?>
+<?php /* 原来这里有个「首页公告」弹窗（snackbar），站长要求删掉，后台入口也一并去掉了；站点公告请用顶部的公告条 */ ?>
 </body>
 </html>

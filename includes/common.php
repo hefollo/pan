@@ -150,8 +150,8 @@ if(isset($_COOKIE["user_token"]))
 
 if(defined('IN_ADMIN')) return;
 
-$denyip = explode('|',$conf['blackip']);
-if(in_array($clientip,$denyip) && !$islogin){
+//禁止访问 IP：单个 IP 或网段，名单在后台「网站信息设置」里逐条维护（见 functions.php 的 blackip_list）
+if(!$islogin && ip_is_blocked($clientip, isset($conf['blackip']) ? $conf['blackip'] : '')){
 	Header("HTTP/1.1 403 Forbidden");
 	exit;
 }
