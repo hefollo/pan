@@ -73,7 +73,7 @@ case 'checkupdate':
 	$u = update_status(false);
 	$latest = (!empty($u['commits']) && isset($u['commits'][0])) ? $u['commits'][0] : null;
 	//查失败时顺手提一句可以换源：首页这一行只有鼠标悬停的提示，站长不一定知道更新日志页里能换
-	if($u['state'] === 'error' && count(update_sources()) > 1)$u['error'] .= '。可以到「更新日志」页换一个更新源再试';
+	if($u['state'] === 'error' && count(update_sources()) > 1)$u['error'] .= '。可以到「更新日志」页换一个主更新源再试';
 	exit(json_encode([
 		'code'    => 0,
 		'state'   => $u['state'],
@@ -99,6 +99,32 @@ case 'updatesource':
 	if(!isset($update_sources[$update_source]))exit(json_encode(['code'=>-1, 'msg'=>'没有这个更新源'], JSON_UNESCAPED_UNICODE));
 	saveSetting('update_source', $update_source);
 	exit('{"code":0}');
+break;
+case 'updateaccel':
+	/*
+	 * 保存 / 清除站长自己填的加速源地址（DEC-20261005-004）。
+	 * 这是唯一一个可以在页面上填的更新源地址，只能当加速源用：经它下载的更新包
+	 * 和内置加速站一样要与可信源逐文件核对，所以填什么都装不上仓库以外的代码。
+	 * 地址只收 https 的域名（update_accel_custom_clean）；和换源一样要求 POST 并带页面令牌。
+	 */
+	include_once SYSTEM_ROOT.'online_update.php';
+	if($_SERVER['REQUEST_METHOD'] !== 'POST' || !oupd_check_token(isset($_POST['token']) ? $_POST['token'] : ''))exit('{"code":-1,"msg":"令牌无效，请刷新页面后再试"}');
+	$accel_raw = isset($_POST['url']) ? trim((string)$_POST['url']) : '';
+	$accel_old = isset($conf['update_accel_custom']) ? (string)$conf['update_accel_custom'] : '';
+	if($accel_raw === ''){
+		//清空 = 删除这个源；正选着它的话退回 GitHub
+		saveSetting('update_accel_custom', '');
+		saveSetting('update_cache_custom', '');
+		if(isset($conf['update_source']) && $conf['update_source'] === 'custom')saveSetting('update_source', 'github');
+		exit(json_encode(['code'=>0, 'msg'=>'已删除自定义加速源'], JSON_UNESCAPED_UNICODE));
+	}
+	$accel_base = update_accel_custom_clean($accel_raw);
+	if($accel_base === '')exit(json_encode(['code'=>-1, 'msg'=>'地址不合规：要填 https:// 开头的域名，不带参数，长度不超过 200，例如 https://gh.example.com'], JSON_UNESCAPED_UNICODE));
+	//换了地址，上一个地址查到的结果就不能再用了
+	if($accel_base !== $accel_old)saveSetting('update_cache_custom', '');
+	saveSetting('update_accel_custom', $accel_base);
+	if(!empty($_POST['use']))saveSetting('update_source', 'custom');
+	exit(json_encode(['code'=>0, 'msg'=>'已保存'], JSON_UNESCAPED_UNICODE));
 break;
 case 'onlineupdate_prepare':
 case 'onlineupdate_apply':

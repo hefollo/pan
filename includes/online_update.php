@@ -5,8 +5,10 @@
  * 做法：从更新源下载仓库某一个提交的 zip，校验后按排除清单覆盖到站点目录。
  * 服务器上不需要装 git，也不需要 .git 目录；仓库地址沿用 update_check.php 里写死的
  * UPDATE_REPO / UPDATE_BRANCH，页面上不能自填下载地址。
- * 更新源是站长在页面上从写死的清单里选的（GitHub 或 Gitea 镜像，DEC-20261005-002），
+ * 更新源是站长在页面上从写死的清单里选的（GitHub、Gitea 镜像或加速站，DEC-20261005-002 / 003），
  * 提交列表和 zip 取自同一个源。
+ * 加速站是第三方的站点：经它下载的包，要直连可信源（GitHub、Gitea）取这个提交的文件清单，
+ * 逐个文件核对一致后才能用（oupd_verify_package），对不上或可信源都连不上就拒绝。
  *
  * 流程分两步，中间给站长看一眼再确认：
  *   ① 预检 oupd_prepare()：下载 → 检查 zip → 和站点现有文件逐个比对，列出会改哪些文件。
@@ -123,12 +125,14 @@ function oupd_entry_rel($name, &$root){
 
 /**
  * 下载 $sha 这个提交的 zip 到 $file，地址由当前更新源决定（update_zip_urls），按顺序试：
- * GitHub 先 codeload，不通再走 api.github.com 的 zipball；备用源先网页归档地址，再走接口。
+ * GitHub 先 codeload，不通再走 api.github.com 的 zipball；备用源先网页归档地址，再走接口；
+ * 加速站先 github.com 的归档地址，再 codeload。
  */
 function oupd_download($sha, $file, &$err = null){
 	$err = '';
 	$urls = update_zip_urls($sha);
 	$is_github = update_source() === 'github';
+	$is_gitea = update_source() === 'gitea';
 	$not_synced = false;
 	$errs = [];
 	foreach($urls as $url){
@@ -168,7 +172,7 @@ function oupd_download($sha, $file, &$err = null){
 		elseif($code == 403 || $code == 429)$errs[] = $host.'：'.($is_github ? 'GitHub 限流' : '请求被拒绝，可能是被限流或被防火墙拦下').'（HTTP '.$code.'），过一会儿再试';
 		else $errs[] = $host.'：HTTP '.$code;
 		//镜像里还没有这个提交时，Gitea 回的是 404 或 500
-		if(!$is_github && $cerr === '' && ($code == 404 || $code == 500))$not_synced = true;
+		if($is_gitea && $cerr === '' && ($code == 404 || $code == 500))$not_synced = true;
 	}
 	@unlink($file);
 	$err = '下载更新包失败（'.implode('；', $errs).'）';
@@ -242,6 +246,172 @@ function oupd_inspect($file, &$err = null){
 		return false;
 	}
 	return ['zip'=>$zip, 'files'=>$files, 'version'=>$version, 'db_version'=>$db_version];
+}
+
+/**
+ * 直连可信源取一小块数据（提交列表、目录树），核对加速站下载的包用。
+ *
+ * 没有用 update_check.php 的 update_http_get()：那边取的东西只拿来显示，curl 不可用时会退到
+ * 不校验证书的 file_get_contents；这里取回来的清单决定一个包能不能装，证书校验必须开着，
+ * 跳转也只许跳到 https。
+ */
+function oupd_trusted_get($url, &$err = null){
+	$err = '';
+	$ch = curl_init();
+	curl_setopt($ch, CURLOPT_URL, $url);
+	curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+	curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 6);
+	curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+	curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
+	curl_setopt($ch, CURLOPT_MAXREDIRS, 3);
+	if(defined('CURLPROTO_HTTPS')){
+		curl_setopt($ch, CURLOPT_PROTOCOLS, CURLPROTO_HTTPS);
+		curl_setopt($ch, CURLOPT_REDIR_PROTOCOLS, CURLPROTO_HTTPS);
+	}
+	curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+	curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
+	curl_setopt($ch, CURLOPT_ENCODING, 'gzip');
+	curl_setopt($ch, CURLOPT_USERAGENT, 'pan-online-update/'.VERSION);
+	curl_setopt($ch, CURLOPT_HTTPHEADER, ['Accept: application/json']);
+	curl_setopt($ch, CURLOPT_NOPROGRESS, false);
+	//目录树也就一两百 KB，给足余量；再大就不正常了
+	curl_setopt($ch, CURLOPT_PROGRESSFUNCTION, function($h, $dl_total, $dl_now){
+		return $dl_now > 16 * 1024 * 1024 ? 1 : 0;
+	});
+	$body = curl_exec($ch);
+	$code = intval(curl_getinfo($ch, CURLINFO_HTTP_CODE));
+	$cerr = curl_error($ch);
+	curl_close($ch);
+	if($body === false || $body === ''){
+		$err = $cerr !== '' ? '连不上（'.$cerr.'）' : '连不上';
+		return false;
+	}
+	if($code == 403 || $code == 429){
+		$err = '请求被拒绝或被限流（HTTP '.$code.'）';
+		return false;
+	}
+	if($code != 200){
+		$err = 'HTTP '.$code;
+		return false;
+	}
+	return $body;
+}
+
+/**
+ * 可信源 $src 上 $sha 这个提交的文件清单：[仓库相对路径 => git blob 哈希]。
+ * 拿不到返回 false 并把原因写进 $err（换下一个可信源再试）。
+ *
+ * 先确认这个提交号在它主分支最近的提交列表里，再取目录树。这一步不能省：
+ * GitHub 的接口能按提交号取到 fork 里的提交，光凭「取得到目录树」证明不了提交是本仓库的，
+ * 那样加速站可以拿别人 fork 里的一个恶意提交来冒充。
+ */
+function oupd_trusted_manifest($src, $sha, &$err = null){
+	$err = '';
+	$urls = update_api_urls($src);
+	$body = oupd_trusted_get($urls['commits'], $e);
+	if($body === false){
+		$err = $e;
+		return false;
+	}
+	$list = json_decode($body, true);
+	if(!is_array($list)){
+		$err = '提交列表读不懂';
+		return false;
+	}
+	$found = false;
+	foreach($list as $c){
+		if(is_array($c) && isset($c['sha']) && $c['sha'] === $sha){
+			$found = true;
+			break;
+		}
+	}
+	if(!$found){
+		$err = '它最近的提交里没有这个提交号'.($src === 'gitea' ? '（可能还没同步到）' : '');
+		return false;
+	}
+
+	$files = [];
+	$seen = 0;
+	for($page = 1; $page <= 30; $page++){
+		$body = oupd_trusted_get(update_tree_url($src, $sha, $page), $e);
+		if($body === false){
+			$err = '取文件清单失败：'.$e;
+			return false;
+		}
+		$j = json_decode($body, true);
+		if(!is_array($j) || !isset($j['tree']) || !is_array($j['tree']) || !isset($j['sha']) || $j['sha'] !== $sha){
+			$err = '文件清单读不懂';
+			return false;
+		}
+		foreach($j['tree'] as $t){
+			if(!is_array($t) || !isset($t['path'], $t['type']))continue;
+			//目录和子模块不是文件，zip 里也没有对应的文件条目
+			if($t['type'] !== 'blob')continue;
+			if(!isset($t['sha']) || !preg_match('/^[0-9a-f]{40}$/', $t['sha'])){
+				$err = '文件清单里有读不懂的条目';
+				return false;
+			}
+			$files[(string)$t['path']] = $t['sha'];
+		}
+		$seen += count($j['tree']);
+		//Gitea 分页给，带 total_count；GitHub 一次给全，太大时用 truncated 表示没给全
+		if(isset($j['total_count'])){
+			if($seen >= intval($j['total_count']) || !$j['tree'])break;
+			continue;
+		}
+		if(!empty($j['truncated'])){
+			$err = '文件清单太大，没有给全';
+			return false;
+		}
+		break;
+	}
+	if(!$files){
+		$err = '文件清单是空的';
+		return false;
+	}
+	return $files;
+}
+
+/**
+ * 核对一个下载好的包：里面的文件必须和可信源上 $sha 这个提交一模一样。
+ * 给经加速站下载的包用（update_source_needs_verify）。通过返回 true，$by 是用来核对的那个可信源。
+ *
+ * 比的是每个文件的 git blob 哈希（sha1("blob 长度\0内容")），和 git 自己认文件的办法一样；
+ * 文件清单也要完全一致，包里多一个、少一个都不行。
+ * 只要有一个可信源确认了提交号、给出了清单，结论就以它为准：对不上就是对不上，不再换下一个源去碰运气。
+ */
+function oupd_verify_package($pkg, $sha, &$err = null, &$by = null){
+	$err = '';
+	$by = '';
+	$reasons = [];
+	foreach(update_trusted_sources() as $src){
+		$name = update_source_name($src);
+		$manifest = oupd_trusted_manifest($src, $sha, $e);
+		if($manifest === false){
+			$reasons[] = $name.'：'.$e;
+			continue;
+		}
+		//嵌进中文提示里用：英文名两边留空格，中文名不留
+		if($src === 'github')$name = ' GitHub ';
+		$extra = array_keys(array_diff_key($pkg['files'], $manifest));
+		$missing = array_keys(array_diff_key($manifest, $pkg['files']));
+		if($extra || $missing){
+			$sample = $extra ? '多出 '.$extra[0] : '缺少 '.$missing[0];
+			$err = '更新包和'.$name.'上这个提交的文件清单对不上（多 '.count($extra).' 个、少 '.count($missing).' 个，例如'.$sample.'），已拒绝';
+			return false;
+		}
+		foreach($pkg['files'] as $rel => $idx){
+			$data = $pkg['zip']->getFromIndex($idx);
+			if($data === false || !hash_equals($manifest[$rel], sha1('blob '.strlen($data)."\0".$data))){
+				$err = '更新包里的 '.$rel.' 和'.$name.'上这个提交的内容不一致，已拒绝';
+				return false;
+			}
+		}
+		$by = $src;
+		return true;
+	}
+	$err = '经'.update_source_name().'下载的更新包要和 GitHub 或备用源核对后才能用，但现在都核对不了（'.implode('；', $reasons).'）。过一会儿再试，或者换一个主更新源';
+	return false;
 }
 
 /**
@@ -406,6 +576,28 @@ function oupd_fetch($sha, &$err = null, &$file = null){
 		saveSetting('update_pending', '');
 		return false;
 	}
+	/*
+	 * 经加速站下载的包先和可信源核对。核对过的包记下它的 SHA-256，
+	 * 正式更新复用预检下载的同一个包时不用再核对一遍；包换过（哈希不同）就重新核对。
+	 * 核对不过的包立刻删掉，哪怕只是因为可信源暂时连不上：没核对过的包不留在盘上。
+	 */
+	if(update_source_needs_verify()){
+		$digest = hash_file('sha256', $file);
+		$p = json_decode((string)getSetting('update_pending'), true);
+		$by = '';
+		if(is_array($p) && isset($p['sha'], $p['verified'], $p['verified_by']) && $p['sha'] === $sha && is_string($p['verified']) && $digest !== false && hash_equals($p['verified'], $digest) && in_array($p['verified_by'], update_trusted_sources(), true)){
+			$by = $p['verified_by'];
+		}elseif($digest === false || !oupd_verify_package($pkg, $sha, $err, $by)){
+			if($digest === false)$err = '读不了下载好的更新包';
+			$pkg['zip']->close();
+			@unlink($file);
+			saveSetting('update_pending', '');
+			return false;
+		}else{
+			saveSetting('update_pending', json_encode(['sha'=>$sha, 'file'=>basename($file), 'time'=>(is_array($p) && !empty($p['time']) && isset($p['sha']) && $p['sha'] === $sha) ? intval($p['time']) : time(), 'verified'=>$digest, 'verified_by'=>$by]));
+		}
+		$pkg['verified_by'] = $by;
+	}
 	//降级保护：仓库的版本号比站点还低，说明站点上有没推到仓库的改动，覆盖等于回退
 	if(intval($pkg['version']) < intval(VERSION) || intval($pkg['db_version']) < intval(DB_VERSION)){
 		$pkg['zip']->close();
@@ -469,6 +661,8 @@ function oupd_plan_summary($pkg, $plan, $sha){
 		'admin_dir'    => $plan['admin_dir'],
 		'need_db'      => intval($pkg['db_version']) > intval(isset($conf['version']) ? $conf['version'] : 0),
 		'composer_changed' => $composer_changed,
+		//经加速站下载时，这个包是拿哪个可信源核对过的（页面上要告诉站长）；其它源为空
+		'verified_by'  => !empty($pkg['verified_by']) ? update_source_name($pkg['verified_by']) : '',
 	];
 }
 

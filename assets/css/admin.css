@@ -217,6 +217,10 @@ body.admin-body>.container>.center-block,body.admin-body>.container-fluid>.cente
 .update-source label{margin:0;color:var(--admin-muted);font-size:13px;font-weight:400}
 .update-source select.form-control{width:auto;min-width:200px;max-width:100%}
 .update-source-note{color:var(--admin-muted);font-size:12px}
+/* 自定义加速源的地址输入：在「主更新源」那一行下面单独占一行 */
+.update-accel{flex:0 0 100%;display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap}
+.update-accel input.form-control{width:320px;max-width:100%}
+.update-accel .btn{margin:0}
 .update-state{display:flex;align-items:center;gap:10px 22px;flex-wrap:wrap}
 .update-state .label{padding:5px 12px;font-size:13px;font-weight:700}
 .update-state-kv{color:var(--admin-muted);font-size:13px}

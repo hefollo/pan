@@ -5,10 +5,18 @@
  * 从更新源上取仓库 main 分支的版本号和提交列表，跟本地装的版本比一比：
  * 后台首页「版本信息」里显示有没有新版本，「程序更新日志」页面列出最近改了什么。
  *
- * 更新源有两个，都写死在本文件里，站长在「程序更新日志」页用下拉框选（DEC-20261005-002）：
- *   github  GitHub 上的仓库（默认）；
- *   gitea   一个自动同步该仓库的 Gitea 镜像，给连不上 GitHub 的国内服务器用。
- * 版本号、提交列表、在线更新下载的 zip 都取自选中的那一个源，不混着用。
+ * 更新源由站长在「程序更新日志」页用「主更新源」下拉框选
+ * （DEC-20261005-002、DEC-20261005-003、DEC-20261005-004）：
+ *   github   GitHub 上的仓库（默认）；
+ *   gitea    一个自动同步该仓库的 Gitea 镜像，给连不上 GitHub 的国内服务器用；
+ *   ghproxy  内置的公共 GitHub 加速站，只负责中转，本身不可信；
+ *   custom   站长自己填地址的加速源，和 ghproxy 是同一类。
+ * 前三个的地址写死在本文件里；只有 custom 的地址是页面上填的。
+ * 版本号、提交列表、在线更新下载的 zip 都取自选中的那一个源，也不会自动换源
+ * （例外：加速源不代理提交列表时，提交列表改从可信源取）。
+ * 前两个是可信源（仓库本身和作者自己的镜像）；经加速源下载的更新包必须拿可信源上
+ * 这个提交的文件清单逐个核对过才能用，核对在 online_update.php 的 oupd_verify_package()。
+ * 正因为有这道核对，才敢让站长自己填加速源的地址；可信源的地址永远不能做成可填的。
  *
  * 为什么不沿用原版那种做法：
  * 原版后台首页有一段 JSONP 去 auth.cccyun.cc 拉版本检查，返回值本身就是 JavaScript，
@@ -25,10 +33,16 @@ if(!defined('UPDATE_BRANCH'))define('UPDATE_BRANCH', 'main');
 /*
  * 备用更新源：一个自动同步上面那个仓库的 Gitea 镜像。
  * 只填站点地址（https 开头，结尾不带斜杠），仓库名和分支沿用上面两个常量。
- * 自己 fork 的话改成自己的 Gitea；没有就设成空串，页面上不再出现「更新源」下拉框。
+ * 自己 fork 的话改成自己的 Gitea；没有就设成空串，下拉框里不再出现这一项。
  * 更新源只能是这里写死的这几个：要下载回来执行的代码，不能让人在页面上自填地址。
  */
 if(!defined('UPDATE_MIRROR_BASE'))define('UPDATE_MIRROR_BASE', 'https://gitea.hefollo.com');
+/*
+ * 加速站：公共的 GitHub 加速站，用法是「加速站地址 + 完整的 GitHub 地址」。
+ * 只填站点地址（https 开头，结尾不带斜杠）；换成别的同类站点也行，设成空串则下拉框里不出现这一项。
+ * 它是第三方的站点，所以经它下载的更新包一律要和可信源核对（见文件头的说明），这一条不能省。
+ */
+if(!defined('UPDATE_ACCEL_BASE'))define('UPDATE_ACCEL_BASE', 'https://gh-proxy.com');
 //两次真实请求之间至少隔多久（秒）。GitHub 未登录时每个 IP 每小时只有 60 次额度
 define('UPDATE_CACHE_TTL', 1800);
 //上一次查失败时的重试间隔：失败多半是服务器连不上 GitHub，隔短一点好恢复
@@ -39,19 +53,91 @@ define('UPDATE_FORCE_MIN', 60);
 define('UPDATE_COMMIT_LIMIT', 20);
 
 /**
- * 可选的更新源：键 => [name 提示里用的短名, label 下拉框里的文字, host 域名]。
- * 备用源的地址不合规（不是 https、带了奇怪的字符）就当它不存在。
+ * 常量里填的站点地址合不合规：必须是 https，不带查询串和奇怪的字符。合规返回去掉结尾斜杠的地址，否则空串。
  */
-function update_sources(){
+function update_base_clean($base){
+	$base = rtrim(trim((string)$base), '/');
+	return preg_match('#^https://[A-Za-z0-9.-]+(:[0-9]{1,5})?(/[A-Za-z0-9._~-]+)*$#', $base) ? $base : '';
+}
+
+/**
+ * 站长在页面上自己填的加速源地址合不合规（DEC-20261005-004）。合规返回去掉结尾斜杠的地址，否则空串。
+ *
+ * 除了上面那几条，还要求是个正经域名：不收 IP、localhost 和不带点的内网主机名，
+ * 免得被人拿这个输入框让服务器去探内网。地址本身不需要可信 —— 自定义加速源和内置的加速站一样，
+ * 下载的包要和可信源逐文件核对过才会被使用。
+ */
+function update_accel_custom_clean($url){
+	$url = trim((string)$url);
+	if($url === '' || strlen($url) > 200)return '';
+	$base = update_base_clean($url);
+	if($base === '')return '';
+	$host = strtolower((string)parse_url($base, PHP_URL_HOST));
+	if(strpos($host, '.') === false || $host === 'localhost' || substr($host, -10) === '.localhost')return '';
+	if(substr($host, 0, 1) === '.' || substr($host, -1) === '.' || strpos($host, '..') !== false)return '';
+	//最后一段必须是字母的顶级域（或 xn-- 开头的中文域名）：这样十进制、十六进制、八进制写法的 IP 都进不来
+	$tld = substr($host, strrpos($host, '.') + 1);
+	if(!preg_match('/^([a-z]{2,}|xn--[a-z0-9-]+)$/', $tld))return '';
+	return $base;
+}
+
+/**
+ * 可选的更新源：键 => [name 提示里用的短名, label 下拉框里的文字, host 域名, base 站点地址,
+ * trusted 是不是可信源, verify 经它下载的包要不要拿可信源核对, accel 是不是加速源（前缀用法）]。
+ * 备用源、加速站的地址不合规就当它不存在；自定义加速源没填或填得不合规也一样。
+ * $reset 只给测试用：清掉本次请求里的缓存，重新按当前配置生成。
+ */
+function update_sources($reset = false){
+	global $conf;
 	static $list = null;
-	if($list !== null)return $list;
-	$list = ['github' => ['name'=>'GitHub', 'label'=>'GitHub', 'host'=>'github.com']];
-	$base = rtrim(trim((string)UPDATE_MIRROR_BASE), '/');
-	if(preg_match('#^https://[A-Za-z0-9.-]+(:[0-9]{1,5})?(/[A-Za-z0-9._~-]+)*$#', $base)){
+	if($list !== null && !$reset)return $list;
+	$list = ['github' => ['name'=>'GitHub', 'label'=>'GitHub', 'host'=>'github.com', 'trusted'=>true, 'verify'=>false, 'accel'=>false]];
+	$base = update_base_clean(UPDATE_MIRROR_BASE);
+	if($base !== ''){
 		$host = (string)parse_url($base, PHP_URL_HOST);
-		$list['gitea'] = ['name'=>'备用源', 'label'=>'备用源（'.$host.'）', 'host'=>$host, 'base'=>$base];
+		$list['gitea'] = ['name'=>'备用源', 'label'=>'备用源（'.$host.'）', 'host'=>$host, 'base'=>$base, 'trusted'=>true, 'verify'=>false, 'accel'=>false];
+	}
+	$base = update_base_clean(UPDATE_ACCEL_BASE);
+	if($base !== ''){
+		$host = (string)parse_url($base, PHP_URL_HOST);
+		$list['ghproxy'] = ['name'=>'加速站', 'label'=>'加速站（'.$host.'）', 'host'=>$host, 'base'=>$base, 'trusted'=>false, 'verify'=>true, 'accel'=>true];
+	}
+	//站长自己填的加速源：唯一一个地址不写死的源，所以只能是「要核对」的这一类，永远不会是可信源
+	$base = update_accel_custom_clean(isset($conf['update_accel_custom']) ? $conf['update_accel_custom'] : '');
+	if($base !== ''){
+		$host = (string)parse_url($base, PHP_URL_HOST);
+		$list['custom'] = ['name'=>'自定义加速源', 'label'=>'自定义加速源（'.$host.'）', 'host'=>$host, 'base'=>$base, 'trusted'=>false, 'verify'=>true, 'accel'=>true];
 	}
 	return $list;
+}
+
+/**
+ * 当前（或指定）更新源是不是加速源：内置的加速站和站长自填的那个，用法都是「它的地址 + 完整的 GitHub 地址」
+ */
+function update_source_is_accel($src = null){
+	$list = update_sources();
+	if($src === null || !isset($list[$src]))$src = update_source();
+	return !empty($list[$src]['accel']);
+}
+
+/**
+ * 可信源的键，按核对时试的先后排：仓库本身在前，作者自己的镜像在后。
+ */
+function update_trusted_sources(){
+	$keys = [];
+	foreach(update_sources() as $k => $s){
+		if(!empty($s['trusted']))$keys[] = $k;
+	}
+	return $keys;
+}
+
+/**
+ * 当前（或指定）更新源下载的包要不要拿可信源核对
+ */
+function update_source_needs_verify($src = null){
+	$list = update_sources();
+	if($src === null || !isset($list[$src]))$src = update_source();
+	return !empty($list[$src]['verify']);
 }
 
 /**
@@ -92,14 +178,25 @@ function update_commit_url($sha){
 }
 
 /**
- * 当前更新源上要访问的地址：
+ * 某个加速源的前缀（结尾带斜杠），拼在完整的 GitHub 地址前面用；不是加速源时是空串。
+ */
+function update_accel_prefix($src = null){
+	$list = update_sources();
+	if($src === null)$src = update_source();
+	return (isset($list[$src]) && !empty($list[$src]['accel'])) ? $list[$src]['base'].'/' : '';
+}
+
+/**
+ * 某个更新源（不传就是当前选的）上要访问的地址：
  *   common   仓库里 includes/common.php 的原始内容（读版本号用），按顺序试
  *   contents 同一个文件的 contents 接口（返回 base64），上面都不通时兜底
  *   commits  提交列表接口
  * Gitea 的接口是照着 GitHub 做的，返回的字段形状一样，所以解析的代码两边共用。
+ * 加速站就是在 GitHub 的地址前面加一段前缀，取回来的内容和直连 GitHub 一样。
  */
-function update_api_urls(){
-	if(update_source() === 'gitea'){
+function update_api_urls($src = null){
+	if($src === null)$src = update_source();
+	if($src === 'gitea'){
 		$base = update_mirror_base();
 		$api = $base.'/api/v1/repos/'.UPDATE_REPO;
 		return [
@@ -109,23 +206,33 @@ function update_api_urls(){
 			'commits'  => $api.'/commits?sha='.UPDATE_BRANCH.'&limit='.UPDATE_COMMIT_LIMIT.'&stat=false&verification=false&files=false',
 		];
 	}
+	$p = update_accel_prefix($src);
 	return [
-		'common'   => 'https://raw.githubusercontent.com/'.UPDATE_REPO.'/'.UPDATE_BRANCH.'/includes/common.php',
-		'contents' => 'https://api.github.com/repos/'.UPDATE_REPO.'/contents/includes/common.php?ref='.UPDATE_BRANCH,
-		'commits'  => 'https://api.github.com/repos/'.UPDATE_REPO.'/commits?sha='.UPDATE_BRANCH.'&per_page='.UPDATE_COMMIT_LIMIT,
+		'common'   => $p.'https://raw.githubusercontent.com/'.UPDATE_REPO.'/'.UPDATE_BRANCH.'/includes/common.php',
+		'contents' => $p.'https://api.github.com/repos/'.UPDATE_REPO.'/contents/includes/common.php?ref='.UPDATE_BRANCH,
+		'commits'  => $p.'https://api.github.com/repos/'.UPDATE_REPO.'/commits?sha='.UPDATE_BRANCH.'&per_page='.UPDATE_COMMIT_LIMIT,
 	];
 }
 
 /**
  * 在线更新下载某个提交的 zip 用的地址，按顺序试（online_update.php 的 oupd_download 用）。
- * 两个源打出来的包只有最外层目录名不同，里面的文件逐个一致。
+ * 各个源打出来的包只有最外层目录名不同，里面的文件逐个一致。
  */
-function update_zip_urls($sha){
-	if(update_source() === 'gitea'){
+function update_zip_urls($sha, $src = null){
+	if($src === null)$src = update_source();
+	if($src === 'gitea'){
 		$base = update_mirror_base();
 		return [
 			$base.'/'.UPDATE_REPO.'/archive/'.$sha.'.zip',
 			$base.'/api/v1/repos/'.UPDATE_REPO.'/archive/'.$sha.'.zip',
+		];
+	}
+	if(update_source_is_accel($src)){
+		$p = update_accel_prefix($src);
+		//加速站普遍认 github.com 的归档地址；codeload 不是每家都代理，放后面兜底
+		return [
+			$p.'https://github.com/'.UPDATE_REPO.'/archive/'.$sha.'.zip',
+			$p.'https://codeload.github.com/'.UPDATE_REPO.'/zip/'.$sha,
 		];
 	}
 	return [
@@ -135,17 +242,30 @@ function update_zip_urls($sha){
 }
 
 /**
+ * 可信源上某个提交的目录树接口（递归列出全部文件和各自的 git blob 哈希），核对加速站下载的包用。
+ * Gitea 的目录树是分页的，$page 从 1 开始；GitHub 一次给全，不认这个参数。
+ */
+function update_tree_url($src, $sha, $page = 1){
+	if($src === 'gitea')return update_mirror_base().'/api/v1/repos/'.UPDATE_REPO.'/git/trees/'.$sha.'?recursive=true&per_page=1000&page='.intval($page);
+	return 'https://api.github.com/repos/'.UPDATE_REPO.'/git/trees/'.$sha.'?recursive=1';
+}
+
+/**
  * 取一个 URL 的内容。成功返回响应体，失败返回 false 并把原因写进 $err。
  *
  * 没有复用 get_curl()：这里要拿到 HTTP 状态码才能区分「接口限流」和「真的连不上」，
  * 而且 GitHub 不带 User-Agent 会直接 403，超时也要比默认值更短一点。
+ * $as 不传就按当前更新源来定请求头和提示里的名字；加速源去可信源补提交列表时传那个可信源的键。
  */
-function update_http_get($url, &$err = null){
+function update_http_get($url, &$err = null, $as = null){
 	$err = '';
 	$ua = 'pan-update-check/'.VERSION;
-	$is_github = update_source() === 'github';
+	$cur = $as !== null ? $as : update_source();
+	$is_github = $cur === 'github';
+	//加速源后面接的也是 GitHub 的接口，请求头照 GitHub 的给
+	$gh_api = $is_github || update_source_is_accel($cur);
 	//嵌进中文提示里用：英文名两边留空格，中文名不留
-	$name = $is_github ? ' GitHub ' : update_source_name();
+	$name = $is_github ? ' GitHub ' : update_source_name($cur);
 	if(function_exists('curl_init')){
 		$ch = curl_init();
 		curl_setopt($ch, CURLOPT_URL, $url);
@@ -157,7 +277,7 @@ function update_http_get($url, &$err = null){
 		curl_setopt($ch, CURLOPT_MAXREDIRS, 3);
 		curl_setopt($ch, CURLOPT_ENCODING, 'gzip');
 		curl_setopt($ch, CURLOPT_USERAGENT, $ua);
-		curl_setopt($ch, CURLOPT_HTTPHEADER, $is_github ? ['Accept: application/vnd.github+json', 'X-GitHub-Api-Version: 2022-11-28'] : ['Accept: application/json, text/plain, */*']);
+		curl_setopt($ch, CURLOPT_HTTPHEADER, $gh_api ? ['Accept: application/vnd.github+json', 'X-GitHub-Api-Version: 2022-11-28'] : ['Accept: application/json, text/plain, */*']);
 		$body = curl_exec($ch);
 		$code = intval(curl_getinfo($ch, CURLINFO_HTTP_CODE));
 		$cerr = curl_error($ch);
@@ -182,7 +302,7 @@ function update_http_get($url, &$err = null){
 		$ctx = stream_context_create(['http'=>[
 			'method' => 'GET',
 			'timeout' => 8,
-			'header' => 'User-Agent: '.$ua."\r\n".'Accept: '.($is_github ? 'application/vnd.github+json' : 'application/json, text/plain, */*')."\r\n",
+			'header' => 'User-Agent: '.$ua."\r\n".'Accept: '.($gh_api ? 'application/vnd.github+json' : 'application/json, text/plain, */*')."\r\n",
 		], 'ssl'=>['verify_peer'=>false, 'verify_peer_name'=>false]]);
 		$body = @file_get_contents($url, false, $ctx);
 		if($body === false){
@@ -196,7 +316,7 @@ function update_http_get($url, &$err = null){
 }
 
 /**
- * 两个源各存各的缓存：GitHub 沿用原来的 update_cache，备用源是 update_cache_gitea。
+ * 每个源各存各的缓存：GitHub 沿用原来的 update_cache，其它是 update_cache_gitea、update_cache_ghproxy。
  * 这样来回切换更新源时，缓存期内不会重新去请求，也不会拿这个源的提交列表去配那个源的包。
  * 这些行都是几十 KB，getAllSetting() 里按前缀跳过，不进 $conf。
  */
@@ -301,6 +421,22 @@ function update_check($force = false){
 
 	//② 提交列表
 	$json = update_http_get($urls['commits'], $err2);
+	/*
+	 * 多数加速站只代理文件和 zip，不代理提交列表接口。加速源取不到时依次直连可信源去取：
+	 * 经加速源更新时本来就要连可信源核对，提交列表从那边拿不会多出新的依赖；
+	 * 包是按提交号下载、下载后还要逐文件核对的，列表和包不是同一个来源也错配不了。
+	 */
+	$data['commits_from'] = '';
+	if($json === false && update_source_is_accel()){
+		foreach(update_trusted_sources() as $t){
+			$tu = update_api_urls($t);
+			$json = update_http_get($tu['commits'], $e3, $t);
+			if($json !== false){
+				$data['commits_from'] = $t;
+				break;
+			}
+		}
+	}
 	if($json !== false){
 		$list = json_decode($json, true);
 		if(is_array($list)){
@@ -389,6 +525,8 @@ function update_status($force = false){
 	$d['commit_count']   = isset($d['commits']) ? count($d['commits']) : 0;
 	$d['source']         = update_source();
 	$d['source_name']    = update_source_name();
+	//提交列表实际取自哪里：一般就是当前源；加速源不代理提交列表时是某个可信源
+	$d['commits_from_name'] = !empty($d['commits_from']) ? update_source_name($d['commits_from']) : $d['source_name'];
 
 	if(empty($d['ok'])){
 		$d['state'] = 'error';

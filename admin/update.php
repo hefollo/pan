@@ -8,8 +8,11 @@ $title = '程序更新日志';
  *   ① 把本地装的版本号和 GitHub 上 main 分支的版本号摆在一起，告诉站长有没有新版本；
  *   ② 列出 main 分支最近的提交，等于把 GitHub 的 commits 页面搬进后台，能看到改了什么；
  *   ③ 在线更新：下载仓库最新提交的 zip 覆盖站点文件，带备份和还原（includes/online_update.php，DEC-20261003-001）。
- * 上面三样默认都从 GitHub 取；服务器连不上 GitHub 时，站长可以用页面上的「更新源」下拉框
- * 换成作者自建的 Gitea 镜像（清单写死在 update_check.php，DEC-20261005-002），三样跟着一起换。
+ * 上面三样默认都从 GitHub 取；服务器连不上 GitHub 时，站长可以用页面上的「主更新源」下拉框
+ * 换成作者自建的 Gitea 镜像或公共加速站（清单写死在 update_check.php，DEC-20261005-002 / 003），
+ * 三样跟着一起换；选了就一直用它，不会自动换源。
+ * 还可以自己填一个加速源的地址（DEC-20261005-004）：经加速源下载的包都要和可信源逐文件核对，
+ * 所以这个地址可以让站长填；除此之外的源地址都不能填。
  *
  * 数据全部在服务端取（includes/update_check.php），结果缓存半小时。
  * GitHub 未登录时每个 IP 每小时只有 60 次额度，所以不要在页面里做轮询，
@@ -44,11 +47,17 @@ $oupd_last = json_decode((string)getSetting('update_last'), true);
 $update_sources = update_sources();
 $update_source = update_source();
 $update_source_name = update_source_name();
-//换源的提示里要说「换成哪个」：当前是 GitHub 就指备用源，反过来指 GitHub
-$update_other_name = '';
-foreach($update_sources as $k => $s){
-	if($k !== $update_source){ $update_other_name = $s['name']; break; }
-}
+$update_multi = count($update_sources) > 1;
+//给人点开看的页面只有两处：选备用源时是那台 Gitea，其余（GitHub、加速站）都是 GitHub —— 加速站只中转文件，没有网页可看
+$update_view_name = $update_source === 'gitea' ? $update_source_name : ' GitHub ';
+$update_source_notes = [
+	'github'  => '服务器连不上 GitHub 时可以换成别的源，版本检查、提交列表和在线更新都会跟着换。',
+	'gitea'   => '备用源定时从 GitHub 同步，可能比 GitHub 晚几个小时才看到新提交。',
+	'ghproxy' => '加速站是第三方站点，只负责中转。在线更新时，包里每个文件都会和 GitHub 或备用源上的原件核对，对不上就拒绝更新。',
+	'custom'  => '自定义加速源是你自己填的第三方站点，只负责中转。在线更新时，包里每个文件都会和 GitHub 或备用源上的原件核对，对不上就拒绝更新。',
+];
+//站长自己填的加速源地址：填了且合规才会出现在 $update_sources 里；没填时下拉框里仍给一个「未设置」的入口
+$update_accel_custom = isset($update_sources['custom']) ? $update_sources['custom']['base'] : '';
 ?>
 <div class="container">
 <div class="admin-page">
@@ -58,19 +67,28 @@ foreach($update_sources as $k => $s){
     <h3 class="panel-title"><i class="fa fa-cloud-download" aria-hidden="true"></i> 版本检查</h3>
     <div class="update-head-btns">
       <a class="btn btn-xs btn-default" href="./update.php?force=1"><i class="fa fa-refresh" aria-hidden="true"></i> 重新检查</a>
-      <a class="btn btn-xs btn-default" href="<?php echo htmlspecialchars(update_commits_url(), ENT_QUOTES, 'UTF-8')?>" target="_blank" rel="noopener noreferrer"><i class="fa <?php echo $update_source === 'github' ? 'fa-github' : 'fa-git'?>" aria-hidden="true"></i> 去<?php echo $update_source === 'github' ? ' GitHub ' : htmlspecialchars($update_source_name, ENT_QUOTES, 'UTF-8')?>看</a>
+      <a class="btn btn-xs btn-default" href="<?php echo htmlspecialchars(update_commits_url(), ENT_QUOTES, 'UTF-8')?>" target="_blank" rel="noopener noreferrer"><i class="fa <?php echo $update_source === 'gitea' ? 'fa-git' : 'fa-github'?>" aria-hidden="true"></i> 去<?php echo htmlspecialchars($update_view_name, ENT_QUOTES, 'UTF-8')?>看</a>
     </div>
   </div>
   <div class="panel-body">
-<?php if(count($update_sources) > 1){?>
+<?php if($update_multi){?>
     <div class="update-source">
-      <label for="update-source">更新源</label>
+      <label for="update-source">主更新源</label>
       <select id="update-source" class="form-control input-sm">
 <?php   foreach($update_sources as $k => $s){?>
         <option value="<?php echo htmlspecialchars($k, ENT_QUOTES, 'UTF-8')?>"<?php echo $k === $update_source ? ' selected' : ''?>><?php echo htmlspecialchars($s['label'], ENT_QUOTES, 'UTF-8')?></option>
 <?php   }?>
+<?php   if($update_accel_custom === ''){?>
+        <option value="custom">自定义加速源（未设置）</option>
+<?php   }?>
       </select>
-      <span class="update-source-note"><?php echo $update_source === 'github' ? '服务器连不上 GitHub 时可以换成备用源，版本检查、提交列表和在线更新都会跟着换。' : '备用源定时从 GitHub 同步，可能比 GitHub 晚几个小时才看到新提交。'?></span>
+      <span class="update-source-note"><?php echo isset($update_source_notes[$update_source]) ? $update_source_notes[$update_source] : ''?></span>
+      <div class="update-accel" id="update-accel"<?php echo $update_source === 'custom' ? '' : ' style="display:none"'?>>
+        <label for="update-accel-url">加速源地址</label>
+        <input type="text" id="update-accel-url" class="form-control input-sm" maxlength="200" autocomplete="off" spellcheck="false" placeholder="https://你的加速站域名" value="<?php echo htmlspecialchars($update_accel_custom, ENT_QUOTES, 'UTF-8')?>"/>
+        <button type="button" class="btn btn-primary btn-sm" id="update-accel-save"><i class="fa fa-check" aria-hidden="true"></i> 保存并使用</button>
+        <span class="update-source-note">填一个 GitHub 加速站的地址（<code>https://</code> 开头的域名），用法是「这个地址 + 完整的 GitHub 地址」。清空后保存就是删除。</span>
+      </div>
     </div>
 <?php }?>
     <div class="update-state">
@@ -84,9 +102,9 @@ foreach($update_sources as $k => $s){
     <div class="alert alert-warning" style="margin:14px 0 0">
       <b>没查到版本信息。</b><?php echo htmlspecialchars($u['error'], ENT_QUOTES, 'UTF-8')?><br/>
 <?php   if($update_source === 'github'){?>
-      国内服务器连不上 <code>github.com</code> 是常见情况<?php echo $update_other_name !== '' ? '，可以把上面的「更新源」换成'.htmlspecialchars($update_other_name, ENT_QUOTES, 'UTF-8').'再试' : ''?>；也可以直接点右上角「去 GitHub 看」在自己电脑上看。
+      国内服务器连不上 <code>github.com</code> 是常见情况<?php echo $update_multi ? '，可以把上面的「主更新源」换一个再试' : ''?>；也可以直接点右上角「去 GitHub 看」在自己电脑上看。
 <?php   }else{?>
-      <?php echo htmlspecialchars($update_source_name, ENT_QUOTES, 'UTF-8')?>暂时连不上，可以过一会儿再试，或者把上面的「更新源」换回 GitHub。
+      <?php echo htmlspecialchars($update_source_name, ENT_QUOTES, 'UTF-8')?>暂时用不了，可以过一会儿再试，或者把上面的「主更新源」换一个。
 <?php   }?>
     </div>
 <?php }elseif($u['state'] === 'unknown'){?>
@@ -103,11 +121,11 @@ foreach($update_sources as $k => $s){
     </div>
 <?php }elseif(!empty($u['source_behind'])){?>
     <div class="alert alert-info" style="margin:14px 0 0">
-      <b><?php echo $update_source === 'github' ? 'GitHub ' : htmlspecialchars($update_source_name, ENT_QUOTES, 'UTF-8')?>还没同步到站点现在装的提交 <code><?php echo substr($u['installed_sha'], 0, 7)?></code>。</b>站点比这个更新源新，不需要更新；它同步之后这里会自动恢复正常。想马上看有没有更新的提交，可以把上面的「更新源」换成<?php echo $update_other_name === 'GitHub' ? ' GitHub' : htmlspecialchars($update_other_name, ENT_QUOTES, 'UTF-8')?>。
+      <b><?php echo $update_source === 'github' ? 'GitHub ' : htmlspecialchars($update_source_name, ENT_QUOTES, 'UTF-8')?>还没同步到站点现在装的提交 <code><?php echo substr($u['installed_sha'], 0, 7)?></code>。</b>站点比这个更新源新，不需要更新；它同步之后这里会自动恢复正常。<?php echo $update_multi ? '想马上看有没有更新的提交，可以把上面的「主更新源」换一个。' : ''?>
     </div>
 <?php }elseif($u['state'] === 'ahead'){?>
     <div class="alert alert-info" style="margin:14px 0 0">
-      当前站点的版本号比仓库还高，一般是本地改完还没推到 GitHub<?php echo $update_source === 'github' ? '' : '，或者'.htmlspecialchars($update_source_name, ENT_QUOTES, 'UTF-8').'还没同步过来'?>。
+      当前站点的版本号比仓库还高，一般是本地改完还没推到 GitHub<?php echo $update_source === 'gitea' ? '，或者'.htmlspecialchars($update_source_name, ENT_QUOTES, 'UTF-8').'还没同步过来' : ''?>。
     </div>
 <?php }elseif(isset($u['behind']) && $u['behind'] === 0){?>
     <div class="alert alert-success" style="margin:14px 0 0">
@@ -133,17 +151,17 @@ foreach($update_sources as $k => $s){
     </div>
 <?php }elseif(!$oupd_target){?>
     <div class="alert alert-warning" style="margin:0">
-      没取到仓库的提交列表，不知道该更新到哪个提交。等上面的版本检查恢复正常后再来<?php echo $update_other_name !== '' ? '，或者换一个更新源' : ''?>。
+      没取到仓库的提交列表，不知道该更新到哪个提交。等上面的版本检查恢复正常后再来<?php echo $update_multi ? '，或者换一个主更新源' : ''?>。
     </div>
 <?php }elseif(!empty($u['source_behind'])){?>
     <div class="alert alert-info" style="margin:0">
-      当前更新源比站点旧，用它更新会把站点改回旧代码，所以这里不提供更新。等它同步后再来，或者换一个更新源。
+      当前更新源比站点旧，用它更新会把站点改回旧代码，所以这里不提供更新。等它同步后再来<?php echo $update_multi ? '，或者换一个主更新源' : ''?>。
     </div>
 <?php }else{?>
     <div class="oupd-kv">
       <div><span>站点当前</span><?php if($oupd_installed !== ''){?><code><?php echo substr($oupd_installed, 0, 7)?></code><?php }else{?><em>未知（之前是手工上传的包）</em><?php }?></div>
       <div><span>更新到</span><code><?php echo substr($oupd_target['sha'], 0, 7)?></code> <?php echo htmlspecialchars($oupd_target['title'], ENT_QUOTES, 'UTF-8')?></div>
-      <div><span>下载来源</span><?php echo htmlspecialchars($update_sources[$update_source]['label'], ENT_QUOTES, 'UTF-8')?></div>
+      <div><span>下载来源</span><?php echo htmlspecialchars($update_sources[$update_source]['label'], ENT_QUOTES, 'UTF-8')?><?php echo update_source_needs_verify() ? '<em>（下载后先和 GitHub 或备用源逐文件核对）</em>' : ''?></div>
 <?php   if(is_array($oupd_last) && !empty($oupd_last['time'])){?>
       <div><span>上次在线更新</span><?php echo date('Y-m-d H:i', intval($oupd_last['time']))?>，改 <?php echo intval(isset($oupd_last['changed']) ? $oupd_last['changed'] : 0)?> 个、新增 <?php echo intval(isset($oupd_last['added']) ? $oupd_last['added'] : 0)?> 个文件</div>
 <?php   }?>
@@ -180,7 +198,7 @@ foreach($update_sources as $k => $s){
   <div class="panel-heading update-head">
     <h3 class="panel-title"><i class="fa fa-history" aria-hidden="true"></i> 最近提交（<?php echo htmlspecialchars(UPDATE_REPO.' · '.UPDATE_BRANCH, ENT_QUOTES, 'UTF-8')?>）</h3>
     <div class="update-head-btns">
-      <span class="update-head-note">共 <?php echo intval($u['commit_count'])?> 条，取自<?php echo $update_source === 'github' ? ' GitHub' : htmlspecialchars($update_source_name, ENT_QUOTES, 'UTF-8')?>，完整历史点右上角去看</span>
+      <span class="update-head-note">共 <?php echo intval($u['commit_count'])?> 条，取自<?php echo $u['commits_from_name'] === 'GitHub' ? ' GitHub' : htmlspecialchars($u['commits_from_name'], ENT_QUOTES, 'UTF-8')?><?php echo !empty($u['commits_from']) ? '（'.htmlspecialchars($update_source_name, ENT_QUOTES, 'UTF-8').'不提供提交列表）' : ''?>，完整历史点右上角去看</span>
     </div>
   </div>
   <div class="panel-body update-log">
@@ -192,7 +210,7 @@ foreach($update_sources as $k => $s){
 ?>
     <div class="update-item">
       <div class="update-item-top">
-        <a class="update-sha" href="<?php echo htmlspecialchars(update_commit_url($sha), ENT_QUOTES, 'UTF-8')?>" target="_blank" rel="noopener noreferrer" title="在<?php echo $update_source === 'github' ? ' GitHub ' : htmlspecialchars($update_source_name, ENT_QUOTES, 'UTF-8')?>上打开这次提交"><?php echo substr($sha, 0, 7)?></a>
+        <a class="update-sha" href="<?php echo htmlspecialchars(update_commit_url($sha), ENT_QUOTES, 'UTF-8')?>" target="_blank" rel="noopener noreferrer" title="在<?php echo htmlspecialchars($update_view_name, ENT_QUOTES, 'UTF-8')?>上打开这次提交"><?php echo substr($sha, 0, 7)?></a>
         <span class="update-title"><?php echo htmlspecialchars($c['title'], ENT_QUOTES, 'UTF-8')?></span>
       </div>
       <div class="update-meta">
@@ -252,6 +270,8 @@ foreach($update_sources as $k => $s){
 			var html = '<div class="oupd-summary">仓库版本 <b>' + esc(d.version) + '</b>（数据库 ' + esc(d.db_version) + '）：'
 				+ '修改 <b>' + d.changed_count + '</b> 个、新增 <b>' + d.added_count + '</b> 个，'
 				+ d.unchanged + ' 个和站点一致，' + d.skipped_count + ' 个不随站点发布。</div>';
+			//经加速站下载的包：告诉站长已经拿哪个可信源核对过
+			if(d.verified_by)html += '<div class="alert alert-success oupd-alert">更新包是经' + esc(<?php echo json_encode($update_source_name, JSON_UNESCAPED_UNICODE)?>) + '下载的，已和' + (d.verified_by === 'GitHub' ? ' GitHub ' : esc(d.verified_by)) + '上这个提交逐文件核对，内容一致。</div>';
 			if(d.unwritable && d.unwritable.length){
 				html += '<div class="alert alert-danger oupd-alert">下面这些文件或目录 PHP 写不了，修好权限前不能更新：</div>' + list('不可写', d.unwritable, d.unwritable.length);
 			}else{
@@ -281,15 +301,33 @@ foreach($update_sources as $k => $s){
 			});
 		});
 	});
-	//换更新源：存下来后重新打开本页（不带 force，缓存期内直接用这个源上次查到的结果）
+	//换主更新源：存下来后重新打开本页（不带 force，缓存期内直接用这个源上次查到的结果）
+	var accelSet = <?php echo $update_accel_custom !== '' ? 'true' : 'false'?>;
 	$('#update-source').on('change', function(){
 		var $sel = $(this);
+		//自定义加速源还没填地址：先把输入框亮出来，等填好保存时再一起切过去
+		if($sel.val() === 'custom' && !accelSet){
+			//旁边那句说明讲的还是当前在用的源，这时候留着会对不上，先收起来
+			$sel.siblings('.update-source-note').hide();
+			$('#update-accel').show();
+			$('#update-accel-url').focus();
+			return;
+		}
 		post('updatesource', {source:$sel.val()}, function(r){
 			if(r.code == 0){ window.location.href = './update.php'; return; }
 			layer.alert(esc(r.msg), {icon:2});
 			$sel.val(<?php echo json_encode($update_source)?>);
 		});
 	});
+	//保存自定义加速源的地址并切过去；清空后保存 = 删除这个源（服务端会退回 GitHub）
+	function saveAccel(){
+		post('updateaccel', {url:$.trim($('#update-accel-url').val()), use:1}, function(r){
+			if(r.code == 0){ window.location.href = './update.php'; return; }
+			layer.alert(esc(r.msg), {icon:2});
+		});
+	}
+	$('#update-accel-save').on('click', saveAccel);
+	$('#update-accel-url').on('keydown', function(e){ if(e.which === 13){ e.preventDefault(); saveAccel(); } });
 	$('.oupd-restore').on('click', function(){
 		var name = $(this).data('name');
 		layer.confirm('把这次更新覆盖掉的文件写回去、删掉这次新增的文件？<br/>数据库不会跟着退回。', {icon:3, title:'还原'}, function(idx){
