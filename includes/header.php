@@ -12,6 +12,8 @@ if(!in_array($site_theme, site_theme_keys(), true)){
   <meta name="renderer" content="webkit">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <title><?php echo $title?></title>
+  <?php //网站图标：站长在后台上传过就用上传的那张，没有就是程序自带的 favicon.ico
+  echo site_icon_tags();?>
   <meta name="keywords" content="<?php echo $conf['keywords']?>">
   <meta name="description" content="<?php echo $conf['description']?>">
   <meta name="viewport" content="width=device-width,height=device-height,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">

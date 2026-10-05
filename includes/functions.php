@@ -301,6 +301,7 @@ function sysmsg($msg = '未知的异常', $title = '站点提示信息', $action
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?php echo strip_tags($title)?></title>
+<?php echo site_icon_tags($base);?>
 <link href="<?php echo htmlspecialchars($base, ENT_QUOTES, 'UTF-8')?>assets/css/style.css" rel="stylesheet">
 <?php if($theme !== '' && function_exists('theme_recolor_tag')){
 	//后台给这套外观单独配过颜色才有输出，没配就都是空串
@@ -4352,5 +4353,190 @@ function user_avatar_reset($uid){
 	if(!user_avatar_is_custom($old))return true;
 	if($DB->exec("UPDATE pre_user SET faceimg='' WHERE uid=:uid", [':uid'=>$uid]) === false)return false;
 	user_avatar_delete_file($old);
+	return true;
+}
+
+/*
+ * ================= 网站图标 =================
+ * 浏览器标签上的图标原来只有站点根目录那个 favicon.ico：它是程序自带的文件，
+ * 覆盖上传更新包、后台在线更新都会把它盖回默认图标，站长换上去的图标更新一次丢一次。
+ *
+ * 现在站长在后台「网站信息设置」上传的图标存到 assets/siteicon/icon_{16 位随机串}.{ico|png|jpg|gif|webp}，
+ * 路径记在 pre_config.site_icon。assets/siteicon/ 和头像目录一样是运行时目录：
+ * 不进版本库、不进更新包，在线更新也不碰它。各页面 <head> 里用 site_icon_tags() 输出它。
+ *
+ * 只靠 <link> 还不够：直接打开一张图片、一段视频的直链时没有 HTML，浏览器只会去要根目录的
+ * /favicon.ico（静态的 404.html 也是）。所以上传时同时把图标写一份到根目录 favicon.ico；
+ * 那一份之后被更新包盖掉也没关系，管理员下次打开后台时 site_icon_sync_root() 会照着存档重写。
+ */
+function site_icon_is_custom($v){
+	return is_string($v) && preg_match('#^assets/siteicon/icon_[a-f0-9]{16}\.(?:ico|png|jpg|gif|webp)$#', $v) === 1;
+}
+
+//站长上传的图标（站内相对路径）；没上传过、或者文件已经不在了返回空串
+function site_icon_custom(){
+	global $conf;
+	if(!defined('ROOT'))return '';
+	$v = isset($conf['site_icon']) ? (string)$conf['site_icon'] : '';
+	return (site_icon_is_custom($v) && is_file(ROOT.$v)) ? $v : '';
+}
+
+/**
+ * 图标地址。$base 是当前页面到站点根目录的前缀，后台页面传 '../'。
+ * 上传的图标文件名里带随机串，换了图标地址就变，不用再拼版本号让浏览器丢缓存。
+ */
+function site_icon_url($base = './'){
+	$icon = site_icon_custom();
+	return $base.($icon !== '' ? $icon : 'favicon.ico');
+}
+
+//放在 <head> 里的那段 <link>。没上传过图标时指向程序自带的 favicon.ico
+function site_icon_tags($base = './'){
+	$icon = site_icon_custom();
+	$href = htmlspecialchars($base.($icon !== '' ? $icon : 'favicon.ico'), ENT_QUOTES, 'UTF-8');
+	$html = '<link rel="icon" href="'.$href.'">';
+	//添加到手机主屏幕时用的图标，系统只认 PNG / JPG
+	if(preg_match('/\.(?:png|jpg)$/', $icon))$html .= '<link rel="apple-touch-icon" href="'.$href.'">';
+	return $html."\n";
+}
+
+//图标目录的绝对路径（带结尾斜杠），建不出来或不可写返回空串
+function site_icon_dir(){
+	$dir = ROOT.'assets/siteicon/';
+	if(!is_dir($dir)){
+		if(!@mkdir($dir, 0755, true) && !is_dir($dir))return '';
+	}
+	//放个空首页，免得服务器开了目录浏览时把目录内容列出来
+	if(!is_file($dir.'index.html'))@file_put_contents($dir.'index.html', '');
+	return is_writable($dir) ? $dir : '';
+}
+
+//删掉上传的图标文件。只认 site_icon_is_custom() 那个形状，别的路径一律不碰
+function site_icon_delete_file($v){
+	if(!site_icon_is_custom($v))return;
+	if(is_file(ROOT.$v))@unlink(ROOT.$v);
+}
+
+/**
+ * 按文件内容认图标类型，返回 [扩展名, 宽, 高]，认不出来返回 false。不看用户给的文件名和 Content-Type。
+ * ICO 自己看文件头：getimagesize 要 PHP 7.3 才认得它。
+ */
+function site_icon_probe($file){
+	$head = (string)@file_get_contents($file, false, null, 0, 22);
+	if(strlen($head) === 22 && substr($head, 0, 4) === "\x00\x00\x01\x00"){
+		$num = unpack('v', substr($head, 4, 2));
+		$ent = unpack('Cw/Ch/Ccolors/Creserved/vplanes/vbpp/Vsize/Voffset', substr($head, 6, 16));
+		//目录里第一张图要完整落在文件里面，否则不是正经的 ICO
+		if($num[1] < 1 || $num[1] > 64 || $ent['size'] < 1 || $ent['offset'] < 6 + 16 * $num[1] || $ent['offset'] + $ent['size'] > filesize($file))return false;
+		//宽高各占一个字节，0 表示 256
+		return ['ico', $ent['w'] ? $ent['w'] : 256, $ent['h'] ? $ent['h'] : 256];
+	}
+	$exts = [IMAGETYPE_JPEG=>'jpg', IMAGETYPE_PNG=>'png', IMAGETYPE_GIF=>'gif', IMAGETYPE_WEBP=>'webp'];
+	$info = @getimagesize($file);
+	if(!$info || !isset($exts[$info[2]]) || $info[0] < 1 || $info[1] < 1)return false;
+	return [$exts[$info[2]], $info[0], $info[1]];
+}
+
+/**
+ * 要写到根目录 favicon.ico 的内容，读不出来返回 false。那个地址的扩展名是固定的，所以尽量给它真正的 ICO：
+ * 本来就是 ICO 的原样用；PNG（边长不超过 256）外面包一层 ICO 文件头——ICO 里本来就允许直接放 PNG；
+ * 其余的原样写进去，浏览器是按内容认图的，照样能显示。
+ */
+function site_icon_root_data($icon){
+	$data = @file_get_contents(ROOT.$icon);
+	if(!is_string($data) || $data === '')return false;
+	if(substr($icon, -4) !== '.png')return $data;
+	$info = @getimagesize(ROOT.$icon);
+	if(!$info || $info[0] > 256 || $info[1] > 256)return $data;
+	//6 字节文件头 + 16 字节的一条目录，后面紧跟图片；宽高 256 按规定写 0
+	return pack('vvv', 0, 1, 1).pack('CCCCvvVV', $info[0] & 255, $info[1] & 255, 0, 0, 1, 32, strlen($data), 22).$data;
+}
+
+/**
+ * 让根目录的 favicon.ico 和站长上传的图标保持一致，返回现在是否一致。没上传过图标时什么都不做。
+ * 上传图标时调一次；之后覆盖上传更新包会把根目录那份盖回默认图标，所以后台每次打开页面
+ * 也调一次（admin/head.php），不一致就重写。图标只有几 KB，比对一次的开销可以忽略。
+ */
+function site_icon_sync_root(){
+	$icon = site_icon_custom();
+	if($icon === '')return true;
+	$data = site_icon_root_data($icon);
+	if($data === false)return false;
+	$file = ROOT.'favicon.ico';
+	if(is_file($file) && filesize($file) === strlen($data) && md5_file($file) === md5($data))return true;
+	return @file_put_contents($file, $data, LOCK_EX) !== false;
+}
+
+/**
+ * 保存站长上传的图标，$file 是上传的临时文件。
+ * 成功返回新的图标路径（站内相对路径），失败返回 false，原因写在 $err。
+ * 图片不在服务端重新编码：后台页面已经把它缩成 256×256 的 PNG 了，GD 也写不了 ICO，
+ * 重新编码还会丢掉 ICO 里的多个尺寸。上传的人是管理员，这里把住类型、大小和文件名就够了。
+ */
+function site_icon_save($file, &$err = null){
+	global $DB, $conf;
+	$err = '';
+	if(!is_string($file) || $file === '' || !is_file($file)){
+		$err = '没有收到图片';
+		return false;
+	}
+	$bytes = filesize($file);
+	if($bytes <= 0){
+		$err = '图片是空的';
+		return false;
+	}
+	if($bytes > 1024 * 1024){
+		$err = '图标不能超过 1MB';
+		return false;
+	}
+	$probe = site_icon_probe($file);
+	if(!$probe){
+		$err = '只支持 ICO、PNG、JPG、GIF、WebP 图片';
+		return false;
+	}
+	if($probe[1] > 1024 || $probe[2] > 1024){
+		$err = '图标尺寸太大，请缩小到 1024 像素以内再上传';
+		return false;
+	}
+	if(site_icon_dir() === ''){
+		$err = '图标目录不可写，请检查 assets/siteicon/ 的权限';
+		return false;
+	}
+	$data = file_get_contents($file);
+	if(!is_string($data) || $data === ''){
+		$err = '图片读取失败，请重试';
+		return false;
+	}
+
+	$rel = 'assets/siteicon/icon_'.bin2hex(random_bytes(8)).'.'.$probe[0];
+	if(file_put_contents(ROOT.$rel, $data, LOCK_EX) === false){
+		$err = '图标保存失败，请检查 assets/siteicon/ 的权限';
+		return false;
+	}
+	$old = isset($conf['site_icon']) ? (string)$conf['site_icon'] : '';
+	if(saveSetting('site_icon', $rel) === false){
+		@unlink(ROOT.$rel);
+		$err = '保存失败['.$DB->error().']';
+		return false;
+	}
+	$conf['site_icon'] = $rel;
+	site_icon_delete_file($old);
+	site_icon_sync_root();
+	return $rel;
+}
+
+/**
+ * 恢复默认图标：去掉站长上传的那张（文件一起删），根目录的 favicon.ico 用程序自带的默认图标还原。
+ */
+function site_icon_reset(){
+	global $conf;
+	$old = isset($conf['site_icon']) ? (string)$conf['site_icon'] : '';
+	if($old === '')return true;
+	if(saveSetting('site_icon', '') === false)return false;
+	$conf['site_icon'] = '';
+	site_icon_delete_file($old);
+	//assets/img/favicon.ico 是默认图标的副本，留着就是给这里还原用的：根目录那份已经被上传的图标盖掉了
+	$default = ROOT.'assets/img/favicon.ico';
+	if(is_file($default))@copy($default, ROOT.'favicon.ico');
 	return true;
 }

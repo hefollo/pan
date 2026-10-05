@@ -58,6 +58,9 @@ $RECYCLE.BIN/
 # 用户上传的头像（运行时数据，不入库）
 /assets/avatar/
 
+# 站长在后台上传的网站图标（运行时数据，不入库）
+/assets/siteicon/
+
 # 打包产物（上传替换包等）
 *.zip
 

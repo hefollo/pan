@@ -34,6 +34,9 @@ if(!function_exists('admin_sub_active')){
   <meta name="renderer" content="webkit">
   <meta name="viewport" content="width=device-width,height=device-height,initial-scale=1.0,maximum-scale=1.0,user-scalable=no;">
   <title><?php echo $admin_doc_title ?></title>
+  <?php //覆盖上传更新包会把根目录的 favicon.ico 盖回默认图标，管理员一进后台就照着上传的那张补回去
+  if(!empty($islogin))site_icon_sync_root();
+  echo site_icon_tags('../');?>
   <link href="https://s4.zstatic.net/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css" rel="stylesheet"/>
   <link href="https://s4.zstatic.net/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet"/>
   <link href="../assets/css/bootstrap-table.css?v=1" rel="stylesheet"/>

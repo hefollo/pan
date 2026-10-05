@@ -103,8 +103,8 @@ break;
 case 'updateaccel':
 	/*
 	 * 保存 / 清除站长自己填的加速源地址（DEC-20261005-004）。
-	 * 这是唯一一个可以在页面上填的更新源地址，只能当加速源用：经它下载的更新包
-	 * 和内置加速站一样要与可信源逐文件核对，所以填什么都装不上仓库以外的代码。
+	 * 这是唯一一个可以在页面上填的更新源地址，只能当加速源用。经它下载的更新包
+	 * 和内置加速站一样不做核对（DEC-20261005-006），填谁的地址就等于信谁给的代码，页面上有说明。
 	 * 地址只收 https 的域名（update_accel_custom_clean）；和换源一样要求 POST 并带页面令牌。
 	 */
 	include_once SYSTEM_ROOT.'online_update.php';
@@ -227,6 +227,27 @@ case 'set':
 	//静态的 404.html 读不到数据库配置，外观一改就把主题类名写进去
 	if(isset($_POST['site_theme']))sync_404_theme($_POST['site_theme']);
 	exit(json_encode(['code'=>0, 'msg'=>'succ', 'skipped'=>$skipped]));
+break;
+case 'siteicon':
+	/*
+	 * 上传网站图标（「网站信息设置」页）。图标存在 assets/siteicon/，不随更新包走，更新之后不用重新换。
+	 * 不走 act=set：这里收的是文件，存成什么路径由 site_icon_save() 自己定，不接受表单里填的值。
+	 */
+	if($_SERVER['REQUEST_METHOD'] !== 'POST')exit('{"code":-1,"msg":"请求方式不对"}');
+	if(empty($_FILES['file']) || !is_array($_FILES['file']) || is_array($_FILES['file']['error']))exit(json_encode(['code'=>-1, 'msg'=>'请选择一张图片'], JSON_UNESCAPED_UNICODE));
+	$icon_up = $_FILES['file'];
+	if($icon_up['error'] === UPLOAD_ERR_INI_SIZE || $icon_up['error'] === UPLOAD_ERR_FORM_SIZE)exit(json_encode(['code'=>-1, 'msg'=>'图片太大，服务器不接收，请换一张小一点的'], JSON_UNESCAPED_UNICODE));
+	if($icon_up['error'] !== UPLOAD_ERR_OK || !is_uploaded_file($icon_up['tmp_name']))exit(json_encode(['code'=>-1, 'msg'=>'图片上传失败，请重试'], JSON_UNESCAPED_UNICODE));
+	if(site_icon_save($icon_up['tmp_name'], $icon_err) === false)exit(json_encode(['code'=>-1, 'msg'=>$icon_err], JSON_UNESCAPED_UNICODE));
+	//根目录的 favicon.ico 写不进去不算失败：页面上的图标已经换了，只是直接打开文件直链时还是原来那个
+	$icon_msg = site_icon_sync_root() ? '图标已更新' : '图标已更新。但站点根目录的 favicon.ico 写不进去，直接打开文件直链时浏览器标签上还是原来的图标，请检查该文件的写入权限';
+	exit(json_encode(['code'=>0, 'msg'=>$icon_msg, 'url'=>site_icon_url('../'), 'custom'=>1], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+break;
+case 'siteiconReset':
+	//恢复默认图标：删掉上传的那张，根目录的 favicon.ico 也还原成程序自带的
+	if($_SERVER['REQUEST_METHOD'] !== 'POST')exit('{"code":-1,"msg":"请求方式不对"}');
+	if(!site_icon_reset())exit(json_encode(['code'=>-1, 'msg'=>'恢复失败['.$DB->error().']'], JSON_UNESCAPED_UNICODE));
+	exit(json_encode(['code'=>0, 'msg'=>'已恢复默认图标', 'url'=>site_icon_url('../'), 'custom'=>0], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
 break;
 case 'iptype':
 	$result = [

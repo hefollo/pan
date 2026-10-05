@@ -2842,6 +2842,11 @@ body.admin-theme-neo.admin-body .navbar-nav>li>.dropdown-menu>li>a i{color:#8b80
 .footer-code-table .footer-code-empty td{padding:22px 14px;color:#71839c;text-align:center}
 .footer-code-add{margin-top:10px}
 .footer-code-table .footer-code-note{display:block;margin-top:6px;color:#b7791f;font-size:12px;line-height:1.5;text-align:left}
+/* 网站信息设置：网站图标（预览 + 上传 / 恢复默认）。预览垫白底，深色后台里也看得清图标本来的样子 */
+.site-icon-set{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.site-icon-set .btn{margin:0}
+.site-icon-preview{display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;border:1px solid var(--admin-line);border-radius:10px;background:#fff}
+.site-icon-preview img{width:32px;height:32px;object-fit:contain}
 /* 网站信息设置：禁止访问 IP。条目多时在固定高度的框里滚动（表头吸顶），页面不再被拉长 */
 .blackip-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
 .blackip-tools .blackip-search{flex:1 1 180px;max-width:260px}

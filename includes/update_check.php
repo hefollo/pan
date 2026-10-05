@@ -14,9 +14,13 @@
  * 前三个的地址写死在本文件里；只有 custom 的地址是页面上填的。
  * 版本号、提交列表、在线更新下载的 zip 都取自选中的那一个源，也不会自动换源
  * （例外：加速源不代理提交列表时，提交列表改从可信源取）。
- * 前两个是可信源（仓库本身和作者自己的镜像）；经加速源下载的更新包必须拿可信源上
- * 这个提交的文件清单逐个核对过才能用，核对在 online_update.php 的 oupd_verify_package()。
- * 正因为有这道核对，才敢让站长自己填加速源的地址；可信源的地址永远不能做成可填的。
+ * 前两个是可信源（仓库本身和作者自己的镜像）；后两个加速源是第三方站点。
+ * 经加速源下载的更新包原来要拿可信源上这个提交的文件清单逐个核对（online_update.php 的
+ * oupd_verify_package()），现在按站长的决定不核对了（DEC-20261005-006）：会选加速源，
+ * 正是因为服务器连不上 GitHub，而核对恰恰要直连可信源。
+ * 代价要清楚：加速源给什么包，站点就装什么包，所以只能用信得过的加速站；
+ * 页面上对这两个源的说明必须如实写「不核对」。核对的代码还留着，哪个源想恢复，
+ * 把它在 update_sources() 里的 verify 改回 true 就行。可信源的地址仍然不能做成可填的。
  *
  * 为什么不沿用原版那种做法：
  * 原版后台首页有一段 JSONP 去 auth.cccyun.cc 拉版本检查，返回值本身就是 JavaScript，
@@ -40,7 +44,7 @@ if(!defined('UPDATE_MIRROR_BASE'))define('UPDATE_MIRROR_BASE', 'https://gitea.he
 /*
  * 加速站：公共的 GitHub 加速站，用法是「加速站地址 + 完整的 GitHub 地址」。
  * 只填站点地址（https 开头，结尾不带斜杠）；换成别的同类站点也行，设成空串则下拉框里不出现这一项。
- * 它是第三方的站点，所以经它下载的更新包一律要和可信源核对（见文件头的说明），这一条不能省。
+ * 它是第三方的站点，经它下载的更新包现在不做核对（见文件头的说明），换站点时只换成信得过的。
  */
 if(!defined('UPDATE_ACCEL_BASE'))define('UPDATE_ACCEL_BASE', 'https://gh-proxy.com');
 //两次真实请求之间至少隔多久（秒）。GitHub 未登录时每个 IP 每小时只有 60 次额度
@@ -64,8 +68,8 @@ function update_base_clean($base){
  * 站长在页面上自己填的加速源地址合不合规（DEC-20261005-004）。合规返回去掉结尾斜杠的地址，否则空串。
  *
  * 除了上面那几条，还要求是个正经域名：不收 IP、localhost 和不带点的内网主机名，
- * 免得被人拿这个输入框让服务器去探内网。地址本身不需要可信 —— 自定义加速源和内置的加速站一样，
- * 下载的包要和可信源逐文件核对过才会被使用。
+ * 免得被人拿这个输入框让服务器去探内网。这里只管地址的写法，管不了对方可不可信 ——
+ * 经加速源下载的包不做核对（DEC-20261005-006），填谁的地址就等于信谁给的代码。
  */
 function update_accel_custom_clean($url){
 	$url = trim((string)$url);
@@ -83,7 +87,8 @@ function update_accel_custom_clean($url){
 
 /**
  * 可选的更新源：键 => [name 提示里用的短名, label 下拉框里的文字, host 域名, base 站点地址,
- * trusted 是不是可信源, verify 经它下载的包要不要拿可信源核对, accel 是不是加速源（前缀用法）]。
+ * trusted 是不是可信源, verify 经它下载的包要不要拿可信源核对（现在所有源都是 false，DEC-20261005-006）,
+ * accel 是不是加速源（前缀用法）]。
  * 备用源、加速站的地址不合规就当它不存在；自定义加速源没填或填得不合规也一样。
  * $reset 只给测试用：清掉本次请求里的缓存，重新按当前配置生成。
  */
@@ -100,13 +105,13 @@ function update_sources($reset = false){
 	$base = update_base_clean(UPDATE_ACCEL_BASE);
 	if($base !== ''){
 		$host = (string)parse_url($base, PHP_URL_HOST);
-		$list['ghproxy'] = ['name'=>'加速站', 'label'=>'加速站（'.$host.'）', 'host'=>$host, 'base'=>$base, 'trusted'=>false, 'verify'=>true, 'accel'=>true];
+		$list['ghproxy'] = ['name'=>'加速站', 'label'=>'加速站（'.$host.'）', 'host'=>$host, 'base'=>$base, 'trusted'=>false, 'verify'=>false, 'accel'=>true];
 	}
-	//站长自己填的加速源：唯一一个地址不写死的源，所以只能是「要核对」的这一类，永远不会是可信源
+	//站长自己填的加速源：唯一一个地址不写死的源。它永远不会是可信源（不能拿它去核对别的源），下载的包同样不核对
 	$base = update_accel_custom_clean(isset($conf['update_accel_custom']) ? $conf['update_accel_custom'] : '');
 	if($base !== ''){
 		$host = (string)parse_url($base, PHP_URL_HOST);
-		$list['custom'] = ['name'=>'自定义加速源', 'label'=>'自定义加速源（'.$host.'）', 'host'=>$host, 'base'=>$base, 'trusted'=>false, 'verify'=>true, 'accel'=>true];
+		$list['custom'] = ['name'=>'自定义加速源', 'label'=>'自定义加速源（'.$host.'）', 'host'=>$host, 'base'=>$base, 'trusted'=>false, 'verify'=>false, 'accel'=>true];
 	}
 	return $list;
 }
@@ -132,7 +137,8 @@ function update_trusted_sources(){
 }
 
 /**
- * 当前（或指定）更新源下载的包要不要拿可信源核对
+ * 当前（或指定）更新源下载的包要不要拿可信源核对。现在没有哪个源要核对，所以总是 false；
+ * 判断留着，是为了以后给某个源恢复核对时只改 update_sources() 一处
  */
 function update_source_needs_verify($src = null){
 	$list = update_sources();
@@ -423,8 +429,8 @@ function update_check($force = false){
 	$json = update_http_get($urls['commits'], $err2);
 	/*
 	 * 多数加速站只代理文件和 zip，不代理提交列表接口。加速源取不到时依次直连可信源去取：
-	 * 经加速源更新时本来就要连可信源核对，提交列表从那边拿不会多出新的依赖；
-	 * 包是按提交号下载、下载后还要逐文件核对的，列表和包不是同一个来源也错配不了。
+	 * 可信源也连不上的话就没有提交列表，页面会照实显示取不到；这时只能换一个代理提交列表接口的加速站
+	 * （内置的那个是代理的）。包是按提交号下载的，列表和包不是同一个来源也不影响下载。
 	 */
 	$data['commits_from'] = '';
 	if($json === false && update_source_is_accel()){

@@ -7,8 +7,9 @@
  * UPDATE_REPO / UPDATE_BRANCH，页面上不能自填下载地址。
  * 更新源是站长在页面上从写死的清单里选的（GitHub、Gitea 镜像或加速站，DEC-20261005-002 / 003），
  * 提交列表和 zip 取自同一个源。
- * 加速站是第三方的站点：经它下载的包，要直连可信源（GitHub、Gitea）取这个提交的文件清单，
- * 逐个文件核对一致后才能用（oupd_verify_package），对不上或可信源都连不上就拒绝。
+ * 加速站是第三方的站点。经它下载的包原来要直连可信源（GitHub、Gitea）取这个提交的文件清单
+ * 逐个文件核对（oupd_verify_package），现在按站长的决定不核对了（DEC-20261005-006）：
+ * update_sources() 里没有哪个源还标着 verify，下面的核对代码留着但不会被走到。
  *
  * 流程分两步，中间给站长看一眼再确认：
  *   ① 预检 oupd_prepare()：下载 → 检查 zip → 和站点现有文件逐个比对，列出会改哪些文件。
@@ -96,7 +97,7 @@ function oupd_skip_reason($rel){
 	if(!$is_top_file && in_array($top, ['.git', '.github', '.agents', '.codex', '.claude', 'img', 'tests', 'tools', '发布素材', 'data', 'tmp', 'temp', 'file', 'log', 'logs', 'cache', 'runtime', 'uploads', 'upload', 'storage'], true))return '不随站点发布';
 	if(strtolower(substr($rel, -4)) === '.zip')return '压缩包';
 	if($rel === 'install/install.lock')return '安装锁';
-	foreach(['includes/vendor/', 'assets/css/custom/', 'assets/avatar/', 'includes/sponsor/images/'] as $p){
+	foreach(['includes/vendor/', 'assets/css/custom/', 'assets/avatar/', 'assets/siteicon/', 'includes/sponsor/images/'] as $p){
 		if(strpos($rel, $p) === 0)return '站点运行时文件';
 	}
 	if($rel === 'includes/log.txt')return '站点运行时文件';
@@ -445,6 +446,9 @@ function oupd_plan($pkg){
 	$plan = ['changed'=>[], 'added'=>[], 'unchanged'=>0, 'skipped'=>[], 'unwritable'=>[], 'admin_dir'=>$admin_dir];
 	foreach($pkg['files'] as $rel => $idx){
 		$why = oupd_skip_reason($rel);
+		//站长在后台上传过图标的话，根目录的 favicon.ico 装的就是那张图标，别用仓库里的默认图标盖回去。
+		//不写进 oupd_skip_reason()：oupd_safe_target() 靠它判断备份里的文件能不能还原，旧备份里是有 favicon.ico 的
+		if($why === '' && $rel === 'favicon.ico' && site_icon_custom() !== '')$why = '站长已上传自定义图标';
 		if($why !== ''){
 			$plan['skipped'][] = $rel;
 			continue;
@@ -577,7 +581,7 @@ function oupd_fetch($sha, &$err = null, &$file = null){
 		return false;
 	}
 	/*
-	 * 经加速站下载的包先和可信源核对。核对过的包记下它的 SHA-256，
+	 * 标了要核对的源（现在一个都没有，DEC-20261005-006）下载的包先和可信源核对。核对过的包记下它的 SHA-256，
 	 * 正式更新复用预检下载的同一个包时不用再核对一遍；包换过（哈希不同）就重新核对。
 	 * 核对不过的包立刻删掉，哪怕只是因为可信源暂时连不上：没核对过的包不留在盘上。
 	 */

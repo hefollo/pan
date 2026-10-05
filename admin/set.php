@@ -34,6 +34,19 @@ if($mod=='site'){
 	  <label class="col-sm-2 control-label">网站描述</label>
 	  <div class="col-sm-10"><input type="text" name="description" value="<?php echo $conf['description']; ?>" class="form-control"/></div>
 	</div><br/>
+	<div class="form-group">
+	  <label class="col-sm-2 control-label">网站图标</label>
+	  <div class="col-sm-10">
+	    <?php /* 图标不跟下面的「修改」按钮走：选了图就直接上传生效，所以这里的控件都不带 name，不会混进 saveSetting 的表单里 */ ?>
+	    <div class="site-icon-set">
+	      <span class="site-icon-preview"><img id="siteIconImg" src="<?php echo htmlspecialchars(site_icon_url('../'), ENT_QUOTES, 'UTF-8')?>" alt=""></span>
+	      <input type="file" id="siteIconFile" accept=".ico,.png,.jpg,.jpeg,.gif,.webp,image/x-icon,image/png,image/jpeg,image/gif,image/webp" style="display:none">
+	      <button type="button" class="btn btn-default btn-sm" id="siteIconPick"><i class="fa fa-upload"></i> 上传图标</button>
+	      <button type="button" class="btn btn-default btn-sm" id="siteIconReset"<?php echo site_icon_custom() === '' ? ' style="display:none"' : ''?>><i class="fa fa-undo"></i> 恢复默认</button>
+	    </div>
+	    <span class="help-block">浏览器标签、收藏夹里显示的小图标。支持 ICO、PNG、JPG、GIF、WebP，建议用正方形图片；选好后立即生效，不用点下面的「修改」。上传的图标单独存放在 <code>assets/siteicon/</code>，覆盖上传更新包、在线更新都不会动它，更新之后不用重新换。</span>
+	  </div>
+	</div><br/>
 <?php $blackip_rows = blackip_list();?>
 	<div class="form-group">
 	  <label class="col-sm-2 control-label">禁止访问IP</label>
@@ -134,6 +147,87 @@ if($mod=='site'){
 </div>
 </div>
 <script>
+//网站图标：选了图直接上传，不跟表单一起提交
+(function(){
+	var file = document.getElementById('siteIconFile'), pick = document.getElementById('siteIconPick'), reset = document.getElementById('siteIconReset'), img = document.getElementById('siteIconImg');
+	if(!file || !pick || !reset || !img)return;
+	function apply(data){
+		//默认图标的地址一直是 favicon.ico，带个时间戳浏览器才会重新取
+		var url = data.url + (data.custom ? '' : '?t=' + new Date().getTime());
+		img.src = url;
+		reset.style.display = data.custom ? '' : 'none';
+		//当前这个后台标签页上的图标也一起换掉，不用等刷新
+		$('link[rel="icon"],link[rel="apple-touch-icon"]').remove();
+		$('<link rel="icon">').attr('href', url).appendTo('head');
+	}
+	function request(act, body){
+		var ii = layer.load(2, {shade:[0.1,'#fff']});
+		$.ajax({
+			type : 'POST',
+			url : 'ajax.php?act=' + act,
+			data : body,
+			dataType : 'json',
+			processData : false,
+			contentType : false,
+			success : function(data){
+				layer.close(ii);
+				if(data.code == 0){
+					apply(data);
+					layer.msg(data.msg, {icon:1, time:data.msg.length > 12 ? 6000 : 2000});
+				}else{
+					layer.alert(data.msg, {icon:2});
+				}
+			},
+			error : function(){
+				layer.close(ii);
+				layer.msg('服务器错误', {icon:2});
+			}
+		});
+	}
+	function send(blob, name){
+		var fd = new FormData();
+		fd.append('file', blob, name);
+		request('siteicon', fd);
+	}
+	pick.onclick = function(){ file.click(); };
+	file.onchange = function(){
+		var f = file.files && file.files[0];
+		//清掉选择，下次再选同一个文件也能触发
+		file.value = '';
+		if(!f)return;
+		//ICO 原样上传：它里面可以带好几个尺寸，转一道就丢了
+		if(/\.ico$/i.test(f.name) || f.type === 'image/x-icon' || f.type === 'image/vnd.microsoft.icon'){
+			send(f, 'icon.ico');
+			return;
+		}
+		//其余图片先等比缩进最大 256×256 的透明方形画布再传：图标用不着更大的，原图动辄几 MB；小图不放大
+		var url = URL.createObjectURL(f), pic = new Image();
+		pic.onload = function(){
+			URL.revokeObjectURL(url);
+			var w = pic.naturalWidth, h = pic.naturalHeight, cv = document.createElement('canvas');
+			//浏览器画不了就传原图，由服务端把关
+			if(!w || !h || !cv.getContext || !cv.toBlob){ send(f, f.name); return; }
+			var side = Math.min(256, Math.max(w, h)), k = side / Math.max(w, h), dw = Math.round(w * k), dh = Math.round(h * k);
+			cv.width = cv.height = side;
+			cv.getContext('2d').drawImage(pic, Math.round((side - dw) / 2), Math.round((side - dh) / 2), dw, dh);
+			cv.toBlob(function(blob){
+				if(blob)send(blob, 'icon.png');
+				else send(f, f.name);
+			}, 'image/png');
+		};
+		pic.onerror = function(){
+			URL.revokeObjectURL(url);
+			layer.alert('这张图片浏览器打不开，换一张试试（支持 ICO、PNG、JPG、GIF、WebP）', {icon:2});
+		};
+		pic.src = url;
+	};
+	reset.onclick = function(){
+		var confirmobj = layer.confirm('恢复成程序自带的默认图标？上传的图标会被删除。', {icon:3}, function(){
+			layer.close(confirmobj);
+			request('siteiconReset', new FormData());
+		});
+	};
+})();
 //页脚代码列表：行内控件不带 name，每次改动都把整张表汇总成 JSON 写进隐藏字段，saveSetting 序列化表单时带上它
 (function(){
 	var tbody = document.getElementById('footerCodeRows'), field = document.getElementById('footerCodesField'), addBtn = document.getElementById('footerCodeAdd');
