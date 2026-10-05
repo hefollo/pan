@@ -92,7 +92,7 @@ function oupd_skip_reason($rel){
 	if(!$is_top_file && in_array($top, ['.git', '.github', '.agents', '.codex', '.claude', 'img', 'tests', 'tools', '发布素材', 'data', 'tmp', 'temp', 'file', 'log', 'logs', 'cache', 'runtime', 'uploads', 'upload', 'storage'], true))return '不随站点发布';
 	if(strtolower(substr($rel, -4)) === '.zip')return '压缩包';
 	if($rel === 'install/install.lock')return '安装锁';
-	foreach(['includes/vendor/', 'assets/css/custom/', 'includes/sponsor/images/'] as $p){
+	foreach(['includes/vendor/', 'assets/css/custom/', 'assets/avatar/', 'includes/sponsor/images/'] as $p){
 		if(strpos($rel, $p) === 0)return '站点运行时文件';
 	}
 	if($rel === 'includes/log.txt')return '站点运行时文件';

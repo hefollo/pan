@@ -2397,7 +2397,33 @@ body.theme-sunset .buy-plan-btn,body.theme-sunset .buy-plan-btn:hover{color:#3d0
    --tint 之类只有布局型外观才有，这里一律不用，否则 15 套配色型外观下会变透明。 */
 .usercenter .uc-head{display:flex;align-items:center;flex-wrap:wrap;gap:14px;margin:0 0 18px;padding:16px;border:1px solid var(--line);border-radius:14px;background:var(--surface-soft)}
 .uc-avatar{flex:none;display:flex;align-items:center;justify-content:center;width:52px;height:52px;border-radius:50%;overflow:hidden;background:var(--surface);border:1px solid var(--line);color:var(--primary);font-size:22px}
-.uc-avatar img{width:100%;height:100%;object-fit:cover}
+/* 头像图片是盖在图标 / 首字上面的：加载失败时 img 会被去掉，露出下面垫着的东西。
+   个人中心、cockpit / studio 顶栏的头像位共用这一条 */
+.uc-avatar,.cockpit-avatar,.studio-avatar{position:relative;overflow:hidden}
+.uc-avatar img,img.user-face{position:absolute;left:0;top:0;width:100%;height:100%;max-width:none;border-radius:inherit;object-fit:cover}
+/* 导航栏里的头像：图标的盒子原样留着（各外观给它定的宽度、间距都不变），只把字形藏掉，图片居中盖在上面 */
+.navbar i.fa.has-face{position:relative}
+.navbar i.fa.has-face:before{visibility:hidden}
+.navbar i.fa.has-face>img.nav-face{position:absolute;left:50%;top:50%;width:1.3em;height:1.3em;max-width:none;-webkit-transform:translate(-50%,-50%);transform:translate(-50%,-50%);border-radius:50%;object-fit:cover}
+/* 个人中心头部的头像可以点了换：悬停 / 聚焦时盖一层相机图标 */
+.uc-avatar-pick{cursor:pointer}
+.uc-avatar-pick:focus{outline:0;border-color:var(--primary)}
+.uc-avatar-edit{position:absolute;left:0;top:0;z-index:2;display:flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:inherit;background:rgba(0,0,0,.45);color:#fff;font-size:16px;opacity:0;transition:opacity .18s ease}
+.uc-avatar-pick:hover .uc-avatar-edit,.uc-avatar-pick:focus .uc-avatar-edit{opacity:1}
+/* 账号设置里的「头像」一栏 */
+.uc-avatar.uc-avatar-lg{width:72px;height:72px;font-size:30px}
+.uc-avatar-set{display:flex;align-items:center;gap:16px}
+.uc-avatar-set-main{flex:1 1 auto;min-width:0}
+.uc-avatar-set-btns{display:flex;flex-wrap:wrap;gap:8px}
+.uc-btn[hidden]{display:none}
+/* 裁剪头像的弹窗：canvas 取景框 + 圆形遮罩 + 缩放滑块 */
+.uc-crop{padding:20px 24px 6px;text-align:center}
+.uc-crop-stage{position:relative;margin:0 auto;overflow:hidden;border-radius:10px;background:#fff;cursor:move;touch-action:none;-webkit-user-select:none;user-select:none}
+.uc-crop-stage canvas{display:block}
+.uc-crop-ring{position:absolute;left:0;top:0;width:100%;height:100%;border-radius:50%;box-shadow:0 0 0 999px rgba(0,0,0,.5);pointer-events:none}
+.uc-crop-zoom{display:flex;align-items:center;gap:10px;margin:14px 0 0;color:var(--muted)}
+.uc-crop-zoom input[type=range]{flex:1 1 auto;width:auto;min-width:0;margin:0}
+.uc-crop-tip{margin:10px 0 0;color:var(--muted);font-size:12px}
 .uc-head-main{flex:1 1 200px;min-width:0}
 .uc-head-main strong{display:block;color:var(--text);font-size:17px;font-weight:800;letter-spacing:-.01em;word-break:break-all}
 .uc-head-main small{display:block;margin-top:3px;color:var(--muted);font-size:12px;word-break:break-all}

@@ -222,7 +222,7 @@ $(document).ready(function(){
 				title: '操作',
 				formatter: function(value, row, index) {
 					window.userRows[row.uid] = row;
-					return '<a href="javascript:setLevel('+row.uid+')" class="btn btn-xs btn-primary">权限</a>&nbsp;<a href="./file.php?uid='+row.uid+'" class="btn btn-xs btn-info" target="_blank">文件</a>&nbsp;<a href="javascript:delUser('+row.uid+')" class="btn btn-xs btn-danger">删除</a></td></tr>';
+					return '<a href="javascript:setLevel('+row.uid+')" class="btn btn-xs btn-primary">权限</a>&nbsp;<a href="./file.php?uid='+row.uid+'" class="btn btn-xs btn-info" target="_blank">文件</a>'+(row.avatar_custom == 1 ? '&nbsp;<a href="javascript:resetAvatar('+row.uid+')" class="btn btn-xs btn-warning">清除头像</a>' : '')+'&nbsp;<a href="javascript:delUser('+row.uid+')" class="btn btn-xs btn-danger">删除</a></td></tr>';
 				}
 			},
 		],
@@ -322,6 +322,34 @@ function save(){
 		error:function(data){
 			layer.msg('服务器错误');
 		}
+	});
+}
+
+//清掉用户自己上传的头像（只有传过头像的用户才有这个按钮），清完显示回首字头像
+function resetAvatar(uid) {
+	var confirmobj = layer.confirm('确定清除这个用户自己上传的头像吗？', {
+	  btn: ['确定','取消'], icon: 0
+	}, function(){
+	  layer.close(confirmobj);
+	  $.ajax({
+		type : 'POST',
+		url : 'ajax.php?act=resetUserAvatar',
+		data : {uid: uid},
+		dataType : 'json',
+		success : function(data) {
+			if(data.code == 0){
+				searchSubmit();
+				layer.msg('头像已清除', {icon:1});
+			}else{
+				layer.alert(data.msg, {icon:2});
+			}
+		},
+		error:function(data){
+			layer.msg('服务器错误');
+		}
+	  });
+	}, function(){
+	  layer.close(confirmobj);
 	});
 }
 

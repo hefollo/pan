@@ -460,8 +460,9 @@ function layout_render_cockpit_head($DB, $total_files){
 		.'<div class="cockpit-head-side">'
 		.'<a class="cockpit-upload" href="./upload.php"><i class="fa fa-plus" aria-hidden="true"></i> 上传文件</a>';
 	if($logged){
-		$html .= '<a class="cockpit-avatar" href="./user.php" title="'.$name_safe.'">'
-			.($initial !== '' ? htmlspecialchars($initial, ENT_QUOTES, 'UTF-8') : '<i class="fa fa-user" aria-hidden="true"></i>').'</a>';
+		$html .= '<a class="cockpit-avatar" href="./user.php" title="'.$name_safe.'" data-user-face>'
+			.($initial !== '' ? htmlspecialchars($initial, ENT_QUOTES, 'UTF-8') : '<i class="fa fa-user" aria-hidden="true"></i>')
+			.user_avatar_img($userrow).'</a>';
 	}else{
 		$html .= '<a class="cockpit-avatar cockpit-avatar-guest" href="./login.php" title="登录"><i class="fa fa-user-o" aria-hidden="true"></i></a>';
 	}
@@ -626,9 +627,9 @@ function layout_render_studio_topbar(){
 		$name = !empty($userrow['nickname']) ? $userrow['nickname'] : '我';
 		$name_safe = htmlspecialchars($name, ENT_QUOTES, 'UTF-8');
 		$initial = layout_name_initial($name);
-		$html .= '<a class="studio-avatar" href="./user.php" title="'.$name_safe.'">'
+		$html .= '<a class="studio-avatar" href="./user.php" title="'.$name_safe.'" data-user-face>'
 			.($initial !== '' ? htmlspecialchars($initial, ENT_QUOTES, 'UTF-8') : '<i class="fa fa-user" aria-hidden="true"></i>')
-			.'</a>';
+			.user_avatar_img($userrow).'</a>';
 	}else{
 		$html .= '<a class="studio-avatar studio-avatar-guest" href="./login.php" title="登录"><i class="fa fa-user-o" aria-hidden="true"></i></a>';
 	}

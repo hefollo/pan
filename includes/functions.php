@@ -4188,3 +4188,169 @@ function file_output($hash, $type, $size, $name, $is_view = false, $is_admin = f
 		}
 	}
 }
+
+/*
+ * ================= 用户头像 =================
+ * pre_user.faceimg 原来只放快捷登录带回来的第三方头像地址。用户自己上传的头像也记在这一列，
+ * 值是站内相对路径 assets/avatar/{uid}_{16 位随机串}.{jpg|png|gif|webp}，靠这个形状区分两种来源，
+ * 所以不用加字段、不用升级数据库。
+ *
+ * 文件名完全由服务端生成，扩展名只会是这四种图片。assets/avatar/ 是运行时目录：
+ * 不进版本库、不进更新包，在线更新也不碰它。每个用户只留一个文件，换头像时删掉旧的。
+ */
+function user_avatar_is_custom($faceimg){
+	return is_string($faceimg) && preg_match('#^assets/avatar/\d+_[a-f0-9]{16}\.(?:jpg|png|gif|webp)$#', $faceimg) === 1;
+}
+
+/**
+ * 头像的可用地址，没有头像返回空串。
+ * $base 是当前页面到站点根目录的相对前缀，后台页面传 '../'。
+ */
+function user_avatar_url($row, $base = './'){
+	$face = is_array($row) ? (isset($row['faceimg']) ? (string)$row['faceimg'] : '') : (string)$row;
+	if($face === '')return '';
+	if(user_avatar_is_custom($face))return $base.$face;
+	//第三方头像只认 http(s) 地址
+	return preg_match('#^(?:https?:)?//#i', $face) ? $face : '';
+}
+
+/**
+ * 头像的 <img>，没有头像返回空串。它是盖在首字 / 图标上面的：加载失败（文件丢了、第三方头像失效）
+ * 就把自己去掉，露出下面的字，所以调用方要先输出首字或图标。
+ */
+function user_avatar_img($row, $base = './'){
+	$url = user_avatar_url($row, $base);
+	if($url === '')return '';
+	return '<img class="user-face" src="'.htmlspecialchars($url, ENT_QUOTES, 'UTF-8').'" alt="" onerror="this.parentNode.removeChild(this)">';
+}
+
+//头像目录的绝对路径（带结尾斜杠），建不出来或不可写返回空串
+function user_avatar_dir(){
+	$dir = ROOT.'assets/avatar/';
+	if(!is_dir($dir)){
+		if(!@mkdir($dir, 0755, true) && !is_dir($dir))return '';
+	}
+	//放个空首页，免得服务器开了目录浏览时能把所有人的头像列出来
+	if(!is_file($dir.'index.html'))@file_put_contents($dir.'index.html', '');
+	return is_writable($dir) ? $dir : '';
+}
+
+//删掉自定义头像的文件。只认 user_avatar_is_custom() 那个形状，第三方地址和别的路径一律不碰
+function user_avatar_delete_file($faceimg){
+	if(!user_avatar_is_custom($faceimg))return;
+	$file = ROOT.$faceimg;
+	if(is_file($file))@unlink($file);
+}
+
+/**
+ * 用 GD 把图片居中裁成正方形、缩到 256×256，重新编码成 JPEG，返回图片内容。
+ * 重新编码之后，图片文件里夹带的任何额外数据都不会留下。
+ * 返回 null = 这台服务器处理不了（没装 GD，或 GD 不支持这种格式）；false = 图片本身读不出来。
+ */
+function user_avatar_gd_square($file, $type){
+	$loaders = [IMAGETYPE_JPEG=>'imagecreatefromjpeg', IMAGETYPE_PNG=>'imagecreatefrompng', IMAGETYPE_GIF=>'imagecreatefromgif', IMAGETYPE_WEBP=>'imagecreatefromwebp'];
+	if(!function_exists('imagecreatetruecolor') || !function_exists('imagejpeg'))return null;
+	if(!isset($loaders[$type]) || !function_exists($loaders[$type]))return null;
+	$src = @call_user_func($loaders[$type], $file);
+	if(!$src)return false;
+	$w = imagesx($src);
+	$h = imagesy($src);
+	$side = min($w, $h);
+	$size = 256;
+	$dst = imagecreatetruecolor($size, $size);
+	if(!$dst)return false;
+	//透明的地方垫白底：JPEG 没有透明，不垫会变成黑的
+	imagefill($dst, 0, 0, imagecolorallocate($dst, 255, 255, 255));
+	imagecopyresampled($dst, $src, 0, 0, intdiv($w - $side, 2), intdiv($h - $side, 2), $size, $size, $side, $side);
+	ob_start();
+	$ok = imagejpeg($dst, null, 90);
+	$data = ob_get_clean();
+	return ($ok && is_string($data) && $data !== '') ? $data : false;
+}
+
+/**
+ * 保存用户上传的头像，$file 是上传的临时文件。
+ * 成功返回新的 faceimg 值（站内相对路径），失败返回 false，原因写在 $err。
+ */
+function user_avatar_save($uid, $file, &$err = null){
+	global $DB;
+	$err = '';
+	$uid = intval($uid);
+	if($uid <= 0 || !is_string($file) || $file === '' || !is_file($file)){
+		$err = '没有收到图片';
+		return false;
+	}
+	$bytes = filesize($file);
+	if($bytes <= 0){
+		$err = '图片是空的';
+		return false;
+	}
+	if($bytes > 5 * 1024 * 1024){
+		$err = '图片不能超过 5MB';
+		return false;
+	}
+	//按文件内容认类型，不看用户给的文件名和 Content-Type
+	$exts = [IMAGETYPE_JPEG=>'jpg', IMAGETYPE_PNG=>'png', IMAGETYPE_GIF=>'gif', IMAGETYPE_WEBP=>'webp'];
+	$info = @getimagesize($file);
+	if(!$info || !isset($exts[$info[2]]) || $info[0] < 1 || $info[1] < 1){
+		$err = '只支持 JPG、PNG、GIF、WebP 图片';
+		return false;
+	}
+	//解码前先卡尺寸：GD 解码是按像素数吃内存的，一张几千万像素的图能直接把内存限制撑爆
+	if($info[0] > 4096 || $info[1] > 4096 || $info[0] * $info[1] > 12000000){
+		$err = '图片尺寸太大，请缩小后再上传';
+		return false;
+	}
+	if(user_avatar_dir() === ''){
+		$err = '头像目录不可写，请联系管理员检查 assets/avatar/ 的权限';
+		return false;
+	}
+
+	$data = user_avatar_gd_square($file, $info[2]);
+	if($data === false){
+		$err = '图片读取失败，可能已损坏，换一张试试';
+		return false;
+	}
+	if($data !== null){
+		$ext = 'jpg';
+	}else{
+		//服务器处理不了图片（没装 GD）：只收小图，原样保存。浏览器端已经裁成 256×256 了，正常都能过
+		if($bytes > 1024 * 1024 || $info[0] > 2048 || $info[1] > 2048){
+			$err = '图片太大，请裁剪到 2048 像素、1MB 以内再上传';
+			return false;
+		}
+		$ext = $exts[$info[2]];
+		$data = file_get_contents($file);
+		if(!is_string($data) || $data === ''){
+			$err = '图片读取失败，请重试';
+			return false;
+		}
+	}
+
+	$rel = 'assets/avatar/'.$uid.'_'.bin2hex(random_bytes(8)).'.'.$ext;
+	if(file_put_contents(ROOT.$rel, $data, LOCK_EX) === false){
+		$err = '头像保存失败，请联系管理员检查 assets/avatar/ 的权限';
+		return false;
+	}
+	$old = $DB->getColumn("SELECT faceimg FROM pre_user WHERE uid=:uid LIMIT 1", [':uid'=>$uid]);
+	if($DB->exec("UPDATE pre_user SET faceimg=:face WHERE uid=:uid", [':face'=>$rel, ':uid'=>$uid]) === false){
+		@unlink(ROOT.$rel);
+		$err = '保存失败['.$DB->error().']';
+		return false;
+	}
+	user_avatar_delete_file($old);
+	return $rel;
+}
+
+/**
+ * 去掉自定义头像（文件一起删）。第三方头像不动：那不是用户传的，也没有文件可删。
+ */
+function user_avatar_reset($uid){
+	global $DB;
+	$uid = intval($uid);
+	$old = $DB->getColumn("SELECT faceimg FROM pre_user WHERE uid=:uid LIMIT 1", [':uid'=>$uid]);
+	if(!user_avatar_is_custom($old))return true;
+	if($DB->exec("UPDATE pre_user SET faceimg='' WHERE uid=:uid", [':uid'=>$uid]) === false)return false;
+	user_avatar_delete_file($old);
+	return true;
+}

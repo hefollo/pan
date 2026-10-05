@@ -1,6 +1,6 @@
 /*
  * 个人中心的交互：文件管理（重命名 / 访问密码 / 公开私密 / 删除 / 批量删除 / 复制外链）、
- * 账号设置（改昵称 / 改密码）和登录方式绑定（绑 QQ/微信、绑邮箱设密码、解绑）。
+ * 账号设置（换头像 / 改昵称 / 改密码）和登录方式绑定（绑 QQ/微信、绑邮箱设密码、解绑）。
  *
  * 所有写操作都 POST 到 user.php?act=xxx，服务端会再校验一次归属和 CSRF，
  * 这里的按钮显隐只是界面便利，不承担权限判断。
@@ -402,6 +402,245 @@
       } else {
         layer.msg(res.msg || '修改失败', { icon: 2 });
       }
+    });
+  });
+
+  /* ---------------- 头像 ---------------- */
+
+  /*
+   * 选好图片先在浏览器里裁：弹一个取景框，拖动、缩放选出正方形区域，
+   * 用 canvas 导出 256×256 的 PNG 再上传。这样手机拍的几 MB 的照片也只传一百来 KB，
+   * 服务器没装 GD（自己裁不了图）时也照样能用。
+   * 浏览器不支持 canvas 导出的话直接传原图，由服务端居中裁。
+   */
+  var AVATAR_OUT = 256;
+  var AVATAR_RAW_MAX = 5 * 1024 * 1024;   // 和服务端 user_avatar_save() 的上限一致
+  var AVATAR_PICK_MAX = 30 * 1024 * 1024; // 要裁的原图再大浏览器也吃力
+
+  //把页面上所有头像位换成新图；url 为空就去掉图片，露出下面垫着的图标 / 首字
+  function setAvatar(url) {
+    function make(cls, gone) {
+      var img = document.createElement('img');
+      img.className = cls;
+      img.alt = '';
+      img.onerror = function () {
+        if (gone) gone(this);
+        if (this.parentNode) this.parentNode.removeChild(this);
+      };
+      img.src = url;
+      return img;
+    }
+    $('[data-user-face]').each(function () {
+      $(this).children('img.user-face').remove();
+      if (url) $(this).append(make('user-face'));
+    });
+    //导航栏那个头像位就是登录方式图标本身：有图时靠 has-face 把字形藏掉，所以这个类要跟着图片一起加减
+    $('[data-user-nav]').each(function () {
+      var $icon = $(this);
+      $icon.removeClass('has-face').children('img.nav-face').remove();
+      if (!url) return;
+      $icon.append(make('nav-face', function (el) { $(el.parentNode).removeClass('has-face'); })).addClass('has-face');
+    });
+  }
+
+  function uploadAvatar(blob, name) {
+    var fd = new FormData();
+    fd.append('csrf_token', uc_csrf);
+    fd.append('file', blob, name);
+    var ii = layer.load(2, { shade: [0.2, '#fff'] });
+    $.ajax({
+      type: 'POST',
+      url: './user.php?act=avatar',
+      data: fd,
+      processData: false,
+      contentType: false,
+      dataType: 'json',
+      success: function (res) {
+        layer.close(ii);
+        if (!res) { layer.msg('服务器返回异常'); return; }
+        if (res.code === 0) {
+          setAvatar(res.url);
+          $('#ucAvatarReset').prop('hidden', false);
+          layer.msg(res.msg, { icon: 1 });
+        } else {
+          layer.msg(res.msg || '上传失败', { icon: 2 });
+        }
+      },
+      error: function () {
+        layer.close(ii);
+        layer.msg('上传失败，图片可能太大或者网络不通');
+      }
+    });
+  }
+
+  function uploadRawAvatar(file) {
+    if (file.size > AVATAR_RAW_MAX) { layer.msg('图片不能超过 5MB', { icon: 2 }); return; }
+    uploadAvatar(file, file.name || 'avatar');
+  }
+
+  function openCropper(file) {
+    var URLApi = window.URL || window.webkitURL;
+    var canCrop = !!(URLApi && URLApi.createObjectURL && window.HTMLCanvasElement && HTMLCanvasElement.prototype.toBlob);
+    if (!canCrop) { uploadRawAvatar(file); return; }
+
+    var src = URLApi.createObjectURL(file);
+    var img = new Image();
+    img.onerror = function () {
+      URLApi.revokeObjectURL(src);
+      layer.msg('这张图片打不开，换一张试试', { icon: 2 });
+    };
+    img.onload = function () {
+      var iw = img.naturalWidth || img.width;
+      var ih = img.naturalHeight || img.height;
+      if (!iw || !ih) { img.onerror(); return; }
+
+      //取景框边长：桌面 280，窄屏按窗口宽度收
+      var view = Math.max(180, Math.min(280, $(window).width() - 72));
+      var base = view / Math.min(iw, ih);   // 刚好铺满取景框的缩放
+      var zoom = 1, scale = base;
+      var x = (view - iw * scale) / 2, y = (view - ih * scale) / 2;
+      var canvas, ctx, $range, drag = null;
+      var dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+      //图片不能露出取景框的边
+      function clamp() {
+        x = Math.min(0, Math.max(view - iw * scale, x));
+        y = Math.min(0, Math.max(view - ih * scale, y));
+      }
+      function draw() {
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, view, view);
+        ctx.drawImage(img, x, y, iw * scale, ih * scale);
+      }
+      //缩放时保持取景框正中间那一点不动
+      function setZoom(z) {
+        z = Math.min(4, Math.max(1, z));
+        var cx = (view / 2 - x) / scale, cy = (view / 2 - y) / scale;
+        zoom = z;
+        scale = base * zoom;
+        x = view / 2 - cx * scale;
+        y = view / 2 - cy * scale;
+        clamp();
+        draw();
+        if ($range) $range.val(Math.round(zoom * 100));
+      }
+      function point(e) {
+        var o = e.originalEvent || e;
+        var t = (o.touches && o.touches[0]) || (o.changedTouches && o.changedTouches[0]) || o;
+        return { x: t.clientX, y: t.clientY };
+      }
+
+      //内容要在打开前拼好、尺寸写死：layer 的高度只在打开时量一次
+      var html = '<div class="uc-crop">'
+        + '<div class="uc-crop-stage" style="width:' + view + 'px;height:' + view + 'px">'
+        + '<canvas style="width:' + view + 'px;height:' + view + 'px"></canvas><span class="uc-crop-ring"></span></div>'
+        + '<div class="uc-crop-zoom"><i class="fa fa-search-minus" aria-hidden="true"></i>'
+        + '<input type="range" min="100" max="400" step="1" value="100" aria-label="缩放">'
+        + '<i class="fa fa-search-plus" aria-hidden="true"></i></div>'
+        + '<p class="uc-crop-tip">拖动图片调整位置，拖滑块或滚轮缩放</p>'
+        + '</div>';
+
+      layer.open({
+        type: 1,
+        title: '裁剪头像',
+        area: [(view + 48) + 'px', 'auto'],
+        resize: false,
+        shadeClose: false,
+        content: html,
+        btn: ['使用这张', '取消'],
+        success: function (layero) {
+          canvas = layero.find('canvas')[0];
+          canvas.width = canvas.height = Math.round(view * dpr);
+          ctx = canvas.getContext('2d');
+          $range = layero.find('input[type=range]');
+          draw();
+
+          var $stage = layero.find('.uc-crop-stage');
+          $stage.on('mousedown touchstart', function (e) {
+            var p = point(e);
+            drag = { px: p.x, py: p.y, x: x, y: y };
+            e.preventDefault();
+          });
+          $(document).on('mousemove.uccrop touchmove.uccrop', function (e) {
+            if (!drag) return;
+            var p = point(e);
+            x = drag.x + p.x - drag.px;
+            y = drag.y + p.y - drag.py;
+            clamp();
+            draw();
+          }).on('mouseup.uccrop touchend.uccrop touchcancel.uccrop', function () {
+            drag = null;
+          });
+          $stage.on('wheel', function (e) {
+            var o = e.originalEvent || e;
+            e.preventDefault();
+            setZoom(zoom * (o.deltaY < 0 ? 1.1 : 1 / 1.1));
+          });
+          $range.on('input change', function () {
+            setZoom((parseInt(this.value, 10) || 100) / 100);
+          });
+        },
+        yes: function (index) {
+          var out = document.createElement('canvas');
+          out.width = out.height = AVATAR_OUT;
+          var octx = out.getContext('2d');
+          //透明图垫白底，和服务端转 JPEG 时的做法一致
+          octx.fillStyle = '#fff';
+          octx.fillRect(0, 0, AVATAR_OUT, AVATAR_OUT);
+          if ('imageSmoothingQuality' in octx) octx.imageSmoothingQuality = 'high';
+          var side = view / scale;
+          octx.drawImage(img, -x / scale, -y / scale, side, side, 0, 0, AVATAR_OUT, AVATAR_OUT);
+          out.toBlob(function (blob) {
+            layer.close(index);
+            if (blob) uploadAvatar(blob, 'avatar.png');
+            else uploadRawAvatar(file);
+          }, 'image/png');
+        },
+        end: function () {
+          $(document).off('.uccrop');
+          URLApi.revokeObjectURL(src);
+        }
+      });
+    };
+    img.src = src;
+  }
+
+  var $avatarFile = $('#ucAvatarFile');
+  function pickAvatar() {
+    if (!$avatarFile.length) return;
+    //先清空，不然连着选同一个文件不会触发 change
+    $avatarFile.val('');
+    $avatarFile[0].click();
+  }
+  $('#ucAvatar').on('click', pickAvatar).on('keydown', function (e) {
+    if (e.which === 13 || e.which === 32) { e.preventDefault(); pickAvatar(); }
+  });
+  $('#ucAvatarPick').on('click', pickAvatar);
+
+  $avatarFile.on('change', function () {
+    var file = this.files && this.files[0];
+    if (!file) return;
+    //有的浏览器不给 type，退回去看扩展名；真正的类型校验在服务端
+    var ok = file.type ? /^image\/(jpeg|png|gif|webp)$/.test(file.type) : /\.(jpe?g|png|gif|webp)$/i.test(file.name || '');
+    if (!ok) { layer.msg('只支持 JPG、PNG、GIF、WebP 图片', { icon: 2 }); return; }
+    if (file.size > AVATAR_PICK_MAX) { layer.msg('图片太大了，换一张 30MB 以内的', { icon: 2 }); return; }
+    if (!window.FormData) { layer.msg('当前浏览器太旧，无法上传头像'); return; }
+    openCropper(file);
+  });
+
+  $('#ucAvatarReset').on('click', function () {
+    layer.confirm('确定去掉自己上传的头像，恢复成默认头像吗？', { icon: 3, title: '恢复默认头像' }, function (idx) {
+      layer.close(idx);
+      post('avatarReset', {}, function (res) {
+        if (res.code === 0) {
+          setAvatar(res.url);
+          $('#ucAvatarReset').prop('hidden', true);
+          layer.msg(res.msg, { icon: 1 });
+        } else {
+          layer.msg(res.msg || '操作失败', { icon: 2 });
+        }
+      });
     });
   });
 

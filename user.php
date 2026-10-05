@@ -161,6 +161,23 @@ if($act !== ''){
 		uc_json(0, '昵称已更新', ['nickname'=>$nickname]);
 	break;
 
+	//上传头像。类型、尺寸的校验和裁剪、落盘都在 user_avatar_save() 里
+	case 'avatar':
+		if(empty($_FILES['file']) || !is_array($_FILES['file']) || is_array($_FILES['file']['error'])) uc_json(-1, '请选择一张图片');
+		$up = $_FILES['file'];
+		if($up['error'] === UPLOAD_ERR_INI_SIZE || $up['error'] === UPLOAD_ERR_FORM_SIZE) uc_json(-1, '图片太大，服务器不接收，请换一张小一点的');
+		if($up['error'] !== UPLOAD_ERR_OK || !is_uploaded_file($up['tmp_name'])) uc_json(-1, '图片上传失败，请重试');
+		$face = user_avatar_save($uid, $up['tmp_name'], $err);
+		if($face === false) uc_json(-1, $err);
+		uc_json(0, '头像已更新', ['url'=>user_avatar_url($face), 'custom'=>1]);
+	break;
+
+	//恢复默认头像：只去掉自己上传的那张，快捷登录带来的头像不动
+	case 'avatarReset':
+		if(!user_avatar_reset($uid)) uc_json(-1, '操作失败['.$DB->error().']');
+		uc_json(0, '已恢复默认头像', ['url'=>'', 'custom'=>0]);
+	break;
+
 	//修改密码。判断条件是"设过密码没有"而不是"是不是邮箱账号"：
 	//快捷登录的账号绑定邮箱时也会设密码，之后同样要能改
 	case 'chpwd':
@@ -277,6 +294,11 @@ if(empty($conf['api_open'])) unset($tabs['api']);
 
 $tab = (isset($_GET['tab']) && isset($tabs[$_GET['tab']])) ? $_GET['tab'] : 'overview';
 
+//头像底下垫的图标（按注册方式）：没有头像、或者图片加载失败时露出来
+$uc_face_icon = '<i class="fa fa-'.($userrow['type']=='qq'?'qq':($userrow['type']=='mail'?'envelope':'wechat')).'" aria-hidden="true"></i>';
+//自己上传过头像才有「恢复默认」
+$uc_face_custom = user_avatar_is_custom($userrow['faceimg']);
+
 $title = '个人中心 - ' . $conf['title'];
 include SYSTEM_ROOT.'header.php';
 ?>
@@ -284,13 +306,10 @@ include SYSTEM_ROOT.'header.php';
     <div class="well bs-component usercenter">
         <h2>个人中心</h2>
         <div class="uc-head">
-            <span class="uc-avatar"><?php
-            if(!empty($userrow['faceimg'])){
-                echo '<img src="'.htmlspecialchars($userrow['faceimg'], ENT_QUOTES, 'UTF-8').'" alt="">';
-            }else{
-                echo '<i class="fa fa-'.($userrow['type']=='qq'?'qq':($userrow['type']=='mail'?'envelope':'wechat')).'" aria-hidden="true"></i>';
-            }
-            ?></span>
+            <span class="uc-avatar uc-avatar-pick" id="ucAvatar" data-user-face role="button" tabindex="0" title="点击更换头像"><?php
+            echo $uc_face_icon.user_avatar_img($userrow);
+            ?><span class="uc-avatar-edit" aria-hidden="true"><i class="fa fa-camera"></i></span></span>
+            <input type="file" id="ucAvatarFile" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none">
             <div class="uc-head-main">
                 <strong id="ucNickname"><?php echo $userrow['nickname']?></strong>
                 <small><?php
@@ -841,6 +860,20 @@ $uc_oauth_types = bindable_login_types();
                 <div><dt>注册时间</dt><dd><?php echo htmlspecialchars($userrow['addtime'], ENT_QUOTES, 'UTF-8')?></dd></div>
                 <div><dt>最后登录</dt><dd><?php echo htmlspecialchars($userrow['lasttime'], ENT_QUOTES, 'UTF-8')?><?php if(!empty($userrow['loginip'])){?>　<span class="uc-dim"><?php echo htmlspecialchars(preg_replace('/\d+$/', '*', $userrow['loginip']), ENT_QUOTES, 'UTF-8')?></span><?php }?></dd></div>
             </dl>
+        </div>
+
+        <div class="uc-section">
+            <div class="uc-section-title"><span>头像</span></div>
+            <div class="uc-avatar-set">
+                <span class="uc-avatar uc-avatar-lg" data-user-face><?php echo $uc_face_icon.user_avatar_img($userrow)?></span>
+                <div class="uc-avatar-set-main">
+                    <div class="uc-avatar-set-btns">
+                        <button type="button" class="uc-btn uc-btn-primary" id="ucAvatarPick"><i class="fa fa-upload" aria-hidden="true"></i> 上传头像</button>
+                        <button type="button" class="uc-btn" id="ucAvatarReset"<?php echo $uc_face_custom ? '' : ' hidden'?>>恢复默认</button>
+                    </div>
+                    <p class="uc-tip">支持 JPG、PNG、GIF、WebP。选好图片后可以拖动、缩放，选取要显示的部分。</p>
+                </div>
+            </div>
         </div>
 
         <div class="uc-section">

@@ -113,7 +113,9 @@ if(in_array($site_theme, $layout_themes, true)){
           <?php if($conf['userlogin']){?>
             <?php if($islogin2){?>
             <li class="dropdown">
-              <a data-target="#" class="dropdown-toggle" data-toggle="dropdown"><i class="fa fa-<?php echo $userrow['type']=='qq'?'qq':($userrow['type']=='mail'?'envelope':'wechat');?>" aria-hidden="true"></i> <?php echo $userrow['nickname']?><b class="caret"></b></a>
+              <?php //有头像就盖在登录方式图标上；图标的盒子不动，所以各外观的导航排版都不受影响。加载失败时去掉图片、图标重新露出来
+              $nav_face = user_avatar_url($userrow);?>
+              <a data-target="#" class="dropdown-toggle" data-toggle="dropdown"><i class="fa fa-<?php echo $userrow['type']=='qq'?'qq':($userrow['type']=='mail'?'envelope':'wechat');?><?php echo $nav_face !== '' ? ' has-face' : ''?>" aria-hidden="true" data-user-nav><?php if($nav_face !== ''){?><img class="nav-face" src="<?php echo htmlspecialchars($nav_face, ENT_QUOTES, 'UTF-8')?>" alt="" onerror="var p=this.parentNode;p.className=p.className.replace(' has-face','');p.removeChild(this)"><?php }?></i> <?php echo $userrow['nickname']?><b class="caret"></b></a>
               <ul class="dropdown-menu">
                 <li><a href="./user.php"><i class="fa fa-user-circle" aria-hidden="true"></i> 个人中心</a></li>
                 <li><a href="./login.php?logout=1" onclick="return confirm('是否确定退出登录？')"><i class="fa fa-sign-out" aria-hidden="true"></i> 退出登录</a></li>

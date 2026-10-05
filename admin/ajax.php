@@ -222,6 +222,10 @@ case 'userList':
 		//登录方式的显示名统一走 login_type_name()：原来这里自带一张只有 qq/wx 的表，
 		//加了邮箱注册之后 type='mail' 查不到，列表里那一列就是空的
 		$row['type'] = login_type_name($row['type']);
+		//自己上传的头像存的是站内相对路径，后台页面在下一级目录里，要补 ../；
+		//avatar_custom 给列表用来决定要不要出「清除头像」
+		$row['avatar_custom'] = user_avatar_is_custom($row['faceimg']) ? 1 : 0;
+		$row['faceimg'] = user_avatar_url($row, '../');
 		$list2[] = $row;
 	}
 
@@ -233,6 +237,12 @@ case 'setUserEnable':
 	$sql = "UPDATE pre_user SET enable='$enable' WHERE uid='$uid'";
 	if($DB->exec($sql)!==false)exit('{"code":0,"msg":"修改用户成功！"}');
 	else exit('{"code":-1,"msg":"修改用户失败['.$DB->error().']"}');
+break;
+case 'resetUserAvatar':
+	//只清用户自己上传的头像（文件一起删），快捷登录带来的第三方头像不动
+	$uid=intval($_POST['uid']);
+	if(user_avatar_reset($uid))exit('{"code":0,"msg":"头像已清除！"}');
+	else exit('{"code":-1,"msg":"清除头像失败['.$DB->error().']"}');
 break;
 case 'saveUserInfo':
 	$uid=intval($_POST['uid']);
@@ -271,6 +281,8 @@ case 'delUser':
 		//文件记录本来就不随账号删；他建的文件夹删掉，文件的 folder_id 归零，免得指向不存在的文件夹
 		$DB->exec("UPDATE pre_file SET folder_id=0 WHERE uid=:uid", [':uid'=>$uid]);
 		$DB->exec("DELETE FROM pre_folder WHERE uid=:uid", [':uid'=>$uid]);
+		//他自己上传的头像文件也删掉，不然就成了没人认领的文件
+		user_avatar_delete_file($row['faceimg']);
 		exit('{"code":0,"msg":"删除用户成功！"}');
 	}
 	else exit('{"code":-1,"msg":"删除用户失败['.$DB->error().']"}');

@@ -384,6 +384,11 @@ if(isset($_GET['logout'])){
         unset($_SESSION['user_block']);
         $uid = $userrow['uid'];
         $DB->update('user', ['loginip' => $clientip, 'lasttime'=>'NOW()'], ['uid'=>$uid]);
+        //账号现在没有头像（一直没有，或者传过自己的又恢复默认了）就用这次快捷登录带回来的补上；已经有的不动
+        if(empty($userrow['faceimg']) && is_string($faceimg) && strlen($faceimg) <= 255 && preg_match('#^https?://#i', $faceimg)){
+            $DB->exec("UPDATE pre_user SET faceimg=:face WHERE uid=:uid", [':face'=>$faceimg, ':uid'=>intval($uid)]);
+            $userrow['faceimg'] = $faceimg;
+        }
     }
     /*
      * 签发登录态要用 pre_user 里那一行本身：会话串只认主身份的 type/openid，
