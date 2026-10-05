@@ -460,9 +460,9 @@ function getAllSetting() {
 	$conf = array();
 	$result = $DB->getAll("SELECT * FROM pre_config");
 	foreach($result as $row){
-		//cache 和 update_cache 都是几十 KB 的内部缓存，没有任何页面当配置项读，
-		//放进 $conf 只会让每一个请求（包括每一次下载）都多背一份，跳过
-		if($row['k']=='cache' || $row['k']=='update_cache') continue;
+		//cache 和 update_cache（每个更新源一份：update_cache、update_cache_gitea）都是几十 KB 的内部缓存，
+		//没有任何页面当配置项读，放进 $conf 只会让每一个请求（包括每一次下载）都多背一份，跳过
+		if($row['k']=='cache' || strpos($row['k'], 'update_cache')===0) continue;
 		$conf[ $row['k'] ] = $row['v'];
 	}
 	return $conf;

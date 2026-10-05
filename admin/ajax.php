@@ -61,6 +61,7 @@ case 'checkupdate':
 	 * 后台首页「版本信息」里的更新检查。
 	 * 结果在服务端缓存半小时（失败缓存 5 分钟），所以这里不加节流也不会反复打 GitHub；
 	 * 首页是异步调的，就算服务器连不上 GitHub 卡满超时，也只是这一行显示失败，不挡页面。
+	 * 查的是站长在「程序更新日志」页选的那个更新源（默认 GitHub，DEC-20261005-002）。
 	 */
 	include_once SYSTEM_ROOT.'update_check.php';
 	/*
@@ -71,6 +72,8 @@ case 'checkupdate':
 	if(function_exists('session_write_close') && session_status() === PHP_SESSION_ACTIVE)session_write_close();
 	$u = update_status(false);
 	$latest = (!empty($u['commits']) && isset($u['commits'][0])) ? $u['commits'][0] : null;
+	//查失败时顺手提一句可以换源：首页这一行只有鼠标悬停的提示，站长不一定知道更新日志页里能换
+	if($u['state'] === 'error' && count(update_sources()) > 1)$u['error'] .= '。可以到「更新日志」页换一个更新源再试';
 	exit(json_encode([
 		'code'    => 0,
 		'state'   => $u['state'],
@@ -82,6 +85,20 @@ case 'checkupdate':
 		'needdb'  => !empty($u['need_db_update']),
 		'latest'  => $latest ? ($latest['title'].'（'.update_time_ago($latest['date']).'）') : '',
 	], JSON_UNESCAPED_UNICODE));
+break;
+case 'updatesource':
+	/*
+	 * 「程序更新日志」页切换更新源（DEC-20261005-002）。
+	 * 只能在 update_check.php 里写死的清单中选，不接受自填的地址；
+	 * 换源等于换了在线更新的下载来源，所以和在线更新一样要求 POST 并带上页面令牌。
+	 */
+	include_once SYSTEM_ROOT.'online_update.php';
+	if($_SERVER['REQUEST_METHOD'] !== 'POST' || !oupd_check_token(isset($_POST['token']) ? $_POST['token'] : ''))exit('{"code":-1,"msg":"令牌无效，请刷新页面后再试"}');
+	$update_source = isset($_POST['source']) ? (string)$_POST['source'] : '';
+	$update_sources = update_sources();
+	if(!isset($update_sources[$update_source]))exit(json_encode(['code'=>-1, 'msg'=>'没有这个更新源'], JSON_UNESCAPED_UNICODE));
+	saveSetting('update_source', $update_source);
+	exit('{"code":0}');
 break;
 case 'onlineupdate_prepare':
 case 'onlineupdate_apply':

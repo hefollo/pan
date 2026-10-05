@@ -8,6 +8,8 @@ $title = '程序更新日志';
  *   ① 把本地装的版本号和 GitHub 上 main 分支的版本号摆在一起，告诉站长有没有新版本；
  *   ② 列出 main 分支最近的提交，等于把 GitHub 的 commits 页面搬进后台，能看到改了什么；
  *   ③ 在线更新：下载仓库最新提交的 zip 覆盖站点文件，带备份和还原（includes/online_update.php，DEC-20261003-001）。
+ * 上面三样默认都从 GitHub 取；服务器连不上 GitHub 时，站长可以用页面上的「更新源」下拉框
+ * 换成作者自建的 Gitea 镜像（清单写死在 update_check.php，DEC-20261005-002），三样跟着一起换。
  *
  * 数据全部在服务端取（includes/update_check.php），结果缓存半小时。
  * GitHub 未登录时每个 IP 每小时只有 60 次额度，所以不要在页面里做轮询，
@@ -38,6 +40,15 @@ $oupd_target = (!empty($u['commits']) && isset($u['commits'][0]['sha']) && preg_
 $oupd_installed = isset($u['installed_sha']) ? $u['installed_sha'] : '';
 $oupd_backups = $oupd_errs ? [] : oupd_backups();
 $oupd_last = json_decode((string)getSetting('update_last'), true);
+
+$update_sources = update_sources();
+$update_source = update_source();
+$update_source_name = update_source_name();
+//换源的提示里要说「换成哪个」：当前是 GitHub 就指备用源，反过来指 GitHub
+$update_other_name = '';
+foreach($update_sources as $k => $s){
+	if($k !== $update_source){ $update_other_name = $s['name']; break; }
+}
 ?>
 <div class="container">
 <div class="admin-page">
@@ -47,10 +58,21 @@ $oupd_last = json_decode((string)getSetting('update_last'), true);
     <h3 class="panel-title"><i class="fa fa-cloud-download" aria-hidden="true"></i> 版本检查</h3>
     <div class="update-head-btns">
       <a class="btn btn-xs btn-default" href="./update.php?force=1"><i class="fa fa-refresh" aria-hidden="true"></i> 重新检查</a>
-      <a class="btn btn-xs btn-default" href="<?php echo htmlspecialchars(update_commits_url(), ENT_QUOTES, 'UTF-8')?>" target="_blank" rel="noopener noreferrer"><i class="fa fa-github" aria-hidden="true"></i> 去 GitHub 看</a>
+      <a class="btn btn-xs btn-default" href="<?php echo htmlspecialchars(update_commits_url(), ENT_QUOTES, 'UTF-8')?>" target="_blank" rel="noopener noreferrer"><i class="fa <?php echo $update_source === 'github' ? 'fa-github' : 'fa-git'?>" aria-hidden="true"></i> 去<?php echo $update_source === 'github' ? ' GitHub ' : htmlspecialchars($update_source_name, ENT_QUOTES, 'UTF-8')?>看</a>
     </div>
   </div>
   <div class="panel-body">
+<?php if(count($update_sources) > 1){?>
+    <div class="update-source">
+      <label for="update-source">更新源</label>
+      <select id="update-source" class="form-control input-sm">
+<?php   foreach($update_sources as $k => $s){?>
+        <option value="<?php echo htmlspecialchars($k, ENT_QUOTES, 'UTF-8')?>"<?php echo $k === $update_source ? ' selected' : ''?>><?php echo htmlspecialchars($s['label'], ENT_QUOTES, 'UTF-8')?></option>
+<?php   }?>
+      </select>
+      <span class="update-source-note"><?php echo $update_source === 'github' ? '服务器连不上 GitHub 时可以换成备用源，版本检查、提交列表和在线更新都会跟着换。' : '备用源定时从 GitHub 同步，可能比 GitHub 晚几个小时才看到新提交。'?></span>
+    </div>
+<?php }?>
     <div class="update-state">
       <span class="label <?php echo $badge?>"><?php echo htmlspecialchars($u['text'], ENT_QUOTES, 'UTF-8')?></span>
       <span class="update-state-kv">本地版本 <b><?php echo intval($u['local_version'])?></b>（数据库 <?php echo intval($u['local_db'])?>）</span>
@@ -61,7 +83,11 @@ $oupd_last = json_decode((string)getSetting('update_last'), true);
 <?php if($u['state'] === 'error'){?>
     <div class="alert alert-warning" style="margin:14px 0 0">
       <b>没查到版本信息。</b><?php echo htmlspecialchars($u['error'], ENT_QUOTES, 'UTF-8')?><br/>
-      国内服务器连不上 <code>github.com</code> 是常见情况，可以直接点右上角「去 GitHub 看」在自己电脑上看。
+<?php   if($update_source === 'github'){?>
+      国内服务器连不上 <code>github.com</code> 是常见情况<?php echo $update_other_name !== '' ? '，可以把上面的「更新源」换成'.htmlspecialchars($update_other_name, ENT_QUOTES, 'UTF-8').'再试' : ''?>；也可以直接点右上角「去 GitHub 看」在自己电脑上看。
+<?php   }else{?>
+      <?php echo htmlspecialchars($update_source_name, ENT_QUOTES, 'UTF-8')?>暂时连不上，可以过一会儿再试，或者把上面的「更新源」换回 GitHub。
+<?php   }?>
     </div>
 <?php }elseif($u['state'] === 'unknown'){?>
     <div class="alert alert-info" style="margin:14px 0 0">
@@ -75,9 +101,13 @@ $oupd_last = json_decode((string)getSetting('update_last'), true);
       <br/><b style="color:#b45309">这次动过数据库</b>（仓库 <?php echo intval($u['remote_db'])?> &gt; 本地 <?php echo intval($u['local_db'])?>）：先更新程序文件，再升级数据库。用下面的「在线更新」时，更新完成会直接出现「立即升级数据库」按钮；手工上传的话，传完打开后台会看到同样的按钮，也可以访问 <code>/install/update.php</code>。
 <?php }?>
     </div>
+<?php }elseif(!empty($u['source_behind'])){?>
+    <div class="alert alert-info" style="margin:14px 0 0">
+      <b><?php echo $update_source === 'github' ? 'GitHub ' : htmlspecialchars($update_source_name, ENT_QUOTES, 'UTF-8')?>还没同步到站点现在装的提交 <code><?php echo substr($u['installed_sha'], 0, 7)?></code>。</b>站点比这个更新源新，不需要更新；它同步之后这里会自动恢复正常。想马上看有没有更新的提交，可以把上面的「更新源」换成<?php echo $update_other_name === 'GitHub' ? ' GitHub' : htmlspecialchars($update_other_name, ENT_QUOTES, 'UTF-8')?>。
+    </div>
 <?php }elseif($u['state'] === 'ahead'){?>
     <div class="alert alert-info" style="margin:14px 0 0">
-      当前站点的版本号比仓库还高，一般是本地改完还没推到 GitHub。
+      当前站点的版本号比仓库还高，一般是本地改完还没推到 GitHub<?php echo $update_source === 'github' ? '' : '，或者'.htmlspecialchars($update_source_name, ENT_QUOTES, 'UTF-8').'还没同步过来'?>。
     </div>
 <?php }elseif(isset($u['behind']) && $u['behind'] === 0){?>
     <div class="alert alert-success" style="margin:14px 0 0">
@@ -103,12 +133,17 @@ $oupd_last = json_decode((string)getSetting('update_last'), true);
     </div>
 <?php }elseif(!$oupd_target){?>
     <div class="alert alert-warning" style="margin:0">
-      没取到仓库的提交列表，不知道该更新到哪个提交。等上面的版本检查恢复正常后再来。
+      没取到仓库的提交列表，不知道该更新到哪个提交。等上面的版本检查恢复正常后再来<?php echo $update_other_name !== '' ? '，或者换一个更新源' : ''?>。
+    </div>
+<?php }elseif(!empty($u['source_behind'])){?>
+    <div class="alert alert-info" style="margin:0">
+      当前更新源比站点旧，用它更新会把站点改回旧代码，所以这里不提供更新。等它同步后再来，或者换一个更新源。
     </div>
 <?php }else{?>
     <div class="oupd-kv">
       <div><span>站点当前</span><?php if($oupd_installed !== ''){?><code><?php echo substr($oupd_installed, 0, 7)?></code><?php }else{?><em>未知（之前是手工上传的包）</em><?php }?></div>
       <div><span>更新到</span><code><?php echo substr($oupd_target['sha'], 0, 7)?></code> <?php echo htmlspecialchars($oupd_target['title'], ENT_QUOTES, 'UTF-8')?></div>
+      <div><span>下载来源</span><?php echo htmlspecialchars($update_sources[$update_source]['label'], ENT_QUOTES, 'UTF-8')?></div>
 <?php   if(is_array($oupd_last) && !empty($oupd_last['time'])){?>
       <div><span>上次在线更新</span><?php echo date('Y-m-d H:i', intval($oupd_last['time']))?>，改 <?php echo intval(isset($oupd_last['changed']) ? $oupd_last['changed'] : 0)?> 个、新增 <?php echo intval(isset($oupd_last['added']) ? $oupd_last['added'] : 0)?> 个文件</div>
 <?php   }?>
@@ -145,7 +180,7 @@ $oupd_last = json_decode((string)getSetting('update_last'), true);
   <div class="panel-heading update-head">
     <h3 class="panel-title"><i class="fa fa-history" aria-hidden="true"></i> 最近提交（<?php echo htmlspecialchars(UPDATE_REPO.' · '.UPDATE_BRANCH, ENT_QUOTES, 'UTF-8')?>）</h3>
     <div class="update-head-btns">
-      <span class="update-head-note">共 <?php echo intval($u['commit_count'])?> 条，完整历史在 GitHub</span>
+      <span class="update-head-note">共 <?php echo intval($u['commit_count'])?> 条，取自<?php echo $update_source === 'github' ? ' GitHub' : htmlspecialchars($update_source_name, ENT_QUOTES, 'UTF-8')?>，完整历史点右上角去看</span>
     </div>
   </div>
   <div class="panel-body update-log">
@@ -157,7 +192,7 @@ $oupd_last = json_decode((string)getSetting('update_last'), true);
 ?>
     <div class="update-item">
       <div class="update-item-top">
-        <a class="update-sha" href="<?php echo htmlspecialchars(update_commit_url($sha), ENT_QUOTES, 'UTF-8')?>" target="_blank" rel="noopener noreferrer" title="在 GitHub 上打开这次提交"><?php echo substr($sha, 0, 7)?></a>
+        <a class="update-sha" href="<?php echo htmlspecialchars(update_commit_url($sha), ENT_QUOTES, 'UTF-8')?>" target="_blank" rel="noopener noreferrer" title="在<?php echo $update_source === 'github' ? ' GitHub ' : htmlspecialchars($update_source_name, ENT_QUOTES, 'UTF-8')?>上打开这次提交"><?php echo substr($sha, 0, 7)?></a>
         <span class="update-title"><?php echo htmlspecialchars($c['title'], ENT_QUOTES, 'UTF-8')?></span>
       </div>
       <div class="update-meta">
@@ -244,6 +279,15 @@ $oupd_last = json_decode((string)getSetting('update_last'), true);
 					});
 				});
 			});
+		});
+	});
+	//换更新源：存下来后重新打开本页（不带 force，缓存期内直接用这个源上次查到的结果）
+	$('#update-source').on('change', function(){
+		var $sel = $(this);
+		post('updatesource', {source:$sel.val()}, function(r){
+			if(r.code == 0){ window.location.href = './update.php'; return; }
+			layer.alert(esc(r.msg), {icon:2});
+			$sel.val(<?php echo json_encode($update_source)?>);
 		});
 	});
 	$('.oupd-restore').on('click', function(){

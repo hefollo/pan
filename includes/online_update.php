@@ -2,9 +2,11 @@
 /**
  * 后台在线更新（DEC-20261003-001）
  *
- * 做法：从 GitHub 下载仓库某一个提交的 zip，校验后按排除清单覆盖到站点目录。
+ * 做法：从更新源下载仓库某一个提交的 zip，校验后按排除清单覆盖到站点目录。
  * 服务器上不需要装 git，也不需要 .git 目录；仓库地址沿用 update_check.php 里写死的
  * UPDATE_REPO / UPDATE_BRANCH，页面上不能自填下载地址。
+ * 更新源是站长在页面上从写死的清单里选的（GitHub 或 Gitea 镜像，DEC-20261005-002），
+ * 提交列表和 zip 取自同一个源。
  *
  * 流程分两步，中间给站长看一眼再确认：
  *   ① 预检 oupd_prepare()：下载 → 检查 zip → 和站点现有文件逐个比对，列出会改哪些文件。
@@ -100,7 +102,7 @@ function oupd_skip_reason($rel){
 }
 
 /**
- * zip 条目名 → 仓库内相对路径。GitHub 打的包外面套一层「仓库名-提交号/」，这里去掉。
+ * zip 条目名 → 仓库内相对路径。包外面套着一层目录（GitHub 是「仓库名-提交号/」，Gitea 是「仓库名/」），这里去掉。
  * 任何可疑的名字（绝对路径、..、反斜杠、盘符、空段）都返回 false，整个包作废。
  */
 function oupd_entry_rel($name, &$root){
@@ -120,14 +122,14 @@ function oupd_entry_rel($name, &$root){
 }
 
 /**
- * 下载 $sha 这个提交的 zip 到 $file。先 codeload，不通再走 api.github.com 的 zipball。
+ * 下载 $sha 这个提交的 zip 到 $file，地址由当前更新源决定（update_zip_urls），按顺序试：
+ * GitHub 先 codeload，不通再走 api.github.com 的 zipball；备用源先网页归档地址，再走接口。
  */
 function oupd_download($sha, $file, &$err = null){
 	$err = '';
-	$urls = [
-		'https://codeload.github.com/'.UPDATE_REPO.'/zip/'.$sha,
-		'https://api.github.com/repos/'.UPDATE_REPO.'/zipball/'.$sha,
-	];
+	$urls = update_zip_urls($sha);
+	$is_github = update_source() === 'github';
+	$not_synced = false;
 	$errs = [];
 	foreach($urls as $url){
 		$fp = @fopen($file, 'wb');
@@ -163,11 +165,14 @@ function oupd_download($sha, $file, &$err = null){
 		//60 = 证书校验失败，77 = 读不到 CA 证书文件
 		if($cno == 60 || $cno == 77)$ca_problem = true;
 		if($cerr !== '')$errs[] = $host.'：'.$cerr;
-		elseif($code == 403 || $code == 429)$errs[] = $host.'：GitHub 限流（HTTP '.$code.'），过一会儿再试';
+		elseif($code == 403 || $code == 429)$errs[] = $host.'：'.($is_github ? 'GitHub 限流' : '请求被拒绝，可能是被限流或被防火墙拦下').'（HTTP '.$code.'），过一会儿再试';
 		else $errs[] = $host.'：HTTP '.$code;
+		//镜像里还没有这个提交时，Gitea 回的是 404 或 500
+		if(!$is_github && $cerr === '' && ($code == 404 || $code == 500))$not_synced = true;
 	}
 	@unlink($file);
 	$err = '下载更新包失败（'.implode('；', $errs).'）';
+	if($not_synced)$err .= '。可能是备用源还没同步到这个提交，点「重新检查」刷新提交列表后再试';
 	if(!empty($ca_problem))$err .= '。看起来是服务器缺少 CA 根证书（Windows 主机常见）：在 php.ini 里把 curl.cainfo 指向一份 cacert.pem 后重试';
 	return false;
 }
@@ -329,6 +334,30 @@ function oupd_known_commit($sha){
 	return false;
 }
 
+/**
+ * 这个提交的提交时间，取自版本检查缓存。记下来是为了以后能看出「更新源比站点还旧」（update_source_behind）。
+ */
+function oupd_commit_date($sha){
+	$cache = update_cache_read();
+	if(!$cache || empty($cache['commits']))return 0;
+	foreach($cache['commits'] as $c){
+		if(isset($c['sha']) && $c['sha'] === $sha)return isset($c['date']) ? intval($c['date']) : 0;
+	}
+	return 0;
+}
+
+/**
+ * 预检和正式更新开头共用的检查，返回不能更新的原因（空串 = 可以）：
+ *   - 提交号必须是当前更新源提交列表里的；
+ *   - 更新源比站点还旧（备用源没同步过来）时不许覆盖，那等于把站点改回旧代码。
+ */
+function oupd_commit_check($sha){
+	if(!oupd_known_commit($sha))return '提交号不在最近的提交列表里，请先「重新检查」再试';
+	$cache = update_cache_read();
+	if(update_source_behind($cache['commits']))return '当前更新源（'.update_source_name().'）还没同步到站点现在装的提交，用它更新会把站点改回旧代码，已拒绝。等它同步后再试，或者换一个更新源';
+	return '';
+}
+
 function oupd_installed_sha(){
 	$sha = (string)getSetting('update_installed_sha');
 	return preg_match('/^[0-9a-f]{40}$/', $sha) ? $sha : '';
@@ -391,7 +420,7 @@ function oupd_fetch($sha, &$err = null, &$file = null){
  */
 function oupd_prepare($sha){
 	if($errs = oupd_requirements())return ['code'=>-1, 'msg'=>implode('；', $errs)];
-	if(!oupd_known_commit($sha))return ['code'=>-1, 'msg'=>'提交号不在最近的提交列表里，请先「重新检查」再试'];
+	if(($why = oupd_commit_check($sha)) !== '')return ['code'=>-1, 'msg'=>$why];
 	$lock = oupd_lock();
 	if(!$lock)return ['code'=>-1, 'msg'=>'另一个更新或还原正在进行，请稍后再试'];
 	@set_time_limit(300);
@@ -483,7 +512,9 @@ function oupd_write_file($path, $data, &$created_dirs){
 function oupd_apply($sha){
 	global $conf;
 	if($errs = oupd_requirements())return ['code'=>-1, 'msg'=>implode('；', $errs)];
-	if(!oupd_known_commit($sha))return ['code'=>-1, 'msg'=>'提交号不在最近的提交列表里，请先「重新检查」再试'];
+	if(($why = oupd_commit_check($sha)) !== '')return ['code'=>-1, 'msg'=>$why];
+	//提交时间要趁缓存还在先取出来，下面收尾时会清缓存
+	$commit_date = oupd_commit_date($sha);
 	$lock = oupd_lock();
 	if(!$lock)return ['code'=>-1, 'msg'=>'另一个更新或还原正在进行，请稍后再试'];
 	@set_time_limit(600);
@@ -510,7 +541,8 @@ function oupd_apply($sha){
 		oupd_clean_downloads();
 		saveSetting('update_pending', '');
 		saveSetting('update_installed_sha', $sha);
-		saveSetting('update_cache', '');
+		saveSetting('update_installed_date', (string)$commit_date);
+		update_cache_clear();
 		oupd_unlock($lock);
 		$summary['code'] = 0;
 		$summary['msg'] = '站点文件和这个提交完全一致，不需要更新';
@@ -559,10 +591,11 @@ function oupd_apply($sha){
 	//④ 收尾
 	$from_sha = oupd_installed_sha();
 	saveSetting('update_installed_sha', $sha);
+	saveSetting('update_installed_date', (string)$commit_date);
 	saveSetting('update_pending', '');
-	saveSetting('update_cache', '');
+	update_cache_clear();
 	saveSetting('update_last', json_encode([
-		'time'=>time(), 'sha'=>$sha, 'from_sha'=>$from_sha, 'version'=>$pkg['version'],
+		'time'=>time(), 'sha'=>$sha, 'from_sha'=>$from_sha, 'version'=>$pkg['version'], 'source'=>update_source(),
 		'changed'=>count($plan['changed']), 'added'=>count($plan['added']), 'backup'=>basename($backup),
 	]));
 	oupd_clean_downloads();
@@ -744,7 +777,9 @@ function oupd_restore($name){
 	//还原后站点回到了那次更新之前的提交；记不清的话就清空，交给版本号去判断
 	$from = is_array($m) && isset($m['from_sha']) && preg_match('/^[0-9a-f]{40}$/', $m['from_sha']) ? $m['from_sha'] : '';
 	saveSetting('update_installed_sha', $from);
-	saveSetting('update_cache', '');
+	//还原回去的那个提交是什么时候的，这里不知道，清掉，交给 update_source_behind 里的兜底去判断
+	saveSetting('update_installed_date', '');
+	update_cache_clear();
 	oupd_after_write();
 	oupd_unlock($lock);
 	if($err !== '')return ['code'=>-1, 'msg'=>'部分文件没能还原：'.$err];
