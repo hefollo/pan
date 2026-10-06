@@ -437,6 +437,18 @@ function oupd_parent_writable($path){
 }
 
 /**
+ * 站点上的 404.html 和更新包里的是不是只差在「写进去的外观」上（sync_404_theme_strip 抹平后一样）。
+ * 只认本程序自己的 404 页（带 errorpage-card）；站长自己换上去的页面照常按字节比。
+ */
+function oupd_same_404($path, $new){
+	if(!function_exists('sync_404_theme_strip') || !is_string($new))return false;
+	$old = @file_get_contents($path);
+	if($old === false || strpos($old, 'errorpage-card') === false)return false;
+	$old = sync_404_theme_strip($old);
+	return $old !== false && $old === sync_404_theme_strip($new);
+}
+
+/**
  * 和站点现有文件逐个比对，算出要写哪些文件。
  * 先比大小，大小一样再比 CRC32（zip 里本来就存着），省得把每个文件都读一遍。
  */
@@ -458,6 +470,12 @@ function oupd_plan($pkg){
 		$st = $zip->statIndex($idx);
 		if(is_file($path)){
 			if(filesize($path) == $st['size'] && hash_file('crc32b', $path) === sprintf('%08x', $st['crc'] & 0xffffffff)){
+				$plan['unchanged']++;
+				continue;
+			}
+			//404.html 是静态页，后台会把当前外观写进去（sync_404_theme），和仓库里的永远不一样。
+			//只差在外观那几处就算没变，不然每次核对都列出它，更新完收尾又被写回去
+			if($rel === '404.html' && oupd_same_404($path, $zip->getFromIndex($idx))){
 				$plan['unchanged']++;
 				continue;
 			}

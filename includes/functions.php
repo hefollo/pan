@@ -1987,6 +1987,19 @@ function sync_404_theme($theme){
 }
 
 /*
+ * 把 sync_404_theme() 会改写的那几处抹平，剩下的才是 404.html 自己的内容。
+ * 在线更新比对文件时用（oupd_plan）：站点上的 404.html 写进了当前外观，直接比永远和仓库里的不一样，
+ * 每次核对都把它列成「要更新」，更新完收尾又被写回当前外观，下次核对还在。
+ * 上面那个函数改写的地方有增减，这里要跟着改。出错返回 false。
+ */
+function sync_404_theme_strip($html){
+	$html = preg_replace('/<body class="[^"]*"[^>]*>/', '<body>', (string)$html, 1);
+	if($html !== null)$html = preg_replace('#\s*<link[^>]*id="theme-recolor"[^>]*>#s', '', $html);
+	if($html !== null)$html = preg_replace('#\s*<style id="theme-grad">.*?</style>#s', '', $html);
+	return $html === null ? false : $html;
+}
+
+/*
  * 后台 ajax.php?act=set 允许写入的配置键白名单。
  * 这个接口原来是 foreach($_POST) 全部落库，任何能在后台页面里发请求的脚本
  * （比如以前那个第三方 JSONP）都能顺手改掉 admin_pwd、存储密钥等敏感项。
