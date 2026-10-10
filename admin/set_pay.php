@@ -26,7 +26,7 @@ function render_plan_rows($plans){
 	ob_start();
 ?>
 <?php if(!$plans){?>
-    <tr><td colspan="11" align="center">还没有添加套餐</td></tr>
+    <tr><td colspan="12" align="center">还没有添加套餐</td></tr>
 <?php } foreach($plans as $p){?>
     <tr class="plan-row" data-id="<?php echo intval($p['id'])?>">
       <td><?php echo intval($p['id'])?></td>
@@ -36,6 +36,7 @@ function render_plan_rows($plans){
       <td><?php echo htmlspecialchars(plan_limit_display($p))?></td>
       <td><?php echo htmlspecialchars(plan_limit_text($p['upload_size'], 'MB'))?></td>
       <td><?php echo htmlspecialchars(plan_speed_text(isset($p['down_speed']) ? $p['down_speed'] : -1))?></td>
+      <td><?php echo plan_has_online_edit($p) ? (plan_is_edit_only($p) ? '<span class="label label-info">只含在线编辑</span>' : '<span class="label label-info">含</span>') : '<span class="text-muted">不含</span>'?></td>
       <td><?php echo htmlspecialchars(plan_days_text($p['days']))?></td>
       <td><?php echo intval($p['sort'])?></td>
       <td><?php echo intval($p['enable']) === 1 ? '<span class="label label-success">上架</span>' : '<span class="label label-default">下架</span>'?></td>
@@ -50,6 +51,7 @@ function render_plan_rows($plans){
            data-upload-limit="<?php echo intval($p['upload_limit'])?>"
            data-upload-size="<?php echo intval($p['upload_size'])?>"
            data-down-speed="<?php echo isset($p['down_speed']) ? intval($p['down_speed']) : -1?>"
+           data-online-edit="<?php echo plan_has_online_edit($p) ? 1 : 0?>"
            data-sort="<?php echo intval($p['sort'])?>"
            data-enable="<?php echo intval($p['enable'])?>"
            data-remark="<?php echo htmlspecialchars($p['remark'], ENT_QUOTES, 'UTF-8')?>">编辑</a>
@@ -94,6 +96,8 @@ if($islogin != 1){
 			$down_speed_unit = (isset($_POST['down_speed_unit']) && strtoupper($_POST['down_speed_unit']) === 'MB') ? 1024 : 1;
 			$down_speed = max(1, min(2147483647, intval(round($down_speed_num * $down_speed_unit))));
 		}
+		//在线编辑：只有 0 / 1 两种。用字符串是因为 DB->update 里 0 == '' 在老版本 PHP 上成立，会被写成 NULL
+		$online_edit = (isset($_POST['online_edit']) && $_POST['online_edit'] === '1') ? '1' : '0';
 		$sort = intval($_POST['sort']);
 		$enable = intval($_POST['enable']) === 1 ? 1 : 0;
 		$remark = trim($_POST['remark']);
@@ -114,17 +118,29 @@ if($islogin != 1){
 				'limit_mode' => $limit_mode,
 				'upload_size' => $upload_size < -1 ? -1 : $upload_size,
 				'down_speed' => $down_speed,
+				'online_edit' => $online_edit,
 				'sort' => $sort,
 				'enable' => $enable,
 				'remark' => $remark,
 			];
+			/*
+			 * DB->insert / update 会把空字符串写成 NULL，而分类字段不允许 NULL：
+			 * 分类留空时新增会整条失败（原来还照样提示“已添加”），所以留空就不带这个键，
+			 * 新增时由字段默认值补成空串，修改时单独清一次。
+			 */
+			$clear_category = $category === '';
+			if($clear_category)unset($data['category']);
 			if($id > 0){
-				$DB->update('plan', $data, ['id'=>$id]);
+				$ok = $DB->update('plan', $data, ['id'=>$id]) !== false;
+				if($ok && $clear_category)$DB->exec("UPDATE pre_plan SET category='' WHERE id=:id", [':id'=>$id]);
 				$msg = '套餐已更新';
 			}else{
 				$data['addtime'] = 'NOW()';
-				$DB->insert('plan', $data);
+				$ok = $DB->insert('plan', $data) !== false;
 				$msg = '套餐已添加';
+			}
+			if(!$ok){
+				$msg = '套餐保存失败：'.$DB->error(); $msgtype = 'danger';
 			}
 		}
 	}elseif($do === 'plan_seed'){
@@ -159,6 +175,13 @@ foreach($plans as $p_tmp){
 	if($c_tmp !== '' && !in_array($c_tmp, $categories))$categories[] = $c_tmp;
 }
 $enabled_count = intval($DB->getColumn("SELECT count(*) FROM pre_plan WHERE enable=1"));
+//有套餐带了在线编辑、站点却没把在线编辑设成付费时要提醒一句，不然站长会奇怪套餐怎么没出现在购买页
+$edit_warn = false;
+if(!online_edit_is_paid_mode()){
+	foreach($plans as $p_tmp){
+		if(plan_has_online_edit($p_tmp)){ $edit_warn = true; break; }
+	}
+}
 
 if($is_ajax){
 	@header('Content-Type: application/json; charset=UTF-8');
@@ -168,6 +191,7 @@ if($is_ajax){
 		'rows' => render_plan_rows($plans),
 		'categories' => $categories,
 		'enabled' => $enabled_count,
+		'edit_warn' => $edit_warn,
 	], JSON_UNESCAPED_UNICODE));
 }
 
@@ -380,9 +404,12 @@ if(isset($_GET['tab']) && $_GET['tab'] === 'epay')$pay_tab = 'epay';
 		<span class="hint">0 不限速 / N 每秒 N / -1 不改动（按「存储类型设置」里该用户身份的速度）；有效期内优先于身份速度</span>
 	  </div>
 	  <div class="col-sm-4 form-group">
-		<label>套餐说明</label>
-		<input type="text" name="remark" value="<?php echo $edit ? htmlspecialchars($edit['remark'], ENT_QUOTES, 'UTF-8') : ''?>" class="form-control" placeholder="选填"/>
-		<span class="hint">作为一条卖点显示在卡片里</span>
+		<label>在线编辑权限</label>
+		<select class="form-control" name="online_edit">
+		  <option value="0" <?php echo (!$edit || !plan_has_online_edit($edit))?'selected':''?>>不包含</option>
+		  <option value="1" <?php echo ($edit && plan_has_online_edit($edit))?'selected':''?>>包含（有效期内可用在线编辑）</option>
+		</select>
+		<span class="hint">有效期单独计算；每日数量、单文件大小、下载限速都填 -1 时就是只卖在线编辑的套餐，不动上传权限</span>
 	  </div>
 	  <div class="col-sm-2 form-group">
 		<label>排序</label>
@@ -398,6 +425,13 @@ if(isset($_GET['tab']) && $_GET['tab'] === 'epay')$pay_tab = 'epay';
 		<span class="hint">下架后购买页不再显示</span>
 	  </div>
 	</div>
+	<div class="row">
+	  <div class="col-sm-12 form-group">
+		<label>套餐说明</label>
+		<input type="text" name="remark" value="<?php echo $edit ? htmlspecialchars($edit['remark'], ENT_QUOTES, 'UTF-8') : ''?>" class="form-control" placeholder="选填"/>
+		<span class="hint">作为一条卖点显示在卡片里</span>
+	  </div>
+	</div>
 	<div class="plan-actions">
 	  <button type="submit" class="btn btn-primary" id="planSubmit"><?php echo $edit ? '保存修改' : '添加套餐'?></button>
 	  <a class="btn btn-default" href="./set_pay.php" id="planCancel"<?php echo $edit ? '' : ' style="display:none"'?>>取消编辑</a>
@@ -405,6 +439,11 @@ if(isset($_GET['tab']) && $_GET['tab'] === 'epay')$pay_tab = 'epay';
 	</div>
   </form>
 </div>
+</div>
+
+<div class="alert alert-warning" id="planEditWarn"<?php echo $edit_warn ? '' : ' style="display:none"'?>>
+  有套餐带了「在线编辑」，但站点的「在线编辑权限」现在是所有用户（或所有登录用户）都可用，等于免费开放：只含在线编辑的套餐不会出现在购买页，其它套餐的卡片上也不会写在线编辑。
+  要把在线编辑做成付费功能，请到 <a href="./set.php?mod=file">文件上传设置</a> 把「在线编辑权限」改成「仅购买了在线编辑套餐的用户可用」。
 </div>
 
 <div class="panel panel-primary">
@@ -416,7 +455,7 @@ if(isset($_GET['tab']) && $_GET['tab'] === 'epay')$pay_tab = 'epay';
 </h3></div>
 <div class="table-responsive">
 <table class="table table-striped table-hover">
-  <thead><tr><th>ID</th><th>名称</th><th>分类</th><th>价格</th><th>每日数量</th><th>单文件大小</th><th>下载速度</th><th>有效期</th><th>排序</th><th>状态</th><th>操作</th></tr></thead>
+  <thead><tr><th>ID</th><th>名称</th><th>分类</th><th>价格</th><th>每日数量</th><th>单文件大小</th><th>下载速度</th><th>在线编辑</th><th>有效期</th><th>排序</th><th>状态</th><th>操作</th></tr></thead>
   <tbody id="planTbody">
 <?php echo render_plan_rows($plans);?>
   </tbody>
@@ -486,6 +525,7 @@ if(isset($_GET['tab']) && $_GET['tab'] === 'epay')$pay_tab = 'epay';
 			field('down_speed').value = speed;
 			field('down_speed_unit').value = 'KB';
 		}
+		field('online_edit').value = String(d.onlineEdit) === '1' ? '1' : '0';
 		field('sort').value = d.sort;
 		field('enable').value = d.enable;
 		field('remark').value = d.remark;
@@ -507,6 +547,7 @@ if(isset($_GET['tab']) && $_GET['tab'] === 'epay')$pay_tab = 'epay';
 			uploadLimit: a.getAttribute('data-upload-limit'),
 			uploadSize: a.getAttribute('data-upload-size'),
 			downSpeed: a.getAttribute('data-down-speed'),
+			onlineEdit: a.getAttribute('data-online-edit'),
 			sort: a.getAttribute('data-sort'),
 			enable: a.getAttribute('data-enable'),
 			remark: a.getAttribute('data-remark')
@@ -522,7 +563,7 @@ if(isset($_GET['tab']) && $_GET['tab'] === 'epay')$pay_tab = 'epay';
 	}
 
 	function toAdd(scroll){
-		fill({id:0, name:'', category:'', price:'', days:30, limitMode:'set', uploadLimit:0, uploadSize:-1, downSpeed:-1, sort:0, enable:1, remark:''});
+		fill({id:0, name:'', category:'', price:'', days:30, limitMode:'set', uploadLimit:0, uploadSize:-1, downSpeed:-1, onlineEdit:0, sort:0, enable:1, remark:''});
 		title.innerHTML = '添加套餐';
 		submit.innerHTML = '添加套餐';
 		cancel.style.display = 'none';
@@ -535,6 +576,7 @@ if(isset($_GET['tab']) && $_GET['tab'] === 'epay')$pay_tab = 'epay';
 	function apply(res){
 		$('#planTbody').html(res.rows);
 		$('#planEnabledCount').text(res.enabled);
+		$('#planEditWarn').toggle(!!res.edit_warn);
 		var dl = $('#plan-cats').empty();
 		for(var i=0;i<res.categories.length;i++){
 			dl.append($('<option></option>').attr('value', res.categories[i]));

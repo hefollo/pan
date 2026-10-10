@@ -367,6 +367,9 @@ if($tab === 'overview'){
                 <div><dt>每日上传</dt><dd><?php echo limit_number_text($uc_limit, '个/天')?><?php if(!empty($userrow['bonus_limit']) && $uc_active && $uc_limit > 0){?>（含加量包 +<?php echo intval($userrow['bonus_limit'])?>）<?php }?></dd></div>
                 <div><dt>单文件大小</dt><dd><?php echo limit_number_text($uc_size, 'MB')?></dd></div>
                 <div><dt>有效期</dt><dd><?php echo empty($uc_expire) ? '永久有效' : htmlspecialchars($uc_expire, ENT_QUOTES, 'UTF-8').($uc_active ? ' 到期' : ' 已过期')?></dd></div>
+<?php $uc_edit = current_online_edit_text(); if($uc_edit !== ''){?>
+                <div><dt>在线编辑</dt><dd><?php echo htmlspecialchars($uc_edit, ENT_QUOTES, 'UTF-8')?></dd></div>
+<?php }?>
             </dl>
 <?php if(function_exists('is_buy_open') && is_buy_open()){?>
             <a class="uc-btn uc-btn-primary" href="./buy.php"><i class="fa fa-shopping-cart" aria-hidden="true"></i> <?php echo ($uc_plan && $uc_plan['bought']) ? '续费 / 升级权限' : '购买权限'?></a>
@@ -531,7 +534,7 @@ if($tab === 'overview'){
                             <button type="button" class="uc-act" data-uc="rename" title="重命名"><i class="fa fa-pencil" aria-hidden="true"></i></button>
                             <button type="button" class="uc-act" data-uc="pwd" title="访问密码"><i class="fa fa-key" aria-hidden="true"></i></button>
                             <button type="button" class="uc-act" data-uc="hide" title="<?php echo $hidden ? '设为公开' : '设为私密'?>"><i class="fa fa-<?php echo $hidden ? 'eye-slash' : 'globe'?>" aria-hidden="true"></i></button>
-<?php if(can_edit_file_online($res)){?>
+<?php if(can_show_online_edit_entry($res)){?>
                             <a class="uc-act" href="./edit.php?id=<?php echo intval($res['id'])?>" title="在线编辑"><i class="fa fa-code" aria-hidden="true"></i></a>
 <?php }?>
 <?php if($nodelete === ''){?>

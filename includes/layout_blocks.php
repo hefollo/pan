@@ -145,7 +145,10 @@ function layout_user_plan($DB){
 	}
 	$row = false;
 	try{
-		$row = $DB->getRow("SELECT plan_name, paytime FROM pre_order WHERE uid=".$who." AND status=1 ORDER BY id DESC LIMIT 1");
+		//只含在线编辑的订单不算「当前套餐」：它不改上传额度，拿它的名字当套餐名会让人以为上传权限也是它给的
+		$row = $DB->getRow("SELECT plan_name, paytime FROM pre_order WHERE uid=".$who." AND status=1
+			AND NOT (online_edit=1 AND limit_mode<>'add' AND upload_limit<0 AND upload_size<0 AND down_speed<0)
+			ORDER BY id DESC LIMIT 1");
 	}catch(Exception $e){
 		$row = false;
 	}

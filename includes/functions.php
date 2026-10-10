@@ -1208,6 +1208,11 @@ function default_plans(){
 		['name'=>'永久会员', 'category'=>'永久会员', 'price'=>'198.00', 'upload_limit'=>0, 'limit_mode'=>'set', 'upload_size'=>5120, 'days'=>0, 'remark'=>'一次买断，不限每日数量', 'sort'=>43],
 		['name'=>'永久尊享版', 'category'=>'永久会员', 'price'=>'298.00', 'upload_limit'=>0, 'limit_mode'=>'set', 'upload_size'=>10240, 'days'=>0, 'remark'=>'不限数量，单文件 10GB', 'sort'=>44],
 		['name'=>'永久旗舰版', 'category'=>'永久会员', 'price'=>'498.00', 'upload_limit'=>0, 'limit_mode'=>'set', 'upload_size'=>0, 'days'=>0, 'remark'=>'数量和大小都不限，一步到位', 'sort'=>45],
+		//纯在线编辑套餐：三项上传权限都填 -1，只开通在线编辑，有效期单独算（见 plan_is_edit_only）
+		['name'=>'在线编辑月卡', 'category'=>'在线编辑', 'price'=>'3.00', 'upload_limit'=>-1, 'limit_mode'=>'set', 'upload_size'=>-1, 'online_edit'=>1, 'days'=>30, 'remark'=>'文本、代码文件直接在网页里改', 'sort'=>50],
+		['name'=>'在线编辑季卡', 'category'=>'在线编辑', 'price'=>'8.00', 'upload_limit'=>-1, 'limit_mode'=>'set', 'upload_size'=>-1, 'online_edit'=>1, 'days'=>90, 'remark'=>'三个月，折合每月更便宜', 'sort'=>51],
+		['name'=>'在线编辑年卡', 'category'=>'在线编辑', 'price'=>'25.00', 'upload_limit'=>-1, 'limit_mode'=>'set', 'upload_size'=>-1, 'online_edit'=>1, 'days'=>365, 'remark'=>'整年可用，经常改文件选它', 'sort'=>52],
+		['name'=>'在线编辑永久', 'category'=>'在线编辑', 'price'=>'48.00', 'upload_limit'=>-1, 'limit_mode'=>'set', 'upload_size'=>-1, 'online_edit'=>1, 'days'=>0, 'remark'=>'一次买断，永久可用', 'sort'=>53],
 	];
 }
 
@@ -1345,6 +1350,39 @@ function plan_days_text($days){
 }
 
 /*
+ * 套餐（或订单快照）是否含在线编辑权限。老订单没有这个字段，按不含处理
+ */
+function plan_has_online_edit($plan){
+	return isset($plan['online_edit']) && intval($plan['online_edit']) === 1;
+}
+
+/*
+ * 纯在线编辑套餐：含在线编辑，同时每日数量、单文件大小、下载限速三项都不改动。
+ * 这种套餐只开通在线编辑，不动上传权限的数值和到期时间——
+ * 在线编辑的有效期是单独算的，不然买一张在线编辑月卡就把整套上传权限续了 30 天。
+ */
+function plan_is_edit_only($plan){
+	if(!plan_has_online_edit($plan))return false;
+	$mode = isset($plan['limit_mode']) ? $plan['limit_mode'] : 'set';
+	return $mode !== 'add' && intval($plan['upload_limit']) < 0 && intval($plan['upload_size']) < 0
+		&& (isset($plan['down_speed']) ? intval($plan['down_speed']) : -1) < 0;
+}
+
+/*
+ * 购买页上实际在卖的套餐。在线编辑没设成付费（所有人 / 登录用户都能用）时，
+ * 纯在线编辑套餐买了没有任何作用，不拿出来卖
+ */
+function plan_list_for_sale(){
+	$plans = plan_list(true);
+	if(online_edit_is_paid_mode())return $plans;
+	$list = [];
+	foreach($plans as $plan){
+		if(!plan_is_edit_only($plan))$list[] = $plan;
+	}
+	return $list;
+}
+
+/*
  * 发放套餐权限。
  * 规则（后台可见的说明也是这套）：
  *   - 权限数值按新买的套餐设置；
@@ -1357,6 +1395,14 @@ function grant_plan_to_user($uid, $order, $lock_user = false){
 	$uid = intval($uid);
 	$user = $DB->getRow("SELECT * FROM pre_user WHERE uid=:uid LIMIT 1".($lock_user ? ' FOR UPDATE' : ''), [':uid'=>$uid]);
 	if(!$user)return false;
+
+	//在线编辑的开通状态和到期时间；套餐不含在线编辑时是 null，下面就不碰这两个字段
+	$edit = resolve_plan_online_edit($user, $order);
+	if(plan_is_edit_only($order)){
+		//纯在线编辑套餐只开通在线编辑，上传权限的数值和到期时间一概不动
+		unset($_SESSION['layout_plan']);
+		return $DB->update('user', $edit, ['uid'=>$uid]) !== false;
+	}
 
 	$days = intval($order['days']);
 	//没有到期时间、但已经有付费权限的，算永久权限
@@ -1391,13 +1437,14 @@ function grant_plan_to_user($uid, $order, $lock_user = false){
 	}
 	//DB->update 会把空字符串写成 NULL，正好用来表示永久
 	$data['expiretime'] = $expiretime === null ? '' : $expiretime;
+	if($edit)$data = array_merge($data, $edit);
 	//侧栏“我的权限”卡有 120 秒会话缓存，这里清掉，买完刷新就能看到新的权限
 	unset($_SESSION['layout_plan']);
 	$ok = $DB->update('user', $data, ['uid'=>$uid]);
 	if($ok === false && isset($data['bonus_limit']) && !$lock_user){
-		//站点还没执行 install/update.php 的话没有 bonus_limit / down_speed 这两列，
-		//这时候宁可少发加量额度和下载速度，也不能因为一个字段就把整笔权限卡住不发
-		unset($data['bonus_limit'], $data['down_speed']);
+		//站点还没执行 install/update.php 的话没有 bonus_limit / down_speed / 在线编辑这几列，
+		//这时候宁可少发加量额度、下载速度和在线编辑，也不能因为一个字段就把整笔权限卡住不发
+		unset($data['bonus_limit'], $data['down_speed'], $data['online_edit'], $data['edit_expire']);
 		$ok = $DB->update('user', $data, ['uid'=>$uid]);
 	}
 	return $ok !== false;
@@ -1483,6 +1530,54 @@ function resolve_plan_down_speed($user, $order){
 	if($value >= 0)return $value;
 	$active = empty($user['expiretime']) || strtotime($user['expiretime']) > time();
 	return ($active && isset($user['down_speed'])) ? intval($user['down_speed']) : -1;
+}
+
+/*
+ * 算出这一单发放后的在线编辑状态。套餐不含在线编辑时返回 null，表示不碰这两个字段。
+ * 在线编辑有自己的到期时间 edit_expire，不和上传权限共用 expiretime，叠加规则则是同一套：
+ *   - 还没到期就从到期时间往后加，否则从当前时间算起；
+ *   - 买到永久套餐直接变永久；已经是永久的再买限时套餐，仍然是永久。
+ * edit_expire 返回空字符串表示永久（DB->update 会把它写成 NULL）。
+ */
+function resolve_plan_online_edit($user, $order){
+	if(!plan_has_online_edit($order))return null;
+	$days = intval($order['days']);
+	if($days <= 0 || user_online_edit_forever($user))return ['online_edit'=>1, 'edit_expire'=>''];
+	$base = user_online_edit_active($user) ? strtotime($user['edit_expire']) : time();
+	return ['online_edit'=>1, 'edit_expire'=>date('Y-m-d H:i:s', $base + $days * 86400)];
+}
+
+/*
+ * 用户买到手的在线编辑还能不能用：已开通，并且没有到期时间（永久）或者还没到期
+ */
+function user_online_edit_active($user){
+	if(!$user || !isset($user['online_edit']) || intval($user['online_edit']) !== 1)return false;
+	return empty($user['edit_expire']) || strtotime($user['edit_expire']) > time();
+}
+
+function user_online_edit_forever($user){
+	return $user && isset($user['online_edit']) && intval($user['online_edit']) === 1 && empty($user['edit_expire']);
+}
+
+/*
+ * 购买页、个人中心上显示的在线编辑开通情况
+ */
+function user_online_edit_text($user){
+	if(!$user || !isset($user['online_edit']) || intval($user['online_edit']) !== 1)return '未开通';
+	if(empty($user['edit_expire']))return '永久有效';
+	return $user['edit_expire'].(strtotime($user['edit_expire']) > time() ? ' 到期' : ' 已过期');
+}
+
+/*
+ * 当前登录用户的在线编辑状态文案，购买页「当前权限」和个人中心概览共用。
+ * 在线编辑免费开放时返回空串，这一项不用显示
+ */
+function current_online_edit_text(){
+	global $userrow;
+	if(!online_edit_is_paid_mode())return '';
+	//自己没买、但在免费放行的 UID 名单里的，写「已开放」
+	if(!user_online_edit_active($userrow) && can_use_online_edit())return '已开放';
+	return user_online_edit_text($userrow);
 }
 
 /*
@@ -1584,7 +1679,13 @@ function plan_effect($user, $plan){
 	 * 本来就没有到期时间的用户（新用户、跟随全站的用户、已经永久的用户），
 	 * 凭空多一个到期时间不是收益，不能靠它把“买了也没用”的单放过去。
 	 */
-	$time_gain = !empty($user['expiretime']);
+	$time_gain = !empty($user['expiretime']) && !plan_is_edit_only($plan);
+	/*
+	 * 在线编辑上的收益：站点把在线编辑设成了付费、套餐带了它，而这个用户还不是永久开通、
+	 * 也不在免费放行的 UID 名单里。纯在线编辑套餐只看这一条（它不动上传权限，也不延长上传权限的时间）。
+	 */
+	$edit_gain = plan_has_online_edit($plan) && online_edit_is_paid_mode() && !user_online_edit_forever($user)
+		&& !(get_online_edit_mode() === 'uid' && isset($user['uid']) && in_array(intval($user['uid']), get_online_edit_uid_whitelist(), true));
 
 	$lower = [];
 	if(permission_weight($after_limit, $site_limit) < permission_weight($now_limit, $site_limit))$lower[] = '每日上传数量';
@@ -1596,7 +1697,8 @@ function plan_effect($user, $plan){
 		'size' => $after_size,
 		'speed' => $after_speed,
 		'days' => $time_gain,
-		'changed' => $improved || $time_gain,
+		'edit' => $edit_gain,
+		'changed' => $improved || $time_gain || $edit_gain,
 		'lower' => $lower,
 	];
 }
@@ -2466,7 +2568,15 @@ function is_editable_file_type($type){
 function get_online_edit_mode(){
 	global $conf;
 	$mode = isset($conf['online_edit_mode']) ? strtolower(trim((string)$conf['online_edit_mode'])) : 'all';
-	return in_array($mode, ['all', 'login', 'uid'], true) ? $mode : 'all';
+	return in_array($mode, ['all', 'login', 'uid', 'buy'], true) ? $mode : 'all';
+}
+
+/*
+ * 在线编辑是不是「要有资格才能用」的状态：指定 UID、仅购买用户这两档算。
+ * 所有人 / 登录用户都能用的时候它是免费开放的，套餐里的在线编辑没有意义
+ */
+function online_edit_is_paid_mode(){
+	return in_array(get_online_edit_mode(), ['uid', 'buy'], true);
 }
 
 function get_online_edit_uid_whitelist(){
@@ -2728,7 +2838,7 @@ function parse_uid_list($value){
 }
 
 function can_use_online_edit(){
-	global $islogin2, $uid;
+	global $islogin2, $uid, $userrow;
 	$mode = get_online_edit_mode();
 	if($mode === 'all'){
 		return true;
@@ -2739,6 +2849,13 @@ function can_use_online_edit(){
 	if($mode === 'login'){
 		return true;
 	}
+	//买了含在线编辑的套餐、还在有效期内的，「指定 UID」「仅购买用户」两档下都能用
+	if(user_online_edit_active($userrow)){
+		return true;
+	}
+	if($mode === 'buy'){
+		return false;
+	}
 	return in_array(intval($uid), get_online_edit_uid_whitelist(), true);
 }
 
@@ -2747,6 +2864,34 @@ function can_edit_file_online($row){
 	if(!is_editable_file_type(isset($row['type']) ? $row['type'] : null)) return false;
 	if(!can_manage_file($row)) return false;
 	return can_use_online_edit();
+}
+
+/*
+ * 现在能不能买到在线编辑：购买功能开着、在线编辑是付费状态、并且有上架的含在线编辑的套餐。
+ * 列表页每一行都会问一次，所以结果在本次请求里记住
+ */
+function online_edit_purchasable(){
+	global $DB;
+	static $cache = null;
+	if($cache !== null)return $cache;
+	$cache = false;
+	if(online_edit_is_paid_mode() && is_buy_open()){
+		$cache = intval($DB->getColumn("SELECT count(*) FROM pre_plan WHERE enable=1 AND online_edit=1")) > 0;
+	}
+	return $cache;
+}
+
+/*
+ * 文件上要不要显示「在线编辑」入口：能用的当然显示；
+ * 不能用但买得到的（已登录、文件归自己管、格式可编辑）也显示，点进去 edit.php 会提示去购买，
+ * 不然把在线编辑设成付费之后入口直接消失，用户根本不知道有这个功能可以买
+ */
+function can_show_online_edit_entry($row){
+	global $islogin2;
+	if(can_edit_file_online($row))return true;
+	if(!$row || empty($islogin2))return false;
+	if(!is_editable_file_type(isset($row['type']) ? $row['type'] : null) || !can_manage_file($row))return false;
+	return online_edit_purchasable();
 }
 
 function get_editable_file_max_size(){

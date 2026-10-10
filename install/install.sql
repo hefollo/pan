@@ -16,7 +16,7 @@ create table `pre_config` (
 --   · 如果没有并进来 → 这里保持旧值不动，让全新安装照常跑一次升级把它补上。
 -- 改错方向（并进来了却不改版本号）只是多跑一趟空升级；
 -- 改反了（没并进来却改了版本号）会让新装的站永久缺表缺字段，且毫无报错。
-INSERT INTO `pre_config` VALUES ('version', '1025');
+INSERT INTO `pre_config` VALUES ('version', '1026');
 INSERT INTO `pre_config` VALUES ('admin_user', 'admin');
 INSERT INTO `pre_config` VALUES ('admin_pwd', '123456');
 INSERT INTO `pre_config` VALUES ('blackip', '');
@@ -209,6 +209,8 @@ CREATE TABLE `pre_user` (
   `bonus_limit` int(11) NOT NULL DEFAULT '0' COMMENT '加量包累计的每日额度',
   `down_speed` int(11) NOT NULL DEFAULT '-1' COMMENT '下载限速KB/s：-1跟随身份档位 0不限速 N每秒N KB',
   `expiretime` datetime DEFAULT NULL,
+  `online_edit` tinyint(1) NOT NULL DEFAULT '0' COMMENT '在线编辑：0未开通 1已开通',
+  `edit_expire` datetime DEFAULT NULL COMMENT '在线编辑到期时间，已开通且为空表示永久',
   `addtime` datetime NOT NULL,
   `lasttime` datetime NOT NULL,
   PRIMARY KEY (`uid`),
@@ -321,6 +323,7 @@ CREATE TABLE `pre_plan` (
   `limit_mode` varchar(8) NOT NULL DEFAULT 'set' COMMENT '每日数量发放方式：set设为 add在现有基础上增加',
   `upload_size` int(11) NOT NULL DEFAULT '-1' COMMENT '单文件大小MB：-1继承全站 0不限',
   `down_speed` int(11) NOT NULL DEFAULT '-1' COMMENT '下载限速KB/s：-1不改动 0不限速 N每秒N KB',
+  `online_edit` tinyint(1) NOT NULL DEFAULT '0' COMMENT '是否含在线编辑权限：0不含 1含',
   `days` int(11) NOT NULL DEFAULT '0' COMMENT '有效期天数，0为永久',
   `remark` varchar(255) DEFAULT NULL COMMENT '套餐说明',
   `sort` int(11) NOT NULL DEFAULT '0' COMMENT '排序，小的在前',
@@ -344,6 +347,7 @@ CREATE TABLE `pre_order` (
   `limit_mode` varchar(8) NOT NULL DEFAULT 'set',
   `upload_size` int(11) NOT NULL DEFAULT '-1',
   `down_speed` int(11) NOT NULL DEFAULT '-1' COMMENT '下单时的套餐下载限速快照',
+  `online_edit` tinyint(1) NOT NULL DEFAULT '0' COMMENT '下单时套餐是否含在线编辑的快照',
   `days` int(11) NOT NULL DEFAULT '0',
   `status` tinyint(1) NOT NULL DEFAULT '0' COMMENT '0待支付 1已支付并发放 2已关闭',
   `ip` varchar(46) DEFAULT NULL,
@@ -379,6 +383,10 @@ INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`u
 INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('永久会员', '永久会员', '198.00', 0, 'set', 5120, 0, '一次买断，不限每日数量', 43, 1, NOW());
 INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('永久尊享版', '永久会员', '298.00', 0, 'set', 10240, 0, '不限数量，单文件 10GB', 44, 1, NOW());
 INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('永久旗舰版', '永久会员', '498.00', 0, 'set', 0, 0, '数量和大小都不限，一步到位', 45, 1, NOW());
+INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`online_edit`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('在线编辑月卡', '在线编辑', '3.00', -1, 'set', -1, 1, 30, '文本、代码文件直接在网页里改', 50, 1, NOW());
+INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`online_edit`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('在线编辑季卡', '在线编辑', '8.00', -1, 'set', -1, 1, 90, '三个月，折合每月更便宜', 51, 1, NOW());
+INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`online_edit`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('在线编辑年卡', '在线编辑', '25.00', -1, 'set', -1, 1, 365, '整年可用，经常改文件选它', 52, 1, NOW());
+INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`online_edit`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('在线编辑永久', '在线编辑', '48.00', -1, 'set', -1, 1, 0, '一次买断，永久可用', 53, 1, NOW());
 
 INSERT INTO `pre_config` VALUES ('alipay_open', '0');
 INSERT INTO `pre_config` VALUES ('epay_open', '0');

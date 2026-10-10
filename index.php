@@ -318,7 +318,7 @@ while($res = $rs->fetch())
 	$delete_reason = file_delete_locked_reason($res);
 	if($delete_reason === '' && !$can_manage) $delete_reason = '游客只能管理本浏览器七天内上传的文件';
 	$actions = '<div class="file-actions"><a class="file-action file-action-down" href="'.$fileurl.'" title="下载"><i class="fa fa-download" aria-hidden="true"></i> <span class="file-action-label">下载</span></a><a class="file-action file-action-view" href="'.$viewurl.'" title="查看"><i class="fa fa-eye" aria-hidden="true"></i> <span class="file-action-label">查看</span></a>';
-	if(isset($_GET['m']) && $_GET['m']=='mine' && can_edit_file_online($res)){
+	if(isset($_GET['m']) && $_GET['m']=='mine' && can_show_online_edit_entry($res)){
 		$actions .= '<a class="file-action file-action-edit" href="./edit.php?id='.$res['id'].'" title="编辑"><i class="fa fa-pencil" aria-hidden="true"></i> <span class="file-action-label">编辑</span></a>';
 	}
 	if(isset($_GET['m']) && $_GET['m']=='mine' && can_manage_file($res)){
@@ -367,7 +367,7 @@ if($guest_mine){
 	$guest_actions = '<div class="uc-acts">'
 		.'<a class="uc-act" href="'.htmlspecialchars($fileurl, ENT_QUOTES, 'UTF-8').'" title="下载"><i class="fa fa-download" aria-hidden="true"></i></a>'
 		.'<a class="uc-act" href="'.htmlspecialchars($viewurl, ENT_QUOTES, 'UTF-8').'" title="查看"><i class="fa fa-eye" aria-hidden="true"></i></a>';
-	if(can_edit_file_online($res)){
+	if(can_show_online_edit_entry($res)){
 		$guest_actions .= '<a class="uc-act" href="./edit.php?id='.intval($res['id']).'" title="在线编辑"><i class="fa fa-code" aria-hidden="true"></i></a>';
 	}
 	//改名是跟文件夹一起加的，开了文件夹才有，关掉时游客页面和原来一样

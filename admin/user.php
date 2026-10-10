@@ -70,6 +70,19 @@ if($islogin==1){}else exit("<script language='javascript'>window.location.href='
 							<p class="help-block">有效天数优先；不填有效天数时，可手动设置到期时间。清空表示永久有效。</p>
 						</div>
 					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label no-padding-right">在线编辑</label>
+						<div class="col-sm-10">
+							<select id="online_edit" name="online_edit" class="form-control"><option value="0">0_未开通</option><option value="1">1_已开通</option></select>
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="col-sm-2 control-label no-padding-right">编辑到期</label>
+						<div class="col-sm-10">
+							<input type="datetime-local" class="form-control" id="edit_expire" name="edit_expire">
+							<p class="help-block">在线编辑的到期时间，和上面的到期时间互不影响；已开通时清空表示永久。只有「在线编辑权限」设为指定 UID 或仅购买用户时才用得上。</p>
+						</div>
+					</div>
 				</form>
 			</div>
 			<div class="modal-footer">
@@ -203,7 +216,8 @@ $(document).ready(function(){
 					window.userRows[row.uid] = row;
 					var bonus = parseInt(row.bonus_limit || 0, 10);
 					return '大小：'+formatLimitValue(row.upload_size, 'MB')+'<br/>数量：'+formatLimitValue(row.upload_limit, '个/天')
-						+ (bonus > 0 ? '（加量 +'+bonus+'）' : '')+'<br/>下载：'+formatSpeedValue(row.down_speed)+'<br/>到期：'+formatExpireTime(row.expiretime);
+						+ (bonus > 0 ? '（加量 +'+bonus+'）' : '')+'<br/>下载：'+formatSpeedValue(row.down_speed)+'<br/>到期：'+formatExpireTime(row.expiretime)
+						+ (parseInt(row.online_edit, 10) === 1 ? '<br/>在线编辑：'+formatExpireTime(row.edit_expire) : '');
 				}
 			},
 			{
@@ -295,6 +309,8 @@ function setLevel(uid){
 	$("#form-store #down_speed").val(parseLimitValue(row.down_speed));
 	$("#form-store #expire_days").val('');
 	$("#form-store #expiretime").val(toDatetimeLocal(row.expiretime));
+	$("#form-store #online_edit").val(parseInt(row.online_edit, 10) === 1 ? '1' : '0');
+	$("#form-store #edit_expire").val(toDatetimeLocal(row.edit_expire));
 }
 
 function save(){

@@ -1014,11 +1014,11 @@ $(document).ready(function(){
 	</div><br/>
 	<div class="form-group">
 	  <label class="col-sm-3 control-label">在线编辑权限</label>
-	  <div class="col-sm-9"><select class="form-control" name="online_edit_mode" id="online_edit_mode" default="<?php echo isset($conf['online_edit_mode']) ? $conf['online_edit_mode'] : 'all'?>"><option value="all">所有用户都可用</option><option value="login">仅登录用户可用</option><option value="uid">仅指定UID可用</option></select><font color="green">这里只控制在线编辑功能入口与保存权限，文件本身是否属于当前用户，仍按原来的文件管理规则判断。</font></div>
+	  <div class="col-sm-9"><select class="form-control" name="online_edit_mode" id="online_edit_mode" default="<?php echo isset($conf['online_edit_mode']) ? $conf['online_edit_mode'] : 'all'?>"><option value="all">所有用户都可用</option><option value="login">仅登录用户可用</option><option value="uid">仅指定UID可用</option><option value="buy">仅购买了在线编辑套餐的用户可用</option></select><font color="green">这里只控制在线编辑功能入口与保存权限，文件本身是否属于当前用户，仍按原来的文件管理规则判断。<br/>想把在线编辑做成付费功能，选「仅购买了在线编辑套餐的用户可用」，再到「购买套餐设置」里添加带在线编辑权限的套餐；选「仅指定UID可用」时，买了套餐的用户在有效期内同样可用。前两项是免费开放，套餐里的在线编辑不起作用。</font></div>
 	</div><br/>
 	<div class="form-group" id="online_edit_uids_group" style="<?php echo (isset($conf['online_edit_mode']) && $conf['online_edit_mode'] === 'uid') ? '' : 'display:none;'; ?>">
 	  <label class="col-sm-3 control-label">可用UID</label>
-	  <div class="col-sm-9"><input type="text" name="online_edit_uids" value="<?php echo isset($conf['online_edit_uids']) ? htmlspecialchars($conf['online_edit_uids']) : ''; ?>" class="form-control" placeholder="例如：1,2,1001"/><font color="green">多个UID用英文逗号分隔，只有这些登录用户可以使用在线编辑。</font></div>
+	  <div class="col-sm-9"><input type="text" name="online_edit_uids" value="<?php echo isset($conf['online_edit_uids']) ? htmlspecialchars($conf['online_edit_uids']) : ''; ?>" class="form-control" placeholder="例如：1,2,1001"/><font color="green">多个UID用英文逗号分隔，这些登录用户不用购买就可以使用在线编辑。</font></div>
 	</div><br/>
 <?php
 //用户文件夹：显隐直接由 PHP 按当前配置写死在 style 上，不靠下面的 change 事件，

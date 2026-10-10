@@ -329,8 +329,22 @@ case 'saveUserInfo':
 	//下载限速 KB/s：留空或负数 = -1 按身份速度，0 不限速
 	$down_speed = (isset($_POST['down_speed']) && $_POST['down_speed'] !== '') ? intval($_POST['down_speed']) : -1;
 	if($down_speed < -1)$down_speed = -1;
-	$sql = "UPDATE pre_user SET level=:level, upload_size=:upload_size, upload_limit=:upload_limit, bonus_limit=:bonus_limit, down_speed=:down_speed, expiretime=:expiretime WHERE uid=:uid";
-	if($DB->exec($sql, [':level'=>$level, ':upload_size'=>$upload_size, ':upload_limit'=>$upload_limit, ':bonus_limit'=>$bonus_limit, ':down_speed'=>$down_speed, ':expiretime'=>$expiretime, ':uid'=>$uid])!==false)exit('{"code":0,"msg":"修改用户成功！"}');
+	$sql = "UPDATE pre_user SET level=:level, upload_size=:upload_size, upload_limit=:upload_limit, bonus_limit=:bonus_limit, down_speed=:down_speed, expiretime=:expiretime";
+	$params = [':level'=>$level, ':upload_size'=>$upload_size, ':upload_limit'=>$upload_limit, ':bonus_limit'=>$bonus_limit, ':down_speed'=>$down_speed, ':expiretime'=>$expiretime, ':uid'=>$uid];
+	//在线编辑：开通状态 + 单独的到期时间（空 = 永久）。表单没带这一项时不动，免得旧页面缓存提交把它清掉
+	if(isset($_POST['online_edit'])){
+		$online_edit = intval($_POST['online_edit']) === 1 ? 1 : 0;
+		$edit_expire = null;
+		if($online_edit === 1 && isset($_POST['edit_expire']) && trim($_POST['edit_expire']) !== ''){
+			$edit_timestamp = strtotime(str_replace('T', ' ', trim($_POST['edit_expire'])));
+			if($edit_timestamp !== false) $edit_expire = date('Y-m-d H:i:s', $edit_timestamp);
+		}
+		$sql .= ", online_edit=:online_edit, edit_expire=:edit_expire";
+		$params[':online_edit'] = $online_edit;
+		$params[':edit_expire'] = $edit_expire;
+	}
+	$sql .= " WHERE uid=:uid";
+	if($DB->exec($sql, $params)!==false)exit('{"code":0,"msg":"修改用户成功！"}');
 	else exit('{"code":-1,"msg":"修改用户失败['.$DB->error().']"}');
 break;
 case 'delUser':

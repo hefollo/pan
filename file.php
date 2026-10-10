@@ -38,7 +38,8 @@ $file_reward_image = isset($conf['file_reward_image']) && $conf['file_reward_ima
 $is_mine = can_manage_file($row);
 //冻结、内容检测待人工复核的文件不给删，按钮直接不显示，后端 ajax.php 那边也照样拦
 $delete_locked = file_delete_locked_reason($row);
-$is_editable = can_edit_file_online($row);
+//没有在线编辑权限但买得到时入口也显示，点进去会提示去购买
+$is_editable = can_show_online_edit_entry($row);
 $is_text_viewable = is_editable_file_type($type);
 
 $view_type = get_view_type($type);

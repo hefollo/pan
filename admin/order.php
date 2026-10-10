@@ -80,7 +80,7 @@ $status_text = [0=>'<span class="label label-warning">待支付</span>', 1=>'<sp
       <td><?php echo htmlspecialchars($o['plan_name'], ENT_QUOTES, 'UTF-8')?></td>
       <td>¥<?php echo htmlspecialchars(number_format(floatval($o['price']), 2, '.', ''))?></td>
       <td><small><?php echo htmlspecialchars(pay_method_name(isset($o['pay_type']) ? $o['pay_type'] : ''))?></small></td>
-      <td><small>每日 <?php echo htmlspecialchars(plan_limit_display($o))?><br/>单文件 <?php echo htmlspecialchars(plan_limit_text($o['upload_size'], 'MB'))?><?php if(isset($o['down_speed']) && intval($o['down_speed']) >= 0){?><br/>下载 <?php echo htmlspecialchars(plan_speed_text($o['down_speed']))?><?php }?><br/><?php echo htmlspecialchars(plan_days_text($o['days']))?></small></td>
+      <td><small>每日 <?php echo htmlspecialchars(plan_limit_display($o))?><br/>单文件 <?php echo htmlspecialchars(plan_limit_text($o['upload_size'], 'MB'))?><?php if(isset($o['down_speed']) && intval($o['down_speed']) >= 0){?><br/>下载 <?php echo htmlspecialchars(plan_speed_text($o['down_speed']))?><?php }?><?php if(plan_has_online_edit($o)){?><br/>在线编辑<?php }?><br/><?php echo htmlspecialchars(plan_days_text($o['days']))?></small></td>
       <td><?php echo isset($status_text[intval($o['status'])]) ? $status_text[intval($o['status'])] : ''?></td>
       <td><small><?php echo htmlspecialchars($o['addtime'])?></small></td>
       <td><small><?php echo htmlspecialchars($o['paytime'] ? $o['paytime'] : '-')?></small></td>

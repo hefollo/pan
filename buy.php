@@ -97,6 +97,7 @@ if($act === 'create' || $act === 'query'){
 			&& intval($exist['upload_limit']) === intval($plan['upload_limit'])
 			&& intval($exist['upload_size']) === intval($plan['upload_size'])
 			&& intval(isset($exist['down_speed']) ? $exist['down_speed'] : -1) === intval(isset($plan['down_speed']) ? $plan['down_speed'] : -1)
+			&& plan_has_online_edit($exist) === plan_has_online_edit($plan)
 			&& intval($exist['days']) === intval($plan['days'])
 			&& (isset($exist['limit_mode']) ? $exist['limit_mode'] : 'set') === $limit_mode){
 			$trade_no = $exist['trade_no'];
@@ -125,6 +126,7 @@ if($act === 'create' || $act === 'query'){
 				'limit_mode' => $limit_mode,
 				'upload_size' => intval($plan['upload_size']),
 				'down_speed' => isset($plan['down_speed']) ? intval($plan['down_speed']) : -1,
+				'online_edit' => plan_has_online_edit($plan) ? '1' : '0',
 				'days' => intval($plan['days']),
 				'status' => 0,
 				'ip' => $clientip,
@@ -216,7 +218,9 @@ if($islogin2 && (!isset($_SESSION['buy_rescue_time']) || $_SESSION['buy_rescue_t
 }
 
 $title = '购买权限 - ' . $conf['title'];
-$plans = plan_list(true);
+//在线编辑免费开放时，只卖在线编辑的套餐不列出来（买了没有任何作用）
+$plans = plan_list_for_sale();
+$edit_paid = online_edit_is_paid_mode();
 $methods = pay_methods();
 $method_keys = array_keys($methods);
 $channels = isset($methods['epay']) ? epay_channels() : [];
@@ -242,10 +246,11 @@ include SYSTEM_ROOT.'header.php';
 	$cur_size = limit_number_text(get_effective_upload_size_limit(), 'MB');
 	$cur_speed = speed_text(get_effective_download_speed_kbps());
 	$cur_expire = empty($userrow['expiretime']) ? '永久有效' : (is_user_permission_active() ? ($userrow['expiretime'].' 到期') : ($userrow['expiretime'].' 已过期'));
+	$cur_edit = current_online_edit_text();
 ?>
         <div class="buy-current">
             <span>当前权限</span>
-            <strong>每日上传 <?php echo htmlspecialchars($cur_limit)?><?php if(!empty($userrow['bonus_limit']) && is_user_permission_active()){?>（含加量包 +<?php echo intval($userrow['bonus_limit'])?>）<?php }?>　单文件 <?php echo htmlspecialchars($cur_size)?>　下载 <?php echo htmlspecialchars($cur_speed)?>　<?php echo htmlspecialchars($cur_expire)?></strong>
+            <strong>每日上传 <?php echo htmlspecialchars($cur_limit)?><?php if(!empty($userrow['bonus_limit']) && is_user_permission_active()){?>（含加量包 +<?php echo intval($userrow['bonus_limit'])?>）<?php }?>　单文件 <?php echo htmlspecialchars($cur_size)?>　下载 <?php echo htmlspecialchars($cur_speed)?>　<?php echo htmlspecialchars($cur_expire)?><?php if($cur_edit !== ''){?>　在线编辑 <?php echo htmlspecialchars($cur_edit)?><?php }?></strong>
         </div>
 <?php }?>
 <?php if(count($methods) > 1){?>
@@ -281,10 +286,16 @@ include SYSTEM_ROOT.'header.php';
                 <div class="buy-plan-name"><?php echo htmlspecialchars($plan['name'], ENT_QUOTES, 'UTF-8')?></div>
                 <div class="buy-plan-price"><small>¥</small><?php echo htmlspecialchars(number_format(floatval($plan['price']), 2, '.', ''))?></div>
                 <ul class="buy-plan-list">
+<?php //只卖在线编辑的套餐不动上传权限，卡片上就不写一串“不变”了
+if(!plan_is_edit_only($plan)){?>
                     <li><i class="fa fa-check" aria-hidden="true"></i> 每日上传 <?php echo htmlspecialchars(plan_result_limit_text($plan))?></li>
                     <li><i class="fa fa-check" aria-hidden="true"></i> 单文件大小 <?php echo htmlspecialchars(plan_result_size_text($plan))?></li>
 <?php if(isset($plan['down_speed']) && intval($plan['down_speed']) >= 0){?>
                     <li><i class="fa fa-check" aria-hidden="true"></i> 下载速度 <?php echo htmlspecialchars(plan_result_speed_text($plan))?></li>
+<?php }?>
+<?php }?>
+<?php if($edit_paid && plan_has_online_edit($plan)){?>
+                    <li><i class="fa fa-check" aria-hidden="true"></i> 在线编辑文本、代码文件</li>
 <?php }?>
                     <li><i class="fa fa-check" aria-hidden="true"></i> <?php echo htmlspecialchars(plan_days_text($plan['days']))?></li>
 <?php if(!empty($plan['remark'])){?>
@@ -310,6 +321,9 @@ include SYSTEM_ROOT.'header.php';
         <p class="buy-tip">有效期一律在现有剩余时间上叠加，买到永久套餐则直接变为永久有效。<br/>
         时长套餐（周卡月卡这类）会把每日数量和单文件大小换成该套餐的额度；加量包只加数量，大文件包只提大小，都不会动其它项。<br/>
         标了下载速度的套餐，有效期内按套餐的速度下载；没标的不改动你现在的下载速度。<br/>
+<?php if($edit_paid){?>
+        带「在线编辑」的套餐，在线编辑的有效期单独计算，和上传权限的到期时间互不影响；只含在线编辑的套餐不改动上传额度。<br/>
+<?php }?>
         所以建议先买时长套餐，再买加量包和大文件包。</p>
     </div>
 </div>

@@ -263,9 +263,21 @@ foreach(['pre_plan', 'pre_order', 'pre_user'] as $speed_table){
 		break;
 	}
 }
-$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1025')";
-//上面 else 分支只按 1022 判断「已是最新」，从 1022～1024 升上来时要改回「升级完成」的提示
-if($version < 1025)$uptodate = false;
+/*
+ * 1026 套餐带在线编辑权限：套餐、订单各加 online_edit，用户表加 online_edit 和 edit_expire，
+ * 做法同 1025，缺任何一列就整份跑一遍（已有的那条会报重复字段被跳过）。
+ */
+$edit_cols = [['pre_plan', 'online_edit'], ['pre_order', 'online_edit'], ['pre_user', 'online_edit'], ['pre_user', 'edit_expire']];
+foreach($edit_cols as $edit_col){
+	$q = $db->query("SHOW COLUMNS FROM `".$edit_col[0]."` LIKE '".$edit_col[1]."'");
+	if(!$q || !$q->fetchColumn()){
+		$sqls = array_merge($sqls, read_sql('update_1026.sql'));
+		break;
+	}
+}
+$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1026')";
+//上面 else 分支只按 1022 判断「已是最新」，从 1022～1025 升上来时要改回「升级完成」的提示
+if($version < 1026)$uptodate = false;
 
 $success=0;$skipped=0;$error=0;$errorMsg=null;
 foreach ($sqls as $value) {
@@ -358,6 +370,19 @@ if($lost_speed){
 	echo '<p style="font:14px/1.7 system-ui;padding:16px 24px"><a href="../">返回首页</a></p>';
 	exit;
 }
-$done_msg =$uptodate ? '数据库结构已是最新，表结构校验通过！' : '网站数据库升级完成！';
+//1026 的在线编辑字段：缺了它，后台保存套餐、下单都会因为字段不存在而失败，买了在线编辑也发不下去
+$lost_edit = [];
+foreach($edit_cols as $edit_col){
+	$q = $db->query("SHOW COLUMNS FROM `".$edit_col[0]."` LIKE '".$edit_col[1]."'");
+	if(!$q || !$q->fetchColumn())$lost_edit[] = $edit_col[0].'.'.$edit_col[1];
+}
+if($lost_edit){
+	echo '<div style="font:13px/1.7 system-ui;margin:0 24px;padding:14px;border:1px solid #f0c2c2;background:#fff5f5;border-radius:8px;color:#a33">'
+		.'<b>升级没有完成：</b>缺少字段 <code>'.htmlspecialchars(implode('、', $lost_edit), ENT_QUOTES, 'UTF-8').'</code>。<br>'
+		.'请确认 <code>install/update_1026.sql</code> 已上传，以及数据库账号有改表权限，然后重新打开本页再升级一次。</div>';
+	echo '<p style="font:14px/1.7 system-ui;padding:16px 24px"><a href="../">返回首页</a></p>';
+	exit;
+}
+$done_msg =$uptodate ?'数据库结构已是最新，表结构校验通过！' : '网站数据库升级完成！';
 exit("<script language='javascript'>alert('".$done_msg."');window.location.href=".json_encode($update_back).";</script>");
 ?>

@@ -23,7 +23,16 @@ if(!can_manage_file($row))sysmsg('无权限编辑该文件');
 if($row['block']==1)sysmsg('文件已被冻结，无法编辑');
 if(!is_editable_file_type($row['type']))sysmsg('该文件格式不支持在线编辑');
 
-if(!can_use_online_edit())sysmsg('当前账号无权使用在线编辑功能');
+if(!can_use_online_edit()){
+	//在线编辑是付费功能、并且现在买得到时，直接指到购买页，别只丢一句“无权使用”
+	if($islogin2 && online_edit_purchasable()){
+		sysmsg('在线编辑需要开通后才能使用，购买带「在线编辑」的套餐即可。', '需要开通在线编辑', [
+			['text'=>'去购买', 'href'=>'./buy.php', 'primary'=>true],
+			['text'=>'返回上一页', 'href'=>'javascript:history.back(-1)'],
+		]);
+	}
+	sysmsg('当前账号无权使用在线编辑功能');
+}
 
 $max_size = get_editable_file_max_size();
 if($row['size'] > $max_size){
