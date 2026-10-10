@@ -168,7 +168,7 @@ $edit_builtin = $edit && !level_is_custom($edit);
 </h3></div>
 <div class="table-responsive">
 <table class="table table-striped table-hover">
-  <thead><tr><th>等级</th><th>每日上传</th><th>单文件大小</th><th>下载速度</th><th>在线编辑</th><th>文件夹</th><th>上传API</th><th>全部存储</th><th>免审核</th><th>用户数</th><th>在售套餐</th><th>操作</th></tr></thead>
+  <thead><tr><th>等级</th><th>每日上传</th><th>单文件大小</th><th>文件下载速度</th><th>在线编辑</th><th>文件夹</th><th>上传API</th><th>全部存储</th><th>免审核</th><th>用户数</th><th>在售套餐</th><th>操作</th></tr></thead>
   <tbody>
 <?php foreach($levels as $lv){
 	$lid = intval($lv['id']);
@@ -280,7 +280,7 @@ $edit_builtin = $edit && !level_is_custom($edit);
 			</select>
 		  </div>
 		</div>
-		<span class="hint">-1 跟随站点设置（「存储类型设置」里游客 / 登录用户的速度）/ 0 不限速 / N 每秒 N</span>
+		<span class="hint">-1 跟随站点设置（「存储类型设置」里的速度）/ 0 不限速 / N 每秒 N。限速跟着上传的人走：这个等级的用户上传的文件，任何人下载都是这个速度</span>
 	  </div>
 	</div>
 	<div class="form-group level-flags">

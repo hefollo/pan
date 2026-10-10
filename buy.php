@@ -265,7 +265,7 @@ include SYSTEM_ROOT.'header.php';
 ?>
         <div class="buy-current">
             <span>当前等级</span>
-            <strong><?php echo htmlspecialchars(user_level_text($userrow), ENT_QUOTES, 'UTF-8')?>　每日上传 <?php echo htmlspecialchars($cur_limit)?><?php if($cur_bonus > 0 && get_effective_upload_count_limit() > 0){?>（含加量包 +<?php echo $cur_bonus?>，<?php echo empty($userrow['bonus_expire']) ? '永久' : htmlspecialchars($userrow['bonus_expire']).' 到期'?>）<?php }?>　单文件 <?php echo htmlspecialchars($cur_size)?>　下载 <?php echo htmlspecialchars($cur_speed)?>　在线编辑 <?php echo htmlspecialchars($cur_edit)?></strong>
+            <strong><?php echo htmlspecialchars(user_level_text($userrow), ENT_QUOTES, 'UTF-8')?>　每日上传 <?php echo htmlspecialchars($cur_limit)?><?php if($cur_bonus > 0 && get_effective_upload_count_limit() > 0){?>（含加量包 +<?php echo $cur_bonus?>，<?php echo empty($userrow['bonus_expire']) ? '永久' : htmlspecialchars($userrow['bonus_expire']).' 到期'?>）<?php }?>　单文件 <?php echo htmlspecialchars($cur_size)?>　文件下载 <?php echo htmlspecialchars($cur_speed)?>　在线编辑 <?php echo htmlspecialchars($cur_edit)?></strong>
         </div>
 <?php }?>
 <?php if(count($methods) > 1){?>
@@ -356,6 +356,7 @@ include SYSTEM_ROOT.'header.php';
 <?php }?>
         <p class="buy-tip">买的是会员等级：有效期内按该等级的权限使用，到期后回到普通用户；同一个等级再买是续费，天数接在到期时间后面。<br/>
         想换成更高的等级，限时会员用上面的「补差价升级」，只补到期前这段时间的差价，到期时间不变；升级后想延长时间，再买新等级的套餐。<br/>
+        「文件下载」的速度跟着上传的人走：你上传的文件，任何人下载都按你当前等级的速度，和下载的人是不是会员无关。<br/>
         加量包和在线编辑包是附加包，各有自己的到期时间，不影响会员到期时间。</p>
     </div>
 </div>

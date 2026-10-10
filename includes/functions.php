@@ -1471,7 +1471,8 @@ function level_features($level){
 	$list[] = '单文件 '.size_mb_text($size);
 	$speed = intval($level['down_speed']);
 	if($speed < 0)$speed = download_tier_speed_kbps(intval($level['type']) === 1 ? 0 : 1);
-	$list[] = '下载 '.speed_text($speed);
+	//速度跟着上传者走：这个等级的用户上传的文件，任何人下载都是这个速度
+	$list[] = '文件下载 '.speed_text($speed);
 	if(intval($level['online_edit']) === 1)$list[] = '在线编辑文本、代码文件';
 	if(intval($level['folder']) === 1 && !empty($conf['folder_open']))$list[] = '用户文件夹';
 	if(intval($level['api']) === 1 && !empty($conf['api_open']))$list[] = '上传 API';
@@ -2603,18 +2604,43 @@ function storage_user_tier(){
 }
 
 /*
- * 当前下载者的速度上限，统一返回 KB/s。0 表示不限速。
- * 管理员不限速；后台给这个用户单独调过速度的（有效期内）按调的值；否则看会员等级；
- * 等级填「跟随站点设置」的，按「存储类型设置」里游客 / 登录用户那两档。
+ * 下载限速跟着文件的上传者走（DEC-20261010-003）：一个文件被下载时限多少速，看的是上传它的人，
+ * 不看下载的人——上传者不限速，他的文件任何人下载都不限速。下面三个函数统一返回 KB/s，0 表示不限速。
+ *
+ * 某个用户「名下的文件」的下载速度：管理员等级不限速；后台给他单独调过速度的（有效期内）按调的值；
+ * 否则看他当前的会员等级；等级填「跟随站点设置」的按「存储类型设置」里登录用户那一档。
+ * 传 null 表示没有上传者（游客上传的文件、上传者账号已经删了），按游客那一档。
+ */
+function user_download_speed_kbps($user){
+	if(!$user)return download_tier_speed_kbps(0);
+	$level = user_level($user);
+	if(level_is_admin($level))return 0;
+	$active = empty($user['expiretime']) || strtotime($user['expiretime']) > time();
+	if($active && isset($user['down_speed']) && $user['down_speed'] !== null && intval($user['down_speed']) >= 0){
+		return intval($user['down_speed']);
+	}
+	if(intval($level['down_speed']) >= 0)return intval($level['down_speed']);
+	return download_tier_speed_kbps(1);
+}
+
+/*
+ * 下载某个文件时的速度上限，$owner_uid 是文件记录里的上传者（pre_file.uid，游客上传的是 0）。
+ * 下载的人是谁不影响速度，唯一的例外：下载者自己是管理员等级时不限速（管理员等级不受任何限制）。
+ */
+function file_download_speed_kbps($owner_uid){
+	global $DB;
+	if(level_is_admin(current_level()))return 0;
+	$owner_uid = intval($owner_uid);
+	$owner = $owner_uid > 0 ? $DB->getRow("SELECT * FROM pre_user WHERE uid=:uid LIMIT 1", [':uid'=>$owner_uid]) : null;
+	return user_download_speed_kbps($owner ? $owner : null);
+}
+
+/*
+ * 当前访客自己上传的文件会按什么速度被下载，购买页「当前等级」那一条显示用。
  */
 function get_effective_download_speed_kbps(){
-	global $islogin2;
-	$level = current_level();
-	if(level_is_admin($level))return 0;
-	$own = user_override('down_speed');
-	if($own >= 0)return $own;
-	if(intval($level['down_speed']) >= 0)return intval($level['down_speed']);
-	return download_tier_speed_kbps(empty($islogin2) ? 0 : 1);
+	global $islogin2, $userrow;
+	return user_download_speed_kbps(empty($islogin2) ? null : $userrow);
 }
 
 /* 站点设置里某一档的速度上限（KB/s），0 不限速。档位：1 登录用户、0 游客（原来还有一档高级用户，已并入会员等级） */
@@ -3662,7 +3688,25 @@ function green_file_source($hash, $ext, $ctx = [], $opt = []){
 	$apiurl = $conf['apiurl'] ? $conf['apiurl'] : $siteurl;
 	//带密码的文件 view.php 同样只给占位图，密码要拼进去（格式和 player.php 用的一致）
 	$pwd = isset($ctx['pwd']) && $ctx['pwd'] !== '' && $ctx['pwd'] !== null ? '&'.$ctx['pwd'] : '';
-	return ['url'=>$apiurl.'view.php/'.$token.'.'.$ext.$pwd.'?greencheck=1'];
+	return ['url'=>$apiurl.'view.php/'.$token.'.'.$ext.$pwd.'?greencheck='.green_check_sign($token)];
+}
+
+/*
+ * 检测服务回源取文件时带的 greencheck 参数。view.php 见到它就按内部请求处理（不限速、不走缓存校验），
+ * 所以必须是本站自己签出来的才认——原来只要带了这个参数就放行，等于谁都能在预览地址后面加一段绕过限速。
+ * 值 = 到期时间戳 . 用站点密钥对「文件标识|到期时间」做的 HMAC 前 32 位。有效期一小时就够：
+ * 走到 view.php 的只有上传时同步做的图片检测（见 green_file_source 的说明），地址发出去马上就会被取。
+ */
+function green_check_sign($token, $ttl = 3600){
+	$expire = time() + max(60, intval($ttl));
+	return $expire.'.'.substr(hash_hmac('sha256', 'greencheck|'.$token.'|'.$expire, SYS_KEY), 0, 32);
+}
+
+//校验上面的参数：签的是这个文件、没过期、签名对得上才算数。其余情况调用方按普通请求处理
+function green_check_verify($token, $value){
+	if(!is_string($value) || !preg_match('/^(\d{10})\.([0-9a-f]{32})$/', $value, $m))return false;
+	if(intval($m[1]) < time())return false;
+	return hash_equals(substr(hash_hmac('sha256', 'greencheck|'.$token.'|'.$m[1], SYS_KEY), 0, 32), $m[2]);
 }
 
 /*
@@ -4582,14 +4626,15 @@ function get_file_range($size){
 	return false;
 }
 
-//$storage 传文件记录里的 storage 字段，换过全站存储之后老文件要回原存储去取
-function file_output($hash, $type, $size, $name, $is_view = false, $is_admin = false, $storage = null){
+//$storage 传文件记录里的 storage 字段，换过全站存储之后老文件要回原存储去取；
+//$owner_uid 传文件记录里的 uid：限速按上传者算（见 file_download_speed_kbps），后台下载（$is_admin）不限速、不用传
+function file_output($hash, $type, $size, $name, $is_view = false, $is_admin = false, $storage = null, $owner_uid = 0){
 	global $conf;
 	$stor = \lib\StorHelper::get($storage);
 	//直链/断点续传这些能力要按这个文件所在的存储来判断，不能按当前存储：
 	//旧文件在支持直链的 OSS 上、当前存储换成了不支持的 WebDAV，照样可以走直链
 	$storage = ($storage === null || $storage === '') ? $conf['storage'] : $storage;
-	$download_speed = $is_admin ? 0 : get_effective_download_speed_kbps();
+	$download_speed = $is_admin ? 0 : file_download_speed_kbps($owner_uid);
 
 	@set_time_limit(0);
 	$size = intval($size);

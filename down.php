@@ -44,7 +44,7 @@ if(\lib\StorHelper::get($row['storage'])->exists($row['hash']))
 {
     $DB->exec("UPDATE `pre_file` SET `lasttime`=NOW(),`count`=`count`+1 WHERE `id`='{$row['id']}'");
 
-    file_output($row['hash'], $row['type'], $row['size'], $row['name'], false, false, $row['storage']);
+    file_output($row['hash'], $row['type'], $row['size'], $row['name'], false, false, $row['storage'], $row['uid']);
 }
 else{
     exit('File Not Found');

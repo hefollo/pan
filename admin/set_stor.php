@@ -471,7 +471,7 @@ $cap_now = $stor_caps[$storage];
 				<label class="col-sm-3 control-label">下载速度权限</label>
 				<div class="col-sm-9">
 					<div class="download-speed-grid">
-					<?php foreach(['guest'=>'游客', 'user'=>'登录用户'] as $speed_key=>$speed_name){
+					<?php foreach(['guest'=>'游客上传的文件', 'user'=>'登录用户上传的文件'] as $speed_key=>$speed_name){
 						$speed_value = isset($conf['down_speed_'.$speed_key]) ? $conf['down_speed_'.$speed_key] : '0';
 						$speed_unit = isset($conf['down_speed_'.$speed_key.'_unit']) && strtoupper($conf['down_speed_'.$speed_key.'_unit']) === 'MB' ? 'MB' : 'KB';
 					?>
@@ -484,7 +484,7 @@ $cap_now = $stor_caps[$storage];
 						</div>
 					<?php }?>
 					</div>
-					<p class="help-block">填写 <b>0</b> 表示不限速。这里是游客和登录用户的默认速度；<a href="./level.php">会员等级</a>里填了下载速度的等级按等级的速度算，在用户管理里给某个用户单独调了速度的按调整值算，都不看这里。限速用户会强制走网站中转，不再跳转到对象存储直链。整站使用 CDN 时，请勿对 <b>down.php</b> 和 <b>view.php</b> 设置强制缓存，否则命中 CDN 缓存后将绕过本站限速。</p>
+					<p class="help-block">填写 <b>0</b> 表示不限速。<b>限速跟着文件的上传者走，下载的人是谁不影响</b>：这里设的是游客上传的文件、登录用户上传的文件被下载时的默认速度；<a href="./level.php">会员等级</a>里填了下载速度的，该等级用户上传的文件按等级的速度；在用户管理里给某个用户单独调了速度的，他的文件按调整值。限速用户会强制走网站中转，不再跳转到对象存储直链。整站使用 CDN 时，请勿对 <b>down.php</b> 和 <b>view.php</b> 设置强制缓存，否则命中 CDN 缓存后将绕过本站限速。</p>
 				</div>
 			</div>
 			<div class="form-group" id="row_domain"<?php echo ($conf['downfile_type']=='1' && $cap_now['domain']) ? '' : ' style="display:none"'?>>

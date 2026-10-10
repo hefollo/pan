@@ -46,6 +46,9 @@ if (\lib\StorHelper::get($row['storage'])->exists($row['hash'])) {
             $DB->exec("UPDATE `pre_file` SET `lasttime`=NOW(),`count`=`count`+1 WHERE `id`='{$row['id']}'");
         }
 
-        file_output($row['hash'], $row['type'], $row['size'], $row['name'], true, isset($_GET['greencheck']), $row['storage']);
+        //内容检测服务回源取图时带签名的 greencheck 参数，验过签名才按内部请求处理（不限速、不走缓存校验）；
+        //随手加的、过期的、别的文件的签名一律当普通请求
+        $green_fetch = isset($_GET['greencheck']) && green_check_verify($row['token'], $_GET['greencheck']);
+        file_output($row['hash'], $row['type'], $row['size'], $row['name'], true, $green_fetch, $row['storage'], $row['uid']);
     }
 }

@@ -67,7 +67,7 @@ if($islogin==1){}else exit("<script language='javascript'>window.location.href='
 							<label class="col-sm-2 control-label no-padding-right">下载限速</label>
 							<div class="col-sm-10">
 								<div class="input-group">
-									<input type="number" class="form-control" id="down_speed" name="down_speed" min="-1" step="1" placeholder="-1 按等级，0 不限速；1024 KB/s = 1 MB/s">
+									<input type="number" class="form-control" id="down_speed" name="down_speed" min="-1" step="1" placeholder="他上传的文件被下载的速度：-1 按等级，0 不限速；1024 KB/s = 1 MB/s">
 									<span class="input-group-addon">KB/s</span>
 								</div>
 							</div>
