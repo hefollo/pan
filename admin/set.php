@@ -765,13 +765,8 @@ $api_endpoint = $siteurl.'api.php';
         <div class="form-group">
           <label class="col-sm-3 control-label">访问权限</label>
           <div class="col-sm-9">
-            <?php $api_auth_mode = isset($conf['api_auth_mode']) ? $conf['api_auth_mode'] : 'user';?>
-            <select class="form-control" name="api_auth_mode" default="<?php echo htmlspecialchars($api_auth_mode, ENT_QUOTES, 'UTF-8')?>">
-              <option value="public">允许匿名上传（携带密钥时仍绑定用户）</option>
-              <option value="user">必须使用用户 API 密钥</option>
-              <option value="vip">仅有效高级用户的 API 密钥</option>
-            </select>
-            <p class="help-block">推荐选择“必须使用用户 API 密钥”。密钥上传的文件会进入对应账号的“我的文件”，并使用该账号的上传额度。</p>
+            <p class="form-control-static">谁能用上传 API 由会员等级决定：到 <a href="./level.php">会员等级设置</a> 里给相应的等级勾选「上传 API」。给「游客」勾上就是允许不带密钥匿名上传；带密钥上传时看密钥所属账号的等级。</p>
+            <p class="help-block">密钥上传的文件会进入对应账号的“我的文件”，并使用该账号的上传额度。</p>
           </div>
         </div>
         <div class="form-group">
@@ -1014,11 +1009,7 @@ $(document).ready(function(){
 	</div><br/>
 	<div class="form-group">
 	  <label class="col-sm-3 control-label">在线编辑权限</label>
-	  <div class="col-sm-9"><select class="form-control" name="online_edit_mode" id="online_edit_mode" default="<?php echo isset($conf['online_edit_mode']) ? $conf['online_edit_mode'] : 'all'?>"><option value="all">所有用户都可用</option><option value="login">仅登录用户可用</option><option value="uid">仅指定UID可用</option><option value="buy">仅购买了在线编辑套餐的用户可用</option></select><font color="green">这里只控制在线编辑功能入口与保存权限，文件本身是否属于当前用户，仍按原来的文件管理规则判断。<br/>想把在线编辑做成付费功能，选「仅购买了在线编辑套餐的用户可用」，再到「购买套餐设置」里添加带在线编辑权限的套餐；选「仅指定UID可用」时，买了套餐的用户在有效期内同样可用。前两项是免费开放，套餐里的在线编辑不起作用。</font></div>
-	</div><br/>
-	<div class="form-group" id="online_edit_uids_group" style="<?php echo (isset($conf['online_edit_mode']) && $conf['online_edit_mode'] === 'uid') ? '' : 'display:none;'; ?>">
-	  <label class="col-sm-3 control-label">可用UID</label>
-	  <div class="col-sm-9"><input type="text" name="online_edit_uids" value="<?php echo isset($conf['online_edit_uids']) ? htmlspecialchars($conf['online_edit_uids']) : ''; ?>" class="form-control" placeholder="例如：1,2,1001"/><font color="green">多个UID用英文逗号分隔，这些登录用户不用购买就可以使用在线编辑。</font></div>
+	  <div class="col-sm-9"><p class="form-control-static">谁能用在线编辑由会员等级决定：到 <a href="./level.php">会员等级设置</a> 里给相应的等级勾选「在线编辑」。等级不带的用户可以单独购买在线编辑包，也可以在用户管理里单独给某个人开通。</p></div>
 	</div><br/>
 <?php
 //用户文件夹：显隐直接由 PHP 按当前配置写死在 style 上，不靠下面的 change 事件，
@@ -1033,11 +1024,11 @@ $folder_mode_now = (isset($conf['folder_mode']) && in_array($conf['folder_mode']
 	</div><br/>
 	<div class="form-group" id="folder_mode_row" style="<?php echo $folder_open_now ? '' : 'display:none;'?>">
 	  <label class="col-sm-3 control-label">文件夹开放范围</label>
-	  <div class="col-sm-9"><select class="form-control" name="folder_mode" id="folder_mode" default="<?php echo $folder_mode_now?>"><option value="all">所有人（含游客）</option><option value="login">仅登录用户</option><option value="uid">仅指定UID</option></select><font color="green">游客没有账号，文件夹和游客上传的文件一样只保存在当前浏览器会话里，换浏览器或清除缓存后就找不到了；游客登录后，文件夹会连同文件一起转到账号名下。</font></div>
+	  <div class="col-sm-9"><p class="form-control-static">谁能用文件夹由会员等级决定：到 <a href="./level.php">会员等级设置</a> 里给相应的等级勾选「用户文件夹」（给「游客」勾上就是所有人都能用）。</p></div>
 	</div><br/>
-	<div class="form-group" id="folder_uids_group" style="<?php echo ($folder_open_now && $folder_mode_now === 'uid') ? '' : 'display:none;'?>">
-	  <label class="col-sm-3 control-label">文件夹可用UID</label>
-	  <div class="col-sm-9"><input type="text" name="folder_uids" value="<?php echo isset($conf['folder_uids']) ? htmlspecialchars($conf['folder_uids']) : ''; ?>" class="form-control" placeholder="例如：1,2,1001"/><font color="green">多个UID用英文逗号分隔，只有这些登录用户可以使用文件夹。</font></div>
+	<div class="form-group" id="folder_uids_group" style="<?php echo $folder_open_now ? '' : 'display:none;'?>">
+	  <label class="col-sm-3 control-label">另外放行的UID</label>
+	  <div class="col-sm-9"><input type="text" name="folder_uids" value="<?php echo isset($conf['folder_uids']) ? htmlspecialchars($conf['folder_uids']) : ''; ?>" class="form-control" placeholder="选填，例如：1,2,1001"/><font color="green">多个UID用英文逗号分隔。这些登录用户不管是什么会员等级都可以使用文件夹，不需要就留空。</font></div>
 	</div><br/>
 	<div class="form-group">
 	  <div class="col-sm-offset-3 col-sm-9"><input type="submit" name="submit" value="修改" class="btn btn-primary form-control"/><br/>
@@ -1373,17 +1364,8 @@ $('.appearance-card input[type="radio"]').on('change', function(){
 	$('.appearance-card').removeClass('active');
 	$(this).closest('.appearance-card').addClass('active');
 });
-$("#online_edit_mode").on('change', function(){
-	if($(this).val() === 'uid'){
-		$("#online_edit_uids_group").show();
-	}else{
-		$("#online_edit_uids_group").hide();
-	}
-});
-$("#folder_open, #folder_mode").on('change', function(){
-	var open = $("#folder_open").val() === '1';
-	$("#folder_mode_row").toggle(open);
-	$("#folder_uids_group").toggle(open && $("#folder_mode").val() === 'uid');
+$("#folder_open").on('change', function(){
+	$("#folder_mode_row, #folder_uids_group").toggle($("#folder_open").val() === '1');
 });
 
 </script>

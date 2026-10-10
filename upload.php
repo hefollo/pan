@@ -15,11 +15,13 @@ $effective_upload_limit = get_effective_upload_count_limit();
 $effective_upload_used = 0;
 $effective_upload_remaining = -1;
 $permission_expire_text = '';
-if($islogin2 && (intval($userrow['level']) > 0 || intval($userrow['upload_size']) >= 0 || intval($userrow['upload_limit']) >= 0 || !empty($userrow['expiretime']))){
+//有会员等级、或者后台单独调过额度的用户，说明一下现在是什么等级、到什么时候
+if($islogin2 && (intval($userrow['level_id']) > 0 || intval($userrow['upload_size']) >= 0 || intval($userrow['upload_limit']) >= 0 || !empty($userrow['expiretime']))){
+    $upload_level = current_level();
     if(empty($userrow['expiretime'])){
-        $permission_expire_text = '永久有效';
+        $permission_expire_text = $upload_level['name'].'，永久有效';
     }elseif(is_user_permission_active()){
-        $permission_expire_text = $userrow['expiretime'].' 到期';
+        $permission_expire_text = $upload_level['name'].'，'.$userrow['expiretime'].' 到期';
     }else{
         $permission_expire_text = $userrow['expiretime'].' 已过期，当前按普通用户权限生效';
     }

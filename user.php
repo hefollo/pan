@@ -363,16 +363,16 @@ if($tab === 'overview'){
         <div class="uc-section">
             <div class="uc-section-title"><span>权限与额度</span></div>
             <dl class="uc-kv">
-                <div><dt>当前套餐</dt><dd><?php echo ($uc_plan && $uc_plan['bought']) ? htmlspecialchars($uc_plan['plan_name'], ENT_QUOTES, 'UTF-8') : '未购买（使用站点默认额度）'?></dd></div>
-                <div><dt>每日上传</dt><dd><?php echo limit_number_text($uc_limit, '个/天')?><?php if(!empty($userrow['bonus_limit']) && $uc_active && $uc_limit > 0){?>（含加量包 +<?php echo intval($userrow['bonus_limit'])?>）<?php }?></dd></div>
-                <div><dt>单文件大小</dt><dd><?php echo limit_number_text($uc_size, 'MB')?></dd></div>
+                <div><dt>会员等级</dt><dd><?php echo htmlspecialchars(user_level($userrow)['name'], ENT_QUOTES, 'UTF-8')?></dd></div>
+                <div><dt>每日上传</dt><dd><?php echo limit_number_text($uc_limit, '个/天')?><?php if(user_bonus_limit($userrow) > 0 && $uc_limit > 0){?>（含加量包 +<?php echo user_bonus_limit($userrow)?>，<?php echo empty($userrow['bonus_expire']) ? '永久' : htmlspecialchars($userrow['bonus_expire'], ENT_QUOTES, 'UTF-8').' 到期'?>）<?php }?></dd></div>
+                <div><dt>单文件大小</dt><dd><?php echo size_mb_text($uc_size)?></dd></div>
                 <div><dt>有效期</dt><dd><?php echo empty($uc_expire) ? '永久有效' : htmlspecialchars($uc_expire, ENT_QUOTES, 'UTF-8').($uc_active ? ' 到期' : ' 已过期')?></dd></div>
 <?php $uc_edit = current_online_edit_text(); if($uc_edit !== ''){?>
                 <div><dt>在线编辑</dt><dd><?php echo htmlspecialchars($uc_edit, ENT_QUOTES, 'UTF-8')?></dd></div>
 <?php }?>
             </dl>
 <?php if(function_exists('is_buy_open') && is_buy_open()){?>
-            <a class="uc-btn uc-btn-primary" href="./buy.php"><i class="fa fa-shopping-cart" aria-hidden="true"></i> <?php echo ($uc_plan && $uc_plan['bought']) ? '续费 / 升级权限' : '购买权限'?></a>
+            <a class="uc-btn uc-btn-primary" href="./buy.php"><i class="fa fa-shopping-cart" aria-hidden="true"></i> <?php echo ($uc_plan && $uc_plan['bought']) ? '续费 / 升级会员' : '购买会员'?></a>
 <?php }?>
         </div>
 

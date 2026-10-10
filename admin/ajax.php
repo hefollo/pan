@@ -289,6 +289,14 @@ case 'userList':
 		//自己上传的头像存的是站内相对路径，后台页面在下一级目录里，要补 ../；
 		//avatar_custom 给列表用来决定要不要出「清除头像」
 		$row['avatar_custom'] = user_avatar_is_custom($row['faceimg']) ? 1 : 0;
+		//会员等级的名字给列表显示；记的等级被删了的按普通用户（过没过期由页面按到期时间自己标）
+		$row_level = intval($row['level_id']) > 0 ? level_get($row['level_id']) : null;
+		if(!$row_level || intval($row_level['type']) === 1 || intval($row_level['type']) === 2){
+			$row['level_id'] = 0;
+			$row_level = level_builtin(2);
+		}
+		$row['level_name'] = $row_level['name'];
+		$row['level_admin'] = level_is_admin($row_level) ? 1 : 0;
 		$row['faceimg'] = user_avatar_url($row, '../');
 		$list2[] = $row;
 	}
@@ -310,7 +318,13 @@ case 'resetUserAvatar':
 break;
 case 'saveUserInfo':
 	$uid=intval($_POST['uid']);
-	$level=intval($_POST['level']);
+	//会员等级：0 是普通用户；只能选自己建的等级或管理员，游客、普通用户那两行不算一个可以「给」的等级
+	$level_id = isset($_POST['level_id']) ? intval($_POST['level_id']) : 0;
+	if($level_id > 0){
+		$level_row = level_get($level_id);
+		if(!$level_row)exit('{"code":-1,"msg":"选择的会员等级不存在，请刷新页面后重试"}');
+		if(!level_is_custom($level_row) && !level_is_admin($level_row))$level_id = 0;
+	}
 	$upload_size = (isset($_POST['upload_size']) && $_POST['upload_size'] !== '') ? intval($_POST['upload_size']) : -1;
 	$upload_limit = (isset($_POST['upload_limit']) && $_POST['upload_limit'] !== '') ? intval($_POST['upload_limit']) : -1;
 	$expiretime = null;
@@ -325,13 +339,23 @@ case 'saveUserInfo':
 	}
 	if($upload_size < -1)$upload_size = -1;
 	if($upload_limit < -1)$upload_limit = -1;
-	$bonus_limit = isset($_POST['bonus_limit']) ? max(0, intval($_POST['bonus_limit'])) : 0;
-	//下载限速 KB/s：留空或负数 = -1 按身份速度，0 不限速
+	//下载限速 KB/s：留空或负数 = -1 按会员等级，0 不限速
 	$down_speed = (isset($_POST['down_speed']) && $_POST['down_speed'] !== '') ? intval($_POST['down_speed']) : -1;
 	if($down_speed < -1)$down_speed = -1;
-	$sql = "UPDATE pre_user SET level=:level, upload_size=:upload_size, upload_limit=:upload_limit, bonus_limit=:bonus_limit, down_speed=:down_speed, expiretime=:expiretime";
-	$params = [':level'=>$level, ':upload_size'=>$upload_size, ':upload_limit'=>$upload_limit, ':bonus_limit'=>$bonus_limit, ':down_speed'=>$down_speed, ':expiretime'=>$expiretime, ':uid'=>$uid];
-	//在线编辑：开通状态 + 单独的到期时间（空 = 永久）。表单没带这一项时不动，免得旧页面缓存提交把它清掉
+	$sql = "UPDATE pre_user SET level_id=:level_id, upload_size=:upload_size, upload_limit=:upload_limit, down_speed=:down_speed, expiretime=:expiretime";
+	$params = [':level_id'=>$level_id, ':upload_size'=>$upload_size, ':upload_limit'=>$upload_limit, ':down_speed'=>$down_speed, ':expiretime'=>$expiretime, ':uid'=>$uid];
+	//附加包两项各有自己的到期时间（空 = 永久）。表单没带的不动，免得旧页面缓存提交把它清掉
+	if(isset($_POST['bonus_limit'])){
+		$bonus_limit = max(0, intval($_POST['bonus_limit']));
+		$bonus_expire = null;
+		if($bonus_limit > 0 && isset($_POST['bonus_expire']) && trim($_POST['bonus_expire']) !== ''){
+			$bonus_timestamp = strtotime(str_replace('T', ' ', trim($_POST['bonus_expire'])));
+			if($bonus_timestamp !== false) $bonus_expire = date('Y-m-d H:i:s', $bonus_timestamp);
+		}
+		$sql .= ", bonus_limit=:bonus_limit, bonus_expire=:bonus_expire";
+		$params[':bonus_limit'] = $bonus_limit;
+		$params[':bonus_expire'] = $bonus_expire;
+	}
 	if(isset($_POST['online_edit'])){
 		$online_edit = intval($_POST['online_edit']) === 1 ? 1 : 0;
 		$edit_expire = null;

@@ -11,54 +11,55 @@ $title = '购买套餐设置';
 $is_ajax = isset($_POST['ajax']) && $_POST['ajax'] === '1';
 
 /*
- * 下载限速在库里一律存 KB/s，表单上让站长按 KB/s 或 MB/s 填。
- * 回填时整 MB 的显示成 MB/s，其余显示 KB/s；-1（不改动）和 0（不限速）原样显示。
- */
-function plan_speed_input($kbps){
-	$kbps = intval($kbps);
-	if($kbps >= 1024 && $kbps % 1024 === 0)return [strval($kbps / 1024), 'MB'];
-	return [strval($kbps), 'KB'];
-}
-/*
  * 套餐列表的表格内容。整页渲染和 AJAX 刷新都用它，保证两边显示完全一致
  */
 function render_plan_rows($plans){
 	ob_start();
 ?>
 <?php if(!$plans){?>
-    <tr><td colspan="12" align="center">还没有添加套餐</td></tr>
-<?php } foreach($plans as $p){?>
+    <tr><td colspan="10" align="center">还没有添加套餐</td></tr>
+<?php } foreach($plans as $p){
+	$kind = plan_kind($p);
+	$level = $kind === 'level' ? level_get($p['level_id']) : null;
+	if($kind === 'level'){
+		$content = $level ? htmlspecialchars($level['name'], ENT_QUOTES, 'UTF-8') : '<span class="text-danger">等级已删除，卖不了</span>';
+	}elseif($kind === 'bonus'){
+		$content = '每天多传 '.max(0, intval($p['upload_limit'])).' 个';
+	}elseif($kind === 'edit'){
+		$content = '开通在线编辑';
+	}else{
+		$content = '<span class="text-muted">'.htmlspecialchars('每日 '.plan_limit_display($p).'，单文件 '.plan_limit_text($p['upload_size'], 'MB'), ENT_QUOTES, 'UTF-8').'</span>';
+	}
+?>
     <tr class="plan-row" data-id="<?php echo intval($p['id'])?>">
       <td><?php echo intval($p['id'])?></td>
       <td><?php echo htmlspecialchars($p['name'], ENT_QUOTES, 'UTF-8')?></td>
       <td><?php echo (isset($p['category']) && $p['category'] !== '') ? htmlspecialchars($p['category'], ENT_QUOTES, 'UTF-8') : '<span class="text-muted">未分类</span>'?></td>
+      <td><?php echo $kind === 'legacy' ? '<span class="label label-default">旧版套餐</span>' : htmlspecialchars(plan_kind_name($kind))?></td>
+      <td><?php echo $content?></td>
       <td>¥<?php echo htmlspecialchars(number_format(floatval($p['price']), 2, '.', ''))?></td>
-      <td><?php echo htmlspecialchars(plan_limit_display($p))?></td>
-      <td><?php echo htmlspecialchars(plan_limit_text($p['upload_size'], 'MB'))?></td>
-      <td><?php echo htmlspecialchars(plan_speed_text(isset($p['down_speed']) ? $p['down_speed'] : -1))?></td>
-      <td><?php echo plan_has_online_edit($p) ? (plan_is_edit_only($p) ? '<span class="label label-info">只含在线编辑</span>' : '<span class="label label-info">含</span>') : '<span class="text-muted">不含</span>'?></td>
       <td><?php echo htmlspecialchars(plan_days_text($p['days']))?></td>
       <td><?php echo intval($p['sort'])?></td>
-      <td><?php echo intval($p['enable']) === 1 ? '<span class="label label-success">上架</span>' : '<span class="label label-default">下架</span>'?></td>
+      <td><?php echo $kind === 'legacy' ? '<span class="label label-default">已停售</span>' : (intval($p['enable']) === 1 ? '<span class="label label-success">上架</span>' : '<span class="label label-default">下架</span>')?></td>
       <td>
+<?php if($kind !== 'legacy'){?>
         <a class="btn btn-xs btn-primary plan-edit" href="./set_pay.php?edit=<?php echo intval($p['id'])?>"
            data-id="<?php echo intval($p['id'])?>"
            data-name="<?php echo htmlspecialchars($p['name'], ENT_QUOTES, 'UTF-8')?>"
            data-category="<?php echo isset($p['category']) ? htmlspecialchars($p['category'], ENT_QUOTES, 'UTF-8') : ''?>"
            data-price="<?php echo htmlspecialchars(number_format(floatval($p['price']), 2, '.', ''))?>"
            data-days="<?php echo intval($p['days'])?>"
-           data-limit-mode="<?php echo (isset($p['limit_mode']) && $p['limit_mode']==='add') ? 'add' : 'set'?>"
-           data-upload-limit="<?php echo intval($p['upload_limit'])?>"
-           data-upload-size="<?php echo intval($p['upload_size'])?>"
-           data-down-speed="<?php echo isset($p['down_speed']) ? intval($p['down_speed']) : -1?>"
-           data-online-edit="<?php echo plan_has_online_edit($p) ? 1 : 0?>"
+           data-kind="<?php echo $kind?>"
+           data-level-id="<?php echo intval($p['level_id'])?>"
+           data-bonus="<?php echo $kind === 'bonus' ? max(0, intval($p['upload_limit'])) : 0?>"
            data-sort="<?php echo intval($p['sort'])?>"
            data-enable="<?php echo intval($p['enable'])?>"
-           data-remark="<?php echo htmlspecialchars($p['remark'], ENT_QUOTES, 'UTF-8')?>">编辑</a>
+           data-remark="<?php echo htmlspecialchars((string)$p['remark'], ENT_QUOTES, 'UTF-8')?>">编辑</a>
         <form method="post" style="display:inline" class="plan-op" data-confirm="确定切换上架状态吗？">
           <input type="hidden" name="do" value="plan_toggle"/><input type="hidden" name="id" value="<?php echo intval($p['id'])?>"/>
           <button type="submit" class="btn btn-xs btn-default"><?php echo intval($p['enable'])===1?'下架':'上架'?></button>
         </form>
+<?php }?>
         <form method="post" style="display:inline" class="plan-op" data-confirm="删除套餐不影响已产生的订单，确定删除吗？">
           <input type="hidden" name="do" value="plan_delete"/><input type="hidden" name="id" value="<?php echo intval($p['id'])?>"/>
           <button type="submit" class="btn btn-xs btn-danger">删除</button>
@@ -79,53 +80,49 @@ if($islogin != 1){
 	$do = $_POST['do'];
 	if($do === 'plan_save'){
 		$id = intval($_POST['id']);
+		$old = $id > 0 ? plan_get($id) : null;
 		$name = trim($_POST['name']);
 		$price = round(floatval($_POST['price']), 2);
 		$days = intval($_POST['days']);
-		$upload_limit = intval($_POST['upload_limit']);
-		$limit_mode = (isset($_POST['limit_mode']) && $_POST['limit_mode'] === 'add') ? 'add' : 'set';
-		$upload_size = intval($_POST['upload_size']);
-		//下载限速：负数一律当 -1（不改动），0 不限速，其余按单位换成整数 KB/s，最少 1 KB/s
-		$down_speed_raw = isset($_POST['down_speed']) ? trim((string)$_POST['down_speed']) : '';
-		$down_speed_num = is_numeric($down_speed_raw) ? floatval($down_speed_raw) : -1;
-		if(!is_finite($down_speed_num) || $down_speed_num < 0){
-			$down_speed = -1;
-		}elseif($down_speed_num == 0){
-			$down_speed = 0;
-		}else{
-			$down_speed_unit = (isset($_POST['down_speed_unit']) && strtoupper($_POST['down_speed_unit']) === 'MB') ? 1024 : 1;
-			$down_speed = max(1, min(2147483647, intval(round($down_speed_num * $down_speed_unit))));
-		}
-		//在线编辑：只有 0 / 1 两种。用字符串是因为 DB->update 里 0 == '' 在老版本 PHP 上成立，会被写成 NULL
-		$online_edit = (isset($_POST['online_edit']) && $_POST['online_edit'] === '1') ? '1' : '0';
+		//套餐只有三种：卖会员等级、加量包、在线编辑包
+		$kind = (isset($_POST['kind']) && in_array($_POST['kind'], ['level', 'bonus', 'edit'], true)) ? $_POST['kind'] : 'level';
+		$level_id = isset($_POST['level_id']) ? intval($_POST['level_id']) : 0;
+		$bonus = isset($_POST['bonus']) ? intval($_POST['bonus']) : 0;
 		$sort = intval($_POST['sort']);
 		$enable = intval($_POST['enable']) === 1 ? 1 : 0;
 		$remark = trim($_POST['remark']);
 		$category = mb_substr(trim($_POST['category']), 0, 32, 'UTF-8');
-		if($name === ''){
+		if($id > 0 && !$old){
+			$msg = '要修改的套餐不存在'; $msgtype = 'danger';
+		}elseif($old && plan_kind($old) === 'legacy'){
+			$msg = '旧版套餐已经停售，不能再修改；不需要的话可以删除'; $msgtype = 'danger';
+		}elseif($name === ''){
 			$msg = '套餐名称不能为空'; $msgtype = 'danger';
 		}elseif($price <= 0){
 			$msg = '套餐价格必须大于 0'; $msgtype = 'danger';
-		}elseif($limit_mode === 'add' && $upload_limit <= 0){
-			$msg = '选择「在现有基础上增加」时，每日上传数量必须大于 0'; $msgtype = 'danger';
+		}elseif($kind === 'level' && !level_is_custom(level_get($level_id))){
+			$msg = '请选择要卖的会员等级（内置的游客、普通用户、管理员不能卖）'; $msgtype = 'danger';
+		}elseif($kind === 'bonus' && $bonus <= 0){
+			$msg = '加量包每天增加的数量必须大于 0'; $msgtype = 'danger';
 		}else{
+			//写库的值一律用字符串：DB->insert / update 把 == '' 的值写成 NULL，整数 0 在老版本 PHP 上也会中
 			$data = [
 				'name' => $name,
 				'category' => $category,
-				'price' => $price,
-				'days' => max(0, $days),
-				'upload_limit' => $upload_limit < -1 ? -1 : $upload_limit,
-				'limit_mode' => $limit_mode,
-				'upload_size' => $upload_size < -1 ? -1 : $upload_size,
-				'down_speed' => $down_speed,
-				'online_edit' => $online_edit,
-				'sort' => $sort,
-				'enable' => $enable,
+				'price' => strval($price),
+				'days' => strval(max(0, $days)),
+				'level_id' => $kind === 'level' ? strval($level_id) : '0',
+				'upload_limit' => $kind === 'bonus' ? strval($bonus) : '-1',
+				'limit_mode' => $kind === 'bonus' ? 'add' : 'set',
+				'upload_size' => '-1',
+				'down_speed' => '-1',
+				'online_edit' => $kind === 'edit' ? '1' : '0',
+				'sort' => strval($sort),
+				'enable' => strval($enable),
 				'remark' => $remark,
 			];
 			/*
-			 * DB->insert / update 会把空字符串写成 NULL，而分类字段不允许 NULL：
-			 * 分类留空时新增会整条失败（原来还照样提示“已添加”），所以留空就不带这个键，
+			 * 分类字段不允许 NULL，而空字符串会被写成 NULL：留空就不带这个键，
 			 * 新增时由字段默认值补成空串，修改时单独清一次。
 			 */
 			$clear_category = $category === '';
@@ -144,17 +141,11 @@ if($islogin != 1){
 			}
 		}
 	}elseif($do === 'plan_seed'){
-		//一键导入推荐套餐：同名的跳过，不会覆盖你已经改过的套餐
-		$exists = [];
-		foreach(plan_list(false) as $p_old){ $exists[] = $p_old['name']; }
-		$added = 0;
-		foreach(default_plans() as $d){
-			if(in_array($d['name'], $exists))continue;
-			$d['enable'] = 1;
-			$d['addtime'] = 'NOW()';
-			if($DB->insert('plan', $d))$added++;
-		}
-		$msg = $added > 0 ? ('已导入 '.$added.' 个推荐套餐，价格和额度可以直接改') : '推荐套餐都已经存在了，没有重复导入';
+		//一键导入推荐的会员等级和套餐：同名的等级、同名的在售套餐都跳过，不会覆盖你已经改过的
+		list($added_levels, $added_plans) = seed_default_levels_and_plans();
+		$msg = ($added_levels + $added_plans) > 0
+			? ('已导入 '.$added_levels.' 个推荐等级、'.$added_plans.' 个推荐套餐，名称、权限和价格都可以直接改')
+			: '推荐的等级和套餐都已经存在了，没有重复导入';
 	}elseif($do === 'plan_delete'){
 		$id = intval($_POST['id']);
 		//订单里已经存了套餐快照，删套餐不会影响历史订单
@@ -162,8 +153,13 @@ if($islogin != 1){
 		$msg = '套餐已删除';
 	}elseif($do === 'plan_toggle'){
 		$id = intval($_POST['id']);
-		$DB->exec("UPDATE pre_plan SET enable=1-enable WHERE id=:id", [':id'=>$id]);
-		$msg = '上架状态已切换';
+		$old = plan_get($id);
+		if($old && plan_kind($old) === 'legacy'){
+			$msg = '旧版套餐已经停售，不能再上架'; $msgtype = 'danger';
+		}else{
+			$DB->exec("UPDATE pre_plan SET enable=1-enable WHERE id=:id", [':id'=>$id]);
+			$msg = '上架状态已切换';
+		}
 	}
 }
 
@@ -175,12 +171,18 @@ foreach($plans as $p_tmp){
 	if($c_tmp !== '' && !in_array($c_tmp, $categories))$categories[] = $c_tmp;
 }
 $enabled_count = intval($DB->getColumn("SELECT count(*) FROM pre_plan WHERE enable=1"));
-//有套餐带了在线编辑、站点却没把在线编辑设成付费时要提醒一句，不然站长会奇怪套餐怎么没出现在购买页
+//有在线编辑包、而普通用户等级本来就带在线编辑时要提醒一句，不然站长会奇怪套餐怎么没出现在购买页
 $edit_warn = false;
-if(!online_edit_is_paid_mode()){
-	foreach($plans as $p_tmp){
-		if(plan_has_online_edit($p_tmp)){ $edit_warn = true; break; }
-	}
+$legacy_count = 0;
+foreach($plans as $p_tmp){
+	$kind_tmp = plan_kind($p_tmp);
+	if($kind_tmp === 'legacy')$legacy_count++;
+	if($kind_tmp === 'edit' && !online_edit_is_paid_mode())$edit_warn = true;
+}
+//可以拿来卖的等级（内置的三个不卖）
+$sell_levels = [];
+foreach(level_all() as $lv_tmp){
+	if(level_is_custom($lv_tmp))$sell_levels[] = $lv_tmp;
 }
 
 if($is_ajax){
@@ -192,6 +194,7 @@ if($is_ajax){
 		'categories' => $categories,
 		'enabled' => $enabled_count,
 		'edit_warn' => $edit_warn,
+		'legacy' => $legacy_count,
 	], JSON_UNESCAPED_UNICODE));
 }
 
@@ -350,7 +353,7 @@ if(isset($_GET['tab']) && $_GET['tab'] === 'epay')$pay_tab = 'epay';
 	  </div>
 	  <div class="col-sm-4 form-group">
 		<label>套餐分类</label>
-		<input type="text" name="category" list="plan-cats" value="<?php echo $edit && isset($edit['category']) ? htmlspecialchars($edit['category'], ENT_QUOTES, 'UTF-8') : ''?>" class="form-control" placeholder="例如：包月套餐 / 加量包"/>
+		<input type="text" name="category" list="plan-cats" value="<?php echo $edit && isset($edit['category']) ? htmlspecialchars($edit['category'], ENT_QUOTES, 'UTF-8') : ''?>" class="form-control" placeholder="例如：标准会员 / 加量包"/>
 		<span class="hint">购买页按分类分区展示，留空则归到“其他套餐”</span>
 	  </div>
 	  <div class="col-sm-4 form-group">
@@ -359,57 +362,47 @@ if(isset($_GET['tab']) && $_GET['tab'] === 'epay')$pay_tab = 'epay';
 		<span class="hint">支付宝扫码支付的金额</span>
 	  </div>
 	</div>
+<?php $edit_kind = $edit ? plan_kind($edit) : 'level'; if($edit_kind === 'legacy' || $edit_kind === 'upgrade')$edit_kind = 'level';?>
 	<div class="row">
 	  <div class="col-sm-4 form-group">
-		<label>每日上传数量</label>
-		<div class="row plan-inline">
-		  <div class="col-xs-12 col-sm-7">
-			<select class="form-control" name="limit_mode">
-			  <option value="set" <?php echo (!$edit || (isset($edit['limit_mode']) && $edit['limit_mode']!=='add'))?'selected':''?>>设为</option>
-			  <option value="add" <?php echo ($edit && isset($edit['limit_mode']) && $edit['limit_mode']==='add')?'selected':''?>>在现有数量上增加</option>
-			</select>
-		  </div>
-		  <div class="col-xs-12 col-sm-5">
-			<input type="number" name="upload_limit" value="<?php echo $edit ? intval($edit['upload_limit']) : 0?>" class="form-control" min="-1" step="1"/>
-		  </div>
-		</div>
-		<span class="hint">设为：0 不限 / N 每天 N 个 / -1 不改动；增加：重复购买会一直叠加</span>
+		<label>套餐类型</label>
+		<select class="form-control" name="kind" id="planKind">
+		  <option value="level" <?php echo $edit_kind === 'level' ? 'selected' : ''?>>会员等级（买了成为该等级的会员）</option>
+		  <option value="bonus" <?php echo $edit_kind === 'bonus' ? 'selected' : ''?>>加量包（每天多传几个）</option>
+		  <option value="edit" <?php echo $edit_kind === 'edit' ? 'selected' : ''?>>在线编辑包（单独开通在线编辑）</option>
+		</select>
+		<span class="hint">等级有什么权限在「会员等级设置」里定，这里只管卖哪个等级、卖多久、卖多少钱</span>
 	  </div>
-	  <div class="col-sm-4 form-group">
-		<label>单文件大小（MB）</label>
-		<input type="number" name="upload_size" value="<?php echo $edit ? intval($edit['upload_size']) : -1?>" class="form-control" min="-1" step="1"/>
-		<span class="hint">0 不限 / N 最大 N MB / -1 不改动（保持用户现有的大小）</span>
+	  <div class="col-sm-4 form-group plan-kind-field" data-kind="level"<?php echo $edit_kind === 'level' ? '' : ' style="display:none"'?>>
+		<label>会员等级</label>
+		<select class="form-control" name="level_id">
+<?php foreach($sell_levels as $lv){?>
+		  <option value="<?php echo intval($lv['id'])?>" <?php echo ($edit && intval($edit['level_id']) === intval($lv['id'])) ? 'selected' : ''?>><?php echo htmlspecialchars($lv['name'], ENT_QUOTES, 'UTF-8')?></option>
+<?php }?>
+		</select>
+		<span class="hint"><?php echo $sell_levels ? '同一个等级可以挂月卡、季卡、年卡、永久几个套餐' : '还没有可以卖的等级，先到「会员等级设置」添加，或点下面的一键导入'?></span>
+	  </div>
+	  <div class="col-sm-4 form-group plan-kind-field" data-kind="bonus"<?php echo $edit_kind === 'bonus' ? '' : ' style="display:none"'?>>
+		<label>每天增加的上传数量</label>
+		<input type="number" name="bonus" value="<?php echo ($edit && $edit_kind === 'bonus') ? max(0, intval($edit['upload_limit'])) : 50?>" class="form-control" min="1" step="1"/>
+		<span class="hint">加在用户当前等级的每日数量上，重复购买一直累加；有自己的到期时间，不影响会员到期时间</span>
+	  </div>
+	  <div class="col-sm-4 form-group plan-kind-field" data-kind="edit"<?php echo $edit_kind === 'edit' ? '' : ' style="display:none"'?>>
+		<label>在线编辑</label>
+		<p class="form-control-static">有效期内可以使用在线编辑</p>
+		<span class="hint">卖给等级不带在线编辑的用户；有效期单独计算，不影响会员到期时间</span>
 	  </div>
 	  <div class="col-sm-4 form-group">
 		<label>有效期（天）</label>
 		<input type="number" name="days" value="<?php echo $edit ? intval($edit['days']) : 30?>" class="form-control" min="0" step="1"/>
-		<span class="hint">0 为永久；天数会在用户现有剩余时间上叠加</span>
+		<span class="hint">0 为永久；续费时天数加在现有到期时间之后</span>
 	  </div>
 	</div>
 	<div class="row">
-<?php list($speed_val, $speed_unit) = plan_speed_input($edit && isset($edit['down_speed']) ? $edit['down_speed'] : -1);?>
-	  <div class="col-sm-4 form-group">
-		<label>下载限速</label>
-		<div class="row plan-inline">
-		  <div class="col-xs-7">
-			<input type="number" name="down_speed" value="<?php echo htmlspecialchars($speed_val, ENT_QUOTES, 'UTF-8')?>" class="form-control" min="-1" step="0.1"/>
-		  </div>
-		  <div class="col-xs-5">
-			<select class="form-control" name="down_speed_unit">
-			  <option value="KB"<?php echo $speed_unit === 'KB' ? ' selected' : ''?>>KB/s</option>
-			  <option value="MB"<?php echo $speed_unit === 'MB' ? ' selected' : ''?>>MB/s</option>
-			</select>
-		  </div>
-		</div>
-		<span class="hint">0 不限速 / N 每秒 N / -1 不改动（按「存储类型设置」里该用户身份的速度）；有效期内优先于身份速度</span>
-	  </div>
-	  <div class="col-sm-4 form-group">
-		<label>在线编辑权限</label>
-		<select class="form-control" name="online_edit">
-		  <option value="0" <?php echo (!$edit || !plan_has_online_edit($edit))?'selected':''?>>不包含</option>
-		  <option value="1" <?php echo ($edit && plan_has_online_edit($edit))?'selected':''?>>包含（有效期内可用在线编辑）</option>
-		</select>
-		<span class="hint">有效期单独计算；每日数量、单文件大小、下载限速都填 -1 时就是只卖在线编辑的套餐，不动上传权限</span>
+	  <div class="col-sm-8 form-group">
+		<label>套餐说明</label>
+		<input type="text" name="remark" value="<?php echo $edit ? htmlspecialchars((string)$edit['remark'], ENT_QUOTES, 'UTF-8') : ''?>" class="form-control" placeholder="选填"/>
+		<span class="hint">作为一条卖点显示在卡片里</span>
 	  </div>
 	  <div class="col-sm-2 form-group">
 		<label>排序</label>
@@ -425,13 +418,6 @@ if(isset($_GET['tab']) && $_GET['tab'] === 'epay')$pay_tab = 'epay';
 		<span class="hint">下架后购买页不再显示</span>
 	  </div>
 	</div>
-	<div class="row">
-	  <div class="col-sm-12 form-group">
-		<label>套餐说明</label>
-		<input type="text" name="remark" value="<?php echo $edit ? htmlspecialchars($edit['remark'], ENT_QUOTES, 'UTF-8') : ''?>" class="form-control" placeholder="选填"/>
-		<span class="hint">作为一条卖点显示在卡片里</span>
-	  </div>
-	</div>
 	<div class="plan-actions">
 	  <button type="submit" class="btn btn-primary" id="planSubmit"><?php echo $edit ? '保存修改' : '添加套餐'?></button>
 	  <a class="btn btn-default" href="./set_pay.php" id="planCancel"<?php echo $edit ? '' : ' style="display:none"'?>>取消编辑</a>
@@ -442,20 +428,23 @@ if(isset($_GET['tab']) && $_GET['tab'] === 'epay')$pay_tab = 'epay';
 </div>
 
 <div class="alert alert-warning" id="planEditWarn"<?php echo $edit_warn ? '' : ' style="display:none"'?>>
-  有套餐带了「在线编辑」，但站点的「在线编辑权限」现在是所有用户（或所有登录用户）都可用，等于免费开放：只含在线编辑的套餐不会出现在购买页，其它套餐的卡片上也不会写在线编辑。
-  要把在线编辑做成付费功能，请到 <a href="./set.php?mod=file">文件上传设置</a> 把「在线编辑权限」改成「仅购买了在线编辑套餐的用户可用」。
+  有在线编辑包，但「普通用户」这个等级本来就带在线编辑，登录就能用：在线编辑包不会出现在购买页。
+  要把在线编辑做成付费功能，请到 <a href="./level.php">会员等级设置</a> 把「游客」「普通用户」的「在线编辑」去掉，只给付费等级勾上。
+</div>
+<div class="alert alert-info" id="planLegacyWarn"<?php echo $legacy_count > 0 ? '' : ' style="display:none"'?>>
+  列表里有 <b id="planLegacyCount"><?php echo $legacy_count?></b> 个旧版套餐（改成会员等级之前的时长卡、大文件包、永久卡），已经停售、不会出现在购买页，已经买了的用户权益保留到原来的到期时间。确认不需要了可以直接删除，不影响订单记录。
 </div>
 
 <div class="panel panel-primary">
 <div class="panel-heading"><h3 class="panel-title">套餐列表
-  <form method="post" class="plan-op pull-right" style="margin-top:-4px" data-confirm="会添加一组推荐套餐（同名的自动跳过），导入后可以随意修改价格和额度，确定吗？">
+  <form method="post" class="plan-op pull-right" style="margin-top:-4px" data-confirm="会添加一组推荐的会员等级和套餐（同名的自动跳过），导入后可以随意修改，确定吗？">
     <input type="hidden" name="do" value="plan_seed"/>
-    <button type="submit" class="btn btn-xs btn-default">一键导入推荐套餐</button>
+    <button type="submit" class="btn btn-xs btn-default">一键导入推荐等级和套餐</button>
   </form>
 </h3></div>
 <div class="table-responsive">
 <table class="table table-striped table-hover">
-  <thead><tr><th>ID</th><th>名称</th><th>分类</th><th>价格</th><th>每日数量</th><th>单文件大小</th><th>下载速度</th><th>在线编辑</th><th>有效期</th><th>排序</th><th>状态</th><th>操作</th></tr></thead>
+  <thead><tr><th>ID</th><th>名称</th><th>分类</th><th>类型</th><th>内容</th><th>价格</th><th>有效期</th><th>排序</th><th>状态</th><th>操作</th></tr></thead>
   <tbody id="planTbody">
 <?php echo render_plan_rows($plans);?>
   </tbody>
@@ -507,25 +496,20 @@ if(isset($_GET['tab']) && $_GET['tab'] === 'epay')$pay_tab = 'epay';
 		if(id)$('.plan-row[data-id="'+id+'"]').addClass('plan-row-active');
 	}
 
+	//按套餐类型显示对应的那一栏（等级下拉 / 加量数量 / 在线编辑说明）
+	function showKind(kind){
+		$('.plan-kind-field').each(function(){ this.style.display = this.getAttribute('data-kind') === kind ? '' : 'none'; });
+	}
+
 	function fill(d){
 		field('name').value = d.name;
 		field('category').value = d.category;
 		field('price').value = d.price;
 		field('days').value = d.days;
-		field('limit_mode').value = d.limitMode;
-		field('upload_limit').value = d.uploadLimit;
-		field('upload_size').value = d.uploadSize;
-		//库里存的是 KB/s，整 MB 的换成 MB/s 显示，和服务端 plan_speed_input() 同一个规则
-		var speed = parseInt(d.downSpeed, 10);
-		if(isNaN(speed))speed = -1;
-		if(speed >= 1024 && speed % 1024 === 0){
-			field('down_speed').value = speed / 1024;
-			field('down_speed_unit').value = 'MB';
-		}else{
-			field('down_speed').value = speed;
-			field('down_speed_unit').value = 'KB';
-		}
-		field('online_edit').value = String(d.onlineEdit) === '1' ? '1' : '0';
+		field('kind').value = d.kind;
+		if(d.levelId && field('level_id').querySelector('option[value="'+d.levelId+'"]'))field('level_id').value = d.levelId;
+		field('bonus').value = parseInt(d.bonus, 10) > 0 ? d.bonus : 50;
+		showKind(d.kind);
 		field('sort').value = d.sort;
 		field('enable').value = d.enable;
 		field('remark').value = d.remark;
@@ -543,11 +527,9 @@ if(isset($_GET['tab']) && $_GET['tab'] === 'epay')$pay_tab = 'epay';
 			category: a.getAttribute('data-category'),
 			price: a.getAttribute('data-price'),
 			days: a.getAttribute('data-days'),
-			limitMode: a.getAttribute('data-limit-mode'),
-			uploadLimit: a.getAttribute('data-upload-limit'),
-			uploadSize: a.getAttribute('data-upload-size'),
-			downSpeed: a.getAttribute('data-down-speed'),
-			onlineEdit: a.getAttribute('data-online-edit'),
+			kind: a.getAttribute('data-kind'),
+			levelId: a.getAttribute('data-level-id'),
+			bonus: a.getAttribute('data-bonus'),
 			sort: a.getAttribute('data-sort'),
 			enable: a.getAttribute('data-enable'),
 			remark: a.getAttribute('data-remark')
@@ -563,7 +545,7 @@ if(isset($_GET['tab']) && $_GET['tab'] === 'epay')$pay_tab = 'epay';
 	}
 
 	function toAdd(scroll){
-		fill({id:0, name:'', category:'', price:'', days:30, limitMode:'set', uploadLimit:0, uploadSize:-1, downSpeed:-1, onlineEdit:0, sort:0, enable:1, remark:''});
+		fill({id:0, name:'', category:'', price:'', days:30, kind:'level', levelId:'', bonus:50, sort:0, enable:1, remark:''});
 		title.innerHTML = '添加套餐';
 		submit.innerHTML = '添加套餐';
 		cancel.style.display = 'none';
@@ -577,6 +559,8 @@ if(isset($_GET['tab']) && $_GET['tab'] === 'epay')$pay_tab = 'epay';
 		$('#planTbody').html(res.rows);
 		$('#planEnabledCount').text(res.enabled);
 		$('#planEditWarn').toggle(!!res.edit_warn);
+		$('#planLegacyWarn').toggle(parseInt(res.legacy, 10) > 0);
+		$('#planLegacyCount').text(res.legacy);
 		var dl = $('#plan-cats').empty();
 		for(var i=0;i<res.categories.length;i++){
 			dl.append($('<option></option>').attr('value', res.categories[i]));
@@ -598,6 +582,8 @@ if(isset($_GET['tab']) && $_GET['tab'] === 'epay')$pay_tab = 'epay';
 			tip('请求失败，请检查网络后重试');
 		});
 	}
+
+	$(field('kind')).on('change', function(){ showKind(this.value); });
 
 	//表单校验交给浏览器，required 没填时不发请求
 	$(form).on('submit', function(e){

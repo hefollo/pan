@@ -16,7 +16,8 @@ create table `pre_config` (
 --   · 如果没有并进来 → 这里保持旧值不动，让全新安装照常跑一次升级把它补上。
 -- 改错方向（并进来了却不改版本号）只是多跑一趟空升级；
 -- 改反了（没并进来却改了版本号）会让新装的站永久缺表缺字段，且毫无报错。
-INSERT INTO `pre_config` VALUES ('version', '1026');
+INSERT INTO `pre_config` VALUES ('version', '1027');
+INSERT INTO `pre_config` VALUES ('level_migrated', '1');
 INSERT INTO `pre_config` VALUES ('admin_user', 'admin');
 INSERT INTO `pre_config` VALUES ('admin_pwd', '123456');
 INSERT INTO `pre_config` VALUES ('blackip', '');
@@ -211,6 +212,8 @@ CREATE TABLE `pre_user` (
   `expiretime` datetime DEFAULT NULL,
   `online_edit` tinyint(1) NOT NULL DEFAULT '0' COMMENT '在线编辑：0未开通 1已开通',
   `edit_expire` datetime DEFAULT NULL COMMENT '在线编辑到期时间，已开通且为空表示永久',
+  `level_id` int(11) NOT NULL DEFAULT '0' COMMENT '会员等级，0为普通用户，到期时间见expiretime',
+  `bonus_expire` datetime DEFAULT NULL COMMENT '加量包到期时间，有加量额度且为空表示永久',
   `addtime` datetime NOT NULL,
   `lasttime` datetime NOT NULL,
   PRIMARY KEY (`uid`),
@@ -313,6 +316,36 @@ CREATE TABLE `pre_mailcode` (
   KEY `addtime` (`addtime`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+DROP TABLE IF EXISTS `pre_level`;
+CREATE TABLE `pre_level` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(32) NOT NULL COMMENT '等级名称',
+  `type` tinyint(1) NOT NULL DEFAULT '0' COMMENT '0自建 1游客 2普通用户 3管理员，后三种是内置的不能删',
+  `sort` int(11) NOT NULL DEFAULT '0' COMMENT '高低顺序，数字大的等级更高',
+  `upload_limit` int(11) NOT NULL DEFAULT '-1' COMMENT '每日上传数量：-1跟随站点设置 0不限 N每天N个',
+  `upload_size` int(11) NOT NULL DEFAULT '-1' COMMENT '单文件大小MB：-1跟随站点设置 0不限',
+  `down_speed` int(11) NOT NULL DEFAULT '-1' COMMENT '下载限速KB/s：-1跟随站点设置 0不限速',
+  `online_edit` tinyint(1) NOT NULL DEFAULT '0' COMMENT '在线编辑',
+  `folder` tinyint(1) NOT NULL DEFAULT '0' COMMENT '用户文件夹',
+  `api` tinyint(1) NOT NULL DEFAULT '0' COMMENT '上传API',
+  `storage_all` tinyint(1) NOT NULL DEFAULT '0' COMMENT '能否使用多存储里限定会员的存储',
+  `no_review` tinyint(1) NOT NULL DEFAULT '0' COMMENT '上传免审核',
+  `remark` varchar(255) DEFAULT NULL COMMENT '等级说明',
+  `addtime` datetime NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `type` (`type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT INTO `pre_level` (`id`,`name`,`type`,`sort`,`upload_limit`,`upload_size`,`down_speed`,`online_edit`,`folder`,`api`,`storage_all`,`no_review`,`remark`,`addtime`) VALUES (1, '游客', 1, 0, -1, -1, -1, 0, 0, 0, 0, 0, '没有登录的访客', NOW());
+INSERT INTO `pre_level` (`id`,`name`,`type`,`sort`,`upload_limit`,`upload_size`,`down_speed`,`online_edit`,`folder`,`api`,`storage_all`,`no_review`,`remark`,`addtime`) VALUES (2, '普通用户', 2, 10, -1, -1, -1, 0, 0, 0, 0, 0, '注册后默认的等级，会员到期后回到这里', NOW());
+INSERT INTO `pre_level` (`id`,`name`,`type`,`sort`,`upload_limit`,`upload_size`,`down_speed`,`online_edit`,`folder`,`api`,`storage_all`,`no_review`,`remark`,`addtime`) VALUES (3, '管理员', 3, 100000, 0, 0, 0, 1, 1, 1, 1, 1, '不受任何限制，只能在用户管理里手动设置，不能购买', NOW());
+INSERT INTO `pre_level` (`id`,`name`,`type`,`sort`,`upload_limit`,`upload_size`,`down_speed`,`online_edit`,`folder`,`api`,`storage_all`,`no_review`,`remark`,`addtime`) VALUES (4, '入门会员', 0, 100, 50, 200, -1, 0, 1, 0, 0, 0, '轻度使用', NOW());
+INSERT INTO `pre_level` (`id`,`name`,`type`,`sort`,`upload_limit`,`upload_size`,`down_speed`,`online_edit`,`folder`,`api`,`storage_all`,`no_review`,`remark`,`addtime`) VALUES (5, '基础会员', 0, 200, 100, 500, -1, 0, 1, 0, 0, 0, '额度翻倍', NOW());
+INSERT INTO `pre_level` (`id`,`name`,`type`,`sort`,`upload_limit`,`upload_size`,`down_speed`,`online_edit`,`folder`,`api`,`storage_all`,`no_review`,`remark`,`addtime`) VALUES (6, '标准会员', 0, 300, 300, 1024, -1, 1, 1, 0, 0, 0, '日常够用，带在线编辑', NOW());
+INSERT INTO `pre_level` (`id`,`name`,`type`,`sort`,`upload_limit`,`upload_size`,`down_speed`,`online_edit`,`folder`,`api`,`storage_all`,`no_review`,`remark`,`addtime`) VALUES (7, '进阶会员', 0, 400, 600, 2048, 0, 1, 1, 1, 0, 0, '下载不限速，可用上传 API', NOW());
+INSERT INTO `pre_level` (`id`,`name`,`type`,`sort`,`upload_limit`,`upload_size`,`down_speed`,`online_edit`,`folder`,`api`,`storage_all`,`no_review`,`remark`,`addtime`) VALUES (8, '尊享会员', 0, 500, 1500, 5120, 0, 1, 1, 1, 1, 0, '可用全部存储', NOW());
+INSERT INTO `pre_level` (`id`,`name`,`type`,`sort`,`upload_limit`,`upload_size`,`down_speed`,`online_edit`,`folder`,`api`,`storage_all`,`no_review`,`remark`,`addtime`) VALUES (9, '旗舰会员', 0, 600, 0, 0, 0, 1, 1, 1, 1, 0, '数量和大小都不限', NOW());
+
 DROP TABLE IF EXISTS `pre_plan`;
 CREATE TABLE `pre_plan` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -324,6 +357,7 @@ CREATE TABLE `pre_plan` (
   `upload_size` int(11) NOT NULL DEFAULT '-1' COMMENT '单文件大小MB：-1继承全站 0不限',
   `down_speed` int(11) NOT NULL DEFAULT '-1' COMMENT '下载限速KB/s：-1不改动 0不限速 N每秒N KB',
   `online_edit` tinyint(1) NOT NULL DEFAULT '0' COMMENT '是否含在线编辑权限：0不含 1含',
+  `level_id` int(11) NOT NULL DEFAULT '0' COMMENT '卖的是哪个会员等级，0表示附加包或旧版套餐',
   `days` int(11) NOT NULL DEFAULT '0' COMMENT '有效期天数，0为永久',
   `remark` varchar(255) DEFAULT NULL COMMENT '套餐说明',
   `sort` int(11) NOT NULL DEFAULT '0' COMMENT '排序，小的在前',
@@ -348,6 +382,8 @@ CREATE TABLE `pre_order` (
   `upload_size` int(11) NOT NULL DEFAULT '-1',
   `down_speed` int(11) NOT NULL DEFAULT '-1' COMMENT '下单时的套餐下载限速快照',
   `online_edit` tinyint(1) NOT NULL DEFAULT '0' COMMENT '下单时套餐是否含在线编辑的快照',
+  `level_id` int(11) NOT NULL DEFAULT '0' COMMENT '下单时的会员等级快照',
+  `kind` varchar(10) NOT NULL DEFAULT '' COMMENT '订单类型：level upgrade bonus edit，空为旧订单',
   `days` int(11) NOT NULL DEFAULT '0',
   `status` tinyint(1) NOT NULL DEFAULT '0' COMMENT '0待支付 1已支付并发放 2已关闭',
   `ip` varchar(46) DEFAULT NULL,
@@ -359,34 +395,40 @@ CREATE TABLE `pre_order` (
   KEY `status` (`status`,`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('体验周卡', '包月套餐', '1.00', 50, 'set', 100, 7, '先试试水，随时可续', 10, 1, NOW());
-INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('入门月卡', '包月套餐', '4.90', 100, 'set', 300, 30, '轻度使用，一个月够了', 11, 1, NOW());
-INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('标准月卡', '包月套餐', '9.90', 200, 'set', 500, 30, '日常够用，最受欢迎', 12, 1, NOW());
-INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('超值季卡', '包月套餐', '25.00', 500, 'set', 1024, 90, '三个月，折合每月更便宜', 13, 1, NOW());
-INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('半年卡', '包月套餐', '48.00', 800, 'set', 1536, 180, '半年长期，额度翻倍', 14, 1, NOW());
-INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('至尊年卡', '包月套餐', '88.00', 0, 'set', 2048, 365, '整年不限数量，省心', 15, 1, NOW());
-INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('加量包 +50', '加量包', '3.00', 50, 'add', -1, 30, '30 天内每天多传 50 个', 20, 1, NOW());
-INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('加量包 +100', '加量包', '5.00', 100, 'add', -1, 30, '30 天内每天多传 100 个', 21, 1, NOW());
-INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('加量包 +200', '加量包', '8.00', 200, 'add', -1, 30, '30 天内每天多传 200 个', 22, 1, NOW());
-INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('加量包 +500', '加量包', '18.00', 500, 'add', -1, 30, '30 天内每天多传 500 个', 23, 1, NOW());
-INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('加量包 +1000', '加量包', '30.00', 1000, 'add', -1, 30, '30 天内每天多传 1000 个', 24, 1, NOW());
-INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('加量包 +2000', '加量包', '50.00', 2000, 'add', -1, 30, '30 天内每天多传 2000 个，量大更划算', 25, 1, NOW());
-INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('大文件包 512MB', '单文件加强', '2.00', -1, 'set', 512, 30, '单文件上限提到 512MB，不动每日数量', 30, 1, NOW());
-INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('大文件包 1GB', '单文件加强', '3.00', -1, 'set', 1024, 30, '单文件上限提到 1GB，不动每日数量', 31, 1, NOW());
-INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('大文件包 2GB', '单文件加强', '5.00', -1, 'set', 2048, 30, '单文件上限提到 2GB，不动每日数量', 32, 1, NOW());
-INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('大文件包 5GB', '单文件加强', '12.00', -1, 'set', 5120, 30, '单文件上限提到 5GB，不动每日数量', 33, 1, NOW());
-INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('大文件包 10GB', '单文件加强', '20.00', -1, 'set', 10240, 30, '单文件上限提到 10GB，不动每日数量', 34, 1, NOW());
-INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('大文件包 20GB', '单文件加强', '35.00', -1, 'set', 20480, 30, '单文件上限提到 20GB，适合视频素材', 35, 1, NOW());
-INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('永久入门版', '永久会员', '68.00', 100, 'set', 1024, 0, '一次买断，每天 100 个', 40, 1, NOW());
-INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('永久基础版', '永久会员', '98.00', 300, 'set', 2048, 0, '一次买断，每天 300 个', 41, 1, NOW());
-INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('永久标准版', '永久会员', '138.00', 600, 'set', 3072, 0, '一次买断，每天 600 个', 42, 1, NOW());
-INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('永久会员', '永久会员', '198.00', 0, 'set', 5120, 0, '一次买断，不限每日数量', 43, 1, NOW());
-INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('永久尊享版', '永久会员', '298.00', 0, 'set', 10240, 0, '不限数量，单文件 10GB', 44, 1, NOW());
-INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('永久旗舰版', '永久会员', '498.00', 0, 'set', 0, 0, '数量和大小都不限，一步到位', 45, 1, NOW());
-INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`online_edit`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('在线编辑月卡', '在线编辑', '3.00', -1, 'set', -1, 1, 30, '文本、代码文件直接在网页里改', 50, 1, NOW());
-INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`online_edit`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('在线编辑季卡', '在线编辑', '8.00', -1, 'set', -1, 1, 90, '三个月，折合每月更便宜', 51, 1, NOW());
-INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`online_edit`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('在线编辑年卡', '在线编辑', '25.00', -1, 'set', -1, 1, 365, '整年可用，经常改文件选它', 52, 1, NOW());
-INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`online_edit`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('在线编辑永久', '在线编辑', '48.00', -1, 'set', -1, 1, 0, '一次买断，永久可用', 53, 1, NOW());
+INSERT INTO `pre_plan` (`name`,`category`,`price`,`level_id`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('入门会员月卡', '入门会员', '2.90', 4, -1, 'set', -1, 30, NULL, 10, 1, NOW());
+INSERT INTO `pre_plan` (`name`,`category`,`price`,`level_id`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('入门会员季卡', '入门会员', '7.90', 4, -1, 'set', -1, 90, '三个月，折合每月更便宜', 11, 1, NOW());
+INSERT INTO `pre_plan` (`name`,`category`,`price`,`level_id`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('入门会员年卡', '入门会员', '28.00', 4, -1, 'set', -1, 365, '整年省心，折合每月最便宜', 12, 1, NOW());
+INSERT INTO `pre_plan` (`name`,`category`,`price`,`level_id`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('入门会员永久', '入门会员', '68.00', 4, -1, 'set', -1, 0, '一次买断，不再到期', 13, 1, NOW());
+INSERT INTO `pre_plan` (`name`,`category`,`price`,`level_id`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('基础会员月卡', '基础会员', '4.90', 5, -1, 'set', -1, 30, NULL, 20, 1, NOW());
+INSERT INTO `pre_plan` (`name`,`category`,`price`,`level_id`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('基础会员季卡', '基础会员', '12.90', 5, -1, 'set', -1, 90, '三个月，折合每月更便宜', 21, 1, NOW());
+INSERT INTO `pre_plan` (`name`,`category`,`price`,`level_id`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('基础会员年卡', '基础会员', '45.00', 5, -1, 'set', -1, 365, '整年省心，折合每月最便宜', 22, 1, NOW());
+INSERT INTO `pre_plan` (`name`,`category`,`price`,`level_id`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('基础会员永久', '基础会员', '98.00', 5, -1, 'set', -1, 0, '一次买断，不再到期', 23, 1, NOW());
+INSERT INTO `pre_plan` (`name`,`category`,`price`,`level_id`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('标准会员月卡', '标准会员', '9.90', 6, -1, 'set', -1, 30, NULL, 30, 1, NOW());
+INSERT INTO `pre_plan` (`name`,`category`,`price`,`level_id`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('标准会员季卡', '标准会员', '25.00', 6, -1, 'set', -1, 90, '三个月，折合每月更便宜', 31, 1, NOW());
+INSERT INTO `pre_plan` (`name`,`category`,`price`,`level_id`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('标准会员年卡', '标准会员', '88.00', 6, -1, 'set', -1, 365, '整年省心，折合每月最便宜', 32, 1, NOW());
+INSERT INTO `pre_plan` (`name`,`category`,`price`,`level_id`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('标准会员永久', '标准会员', '198.00', 6, -1, 'set', -1, 0, '一次买断，不再到期', 33, 1, NOW());
+INSERT INTO `pre_plan` (`name`,`category`,`price`,`level_id`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('进阶会员月卡', '进阶会员', '14.90', 7, -1, 'set', -1, 30, NULL, 40, 1, NOW());
+INSERT INTO `pre_plan` (`name`,`category`,`price`,`level_id`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('进阶会员季卡', '进阶会员', '39.00', 7, -1, 'set', -1, 90, '三个月，折合每月更便宜', 41, 1, NOW());
+INSERT INTO `pre_plan` (`name`,`category`,`price`,`level_id`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('进阶会员年卡', '进阶会员', '128.00', 7, -1, 'set', -1, 365, '整年省心，折合每月最便宜', 42, 1, NOW());
+INSERT INTO `pre_plan` (`name`,`category`,`price`,`level_id`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('进阶会员永久', '进阶会员', '298.00', 7, -1, 'set', -1, 0, '一次买断，不再到期', 43, 1, NOW());
+INSERT INTO `pre_plan` (`name`,`category`,`price`,`level_id`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('尊享会员月卡', '尊享会员', '19.90', 8, -1, 'set', -1, 30, NULL, 50, 1, NOW());
+INSERT INTO `pre_plan` (`name`,`category`,`price`,`level_id`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('尊享会员季卡', '尊享会员', '49.00', 8, -1, 'set', -1, 90, '三个月，折合每月更便宜', 51, 1, NOW());
+INSERT INTO `pre_plan` (`name`,`category`,`price`,`level_id`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('尊享会员年卡', '尊享会员', '168.00', 8, -1, 'set', -1, 365, '整年省心，折合每月最便宜', 52, 1, NOW());
+INSERT INTO `pre_plan` (`name`,`category`,`price`,`level_id`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('尊享会员永久', '尊享会员', '398.00', 8, -1, 'set', -1, 0, '一次买断，不再到期', 53, 1, NOW());
+INSERT INTO `pre_plan` (`name`,`category`,`price`,`level_id`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('旗舰会员月卡', '旗舰会员', '29.90', 9, -1, 'set', -1, 30, NULL, 60, 1, NOW());
+INSERT INTO `pre_plan` (`name`,`category`,`price`,`level_id`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('旗舰会员季卡', '旗舰会员', '79.00', 9, -1, 'set', -1, 90, '三个月，折合每月更便宜', 61, 1, NOW());
+INSERT INTO `pre_plan` (`name`,`category`,`price`,`level_id`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('旗舰会员年卡', '旗舰会员', '258.00', 9, -1, 'set', -1, 365, '整年省心，折合每月最便宜', 62, 1, NOW());
+INSERT INTO `pre_plan` (`name`,`category`,`price`,`level_id`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('旗舰会员永久', '旗舰会员', '598.00', 9, -1, 'set', -1, 0, '一次买断，不再到期', 63, 1, NOW());
+INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('加量包 +50', '加量包', '3.00', 50, 'add', -1, 30, '30 天内每天多传 50 个', 100, 1, NOW());
+INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('加量包 +100', '加量包', '5.00', 100, 'add', -1, 30, '30 天内每天多传 100 个', 101, 1, NOW());
+INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('加量包 +200', '加量包', '8.00', 200, 'add', -1, 30, '30 天内每天多传 200 个', 102, 1, NOW());
+INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('加量包 +500', '加量包', '18.00', 500, 'add', -1, 30, '30 天内每天多传 500 个', 103, 1, NOW());
+INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('加量包 +1000', '加量包', '30.00', 1000, 'add', -1, 30, '30 天内每天多传 1000 个', 104, 1, NOW());
+INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('加量包 +2000', '加量包', '50.00', 2000, 'add', -1, 30, '30 天内每天多传 2000 个，量大更划算', 105, 1, NOW());
+INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`online_edit`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('在线编辑月卡', '在线编辑', '3.00', -1, 'set', -1, 1, 30, '文本、代码文件直接在网页里改', 110, 1, NOW());
+INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`online_edit`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('在线编辑季卡', '在线编辑', '8.00', -1, 'set', -1, 1, 90, '三个月，折合每月更便宜', 111, 1, NOW());
+INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`online_edit`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('在线编辑年卡', '在线编辑', '25.00', -1, 'set', -1, 1, 365, '整年可用，经常改文件选它', 112, 1, NOW());
+INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`online_edit`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('在线编辑永久', '在线编辑', '48.00', -1, 'set', -1, 1, 0, '一次买断，永久可用', 113, 1, NOW());
 
 INSERT INTO `pre_config` VALUES ('alipay_open', '0');
 INSERT INTO `pre_config` VALUES ('epay_open', '0');

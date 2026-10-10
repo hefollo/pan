@@ -145,7 +145,11 @@
     btn.disabled = true;
     if (!mask.hidden) setState('正在下单…');
 
-    post('create', { plan_id: planId, pay_type: payType(), channel: channel || '' }).then(function (res) {
+    // 「补差价升级」的按钮传的是 u + 等级编号，其余是套餐编号
+    var payload = { pay_type: payType(), channel: channel || '' };
+    if (String(planId).charAt(0) === 'u') payload.upgrade = String(planId).substr(1);
+    else payload.plan_id = planId;
+    post('create', payload).then(function (res) {
       busy = false;
       btn.textContent = oldText;
       btn.disabled = false;

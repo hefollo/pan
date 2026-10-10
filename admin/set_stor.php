@@ -167,7 +167,7 @@ foreach($stor_list as $k=>$v){
 //多存储上传的当前配置，渲染下面那张表用
 $pool_now = storage_pool();
 $multi_now = storage_multi_open();
-$tier_names = [0=>'所有人（含未登录访客）', 1=>'仅登录用户', 2=>'仅高级用户'];
+$tier_names = [0=>'所有人（含未登录访客）', 1=>'仅登录用户', 2=>'仅限会员（等级带「可用全部存储」）'];
 
 /*
  * 每个存储里还压着多少个文件。
@@ -374,7 +374,7 @@ function stor_field($f){
 					<input type="hidden" name="storage_pool" id="storage_pool" value="<?php echo htmlspecialchars(isset($conf['storage_pool']) ? $conf['storage_pool'] : '', ENT_QUOTES, 'UTF-8')?>"/>
 					<p class="help-block">
 						<b>当前存储必开、且对所有人开放</b>，它是兜底：用户没选、选了个不该他用的、或者池子配空了，都会落到它上面，所以这一行不能取消。<br/>
-						「仅高级用户」指 <b>level&gt;0 且权限还在有效期内</b>的账号，判断规则和上传额度用的是同一套。<br/>
+						「仅限会员」指当前会员等级勾了<b>「可用全部存储」</b>的账号（管理员等级恒有），哪些等级有这一项在 <a href="./level.php">会员等级设置</a> 里定。<br/>
 						勾之前请先在下面把这个存储的参数填好并<b>测试通过</b>——池子里的存储随时会被用户选中往里写。
 					</p>
 				</div>
@@ -471,7 +471,7 @@ $cap_now = $stor_caps[$storage];
 				<label class="col-sm-3 control-label">下载速度权限</label>
 				<div class="col-sm-9">
 					<div class="download-speed-grid">
-					<?php foreach(['guest'=>'游客', 'user'=>'普通登录用户', 'vip'=>'有效高级用户'] as $speed_key=>$speed_name){
+					<?php foreach(['guest'=>'游客', 'user'=>'登录用户'] as $speed_key=>$speed_name){
 						$speed_value = isset($conf['down_speed_'.$speed_key]) ? $conf['down_speed_'.$speed_key] : '0';
 						$speed_unit = isset($conf['down_speed_'.$speed_key.'_unit']) && strtoupper($conf['down_speed_'.$speed_key.'_unit']) === 'MB' ? 'MB' : 'KB';
 					?>
@@ -484,7 +484,7 @@ $cap_now = $stor_caps[$storage];
 						</div>
 					<?php }?>
 					</div>
-					<p class="help-block">填写 <b>0</b> 表示不限速。高级用户必须权限仍在有效期内；权限到期后自动按普通登录用户速度计算。买了带下载限速的套餐（或在用户管理里单独设了速度）的用户，有效期内按自己的速度，不看这里的档位。限速用户会强制走网站中转，不再跳转到对象存储直链。整站使用 CDN 时，请勿对 <b>down.php</b> 和 <b>view.php</b> 设置强制缓存，否则命中 CDN 缓存后将绕过本站限速。</p>
+					<p class="help-block">填写 <b>0</b> 表示不限速。这里是游客和登录用户的默认速度；<a href="./level.php">会员等级</a>里填了下载速度的等级按等级的速度算，在用户管理里给某个用户单独调了速度的按调整值算，都不看这里。限速用户会强制走网站中转，不再跳转到对象存储直链。整站使用 CDN 时，请勿对 <b>down.php</b> 和 <b>view.php</b> 设置强制缓存，否则命中 CDN 缓存后将绕过本站限速。</p>
 				</div>
 			</div>
 			<div class="form-group" id="row_domain"<?php echo ($conf['downfile_type']=='1' && $cap_now['domain']) ? '' : ' style="display:none"'?>>

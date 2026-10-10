@@ -105,7 +105,7 @@ if(!function_exists('admin_sub_active')){
               <li class="<?php echo admin_sub_active('mail_log.php')?>"><a href="./mail_log.php"><i class="fa fa-envelope-o fa-fw"></i> 发信记录</a></li>
             </ul>
           </li>
-          <li class="dropdown <?php echo checkIfActive('set,set_stor,set_script,set_sponsor,set_violation,set_pay,set_mail,update')?>">
+          <li class="dropdown <?php echo checkIfActive('set,set_stor,set_script,set_sponsor,set_violation,set_pay,set_mail,update,level')?>">
             <a href="#" class="dropdown-toggle" data-toggle="dropdown"><i class="fa fa-cog"></i> 设置<b class="caret"></b></a>
             <ul class="dropdown-menu admin-settings-menu">
               <li class="dropdown-header">站点</li>
@@ -121,6 +121,7 @@ if(!function_exists('admin_sub_active')){
               <li class="dropdown-header">用户与付费</li>
               <li class="<?php echo admin_sub_active('set.php','user')?>"><a href="./set.php?mod=user"><i class="fa fa-user-circle fa-fw"></i> 用户登录设置</a></li>
               <li class="<?php echo admin_sub_active('set_mail.php')?>"><a href="./set_mail.php"><i class="fa fa-envelope fa-fw"></i> 邮件发信设置</a></li>
+              <li class="<?php echo admin_sub_active('level.php')?>"><a href="./level.php"><i class="fa fa-id-badge fa-fw"></i> 会员等级设置</a></li>
               <li class="<?php echo admin_sub_active('set_pay.php')?>"><a href="./set_pay.php"><i class="fa fa-credit-card fa-fw"></i> 购买套餐设置</a></li>
               <li class="divider"></li>
               <li class="dropdown-header">安全与合规</li>

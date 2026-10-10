@@ -53,12 +53,6 @@ if($act === 'create' || $act === 'query'){
 	if(!is_buy_open())exit('{"code":-1,"msg":"站点未开启购买功能"}');
 
 	if($act === 'create'){
-		$plan = plan_get(isset($_POST['plan_id']) ? $_POST['plan_id'] : 0);
-		if(!$plan || intval($plan['enable']) !== 1)exit('{"code":-1,"msg":"套餐不存在或已下架"}');
-		//金额和权限一律以数据库里的套餐为准，不接受前端传值
-		$price = round(floatval($plan['price']), 2);
-		if($price <= 0)exit('{"code":-1,"msg":"套餐价格设置有误"}');
-
 		//支付方式：前端传哪个就用哪个，但必须是后台开着并且配置完整的
 		$methods = pay_methods();
 		$pay_type = isset($_POST['pay_type']) ? $_POST['pay_type'] : '';
@@ -78,25 +72,42 @@ if($act === 'create' || $act === 'query'){
 		}
 		$userrow = $DB->getRow("SELECT * FROM pre_user WHERE uid=:uid LIMIT 1", [':uid'=>intval($uid)]);
 
-		//买了完全不会有任何变化的套餐（比如永久不限的用户又来买加量包），直接拦下来，别让人白花钱
-		$effect = plan_effect($userrow, $plan);
-		if(empty($effect['changed']))exit('{"code":-1,"msg":"你当前的权限已经覆盖了这个套餐，买了不会有任何提升"}');
-
+		/*
+		 * 买什么、付多少一律由服务端按数据库里的套餐和这个用户现在的等级算，不接受前端传金额。
+		 * 两种入口：plan_id 买一个套餐；upgrade 是补差价升级到某个更高的等级（没有对应的套餐，到期时间不变）。
+		 * 能不能买、实付多少都在 plan_quote() / level_upgrade_quote() 里，买了没用的在那里就被拦下。
+		 */
+		$upgrade_id = isset($_POST['upgrade']) ? intval($_POST['upgrade']) : 0;
+		if($upgrade_id > 0){
+			$quote = level_upgrade_quote($userrow, level_get($upgrade_id));
+			if(empty($quote['ok']))exit(json_encode(['code'=>-1, 'msg'=>$quote['msg']], JSON_UNESCAPED_UNICODE));
+			$kind = 'upgrade';
+			$plan = ['id'=>0, 'name'=>'升级到'.$quote['level']['name'], 'level_id'=>intval($quote['level']['id']), 'days'=>intval($quote['days']),
+				'upload_limit'=>-1, 'limit_mode'=>'set', 'upload_size'=>-1, 'down_speed'=>-1, 'online_edit'=>0];
+		}else{
+			$plan = plan_get(isset($_POST['plan_id']) ? $_POST['plan_id'] : 0);
+			if(!$plan || intval($plan['enable']) !== 1)exit('{"code":-1,"msg":"套餐不存在或已下架"}');
+			$quote = plan_quote($userrow, $plan);
+			if(empty($quote['ok']))exit(json_encode(['code'=>-1, 'msg'=>$quote['msg']], JSON_UNESCAPED_UNICODE));
+			$kind = $quote['kind'];
+		}
+		$price = round(floatval($quote['price']), 2);
+		if($price <= 0)exit('{"code":-1,"msg":"套餐价格设置有误"}');
 		$limit_mode = isset($plan['limit_mode']) && $plan['limit_mode'] === 'add' ? 'add' : 'set';
 
 		/*
 		 * 反复点“立即购买”不应该一直产生新订单：
 		 * 同一个人、同一个套餐、同一种支付方式，两小时内还没支付的那笔直接拿来接着用，
-		 * 只有套餐内容被改过（价格、权限、天数不一致）才重新下单。
+		 * 只有内容对不上（类型、等级、金额、天数——补差价的金额会随剩余时间变）才重新下单。
 		 */
 		$exist = $DB->getRow("SELECT * FROM pre_order WHERE uid=:uid AND plan_id=:pid AND pay_type=:pt AND status=0
 			AND addtime > DATE_SUB(NOW(), INTERVAL 2 HOUR) ORDER BY id DESC LIMIT 1",
 			[':uid'=>intval($uid), ':pid'=>intval($plan['id']), ':pt'=>$pay_type]);
 		if($exist
 			&& number_format(floatval($exist['price']), 2, '.', '') === number_format($price, 2, '.', '')
+			&& (isset($exist['kind']) ? $exist['kind'] : '') === $kind
+			&& intval(isset($exist['level_id']) ? $exist['level_id'] : 0) === intval($plan['level_id'])
 			&& intval($exist['upload_limit']) === intval($plan['upload_limit'])
-			&& intval($exist['upload_size']) === intval($plan['upload_size'])
-			&& intval(isset($exist['down_speed']) ? $exist['down_speed'] : -1) === intval(isset($plan['down_speed']) ? $plan['down_speed'] : -1)
 			&& plan_has_online_edit($exist) === plan_has_online_edit($plan)
 			&& intval($exist['days']) === intval($plan['days'])
 			&& (isset($exist['limit_mode']) ? $exist['limit_mode'] : 'set') === $limit_mode){
@@ -115,20 +126,23 @@ if($act === 'create' || $act === 'query'){
 			$DB->exec("UPDATE pre_order SET status=2 WHERE uid=:uid AND status=0", [':uid'=>intval($uid)]);
 
 			$trade_no = build_trade_no($uid);
+			//数值一律传字符串：DB->insert 把 == '' 的值写成 NULL，整数 0 在老版本 PHP 上也会中
 			$order_id = $DB->insert('order', [
 				'trade_no' => $trade_no,
-				'uid' => intval($uid),
-				'plan_id' => intval($plan['id']),
+				'uid' => strval(intval($uid)),
+				'plan_id' => strval(intval($plan['id'])),
 				'plan_name' => $plan['name'],
-				'price' => $price,
+				'price' => strval($price),
 				'pay_type' => $pay_type,
-				'upload_limit' => intval($plan['upload_limit']),
+				'kind' => $kind,
+				'level_id' => strval(intval($plan['level_id'])),
+				'upload_limit' => strval(intval($plan['upload_limit'])),
 				'limit_mode' => $limit_mode,
-				'upload_size' => intval($plan['upload_size']),
-				'down_speed' => isset($plan['down_speed']) ? intval($plan['down_speed']) : -1,
+				'upload_size' => '-1',
+				'down_speed' => '-1',
 				'online_edit' => plan_has_online_edit($plan) ? '1' : '0',
-				'days' => intval($plan['days']),
-				'status' => 0,
+				'days' => strval(intval($plan['days'])),
+				'status' => '0',
 				'ip' => $clientip,
 				'addtime' => 'NOW()',
 			]);
@@ -218,9 +232,10 @@ if($islogin2 && (!isset($_SESSION['buy_rescue_time']) || $_SESSION['buy_rescue_t
 }
 
 $title = '购买权限 - ' . $conf['title'];
-//在线编辑免费开放时，只卖在线编辑的套餐不列出来（买了没有任何作用）
+//实际在卖的套餐：旧版套餐已停售；普通用户本来就能用在线编辑时，在线编辑包不列出来
 $plans = plan_list_for_sale();
-$edit_paid = online_edit_is_paid_mode();
+//限时会员可以补差价升级到的更高等级（到期时间不变）
+$upgrades = $islogin2 ? level_upgrade_list($userrow) : [];
 $methods = pay_methods();
 $method_keys = array_keys($methods);
 $channels = isset($methods['epay']) ? epay_channels() : [];
@@ -231,7 +246,7 @@ include SYSTEM_ROOT.'header.php';
 <div class="container">
     <div class="well bs-component buypage">
         <h2>购买权限</h2>
-        <p class="buy-sub">选择需要的套餐，使用支付宝扫码支付，支付成功后权限立即生效。</p>
+        <p class="buy-sub">选择需要的会员等级，支付成功后权限立即生效。</p>
 <?php if(isset($_GET['paid'])){?>
         <div class="buy-notice <?php echo $_GET['paid'] == '1' ? 'is-ok' : 'is-warn'?>">
             <i class="fa fa-<?php echo $_GET['paid'] == '1' ? 'check-circle' : 'exclamation-circle'?>" aria-hidden="true"></i>
@@ -243,14 +258,14 @@ include SYSTEM_ROOT.'header.php';
 <?php }?>
 <?php if($islogin2){
 	$cur_limit = limit_number_text(get_effective_upload_count_limit(), '个/天');
-	$cur_size = limit_number_text(get_effective_upload_size_limit(), 'MB');
+	$cur_size = size_mb_text(get_effective_upload_size_limit());
 	$cur_speed = speed_text(get_effective_download_speed_kbps());
-	$cur_expire = empty($userrow['expiretime']) ? '永久有效' : (is_user_permission_active() ? ($userrow['expiretime'].' 到期') : ($userrow['expiretime'].' 已过期'));
+	$cur_bonus = user_bonus_limit($userrow);
 	$cur_edit = current_online_edit_text();
 ?>
         <div class="buy-current">
-            <span>当前权限</span>
-            <strong>每日上传 <?php echo htmlspecialchars($cur_limit)?><?php if(!empty($userrow['bonus_limit']) && is_user_permission_active()){?>（含加量包 +<?php echo intval($userrow['bonus_limit'])?>）<?php }?>　单文件 <?php echo htmlspecialchars($cur_size)?>　下载 <?php echo htmlspecialchars($cur_speed)?>　<?php echo htmlspecialchars($cur_expire)?><?php if($cur_edit !== ''){?>　在线编辑 <?php echo htmlspecialchars($cur_edit)?><?php }?></strong>
+            <span>当前等级</span>
+            <strong><?php echo htmlspecialchars(user_level_text($userrow), ENT_QUOTES, 'UTF-8')?>　每日上传 <?php echo htmlspecialchars($cur_limit)?><?php if($cur_bonus > 0 && get_effective_upload_count_limit() > 0){?>（含加量包 +<?php echo $cur_bonus?>，<?php echo empty($userrow['bonus_expire']) ? '永久' : htmlspecialchars($userrow['bonus_expire']).' 到期'?>）<?php }?>　单文件 <?php echo htmlspecialchars($cur_size)?>　下载 <?php echo htmlspecialchars($cur_speed)?>　在线编辑 <?php echo htmlspecialchars($cur_edit)?></strong>
         </div>
 <?php }?>
 <?php if(count($methods) > 1){?>
@@ -271,9 +286,29 @@ include SYSTEM_ROOT.'header.php';
             <input type="hidden" name="pay_type" value="<?php echo $method_keys[0]?>"/>
         </div>
 <?php }?>
+<?php if($upgrades){?>
+        <div class="buy-group">
+            <div class="buy-group-title"><span>补差价升级</span><i>到期时间不变，只补到期前这段时间的差价</i></div>
+        <div class="buy-plans">
+<?php foreach($upgrades as $up){?>
+            <div class="buy-plan">
+                <div class="buy-plan-name">升级到<?php echo htmlspecialchars($up['level']['name'], ENT_QUOTES, 'UTF-8')?></div>
+                <div class="buy-plan-price"><small>¥</small><?php echo htmlspecialchars(number_format($up['price'], 2, '.', ''))?></div>
+                <ul class="buy-plan-list">
+<?php foreach(level_features($up['level']) as $feature){?>
+                    <li><i class="fa fa-check" aria-hidden="true"></i> <?php echo htmlspecialchars($feature, ENT_QUOTES, 'UTF-8')?></li>
+<?php }?>
+                    <li><i class="fa fa-check" aria-hidden="true"></i> 到期时间不变：<?php echo htmlspecialchars($up['expire'], ENT_QUOTES, 'UTF-8')?></li>
+                </ul>
+                <button type="button" class="buy-plan-btn" data-plan="u<?php echo intval($up['level']['id'])?>">补差价升级</button>
+            </div>
+<?php }?>
+        </div>
+        </div>
+<?php }?>
 <?php
 	$groups = plan_group_list($plans);
-	$only_one = count($groups) === 1;
+	$only_one = count($groups) === 1 && !$upgrades;
 	foreach($groups as $group_name => $group_plans){
 ?>
         <div class="buy-group">
@@ -281,36 +316,37 @@ include SYSTEM_ROOT.'header.php';
             <div class="buy-group-title"><span><?php echo htmlspecialchars((string)$group_name, ENT_QUOTES, 'UTF-8')?></span><i><?php echo count($group_plans)?> 个套餐</i></div>
 <?php }?>
         <div class="buy-plans">
-<?php foreach($group_plans as $plan){?>
+<?php foreach($group_plans as $plan){
+	$kind = plan_kind($plan);
+	//登录后按这个用户现在的等级算：能不能买、实付多少（续费、折抵、补差价都在 plan_quote 里）
+	$quote = $islogin2 ? plan_quote($userrow, $plan) : null;
+	$price_show = ($quote && $quote['ok']) ? $quote['price'] : floatval($plan['price']);
+	if($kind === 'level'){
+		$features = level_features(level_get($plan['level_id']));
+	}elseif($kind === 'bonus'){
+		$features = ['每天多传 '.max(0, intval($plan['upload_limit'])).' 个，加在当前等级的数量上'];
+	}else{
+		$features = ['在线编辑文本、代码文件'];
+	}
+	$features[] = plan_days_text($plan['days']);
+	if(!empty($plan['remark']))$features[] = $plan['remark'];
+?>
             <div class="buy-plan">
                 <div class="buy-plan-name"><?php echo htmlspecialchars($plan['name'], ENT_QUOTES, 'UTF-8')?></div>
-                <div class="buy-plan-price"><small>¥</small><?php echo htmlspecialchars(number_format(floatval($plan['price']), 2, '.', ''))?></div>
+                <div class="buy-plan-price"><small>¥</small><?php echo htmlspecialchars(number_format($price_show, 2, '.', ''))?><?php if($quote && $quote['ok'] && $quote['price'] < $quote['origin']){?><del style="margin-left:8px;color:var(--muted);font-size:13px;font-weight:400">¥<?php echo htmlspecialchars(number_format($quote['origin'], 2, '.', ''))?></del><?php }?></div>
                 <ul class="buy-plan-list">
-<?php //只卖在线编辑的套餐不动上传权限，卡片上就不写一串“不变”了
-if(!plan_is_edit_only($plan)){?>
-                    <li><i class="fa fa-check" aria-hidden="true"></i> 每日上传 <?php echo htmlspecialchars(plan_result_limit_text($plan))?></li>
-                    <li><i class="fa fa-check" aria-hidden="true"></i> 单文件大小 <?php echo htmlspecialchars(plan_result_size_text($plan))?></li>
-<?php if(isset($plan['down_speed']) && intval($plan['down_speed']) >= 0){?>
-                    <li><i class="fa fa-check" aria-hidden="true"></i> 下载速度 <?php echo htmlspecialchars(plan_result_speed_text($plan))?></li>
-<?php }?>
-<?php }?>
-<?php if($edit_paid && plan_has_online_edit($plan)){?>
-                    <li><i class="fa fa-check" aria-hidden="true"></i> 在线编辑文本、代码文件</li>
-<?php }?>
-                    <li><i class="fa fa-check" aria-hidden="true"></i> <?php echo htmlspecialchars(plan_days_text($plan['days']))?></li>
-<?php if(!empty($plan['remark'])){?>
-                    <li><i class="fa fa-check" aria-hidden="true"></i> <?php echo htmlspecialchars($plan['remark'], ENT_QUOTES, 'UTF-8')?></li>
+<?php foreach($features as $feature){?>
+                    <li><i class="fa fa-check" aria-hidden="true"></i> <?php echo htmlspecialchars($feature, ENT_QUOTES, 'UTF-8')?></li>
 <?php }?>
                 </ul>
-<?php if($islogin2){ $effect = plan_effect($userrow, $plan);
-	if(empty($effect['changed'])){?>
-                <div class="buy-plan-warn">你当前的权限已经覆盖它，买了不会有提升</div>
-<?php }elseif($effect['lower']){?>
-                <div class="buy-plan-warn">注意：会把<?php echo htmlspecialchars(implode('、', $effect['lower']), ENT_QUOTES, 'UTF-8')?>降到该套餐的水平</div>
-<?php } }?>
-<?php if($islogin2){?>
-                <button type="button" class="buy-plan-btn" data-plan="<?php echo intval($plan['id'])?>">立即购买</button>
-<?php }else{?>
+<?php if($quote && !$quote['ok']){?>
+                <div class="buy-plan-warn"><?php echo htmlspecialchars($quote['msg'], ENT_QUOTES, 'UTF-8')?></div>
+<?php }elseif($quote && $quote['note'] !== ''){?>
+                <div class="buy-plan-warn"><?php echo htmlspecialchars($quote['note'], ENT_QUOTES, 'UTF-8')?></div>
+<?php }?>
+<?php if($islogin2){ if($quote['ok']){?>
+                <button type="button" class="buy-plan-btn" data-plan="<?php echo intval($plan['id'])?>"><?php echo ($kind === 'level' && strpos($quote['note'], '续费') === 0) ? '续费' : '立即购买'?></button>
+<?php } }else{?>
                 <a class="buy-plan-btn" href="./login.php">登录后购买</a>
 <?php }?>
             </div>
@@ -318,13 +354,9 @@ if(!plan_is_edit_only($plan)){?>
         </div>
         </div>
 <?php }?>
-        <p class="buy-tip">有效期一律在现有剩余时间上叠加，买到永久套餐则直接变为永久有效。<br/>
-        时长套餐（周卡月卡这类）会把每日数量和单文件大小换成该套餐的额度；加量包只加数量，大文件包只提大小，都不会动其它项。<br/>
-        标了下载速度的套餐，有效期内按套餐的速度下载；没标的不改动你现在的下载速度。<br/>
-<?php if($edit_paid){?>
-        带「在线编辑」的套餐，在线编辑的有效期单独计算，和上传权限的到期时间互不影响；只含在线编辑的套餐不改动上传额度。<br/>
-<?php }?>
-        所以建议先买时长套餐，再买加量包和大文件包。</p>
+        <p class="buy-tip">买的是会员等级：有效期内按该等级的权限使用，到期后回到普通用户；同一个等级再买是续费，天数接在到期时间后面。<br/>
+        想换成更高的等级，限时会员用上面的「补差价升级」，只补到期前这段时间的差价，到期时间不变；升级后想延长时间，再买新等级的套餐。<br/>
+        加量包和在线编辑包是附加包，各有自己的到期时间，不影响会员到期时间。</p>
     </div>
 </div>
 

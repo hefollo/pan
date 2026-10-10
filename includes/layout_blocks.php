@@ -109,8 +109,8 @@ function render_permission_bar($DB, $where = 'list'){
 			$left = max(1, ceil((strtotime($expire) - time()) / 86400));
 			$items[] = ['fa-clock-o', '有效期', '剩 '.$left.' 天'];
 		}
-		if(!empty($userrow['bonus_limit']) && $limit > 0){
-			$items[] = ['fa-plus-circle', '加量包', '+'.intval($userrow['bonus_limit']).' 个/天'];
+		if(function_exists('user_bonus_limit') && user_bonus_limit($userrow) > 0 && $limit > 0){
+			$items[] = ['fa-plus-circle', '加量包', '+'.user_bonus_limit($userrow).' 个/天'];
 		}
 	}
 
@@ -131,34 +131,15 @@ function render_permission_bar($DB, $where = 'list'){
 }
 
 /**
- * 当前用户最近一笔已支付的订单，给侧栏“我的权限”卡显示套餐名用。
- * 侧栏每个页面都要渲染，所以同样走会话缓存；老站点还没有 pre_order 表时直接当没买过
+ * 当前用户的会员等级，给侧栏“我的权限”卡和个人中心显示用。
+ * bought 表示现在有一个没过期的会员等级（或管理员等级），plan_name 是等级名（键名是改成会员等级之前起的）
  */
 function layout_user_plan($DB){
-	global $islogin2, $uid;
-	if(empty($islogin2))return null;
-	$who = intval($uid);
-	if(isset($_SESSION['layout_plan']) && is_array($_SESSION['layout_plan'])
-		&& $_SESSION['layout_plan']['uid'] === $who
-		&& $_SESSION['layout_plan']['time'] + 120 > time()){
-		return $_SESSION['layout_plan']['data'];
-	}
-	$row = false;
-	try{
-		//只含在线编辑的订单不算「当前套餐」：它不改上传额度，拿它的名字当套餐名会让人以为上传权限也是它给的
-		$row = $DB->getRow("SELECT plan_name, paytime FROM pre_order WHERE uid=".$who." AND status=1
-			AND NOT (online_edit=1 AND limit_mode<>'add' AND upload_limit<0 AND upload_size<0 AND down_speed<0)
-			ORDER BY id DESC LIMIT 1");
-	}catch(Exception $e){
-		$row = false;
-	}
-	$data = [
-		'bought' => $row ? true : false,
-		'plan_name' => $row ? $row['plan_name'] : '',
-		'paytime' => $row ? $row['paytime'] : '',
-	];
-	$_SESSION['layout_plan'] = ['uid'=>$who, 'data'=>$data, 'time'=>time()];
-	return $data;
+	global $islogin2, $userrow;
+	if(empty($islogin2) || !function_exists('user_level'))return null;
+	$level = user_level($userrow);
+	$member = level_is_custom($level) || level_is_admin($level);
+	return ['bought' => $member, 'plan_name' => $level['name'], 'paytime' => ''];
 }
 
 /**

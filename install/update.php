@@ -275,9 +275,22 @@ foreach($edit_cols as $edit_col){
 		break;
 	}
 }
-$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1026')";
-//上面 else 分支只按 1022 判断「已是最新」，从 1022～1025 升上来时要改回「升级完成」的提示
-if($version < 1026)$uptodate = false;
+/*
+ * 1027 会员等级：新表 pre_level，用户、套餐、订单加字段。表或任何一列缺了就整份跑一遍
+ * （已有的那几条会报重复结构被跳过）。旧数据的迁移在最下面单独做，只做一次。
+ */
+$level_cols = [['pre_user', 'level_id'], ['pre_user', 'bonus_expire'], ['pre_plan', 'level_id'], ['pre_order', 'level_id'], ['pre_order', 'kind']];
+$q = $db->query("SHOW TABLES LIKE 'pre_level'");
+$need_1027 = !$q || !$q->fetchColumn();
+foreach($level_cols as $level_col){
+	if($need_1027)break;
+	$q = $db->query("SHOW COLUMNS FROM `".$level_col[0]."` LIKE '".$level_col[1]."'");
+	if(!$q || !$q->fetchColumn())$need_1027 = true;
+}
+if($need_1027)$sqls = array_merge($sqls, read_sql('update_1027.sql'));
+$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1027')";
+//上面 else 分支只按 1022 判断「已是最新」，从 1022～1026 升上来时要改回「升级完成」的提示
+if($version < 1027)$uptodate = false;
 
 $success=0;$skipped=0;$error=0;$errorMsg=null;
 foreach ($sqls as $value) {
@@ -316,7 +329,7 @@ if($errorMsg){
  * 出过"版本号写上去了、表却没建出来"的情况，页面还提示升级成功，
  * 站长要等到用那个功能才会看见 1146 报错，这里提前说清楚。
  */
-$need_tables = ['pre_greenlog', 'pre_greenjob', 'pre_user_bind', 'pre_api_key', 'pre_folder'];
+$need_tables = ['pre_greenlog', 'pre_greenjob', 'pre_user_bind', 'pre_api_key', 'pre_folder', 'pre_level'];
 $lost = [];
 foreach($need_tables as $t){
 	//ERRMODE_SILENT 下 query 出错会返回 false，不能直接往后链 fetchColumn
@@ -382,6 +395,106 @@ if($lost_edit){
 		.'请确认 <code>install/update_1026.sql</code> 已上传，以及数据库账号有改表权限，然后重新打开本页再升级一次。</div>';
 	echo '<p style="font:14px/1.7 system-ui;padding:16px 24px"><a href="../">返回首页</a></p>';
 	exit;
+}
+//1027 的字段：缺了它们，会员等级、加量包到期、套餐卖等级全都用不了
+$lost_level = [];
+foreach($level_cols as $level_col){
+	$q = $db->query("SHOW COLUMNS FROM `".$level_col[0]."` LIKE '".$level_col[1]."'");
+	if(!$q || !$q->fetchColumn())$lost_level[] = $level_col[0].'.'.$level_col[1];
+}
+if($lost_level){
+	echo '<div style="font:13px/1.7 system-ui;margin:0 24px;padding:14px;border:1px solid #f0c2c2;background:#fff5f5;border-radius:8px;color:#a33">'
+		.'<b>升级没有完成：</b>缺少字段 <code>'.htmlspecialchars(implode('、', $lost_level), ENT_QUOTES, 'UTF-8').'</code>。<br>'
+		.'请确认 <code>install/update_1027.sql</code> 已上传，以及数据库账号有改表权限，然后重新打开本页再升级一次。</div>';
+	echo '<p style="font:14px/1.7 system-ui;padding:16px 24px"><a href="../">返回首页</a></p>';
+	exit;
+}
+/*
+ * 1027 的数据迁移：把原来散在各处的权限搬进会员等级，保证升级前后每个人能做的事不变。
+ * 只做一次，做完在 pre_config 记 level_migrated=1；中途出错不记，下次打开本页接着做（每一步都可以重复执行）。
+ *   - 补三个内置等级：游客、普通用户、管理员。游客和普通用户能不能用在线编辑 / 文件夹 / 上传 API，
+ *     按升级前「在线编辑权限」「文件夹开放范围」「API 访问权限」三项设置来定
+ *   - 在线编辑原来按指定 UID 开放的：给名单里的用户永久开通在线编辑
+ *   - 原来的高级用户：建一个「高级用户（旧）」等级，权益和原来一样（每日不限、免审核、可用限定会员的存储、
+ *     可用上传 API、下载按原来高级用户那一档的速度），把他们挪过去，到期时间不变
+ *   - 加量包有了自己的到期时间：已有加量额度的，到期时间沿用原来的权限到期时间
+ *   - 旧套餐（按数值发放的时长卡、大文件包、永久卡）下架；加量包和在线编辑包照常卖
+ */
+if(update_conf($db, 'level_migrated') !== '1'){
+	$mig_err = [];
+	$mig_run = function($sql, $args = []) use ($db, &$mig_err){
+		$st = $db->prepare($sql);
+		if(!$st || !$st->execute($args)){
+			$info = $st ? $st->errorInfo() : $db->errorInfo();
+			$mig_err[] = htmlspecialchars(isset($info[2]) ? $info[2] : '未知数据库错误', ENT_QUOTES, 'UTF-8');
+			return false;
+		}
+		return $st;
+	};
+	$mig_level_id = function($where) use ($db){
+		$q = $db->query("SELECT id FROM pre_level WHERE ".$where." LIMIT 1");
+		return $q ? intval($q->fetchColumn()) : 0;
+	};
+	$edit_mode = strtolower(trim(update_conf($db, 'online_edit_mode')));
+	if(!in_array($edit_mode, ['all', 'login', 'uid', 'buy'], true))$edit_mode = 'all';
+	$folder_mode = strtolower(trim(update_conf($db, 'folder_mode')));
+	if(!in_array($folder_mode, ['all', 'login', 'uid'], true))$folder_mode = 'login';
+	$api_mode = trim(update_conf($db, 'api_auth_mode'));
+	if(!in_array($api_mode, ['public', 'user', 'vip'], true))$api_mode = 'user';
+	$user_edit = in_array($edit_mode, ['all', 'login'], true) ? 1 : 0;
+	$user_folder = in_array($folder_mode, ['all', 'login'], true) ? 1 : 0;
+	$user_api = in_array($api_mode, ['public', 'user'], true) ? 1 : 0;
+
+	if(!$mig_level_id('type=1')){
+		$mig_run("INSERT INTO pre_level (name,type,sort,online_edit,folder,api,remark,addtime) VALUES ('游客',1,0,?,?,?,'没有登录的访客',NOW())",
+			[$edit_mode === 'all' ? 1 : 0, $folder_mode === 'all' ? 1 : 0, $api_mode === 'public' ? 1 : 0]);
+	}
+	if(!$mig_level_id('type=2')){
+		$mig_run("INSERT INTO pre_level (name,type,sort,online_edit,folder,api,remark,addtime) VALUES ('普通用户',2,10,?,?,?,'注册后默认的等级，会员到期后回到这里',NOW())",
+			[$user_edit, $user_folder, $user_api]);
+	}
+	if(!$mig_level_id('type=3')){
+		$mig_run("INSERT INTO pre_level (name,type,sort,upload_limit,upload_size,down_speed,online_edit,folder,api,storage_all,no_review,remark,addtime)"
+			." VALUES ('管理员',3,100000,0,0,0,1,1,1,1,1,'不受任何限制，只能在用户管理里手动设置，不能购买',NOW())");
+	}
+	if($edit_mode === 'uid'){
+		$edit_uids = [];
+		foreach(preg_split('/[\s,，|]+/u', update_conf($db, 'online_edit_uids')) as $one){
+			if($one !== '' && ctype_digit($one))$edit_uids[] = intval($one);
+		}
+		if($edit_uids){
+			$mig_run("UPDATE pre_user SET online_edit=1, edit_expire=NULL WHERE uid IN (".implode(',', array_unique($edit_uids)).")");
+		}
+	}
+	$q = $db->query("SELECT count(*) FROM pre_user WHERE level>0 AND level_id=0");
+	if($q && intval($q->fetchColumn()) > 0){
+		$old_vip_id = $mig_level_id("type=0 AND name='高级用户（旧）'");
+		if(!$old_vip_id){
+			//原来「有效高级用户」那一档的下载速度，换算成 KB/s，没填就是不限速
+			$vip_speed = floatval(update_conf($db, 'down_speed_vip'));
+			if($vip_speed > 0 && strtoupper(trim(update_conf($db, 'down_speed_vip_unit'))) === 'MB')$vip_speed *= 1024;
+			$vip_speed = $vip_speed > 0 ? max(1, intval(round($vip_speed))) : 0;
+			if($mig_run("INSERT INTO pre_level (name,type,sort,upload_limit,upload_size,down_speed,online_edit,folder,api,storage_all,no_review,remark,addtime)"
+				." VALUES ('高级用户（旧）',0,50,0,-1,?,?,?,1,1,1,'升级前的高级用户，权益和原来一样',NOW())", [$vip_speed, $user_edit, $user_folder])){
+				$old_vip_id = intval($db->lastInsertId());
+			}
+		}
+		if($old_vip_id){
+			$mig_run("UPDATE pre_user SET level_id=?, level=0 WHERE level>0 AND level_id=0", [$old_vip_id]);
+		}
+	}
+	$mig_run("UPDATE pre_user SET bonus_expire=expiretime WHERE bonus_limit>0 AND bonus_expire IS NULL AND expiretime IS NOT NULL");
+	$mig_run("UPDATE pre_plan SET enable=0 WHERE level_id=0 AND limit_mode<>'add'"
+		." AND NOT (online_edit=1 AND upload_limit<0 AND upload_size<0 AND down_speed<0)");
+	if($mig_err){
+		echo '<div style="font:13px/1.7 system-ui;margin:0 24px;padding:14px;border:1px solid #f0c2c2;background:#fff5f5;border-radius:8px;color:#a33">'
+			.'<b>升级没有完成：</b>表结构已经升好，但把原有权限迁移到会员等级时出错：<br>'.implode('<br>', $mig_err)
+			.'<br>请把错误信息连同数据库版本一起反馈，处理后重新打开本页再升级一次。</div>';
+		echo '<p style="font:14px/1.7 system-ui;padding:16px 24px"><a href="../">返回首页</a></p>';
+		exit;
+	}
+	$db->exec("REPLACE INTO `pre_config` VALUES ('level_migrated', '1')");
+	$uptodate = false;
 }
 $done_msg =$uptodate ?'数据库结构已是最新，表结构校验通过！' : '网站数据库升级完成！';
 exit("<script language='javascript'>alert('".$done_msg."');window.location.href=".json_encode($update_back).";</script>");

@@ -80,13 +80,13 @@ $status_text = [0=>'<span class="label label-warning">待支付</span>', 1=>'<sp
       <td><?php echo htmlspecialchars($o['plan_name'], ENT_QUOTES, 'UTF-8')?></td>
       <td>¥<?php echo htmlspecialchars(number_format(floatval($o['price']), 2, '.', ''))?></td>
       <td><small><?php echo htmlspecialchars(pay_method_name(isset($o['pay_type']) ? $o['pay_type'] : ''))?></small></td>
-      <td><small>每日 <?php echo htmlspecialchars(plan_limit_display($o))?><br/>单文件 <?php echo htmlspecialchars(plan_limit_text($o['upload_size'], 'MB'))?><?php if(isset($o['down_speed']) && intval($o['down_speed']) >= 0){?><br/>下载 <?php echo htmlspecialchars(plan_speed_text($o['down_speed']))?><?php }?><?php if(plan_has_online_edit($o)){?><br/>在线编辑<?php }?><br/><?php echo htmlspecialchars(plan_days_text($o['days']))?></small></td>
+      <td><small><?php echo implode('<br/>', array_map('htmlspecialchars', order_grant_lines($o)))?></small></td>
       <td><?php echo isset($status_text[intval($o['status'])]) ? $status_text[intval($o['status'])] : ''?></td>
       <td><small><?php echo htmlspecialchars($o['addtime'])?></small></td>
       <td><small><?php echo htmlspecialchars($o['paytime'] ? $o['paytime'] : '-')?></small></td>
       <td>
 <?php if(intval($o['status']) === 1){?>
-        <form method="post" style="display:inline" onsubmit="return confirm('会按该订单的套餐重新发放一次权限，增加型套餐会再叠加一次数量，确定吗？')">
+        <form method="post" style="display:inline" onsubmit="return confirm('会按该订单重新发放一次：等级套餐会再续一次天数，加量包会再叠加一次数量，确定吗？')">
           <input type="hidden" name="do" value="regrant"/><input type="hidden" name="id" value="<?php echo intval($o['id'])?>"/>
           <button type="submit" class="btn btn-xs btn-default">补发权限</button>
         </form>

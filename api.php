@@ -64,9 +64,11 @@ if($api_token !== ''){
 }elseif($api_mode !== 'public'){
 	showresult(['code'=>-5, 'msg'=>'请在 Authorization 请求头中提供用户 API 密钥', 'error'=>'auth']);
 }
-if($api_mode === 'vip' && (empty($islogin2) || intval($userrow['level']) <= 0 || !is_user_permission_active())){
-	showresult(['code'=>-5, 'msg'=>'当前接口只允许有效高级用户调用', 'error'=>'permission']);
+//谁能用上传 API 看会员等级：带密钥的看密钥所属用户的等级，不带密钥的看游客等级
+if(!level_can('api')){
+	showresult(['code'=>-5, 'msg'=>'当前账号的会员等级不能使用上传接口', 'error'=>'permission']);
 }
+level_apply_upload_exemptions();
 
 if(!empty($conf['api_referer'])){
 	//配置了白名单就必须能取到合法的来源域名，取不到一律拒绝，不能放行

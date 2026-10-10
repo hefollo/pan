@@ -166,17 +166,17 @@ if(in_array($site_theme, $layout_themes, true)){
           <div class="layout-side-row"><strong>我的权限</strong><span class="layout-side-tag layout-side-tag-<?php echo $side_state_cls?>"><?php echo $side_state?></span></div>
           <div class="layout-side-kv"><span>每日上传</span><b><?php echo $side_limit > 0 ? $side_limit.' 个' : '不限制'?></b></div>
           <div class="layout-side-kv"><span>单文件</span><b><?php echo $side_size > 0 ? $side_size.' MB' : '不限制'?></b></div>
-          <?php if(!empty($userrow['bonus_limit']) && $side_limit > 0){?>
-          <div class="layout-side-kv"><span>其中加量包</span><b>+<?php echo intval($userrow['bonus_limit'])?> 个/天</b></div>
+          <?php if(function_exists('user_bonus_limit') && user_bonus_limit($userrow) > 0 && $side_limit > 0){?>
+          <div class="layout-side-kv"><span>其中加量包</span><b>+<?php echo user_bonus_limit($userrow)?> 个/天</b></div>
           <?php }?>
           <?php if(!empty($side_expire)){?>
           <div class="layout-side-kv"><span>到期时间</span><b><?php echo htmlspecialchars(date('Y-m-d', strtotime($side_expire)))?></b></div>
           <?php }?>
           <?php if($side_plan && $side_plan['bought']){?>
-          <div class="layout-side-kv"><span>已购套餐</span><b title="<?php echo htmlspecialchars($side_plan['plan_name'], ENT_QUOTES, 'UTF-8')?>"><?php echo htmlspecialchars($side_plan['plan_name'], ENT_QUOTES, 'UTF-8')?></b></div>
+          <div class="layout-side-kv"><span>会员等级</span><b title="<?php echo htmlspecialchars($side_plan['plan_name'], ENT_QUOTES, 'UTF-8')?>"><?php echo htmlspecialchars($side_plan['plan_name'], ENT_QUOTES, 'UTF-8')?></b></div>
           <?php }?>
           <?php if(function_exists('is_buy_open') && is_buy_open()){?>
-          <a class="layout-side-buy" href="./buy.php"><?php echo ($side_plan && $side_plan['bought']) ? '续费 / 升级权限' : '购买权限'?> <i class="fa fa-angle-right" aria-hidden="true"></i></a>
+          <a class="layout-side-buy" href="./buy.php"><?php echo ($side_plan && $side_plan['bought']) ? '续费 / 升级会员' : '购买会员'?> <i class="fa fa-angle-right" aria-hidden="true"></i></a>
           <?php }?>
         </div>
         <?php }?>

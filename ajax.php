@@ -101,11 +101,8 @@ function upload_debug_finish($debug){
 	];
 }
 
-if($islogin2 && $userrow['level']>0 && is_user_permission_active()){
-	$conf['videoreview']=0;
-	$conf['type_block']=null;
-	$conf['name_block']=null;
-}
+//等级带「上传免审核」的不做人工审核、不受禁止类型限制；管理员另外不做内容检测、不限频率
+level_apply_upload_exemptions();
 
 switch($act){
 //上传页可能已经开了很久，同一浏览器的其它页面会把会话里的 token 刷掉，

@@ -476,9 +476,10 @@ function getSetting($k){
 /* ===== 用户上传 API 密钥 ===== */
 
 function api_auth_mode(){
-	global $conf;
-	$mode = isset($conf['api_auth_mode']) ? (string)$conf['api_auth_mode'] : 'user';
-	return in_array($mode, ['public', 'user', 'vip'], true) ? $mode : 'user';
+	//原来有 public / user / vip 三种访问模式，现在谁能用上传 API 由会员等级决定：
+	//游客等级带「上传 API」就等于允许匿名上传。这里只为还在读它的地方保留一个等价的返回值
+	$guest = level_builtin(1);
+	return intval($guest['api']) === 1 ? 'public' : 'user';
 }
 
 function api_key_limit(){
@@ -1126,10 +1127,14 @@ function is_pay_method($method){
 }
 
 function is_buy_open(){
-	global $conf, $DB;
-	if(empty($conf['userlogin']))return false;
-	if(!pay_methods())return false;
-	return intval($DB->getColumn("SELECT count(*) FROM pre_plan WHERE enable=1")) > 0;
+	global $conf;
+	static $open = null;
+	if($open !== null)return $open;
+	$open = false;
+	if(empty($conf['userlogin']) || !pay_methods())return $open;
+	//要有真正能卖的套餐才算开着：旧版套餐已经停售，不算数
+	$open = count(plan_list_for_sale()) > 0;
+	return $open;
 }
 
 function alipay_client(){
@@ -1179,41 +1184,94 @@ function pay_method_name($method){
 }
 
 /*
- * 内置的推荐套餐。后台「一键导入推荐套餐」用的就是这份，价格和额度都可以导入后再改。
- * 覆盖了三种典型玩法：按时长的包月卡、在现有额度上叠加的加量包、一次买断的永久会员。
+ * 内置的推荐会员等级（六个付费等级，从低到高）。后台「一键导入推荐等级和套餐」用的就是这份，导入后随便改。
+ * 数值含义同 pre_level：每日数量 / 单文件大小（MB）/ 下载速度（KB/s）里 -1 是跟随站点设置、0 是不限。
+ */
+function default_levels(){
+	return [
+		['name'=>'入门会员', 'sort'=>100, 'upload_limit'=>50, 'upload_size'=>200, 'down_speed'=>-1, 'online_edit'=>0, 'folder'=>1, 'api'=>0, 'storage_all'=>0, 'no_review'=>0, 'remark'=>'轻度使用'],
+		['name'=>'基础会员', 'sort'=>200, 'upload_limit'=>100, 'upload_size'=>500, 'down_speed'=>-1, 'online_edit'=>0, 'folder'=>1, 'api'=>0, 'storage_all'=>0, 'no_review'=>0, 'remark'=>'额度翻倍'],
+		['name'=>'标准会员', 'sort'=>300, 'upload_limit'=>300, 'upload_size'=>1024, 'down_speed'=>-1, 'online_edit'=>1, 'folder'=>1, 'api'=>0, 'storage_all'=>0, 'no_review'=>0, 'remark'=>'日常够用，带在线编辑'],
+		['name'=>'进阶会员', 'sort'=>400, 'upload_limit'=>600, 'upload_size'=>2048, 'down_speed'=>0, 'online_edit'=>1, 'folder'=>1, 'api'=>1, 'storage_all'=>0, 'no_review'=>0, 'remark'=>'下载不限速，可用上传 API'],
+		['name'=>'尊享会员', 'sort'=>500, 'upload_limit'=>1500, 'upload_size'=>5120, 'down_speed'=>0, 'online_edit'=>1, 'folder'=>1, 'api'=>1, 'storage_all'=>1, 'no_review'=>0, 'remark'=>'可用全部存储'],
+		['name'=>'旗舰会员', 'sort'=>600, 'upload_limit'=>0, 'upload_size'=>0, 'down_speed'=>0, 'online_edit'=>1, 'folder'=>1, 'api'=>1, 'storage_all'=>1, 'no_review'=>0, 'remark'=>'数量和大小都不限'],
+	];
+}
+
+/*
+ * 内置的推荐套餐：六个等级各有月卡、季卡、年卡、永久四个，另有加量包和在线编辑包两类附加包。
+ * 等级套餐用 level 记等级名，导入时换成等级编号（见 seed_default_levels_and_plans）。
  */
 function default_plans(){
-	return [
-		['name'=>'体验周卡', 'category'=>'包月套餐', 'price'=>'1.00', 'upload_limit'=>50, 'limit_mode'=>'set', 'upload_size'=>100, 'days'=>7, 'remark'=>'先试试水，随时可续', 'sort'=>10],
-		['name'=>'入门月卡', 'category'=>'包月套餐', 'price'=>'4.90', 'upload_limit'=>100, 'limit_mode'=>'set', 'upload_size'=>300, 'days'=>30, 'remark'=>'轻度使用，一个月够了', 'sort'=>11],
-		['name'=>'标准月卡', 'category'=>'包月套餐', 'price'=>'9.90', 'upload_limit'=>200, 'limit_mode'=>'set', 'upload_size'=>500, 'days'=>30, 'remark'=>'日常够用，最受欢迎', 'sort'=>12],
-		['name'=>'超值季卡', 'category'=>'包月套餐', 'price'=>'25.00', 'upload_limit'=>500, 'limit_mode'=>'set', 'upload_size'=>1024, 'days'=>90, 'remark'=>'三个月，折合每月更便宜', 'sort'=>13],
-		['name'=>'半年卡', 'category'=>'包月套餐', 'price'=>'48.00', 'upload_limit'=>800, 'limit_mode'=>'set', 'upload_size'=>1536, 'days'=>180, 'remark'=>'半年长期，额度翻倍', 'sort'=>14],
-		['name'=>'至尊年卡', 'category'=>'包月套餐', 'price'=>'88.00', 'upload_limit'=>0, 'limit_mode'=>'set', 'upload_size'=>2048, 'days'=>365, 'remark'=>'整年不限数量，省心', 'sort'=>15],
-		['name'=>'加量包 +50', 'category'=>'加量包', 'price'=>'3.00', 'upload_limit'=>50, 'limit_mode'=>'add', 'upload_size'=>-1, 'days'=>30, 'remark'=>'30 天内每天多传 50 个', 'sort'=>20],
-		['name'=>'加量包 +100', 'category'=>'加量包', 'price'=>'5.00', 'upload_limit'=>100, 'limit_mode'=>'add', 'upload_size'=>-1, 'days'=>30, 'remark'=>'30 天内每天多传 100 个', 'sort'=>21],
-		['name'=>'加量包 +200', 'category'=>'加量包', 'price'=>'8.00', 'upload_limit'=>200, 'limit_mode'=>'add', 'upload_size'=>-1, 'days'=>30, 'remark'=>'30 天内每天多传 200 个', 'sort'=>22],
-		['name'=>'加量包 +500', 'category'=>'加量包', 'price'=>'18.00', 'upload_limit'=>500, 'limit_mode'=>'add', 'upload_size'=>-1, 'days'=>30, 'remark'=>'30 天内每天多传 500 个', 'sort'=>23],
-		['name'=>'加量包 +1000', 'category'=>'加量包', 'price'=>'30.00', 'upload_limit'=>1000, 'limit_mode'=>'add', 'upload_size'=>-1, 'days'=>30, 'remark'=>'30 天内每天多传 1000 个', 'sort'=>24],
-		['name'=>'加量包 +2000', 'category'=>'加量包', 'price'=>'50.00', 'upload_limit'=>2000, 'limit_mode'=>'add', 'upload_size'=>-1, 'days'=>30, 'remark'=>'30 天内每天多传 2000 个，量大更划算', 'sort'=>25],
-		['name'=>'大文件包 512MB', 'category'=>'单文件加强', 'price'=>'2.00', 'upload_limit'=>-1, 'limit_mode'=>'set', 'upload_size'=>512, 'days'=>30, 'remark'=>'单文件上限提到 512MB，不动每日数量', 'sort'=>30],
-		['name'=>'大文件包 1GB', 'category'=>'单文件加强', 'price'=>'3.00', 'upload_limit'=>-1, 'limit_mode'=>'set', 'upload_size'=>1024, 'days'=>30, 'remark'=>'单文件上限提到 1GB，不动每日数量', 'sort'=>31],
-		['name'=>'大文件包 2GB', 'category'=>'单文件加强', 'price'=>'5.00', 'upload_limit'=>-1, 'limit_mode'=>'set', 'upload_size'=>2048, 'days'=>30, 'remark'=>'单文件上限提到 2GB，不动每日数量', 'sort'=>32],
-		['name'=>'大文件包 5GB', 'category'=>'单文件加强', 'price'=>'12.00', 'upload_limit'=>-1, 'limit_mode'=>'set', 'upload_size'=>5120, 'days'=>30, 'remark'=>'单文件上限提到 5GB，不动每日数量', 'sort'=>33],
-		['name'=>'大文件包 10GB', 'category'=>'单文件加强', 'price'=>'20.00', 'upload_limit'=>-1, 'limit_mode'=>'set', 'upload_size'=>10240, 'days'=>30, 'remark'=>'单文件上限提到 10GB，不动每日数量', 'sort'=>34],
-		['name'=>'大文件包 20GB', 'category'=>'单文件加强', 'price'=>'35.00', 'upload_limit'=>-1, 'limit_mode'=>'set', 'upload_size'=>20480, 'days'=>30, 'remark'=>'单文件上限提到 20GB，适合视频素材', 'sort'=>35],
-		['name'=>'永久入门版', 'category'=>'永久会员', 'price'=>'68.00', 'upload_limit'=>100, 'limit_mode'=>'set', 'upload_size'=>1024, 'days'=>0, 'remark'=>'一次买断，每天 100 个', 'sort'=>40],
-		['name'=>'永久基础版', 'category'=>'永久会员', 'price'=>'98.00', 'upload_limit'=>300, 'limit_mode'=>'set', 'upload_size'=>2048, 'days'=>0, 'remark'=>'一次买断，每天 300 个', 'sort'=>41],
-		['name'=>'永久标准版', 'category'=>'永久会员', 'price'=>'138.00', 'upload_limit'=>600, 'limit_mode'=>'set', 'upload_size'=>3072, 'days'=>0, 'remark'=>'一次买断，每天 600 个', 'sort'=>42],
-		['name'=>'永久会员', 'category'=>'永久会员', 'price'=>'198.00', 'upload_limit'=>0, 'limit_mode'=>'set', 'upload_size'=>5120, 'days'=>0, 'remark'=>'一次买断，不限每日数量', 'sort'=>43],
-		['name'=>'永久尊享版', 'category'=>'永久会员', 'price'=>'298.00', 'upload_limit'=>0, 'limit_mode'=>'set', 'upload_size'=>10240, 'days'=>0, 'remark'=>'不限数量，单文件 10GB', 'sort'=>44],
-		['name'=>'永久旗舰版', 'category'=>'永久会员', 'price'=>'498.00', 'upload_limit'=>0, 'limit_mode'=>'set', 'upload_size'=>0, 'days'=>0, 'remark'=>'数量和大小都不限，一步到位', 'sort'=>45],
-		//纯在线编辑套餐：三项上传权限都填 -1，只开通在线编辑，有效期单独算（见 plan_is_edit_only）
-		['name'=>'在线编辑月卡', 'category'=>'在线编辑', 'price'=>'3.00', 'upload_limit'=>-1, 'limit_mode'=>'set', 'upload_size'=>-1, 'online_edit'=>1, 'days'=>30, 'remark'=>'文本、代码文件直接在网页里改', 'sort'=>50],
-		['name'=>'在线编辑季卡', 'category'=>'在线编辑', 'price'=>'8.00', 'upload_limit'=>-1, 'limit_mode'=>'set', 'upload_size'=>-1, 'online_edit'=>1, 'days'=>90, 'remark'=>'三个月，折合每月更便宜', 'sort'=>51],
-		['name'=>'在线编辑年卡', 'category'=>'在线编辑', 'price'=>'25.00', 'upload_limit'=>-1, 'limit_mode'=>'set', 'upload_size'=>-1, 'online_edit'=>1, 'days'=>365, 'remark'=>'整年可用，经常改文件选它', 'sort'=>52],
-		['name'=>'在线编辑永久', 'category'=>'在线编辑', 'price'=>'48.00', 'upload_limit'=>-1, 'limit_mode'=>'set', 'upload_size'=>-1, 'online_edit'=>1, 'days'=>0, 'remark'=>'一次买断，永久可用', 'sort'=>53],
+	$plans = [];
+	$prices = [
+		'入门会员' => ['2.90', '7.90', '28.00', '68.00'],
+		'基础会员' => ['4.90', '12.90', '45.00', '98.00'],
+		'标准会员' => ['9.90', '25.00', '88.00', '198.00'],
+		'进阶会员' => ['14.90', '39.00', '128.00', '298.00'],
+		'尊享会员' => ['19.90', '49.00', '168.00', '398.00'],
+		'旗舰会员' => ['29.90', '79.00', '258.00', '598.00'],
 	];
+	$terms = [['月卡', 30, ''], ['季卡', 90, '三个月，折合每月更便宜'], ['年卡', 365, '整年省心，折合每月最便宜'], ['永久', 0, '一次买断，不再到期']];
+	$n = 0;
+	foreach($prices as $level => $list){
+		$n++;
+		foreach($terms as $k => $term){
+			$plans[] = ['name'=>$level.$term[0], 'category'=>$level, 'price'=>$list[$k], 'level'=>$level, 'upload_limit'=>-1, 'limit_mode'=>'set', 'upload_size'=>-1, 'days'=>$term[1], 'remark'=>$term[2], 'sort'=>$n * 10 + $k];
+		}
+	}
+	//加量包：每天多传 N 个，叠加在当前等级的每日数量上，有自己的到期时间
+	foreach([[50, '3.00'], [100, '5.00'], [200, '8.00'], [500, '18.00'], [1000, '30.00'], [2000, '50.00']] as $k => $pack){
+		$plans[] = ['name'=>'加量包 +'.$pack[0], 'category'=>'加量包', 'price'=>$pack[1], 'upload_limit'=>$pack[0], 'limit_mode'=>'add', 'upload_size'=>-1, 'days'=>30, 'remark'=>'30 天内每天多传 '.$pack[0].' 个', 'sort'=>100 + $k];
+	}
+	//在线编辑包：给等级不带在线编辑的用户单独开通，有效期单独算
+	foreach([['月卡', 30, '3.00', '文本、代码文件直接在网页里改'], ['季卡', 90, '8.00', '三个月，折合每月更便宜'], ['年卡', 365, '25.00', '整年可用，经常改文件选它'], ['永久', 0, '48.00', '一次买断，永久可用']] as $k => $pack){
+		$plans[] = ['name'=>'在线编辑'.$pack[0], 'category'=>'在线编辑', 'price'=>$pack[2], 'upload_limit'=>-1, 'limit_mode'=>'set', 'upload_size'=>-1, 'online_edit'=>1, 'days'=>$pack[1], 'remark'=>$pack[3], 'sort'=>110 + $k];
+	}
+	return $plans;
+}
+
+/*
+ * 一键导入推荐的会员等级和套餐（后台用）。同名的等级跳过；套餐只要已经有同名并且还能卖的就跳过，
+ * 不会覆盖站长改过的东西。返回 [新增等级数, 新增套餐数]。
+ * 写库的值一律转成字符串：DB->insert 把 == '' 的值写成 NULL，整数 0 在老版本 PHP 上也会中。
+ */
+function seed_default_levels_and_plans(){
+	global $DB;
+	$ids = [];
+	foreach(level_all(true) as $level)$ids[$level['name']] = intval($level['id']);
+	$added_levels = 0;
+	foreach(default_levels() as $d){
+		if(isset($ids[$d['name']]))continue;
+		$row = array_map('strval', $d);
+		$row['type'] = '0';
+		$row['addtime'] = 'NOW()';
+		$id = $DB->insert('level', $row);
+		if($id){
+			$ids[$d['name']] = intval($id);
+			$added_levels++;
+		}
+	}
+	level_all(true);
+	$exists = [];
+	foreach(plan_list(false) as $p){
+		if(plan_kind($p) !== 'legacy')$exists[$p['name']] = true;
+	}
+	$added_plans = 0;
+	foreach(default_plans() as $d){
+		if(isset($exists[$d['name']]))continue;
+		if(isset($d['level'])){
+			if(!isset($ids[$d['level']]))continue;
+			$d['level_id'] = $ids[$d['level']];
+			unset($d['level']);
+		}
+		$row = array_map('strval', $d);
+		if($row['remark'] === '')unset($row['remark']);
+		$row['enable'] = '1';
+		$row['addtime'] = 'NOW()';
+		if($DB->insert('plan', $row))$added_plans++;
+	}
+	return [$added_levels, $added_plans];
 }
 
 /*
@@ -1252,48 +1310,6 @@ function limit_number_text($value, $unit){
 }
 
 /*
- * 买完之后每天能传多少：
- *   套餐填 -1（跟随全站） -> 换成全站设置的数量
- *   增加型套餐           -> 用户当前生效的数量再加上套餐的数量
- * 未登录时按全站设置估算，登录后卡片上就是这个用户真实会得到的数字
- */
-function plan_result_limit_text($plan){
-	global $conf, $islogin2, $userrow;
-	$mode = isset($plan['limit_mode']) ? $plan['limit_mode'] : 'set';
-	$value = intval($plan['upload_limit']);
-	$site = isset($conf['upload_limit']) ? intval($conf['upload_limit']) : 0;
-
-	if($mode === 'add'){
-		$text = '+'.max(0, $value).' 个/天';
-		$base = $islogin2 ? get_effective_upload_count_limit() : $site;
-		//基础额度本身就是不限的话，加多少都没意义，这里不写“买后多少”，
-		//卡片下面的提示会直接说“已经覆盖，买了不会有提升”
-		if($base > 0)$text .= '（买后 '.($base + max(0, $value)).' 个/天）';
-		return $text;
-	}
-
-	//套餐不改动每日数量，就写“不变”，不能把用户自己现有的额度写成套餐的卖点
-	if($value < 0)return '不变';
-
-	$result = $value;
-	if($result > 0 && $islogin2 && is_user_permission_active() && !empty($userrow['bonus_limit'])){
-		//买时长套餐时，已经买到手的加量额度会继续保留
-		$result += max(0, intval($userrow['bonus_limit']));
-	}
-	return limit_number_text($result, '个/天');
-}
-
-/*
- * 买完之后单文件能传多大，-1 同样换算成全站设置的值
- */
-function plan_result_size_text($plan){
-	$value = intval($plan['upload_size']);
-	//同样：套餐不动这一项就写“不变”
-	if($value < 0)return '不变';
-	return limit_number_text($value, 'MB');
-}
-
-/*
  * 下载速度文案。速度一律按 KB/s 存，0 是不限速，满 1 MB/s 的换成 MB/s 显示
  */
 function speed_text($kbps){
@@ -1312,15 +1328,6 @@ function speed_text($kbps){
 function plan_speed_text($value){
 	$value = intval($value);
 	if($value < 0)return '不改动';
-	return speed_text($value);
-}
-
-/*
- * 购买页卡片：买完之后的下载速度，套餐不动这一项就写“不变”（和单文件大小一个口径）
- */
-function plan_result_speed_text($plan){
-	$value = isset($plan['down_speed']) ? intval($plan['down_speed']) : -1;
-	if($value < 0)return '不变';
 	return speed_text($value);
 }
 
@@ -1369,125 +1376,417 @@ function plan_is_edit_only($plan){
 }
 
 /*
- * 购买页上实际在卖的套餐。在线编辑没设成付费（所有人 / 登录用户都能用）时，
- * 纯在线编辑套餐买了没有任何作用，不拿出来卖
+ * 套餐（或订单快照）属于哪一类：
+ *   level   卖会员等级（新开、续费、买永久）
+ *   upgrade 补差价升级到更高等级，到期时间不变（只出现在订单上，没有对应的套餐）
+ *   bonus   加量包：每天多传 N 个，有自己的到期时间
+ *   edit    在线编辑包
+ *   legacy  改成会员等级之前按数值发放的旧套餐（时长卡、大文件包、永久卡），已经停售
+ */
+function plan_kind($plan){
+	if(isset($plan['kind']) && in_array($plan['kind'], ['level', 'upgrade', 'bonus', 'edit'], true))return $plan['kind'];
+	if(isset($plan['level_id']) && intval($plan['level_id']) > 0)return 'level';
+	if((isset($plan['limit_mode']) ? $plan['limit_mode'] : 'set') === 'add')return 'bonus';
+	if(plan_is_edit_only($plan))return 'edit';
+	return 'legacy';
+}
+
+function plan_kind_name($kind){
+	$names = ['level'=>'会员等级', 'upgrade'=>'补差价升级', 'bonus'=>'加量包', 'edit'=>'在线编辑包', 'legacy'=>'旧版套餐（已停售）'];
+	return isset($names[$kind]) ? $names[$kind] : $kind;
+}
+
+/*
+ * 一笔订单买的是什么，分几行说清楚，后台订单列表用。返回纯文本数组，输出时自己转义。
+ */
+function order_grant_lines($order){
+	$kind = plan_kind($order);
+	$days = plan_days_text($order['days']);
+	if($kind === 'level' || $kind === 'upgrade'){
+		$level = level_get(isset($order['level_id']) ? $order['level_id'] : 0);
+		$name = $level ? $level['name'] : '等级 #'.intval($order['level_id']).'（已删除）';
+		return $kind === 'upgrade' ? ['补差价升级到 '.$name, '到期时间不变'] : ['会员等级：'.$name, $days];
+	}
+	if($kind === 'bonus')return ['加量 +'.max(0, intval($order['upload_limit'])).' 个/天', $days];
+	if($kind === 'edit')return ['在线编辑', $days];
+	$lines = ['旧版套餐', '每日 '.plan_limit_display($order), '单文件 '.plan_limit_text($order['upload_size'], 'MB')];
+	if(isset($order['down_speed']) && intval($order['down_speed']) >= 0)$lines[] = '下载 '.plan_speed_text($order['down_speed']);
+	if(plan_has_online_edit($order))$lines[] = '在线编辑';
+	$lines[] = $days;
+	return $lines;
+}
+
+/*
+ * 购买页上实际在卖的套餐：上架的、不是旧版的；等级套餐对应的等级必须还在；
+ * 普通用户本来就能用在线编辑时，在线编辑包买了没有任何作用，不拿出来卖。
+ * 顺序：等级套餐在前、按等级从低到高，附加包在后；同一组里再按套餐自己的排序。
+ * 不这样排的话，老站点原有的加量包（排序值是以前定的）会插到几个等级中间去。
  */
 function plan_list_for_sale(){
-	$plans = plan_list(true);
-	if(online_edit_is_paid_mode())return $plans;
+	static $list = null;
+	if($list !== null)return $list;
 	$list = [];
-	foreach($plans as $plan){
-		if(!plan_is_edit_only($plan))$list[] = $plan;
+	$edit_sale = online_edit_is_paid_mode();
+	foreach(plan_list(true) as $plan){
+		$kind = plan_kind($plan);
+		if($kind === 'legacy')continue;
+		if($kind === 'edit' && !$edit_sale)continue;
+		$level = $kind === 'level' ? level_get($plan['level_id']) : null;
+		if($kind === 'level' && !level_is_custom($level))continue;
+		//排序用的键只在这里用，不写回数据库
+		$plan['_group'] = $kind === 'level' ? 0 : 1;
+		$plan['_level_sort'] = $level ? intval($level['sort']) : 0;
+		$list[] = $plan;
+	}
+	//plan_list() 已经按 sort、价格、id 排过，这里只把等级套餐提到前面并按等级高低排；键相同的保持原来的先后
+	foreach($list as $i => $plan)$list[$i]['_pos'] = $i;
+	usort($list, function($a, $b){
+		if($a['_group'] !== $b['_group'])return $a['_group'] - $b['_group'];
+		if($a['_level_sort'] !== $b['_level_sort'])return $a['_level_sort'] - $b['_level_sort'];
+		return $a['_pos'] - $b['_pos'];
+	});
+	return $list;
+}
+
+//单文件大小的写法：0 不限，整 GB 的写成 GB
+function size_mb_text($mb){
+	$mb = intval($mb);
+	if($mb <= 0)return '不限';
+	if($mb >= 1024 && $mb % 1024 === 0)return ($mb / 1024).' GB';
+	return $mb.' MB';
+}
+
+/*
+ * 一个等级的权益清单，购买页卡片和个人中心共用。数值填「跟随站点设置」的换成站点现在的实际值；
+ * 站点没开的功能（文件夹、上传 API、多存储）不写，免得卖一个用不了的东西。
+ */
+function level_features($level){
+	global $conf;
+	$list = [];
+	$limit = intval($level['upload_limit']);
+	if($limit < 0)$limit = isset($conf['upload_limit']) ? intval($conf['upload_limit']) : 0;
+	$list[] = '每日上传 '.($limit === 0 ? '不限' : $limit.' 个');
+	$size = intval($level['upload_size']);
+	if($size < 0)$size = isset($conf['upload_size']) ? intval($conf['upload_size']) : 0;
+	$list[] = '单文件 '.size_mb_text($size);
+	$speed = intval($level['down_speed']);
+	if($speed < 0)$speed = download_tier_speed_kbps(intval($level['type']) === 1 ? 0 : 1);
+	$list[] = '下载 '.speed_text($speed);
+	if(intval($level['online_edit']) === 1)$list[] = '在线编辑文本、代码文件';
+	if(intval($level['folder']) === 1 && !empty($conf['folder_open']))$list[] = '用户文件夹';
+	if(intval($level['api']) === 1 && !empty($conf['api_open']))$list[] = '上传 API';
+	if(intval($level['storage_all']) === 1 && storage_multi_open())$list[] = '可用全部存储';
+	return $list;
+}
+
+//用户当前等级的说明：「标准会员（2026-11-09 12:00:00 到期）」「旗舰会员（永久）」「普通用户」
+function user_level_text($user){
+	$level = user_level($user);
+	if(!level_is_custom($level) && !level_is_admin($level))return $level['name'];
+	return $level['name'].(empty($user['expiretime']) ? '（永久）' : '（'.$user['expiretime'].' 到期）');
+}
+
+/*
+ * 补差价用的「日价」：这个等级在售的限时套餐里，天数最短那个的 价格 ÷ 天数（同天数取便宜的）。
+ * 所有人升级都按它算，买年卡的不会因为年卡日均便宜而多补钱。没有在售的限时套餐时返回 null。
+ */
+function level_day_price($level_id){
+	$best = null;
+	foreach(plan_list_for_sale() as $p){
+		if(plan_kind($p) !== 'level' || intval($p['level_id']) !== intval($level_id) || intval($p['days']) <= 0)continue;
+		if($best === null || intval($p['days']) < intval($best['days'])
+			|| (intval($p['days']) === intval($best['days']) && floatval($p['price']) < floatval($best['price'])))$best = $p;
+	}
+	return $best ? floatval($best['price']) / intval($best['days']) : null;
+}
+
+//这个等级在售的永久套餐的价格（有多个取最便宜的），没有返回 null
+function level_forever_price($level_id){
+	$best = null;
+	foreach(plan_list_for_sale() as $p){
+		if(plan_kind($p) !== 'level' || intval($p['level_id']) !== intval($level_id) || intval($p['days']) > 0)continue;
+		if($best === null || floatval($p['price']) < $best)$best = floatval($p['price']);
+	}
+	return $best;
+}
+
+/*
+ * 用户「现在这个等级」值多少钱，升级时拿来抵扣：限时的按日价，永久的按永久套餐价。
+ * 这个等级已经没有对应的在售套餐时（站长下架了、或者是升级前迁过来的旧等级），
+ * 退一步用他自己最近一笔买这个等级的订单来算；再没有就按 0，不抵扣。
+ */
+function user_level_worth($user, $level, $forever){
+	global $DB;
+	$value = $forever ? level_forever_price($level['id']) : level_day_price($level['id']);
+	if($value !== null)return $value;
+	$row = $DB->getRow("SELECT price, days FROM pre_order WHERE uid=:uid AND status=1 AND kind='level' AND level_id=:lid AND days".($forever ? '=0' : '>0')." ORDER BY id DESC LIMIT 1",
+		[':uid'=>intval($user['uid']), ':lid'=>intval($level['id'])]);
+	if(!$row)return 0;
+	return $forever ? floatval($row['price']) : floatval($row['price']) / max(1, intval($row['days']));
+}
+
+//会员还剩多少天（带小数），永久或已过期返回 0
+function user_level_days_left($user){
+	if(empty($user['expiretime']))return 0;
+	return max(0, (strtotime($user['expiretime']) - time()) / 86400);
+}
+
+//实付金额：四舍五入到分，最少收 1 分钱（支付渠道不收 0 元的单）
+function pay_amount($value){
+	return max(0.01, round(floatval($value), 2));
+}
+
+/*
+ * 这个用户现在买这个套餐：能不能买、实付多少。购买页的显示和下单接口都用它，金额只在这里算。
+ * 返回 ['ok'=>能不能买, 'msg'=>不能买的原因, 'kind'=>套餐类型, 'price'=>实付, 'origin'=>标价, 'note'=>要让用户知道的说明]
+ *
+ * 等级套餐的规则（DEC-20261010-002）：
+ *   - 没有会员等级的：按标价买；
+ *   - 同一个等级：续费，天数叠加；买永久的话，剩下没用完的天数按日价折抵；
+ *   - 更高的等级：限时会员要先补差价升级（见 level_upgrade_quote），不能直接买它的限时套餐；
+ *     买它的永久套餐时，限时会员折抵「当前等级日价 × 剩余天数」，永久会员折抵当前等级的永久套餐价；
+ *   - 更低的等级：不让买；管理员等级不需要买。
+ */
+function plan_quote($user, $plan){
+	$kind = plan_kind($plan);
+	$origin = round(floatval($plan['price']), 2);
+	$res = ['ok'=>false, 'msg'=>'', 'kind'=>$kind, 'price'=>$origin, 'origin'=>$origin, 'note'=>''];
+	$current = user_level($user);
+	if($kind === 'legacy'){
+		$res['msg'] = '这个套餐已经停售';
+		return $res;
+	}
+	if(level_is_admin($current)){
+		$res['msg'] = '你是管理员等级，不受任何限制，不需要购买';
+		return $res;
+	}
+	if($kind === 'edit'){
+		if(intval($current['online_edit']) === 1){
+			$res['msg'] = '你的会员等级已经自带在线编辑';
+		}elseif(user_online_edit_forever($user)){
+			$res['msg'] = '你已经永久开通在线编辑';
+		}else{
+			$res['ok'] = true;
+		}
+		return $res;
+	}
+	if($kind === 'bonus'){
+		global $conf;
+		$active = empty($user['expiretime']) || strtotime($user['expiretime']) > time();
+		$base = ($active && intval($user['upload_limit']) >= 0) ? intval($user['upload_limit']) : intval($current['upload_limit']);
+		if($base < 0)$base = isset($conf['upload_limit']) ? intval($conf['upload_limit']) : 0;
+		if($base === 0){
+			$res['msg'] = '你的每日上传数量已经不限，不需要加量包';
+		}else{
+			$res['ok'] = true;
+		}
+		return $res;
+	}
+	//等级套餐
+	$target = level_get($plan['level_id']);
+	if(!level_is_custom($target)){
+		$res['msg'] = '这个套餐对应的会员等级已经不存在';
+		return $res;
+	}
+	$days = intval($plan['days']);
+	if(!level_is_custom($current)){
+		$res['ok'] = true;
+		$active = empty($user['expiretime']) || strtotime($user['expiretime']) > time();
+		if($active && (intval($user['upload_limit']) >= 0 || intval($user['upload_size']) >= 0 || intval($user['down_speed']) >= 0)){
+			$res['note'] = '购买后按「'.$target['name'].'」的权限，你现在单独设置的额度不再保留';
+		}
+		return $res;
+	}
+	$forever = empty($user['expiretime']);
+	$left = user_level_days_left($user);
+	if(intval($target['id']) === intval($current['id'])){
+		if($forever){
+			$res['msg'] = '你已经是永久'.$current['name'];
+			return $res;
+		}
+		$res['ok'] = true;
+		if($days <= 0){
+			$res['price'] = pay_amount($origin - user_level_worth($user, $current, false) * $left);
+			$res['note'] = '已折抵你剩余的 '.ceil($left).' 天';
+		}else{
+			$res['note'] = '续费，天数加在现有到期时间之后';
+		}
+		return $res;
+	}
+	if(intval($target['sort']) < intval($current['sort'])){
+		$res['msg'] = '你当前是'.$current['name'].'，等级比它高';
+		return $res;
+	}
+	if(intval($target['sort']) === intval($current['sort'])){
+		$res['msg'] = '你当前是'.$current['name'].'，和它同级';
+		return $res;
+	}
+	if($days > 0){
+		$res['msg'] = $forever
+			? '你是永久'.$current['name'].'，升级请购买「'.$target['name'].'」的永久套餐，只需补差价'
+			: '请先补差价升级到「'.$target['name'].'」（到期时间不变），再购买它的套餐续费';
+		return $res;
+	}
+	$res['ok'] = true;
+	if($forever){
+		$res['price'] = pay_amount($origin - user_level_worth($user, $current, true));
+		$res['note'] = '已按永久'.$current['name'].'补差价';
+	}else{
+		$res['price'] = pay_amount($origin - user_level_worth($user, $current, false) * $left);
+		$res['note'] = '已折抵你剩余的 '.ceil($left).' 天'.$current['name'];
+	}
+	return $res;
+}
+
+/*
+ * 限时会员补差价升级到更高的等级，到期时间不变：
+ *   实付 =（目标等级日价 − 当前等级日价）× 剩余天数。
+ * 返回 ['ok', 'msg', 'price', 'days'=>剩余天数（向上取整，记在订单上）, 'level'=>目标等级, 'from'=>当前等级, 'expire'=>到期时间]
+ */
+function level_upgrade_quote($user, $target){
+	$current = user_level($user);
+	$res = ['ok'=>false, 'msg'=>'', 'price'=>0, 'days'=>0, 'level'=>$target, 'from'=>$current, 'expire'=>isset($user['expiretime']) ? $user['expiretime'] : ''];
+	if(!level_is_custom($target)){
+		$res['msg'] = '要升级到的会员等级不存在';
+	}elseif(!level_is_custom($current) || empty($user['expiretime'])){
+		$res['msg'] = '只有限时会员可以补差价升级';
+	}elseif(intval($target['sort']) <= intval($current['sort'])){
+		$res['msg'] = '只能升级到更高的等级';
+	}else{
+		$day = level_day_price($target['id']);
+		if($day === null){
+			$res['msg'] = '「'.$target['name'].'」没有在售的限时套餐，不能补差价升级';
+		}else{
+			$left = user_level_days_left($user);
+			$res['ok'] = true;
+			$res['days'] = max(1, intval(ceil($left)));
+			$res['price'] = pay_amount(($day - user_level_worth($user, $current, false)) * $left);
+		}
+	}
+	return $res;
+}
+
+//这个用户现在可以补差价升级到哪些等级（由低到高），购买页用
+function level_upgrade_list($user){
+	$list = [];
+	foreach(level_all() as $level){
+		if(!level_is_custom($level))continue;
+		$quote = level_upgrade_quote($user, $level);
+		if($quote['ok'])$list[] = $quote;
 	}
 	return $list;
 }
 
 /*
- * 发放套餐权限。
- * 规则（后台可见的说明也是这套）：
- *   - 权限数值按新买的套餐设置；
- *   - 有效期叠加：现有权限还没到期就从到期时间往后加，否则从当前时间算起；
- *   - 买到永久套餐直接变永久；
- *   - 已经是永久付费权限的用户再买限时套餐，只换权限数值，不会被改成有期限（不降级）。
+ * 发放一笔订单买到的东西。$order 是订单行（下单时的快照），按订单类型分四种：
+ *   level   会员等级：没有等级或换了等级的，从现在起算天数；同一个等级续费的，天数接在到期时间后面；
+ *           0 天是永久；已经是永久的再买限时套餐仍然是永久。换等级时把后台「单独调整」的数值清掉，
+ *           否则升级前旧套餐留下的额度会一直压在新等级上面；同级续费不动它
+ *   upgrade 补差价升级：只换等级，到期时间不变（付款前等级刚好过期的，按订单上记的剩余天数重新起算）
+ *   bonus   加量包：额度累加，到期时间单独记在 bonus_expire 上
+ *   edit    在线编辑包：见 resolve_plan_online_edit
+ * 升级前的旧订单（legacy）走 grant_legacy_plan，规则和原来一样。
+ * 管理员等级的用户不发任何等级（不然会把管理员降成买来的等级）。
  */
 function grant_plan_to_user($uid, $order, $lock_user = false){
-	global $DB, $conf;
+	global $DB;
 	$uid = intval($uid);
 	$user = $DB->getRow("SELECT * FROM pre_user WHERE uid=:uid LIMIT 1".($lock_user ? ' FOR UPDATE' : ''), [':uid'=>$uid]);
 	if(!$user)return false;
-
-	//在线编辑的开通状态和到期时间；套餐不含在线编辑时是 null，下面就不碰这两个字段
-	$edit = resolve_plan_online_edit($user, $order);
-	if(plan_is_edit_only($order)){
-		//纯在线编辑套餐只开通在线编辑，上传权限的数值和到期时间一概不动
-		unset($_SESSION['layout_plan']);
-		return $DB->update('user', $edit, ['uid'=>$uid]) !== false;
-	}
-
-	$days = intval($order['days']);
-	//没有到期时间、但已经有付费权限的，算永久权限
-	$has_forever = user_has_forever_permission($user);
-
-	if($days <= 0 || $has_forever){
-		$expiretime = null;
-	}else{
-		$base = time();
-		if(!empty($user['expiretime'])){
-			$current = strtotime($user['expiretime']);
-			if($current > $base)$base = $current;
-		}
-		$expiretime = date('Y-m-d H:i:s', $base + $days * 86400);
-	}
-
-	$data = [
-		'upload_limit' => resolve_plan_upload_limit($user, $order),
-		'bonus_limit' => resolve_plan_bonus_limit($user, $order),
-		'upload_size' => resolve_plan_upload_size($user, $order),
-		'down_speed' => resolve_plan_down_speed($user, $order),
-	];
-	/*
-	 * 已经是永久权限的用户再买时长套餐，时间上没什么可加的（还是永久），
-	 * 这时候要是按套餐值覆盖，等于花钱把自己降级了，而且降完还是永久的，很难挽回。
-	 * 所以对永久用户一律取更优值。
-	 */
-	if($has_forever){
-		$data['upload_limit'] = better_permission($user['upload_limit'], $data['upload_limit'], isset($conf['upload_limit']) ? $conf['upload_limit'] : 0);
-		$data['upload_size'] = better_permission($user['upload_size'], $data['upload_size'], isset($conf['upload_size']) ? $conf['upload_size'] : 0);
-		$data['down_speed'] = better_speed(isset($user['down_speed']) ? $user['down_speed'] : -1, $data['down_speed'], user_tier_speed_kbps($user));
-	}
-	//DB->update 会把空字符串写成 NULL，正好用来表示永久
-	$data['expiretime'] = $expiretime === null ? '' : $expiretime;
-	if($edit)$data = array_merge($data, $edit);
 	//侧栏“我的权限”卡有 120 秒会话缓存，这里清掉，买完刷新就能看到新的权限
 	unset($_SESSION['layout_plan']);
-	$ok = $DB->update('user', $data, ['uid'=>$uid]);
-	if($ok === false && isset($data['bonus_limit']) && !$lock_user){
-		//站点还没执行 install/update.php 的话没有 bonus_limit / down_speed / 在线编辑这几列，
-		//这时候宁可少发加量额度、下载速度和在线编辑，也不能因为一个字段就把整笔权限卡住不发
-		unset($data['bonus_limit'], $data['down_speed'], $data['online_edit'], $data['edit_expire']);
-		$ok = $DB->update('user', $data, ['uid'=>$uid]);
+	$kind = plan_kind($order);
+	$days = intval($order['days']);
+	$now = time();
+
+	if($kind === 'legacy')return grant_legacy_plan($uid, $user, $order);
+	if($kind === 'edit'){
+		$data = resolve_plan_online_edit($user, $order);
+		return $data ? $DB->update('user', $data, ['uid'=>$uid]) !== false : false;
 	}
-	return $ok !== false;
+	if($kind === 'bonus'){
+		$current = user_bonus_limit($user);
+		if($days <= 0 || ($current > 0 && empty($user['bonus_expire']))){
+			$expire = '';
+		}else{
+			$base = ($current > 0 && !empty($user['bonus_expire'])) ? strtotime($user['bonus_expire']) : $now;
+			$expire = date('Y-m-d H:i:s', $base + $days * 86400);
+		}
+		$data = ['bonus_limit'=>strval($current + max(0, intval($order['upload_limit']))), 'bonus_expire'=>$expire];
+		$edit = resolve_plan_online_edit($user, $order);
+		if($edit)$data = array_merge($data, $edit);
+		return $DB->update('user', $data, ['uid'=>$uid]) !== false;
+	}
+
+	$target = level_get(isset($order['level_id']) ? $order['level_id'] : 0);
+	if(!level_is_custom($target))return false;
+	$current = user_level($user);
+	if(level_is_admin($current))return false;
+	$paid = level_is_custom($current);
+	$forever = $paid && empty($user['expiretime']);
+	$same = $paid && intval($current['id']) === intval($target['id']);
+	if($kind === 'upgrade'){
+		if($paid){
+			$expire = $forever ? '' : $user['expiretime'];
+		}else{
+			$expire = date('Y-m-d H:i:s', $now + max(1, $days) * 86400);
+		}
+	}elseif($days <= 0 || ($same && $forever)){
+		$expire = '';
+	}elseif($same){
+		$expire = date('Y-m-d H:i:s', strtotime($user['expiretime']) + $days * 86400);
+	}else{
+		$expire = date('Y-m-d H:i:s', $now + $days * 86400);
+	}
+	$data = ['level_id'=>strval(intval($target['id'])), 'expiretime'=>$expire];
+	if(!$same){
+		$data['upload_limit'] = '-1';
+		$data['upload_size'] = '-1';
+		$data['down_speed'] = '-1';
+	}
+	return $DB->update('user', $data, ['uid'=>$uid]) !== false;
 }
 
 /*
- * 算出这一单发放后的“每日上传数量”。
- *
- * 套餐有两种发放方式：
- *   set 设为   —— 直接把每日数量设成套餐里的值（老套餐没有这个字段，默认就是它）
- *   add 增加   —— 在用户当前生效的数量上加，买两次就是加两次
- *
- * add 的基数取“当前真正生效的数量”：
- *   - 权限还有效且用户自己有具体数值   -> 用用户的数值
- *   - 权限已过期，或用户是 -1 跟随全站 -> 用全站设置的数量，避免把过期的旧数字继续往上加
- *   - 基数是 0（不限）时保持不限，加多少都没意义
+ * 升级前的旧套餐订单（按数值发放的时长卡、大文件包、永久卡）的发放，规则和原来一样：
+ * 数值写到用户的「单独调整」上，天数叠加在到期时间上，永久用户只取更优值。
+ * 只有两种情况会走到这里：升级那一刻还没入账的旧订单付款成功，或者后台对旧订单点「补发权限」。
+ */
+function grant_legacy_plan($uid, $user, $order){
+	global $DB, $conf;
+	$days = intval($order['days']);
+	$has_forever = user_has_forever_permission($user);
+	if($days <= 0 || $has_forever){
+		$expiretime = '';
+	}else{
+		$base = time();
+		if(!empty($user['expiretime']) && strtotime($user['expiretime']) > $base)$base = strtotime($user['expiretime']);
+		$expiretime = date('Y-m-d H:i:s', $base + $days * 86400);
+	}
+	$limit = resolve_plan_upload_limit($user, $order);
+	$size = resolve_plan_upload_size($user, $order);
+	$speed = resolve_plan_down_speed($user, $order);
+	if($has_forever){
+		$limit = better_permission($user['upload_limit'], $limit, isset($conf['upload_limit']) ? $conf['upload_limit'] : 0);
+		$size = better_permission($user['upload_size'], $size, isset($conf['upload_size']) ? $conf['upload_size'] : 0);
+		$speed = better_speed(isset($user['down_speed']) ? $user['down_speed'] : -1, $speed, download_tier_speed_kbps(1));
+	}
+	$data = ['upload_limit'=>strval(intval($limit)), 'upload_size'=>strval(intval($size)), 'down_speed'=>strval(intval($speed)), 'expiretime'=>$expiretime];
+	$edit = resolve_plan_online_edit($user, $order);
+	if($edit)$data = array_merge($data, $edit);
+	return $DB->update('user', $data, ['uid'=>$uid]) !== false;
+}
+
+/*
+ * 旧版套餐订单发放后的“每日上传数量”（只有 grant_legacy_plan 用）：直接设成订单里的值。
+ * 增加型的现在是加量包，走 grant_plan_to_user 的 bonus 分支，不经过这里。
  */
 function resolve_plan_upload_limit($user, $order){
-	$mode = isset($order['limit_mode']) ? $order['limit_mode'] : 'set';
 	$value = intval($order['upload_limit']);
 	$active = empty($user['expiretime']) || strtotime($user['expiretime']) > time();
-	//增加型套餐记在 bonus_limit 上（见 resolve_plan_bonus_limit），不动这里的基础数量
-	if($mode === 'add')return $active ? intval($user['upload_limit']) : -1;
-	//填 -1 表示这个套餐不改动每日数量（比如只提升单文件大小的套餐），保持用户现在的值；
-	//权限已经过期的话就没什么好保持的了，回到跟随全站
+	//填 -1 表示这个套餐不改动每日数量，保持用户现在的值；权限已经过期的话就没什么好保持的了
 	if($value < 0)return ($active && isset($user['upload_limit'])) ? intval($user['upload_limit']) : -1;
 	return $value;
-}
-
-/*
- * 算出这一单发放后的“加量额度”。
- *
- * 加量包买的数量单独记在 bonus_limit 上，实际每日数量 = 基础数量 + 加量额度，
- * 这样后面再买月卡、年卡也只会换掉基础数量，加量包永远不会被覆盖掉。
- * 权限过期后加量额度不再计入（见 get_effective_upload_count_limit），
- * 过期之后重新买套餐时也从 0 重新开始，不会把很久以前的加量翻出来。
- */
-function resolve_plan_bonus_limit($user, $order){
-	$mode = isset($order['limit_mode']) ? $order['limit_mode'] : 'set';
-	$active = empty($user['expiretime']) || strtotime($user['expiretime']) > time();
-	$current = $active ? intval(isset($user['bonus_limit']) ? $user['bonus_limit'] : 0) : 0;
-	if($mode !== 'add')return $current;
-	return $current + max(0, intval($order['upload_limit']));
 }
 
 /*
@@ -1569,14 +1868,12 @@ function user_online_edit_text($user){
 }
 
 /*
- * 当前登录用户的在线编辑状态文案，购买页「当前权限」和个人中心概览共用。
- * 在线编辑免费开放时返回空串，这一项不用显示
+ * 当前登录用户的在线编辑状态文案，购买页「当前权限」和个人中心概览共用
  */
 function current_online_edit_text(){
 	global $userrow;
-	if(!online_edit_is_paid_mode())return '';
-	//自己没买、但在免费放行的 UID 名单里的，写「已开放」
-	if(!user_online_edit_active($userrow) && can_use_online_edit())return '已开放';
+	//等级自带的不用另外买，写明是等级带的；等级不带时才看在线编辑包的开通情况
+	if(level_can('online_edit'))return '会员等级自带';
 	return user_online_edit_text($userrow);
 }
 
@@ -1584,18 +1881,9 @@ function current_online_edit_text(){
  * 没有到期时间、但已经有付费权限的，算永久权限（发放和购买页判断共用）
  */
 function user_has_forever_permission($user){
-	return empty($user['expiretime']) && (intval($user['upload_limit']) >= 0 || intval($user['upload_size']) >= 0 || intval($user['level']) > 0
+	return empty($user['expiretime']) && (intval($user['upload_limit']) >= 0 || intval($user['upload_size']) >= 0
+		|| (isset($user['level_id']) && intval($user['level_id']) > 0)
 		|| (isset($user['down_speed']) && intval($user['down_speed']) >= 0));
-}
-
-/*
- * 这个用户不看自己的 down_speed 时，按身份档位能拿到的速度：
- * level>0 且权限有效算高级用户，其余登录用户算普通登录用户
- */
-function user_tier_speed_kbps($user){
-	$active = empty($user['expiretime']) || strtotime($user['expiretime']) > time();
-	$vip = isset($user['level']) && intval($user['level']) > 0 && $active;
-	return download_tier_speed_kbps($vip ? 2 : 1);
 }
 
 /*
@@ -1623,84 +1911,6 @@ function plan_limit_display($plan){
 	$value = intval($plan['upload_limit']);
 	if($mode === 'add')return '在现有基础上 +'.max(0, $value).' 个/天';
 	return plan_limit_text($value, '个/天');
-}
-
-/*
- * 这一单买下去会带来哪些变化，购买页用它提示，下单接口用它挡住“买了也没用”的订单。
- * 返回 ['limit'=>新数量, 'size'=>新大小, 'days'=>是否会延长时间, 'changed'=>是否有任何变化,
- *       'lower'=>会被降下来的项目]
- */
-function plan_effect($user, $plan){
-	global $conf;
-	$order = [
-		'upload_limit' => intval($plan['upload_limit']),
-		'limit_mode' => isset($plan['limit_mode']) ? $plan['limit_mode'] : 'set',
-		'upload_size' => intval($plan['upload_size']),
-		'down_speed' => isset($plan['down_speed']) ? intval($plan['down_speed']) : -1,
-		'days' => intval($plan['days']),
-	];
-	$site_limit = isset($conf['upload_limit']) ? intval($conf['upload_limit']) : 0;
-	$site_size = isset($conf['upload_size']) ? intval($conf['upload_size']) : 0;
-	$active = empty($user['expiretime']) || strtotime($user['expiretime']) > time();
-	$has_forever = user_has_forever_permission($user);
-
-	//现在实际能用到的额度：-1 要换算成全站的值，加量额度要算进去
-	$now_base = ($active && intval($user['upload_limit']) >= 0) ? intval($user['upload_limit']) : $site_limit;
-	$now_bonus = $active ? max(0, intval(isset($user['bonus_limit']) ? $user['bonus_limit'] : 0)) : 0;
-	$now_limit = $now_base === 0 ? 0 : $now_base + $now_bonus;
-	$now_size = ($active && intval($user['upload_size']) >= 0) ? intval($user['upload_size']) : $site_size;
-
-	//买完之后实际能用到的额度
-	$new_limit = resolve_plan_upload_limit($user, $order);
-	$new_size = resolve_plan_upload_size($user, $order);
-	if($has_forever){
-		$new_limit = better_permission($user['upload_limit'], $new_limit, $site_limit);
-		$new_size = better_permission($user['upload_size'], $new_size, $site_size);
-	}
-	$new_bonus = resolve_plan_bonus_limit($user, $order);
-	$after_base = $new_limit >= 0 ? $new_limit : $site_limit;
-	$after_limit = $after_base === 0 ? 0 : $after_base + max(0, $new_bonus);
-	$after_size = $new_size >= 0 ? $new_size : $site_size;
-
-	//下载速度：用户自己的值有效时用它，否则是身份档位的速度；买完权限一定有效，高级用户按高级档位算
-	$now_tier_speed = user_tier_speed_kbps($user);
-	$user_speed = isset($user['down_speed']) ? intval($user['down_speed']) : -1;
-	$now_speed = ($active && $user_speed >= 0) ? $user_speed : $now_tier_speed;
-	$after_tier_speed = download_tier_speed_kbps(intval($user['level']) > 0 ? 2 : 1);
-	$new_speed = resolve_plan_down_speed($user, $order);
-	if($has_forever)$new_speed = better_speed($user_speed, $new_speed, $after_tier_speed);
-	$after_speed = $new_speed >= 0 ? $new_speed : $after_tier_speed;
-
-	$improved = permission_weight($after_limit, $site_limit) > permission_weight($now_limit, $site_limit)
-		|| permission_weight($after_size, $site_size) > permission_weight($now_size, $site_size)
-		|| speed_weight($after_speed, 0) > speed_weight($now_speed, 0);
-	/*
-	 * 时长上的收益只对“当前就是限时权限”的用户成立：续期或换成永久都算。
-	 * 本来就没有到期时间的用户（新用户、跟随全站的用户、已经永久的用户），
-	 * 凭空多一个到期时间不是收益，不能靠它把“买了也没用”的单放过去。
-	 */
-	$time_gain = !empty($user['expiretime']) && !plan_is_edit_only($plan);
-	/*
-	 * 在线编辑上的收益：站点把在线编辑设成了付费、套餐带了它，而这个用户还不是永久开通、
-	 * 也不在免费放行的 UID 名单里。纯在线编辑套餐只看这一条（它不动上传权限，也不延长上传权限的时间）。
-	 */
-	$edit_gain = plan_has_online_edit($plan) && online_edit_is_paid_mode() && !user_online_edit_forever($user)
-		&& !(get_online_edit_mode() === 'uid' && isset($user['uid']) && in_array(intval($user['uid']), get_online_edit_uid_whitelist(), true));
-
-	$lower = [];
-	if(permission_weight($after_limit, $site_limit) < permission_weight($now_limit, $site_limit))$lower[] = '每日上传数量';
-	if(permission_weight($after_size, $site_size) < permission_weight($now_size, $site_size))$lower[] = '单文件大小';
-	if(speed_weight($after_speed, 0) < speed_weight($now_speed, 0))$lower[] = '下载速度';
-
-	return [
-		'limit' => $after_limit,
-		'size' => $after_size,
-		'speed' => $after_speed,
-		'days' => $time_gain,
-		'edit' => $edit_gain,
-		'changed' => $improved || $time_gain || $edit_gain,
-		'lower' => $lower,
-	];
 }
 
 /*
@@ -2204,6 +2414,136 @@ function size_format($size)
 	return $size;
 }
 
+/* ==================== 会员等级 ====================
+ *
+ * 一个用户能做什么，只看他当前的会员等级（pre_level 里的一行权限表）：
+ *   每日上传数量 / 单文件大小 / 下载速度（-1 跟随站点设置，0 不限）、在线编辑、用户文件夹、上传 API、
+ *   能否用多存储里限定会员的存储、上传免审核。
+ * 三个内置等级靠 type 认：1 游客、2 普通用户（注册默认，会员到期后也回到这里）、3 管理员（不受任何限制，
+ * 只能在后台用户管理里手动给，不能卖）。其余 type=0 的是站长自己建的，套餐卖的就是它们。
+ * 用户身上记 level_id（0 = 普通用户）和到期时间 expiretime，过了期自动按普通用户算。
+ * 相关决定 DEC-20261010-002。
+ */
+
+//全部等级，按高低顺序（sort 小的在前）。一次请求只查一遍；后台改完等级要立刻重读时传 true
+function level_all($reload = false){
+	global $DB;
+	static $list = null;
+	if($list === null || $reload){
+		$list = [];
+		$rows = $DB->getAll("SELECT * FROM pre_level ORDER BY sort ASC, id ASC");
+		if(is_array($rows)){
+			foreach($rows as $row)$list[intval($row['id'])] = $row;
+		}
+	}
+	return $list;
+}
+
+function level_get($id){
+	$all = level_all();
+	$id = intval($id);
+	return isset($all[$id]) ? $all[$id] : null;
+}
+
+/*
+ * 取内置等级：1 游客、2 普通用户、3 管理员。
+ * 表里万一没有这一行（比如被人手工删了），给一份兜底的：游客和普通用户全部跟随站点设置、功能都不开，
+ * 管理员全部放开——宁可少给权限，也不能让页面因为取不到等级而报错。
+ */
+function level_builtin($type){
+	$type = intval($type);
+	foreach(level_all() as $level){
+		if(intval($level['type']) === $type)return $level;
+	}
+	$admin = $type === 3;
+	return [
+		'id' => 0, 'type' => $type, 'sort' => $admin ? 100000 : ($type === 2 ? 10 : 0),
+		'name' => $admin ? '管理员' : ($type === 2 ? '普通用户' : '游客'),
+		'upload_limit' => $admin ? 0 : -1, 'upload_size' => $admin ? 0 : -1, 'down_speed' => $admin ? 0 : -1,
+		'online_edit' => $admin ? 1 : 0, 'folder' => $admin ? 1 : 0, 'api' => $admin ? 1 : 0,
+		'storage_all' => $admin ? 1 : 0, 'no_review' => $admin ? 1 : 0, 'remark' => '',
+	];
+}
+
+function level_is_admin($level){
+	return $level && intval($level['type']) === 3;
+}
+
+//站长自己建、可以拿来卖的等级（内置的三个不算）
+function level_is_custom($level){
+	return $level && intval($level['type']) === 0;
+}
+
+/*
+ * 这个用户当前生效的等级：记了等级并且还没到期就是那个等级，否则是普通用户。
+ * 传进来的是 pre_user 的一行；没有到期时间表示永久。
+ */
+function user_level($user){
+	if(!$user)return level_builtin(1);
+	$id = isset($user['level_id']) ? intval($user['level_id']) : 0;
+	if($id > 0 && (empty($user['expiretime']) || strtotime($user['expiretime']) > time())){
+		$level = level_get($id);
+		//等级被删了、或者被错设成「游客」的，一律按普通用户
+		if($level && intval($level['type']) !== 1)return $level;
+	}
+	return level_builtin(2);
+}
+
+//当前访客的等级：没登录是游客
+function current_level(){
+	global $islogin2, $userrow;
+	return empty($islogin2) ? level_builtin(1) : user_level($userrow);
+}
+
+//当前访客的等级有没有某项功能（online_edit / folder / api / storage_all / no_review）；管理员全部都有
+function level_can($key){
+	$level = current_level();
+	return level_is_admin($level) || (isset($level[$key]) && intval($level[$key]) === 1);
+}
+
+/*
+ * 后台在用户管理里给这个人「单独调整」的数值（upload_limit / upload_size / down_speed）。
+ * -1 表示没调，按等级走；调了的话在到期时间之内优先于等级。升级前买过旧套餐的用户，
+ * 买到的额度也是记在这几个字段上，所以他们的权益会一直保留到原来的到期时间。
+ */
+function user_override($key){
+	global $islogin2, $userrow;
+	if(empty($islogin2) || !is_user_permission_active())return -1;
+	return (isset($userrow[$key]) && $userrow[$key] !== null) ? intval($userrow[$key]) : -1;
+}
+
+/*
+ * 这个用户还有效的加量额度（加量包买的，每天多传几个）。加量包有自己的到期时间 bonus_expire，
+ * 不跟着会员到期时间走；有额度但没有到期时间的是永久的。
+ */
+function user_bonus_limit($user){
+	if(!$user || !isset($user['bonus_limit']) || intval($user['bonus_limit']) <= 0)return 0;
+	if(!empty($user['bonus_expire']) && strtotime($user['bonus_expire']) <= time())return 0;
+	return intval($user['bonus_limit']);
+}
+
+/*
+ * 上传时按等级放开的限制，上传入口（ajax.php、api.php）在认完身份之后调一次：
+ *   等级带「上传免审核」的：不做视频人工审核，不受禁止类型、禁止文件名限制；
+ *   管理员：再加上不做内容检测（鉴黄等）、不限每分钟上传次数。
+ * 做法是把本次请求里的这几项设置关掉，后面的上传流程不用逐处判断。
+ */
+function level_apply_upload_exemptions(){
+	global $conf;
+	$level = current_level();
+	$admin = level_is_admin($level);
+	if($admin || intval($level['no_review']) === 1){
+		$conf['videoreview'] = 0;
+		$conf['type_block'] = null;
+		$conf['name_block'] = null;
+	}
+	if($admin){
+		$conf['green_check'] = 0;
+		$conf['green_video'] = 0;
+		$conf['upload_per_minute'] = 0;
+	}
+}
+
 function is_user_permission_active($row = null){
 	global $islogin2, $userrow;
 	if($row === null) $row = $userrow;
@@ -2213,27 +2553,31 @@ function is_user_permission_active($row = null){
 }
 
 function get_effective_upload_size_limit(){
-	global $conf, $islogin2, $userrow;
-	if(!empty($islogin2) && is_user_permission_active() && isset($userrow['upload_size']) && $userrow['upload_size'] !== null && intval($userrow['upload_size']) >= 0){
-		return intval($userrow['upload_size']);
-	}
+	global $conf;
+	$level = current_level();
+	if(level_is_admin($level))return 0;
+	$own = user_override('upload_size');
+	if($own >= 0)return $own;
+	if(intval($level['upload_size']) >= 0)return intval($level['upload_size']);
 	return isset($conf['upload_size']) ? intval($conf['upload_size']) : 0;
 }
 
 function get_effective_upload_count_limit(){
 	global $conf, $islogin2, $userrow;
-	$active = !empty($islogin2) && is_user_permission_active();
+	$level = current_level();
+	if(level_is_admin($level))return 0;
+	//基础数量：单独调整过的用调整值，否则看等级，等级填「跟随站点设置」的用全站的数量
+	$own = user_override('upload_limit');
+	if($own >= 0){
+		$base = $own;
+	}elseif(intval($level['upload_limit']) >= 0){
+		$base = intval($level['upload_limit']);
+	}else{
+		$base = isset($conf['upload_limit']) ? intval($conf['upload_limit']) : 0;
+	}
 	//加量包买的额度加在基础数量上；基础是“不限”时加多少都没意义
-	$bonus = ($active && isset($userrow['bonus_limit'])) ? max(0, intval($userrow['bonus_limit'])) : 0;
-	if($active && isset($userrow['upload_limit']) && $userrow['upload_limit'] !== null && intval($userrow['upload_limit']) >= 0){
-		$base = intval($userrow['upload_limit']);
-		return $base === 0 ? 0 : $base + $bonus;
-	}
-	if($active && isset($userrow['level']) && intval($userrow['level']) > 0){
-		return 0;
-	}
-	$base = isset($conf['upload_limit']) ? intval($conf['upload_limit']) : 0;
-	return $base === 0 ? 0 : $base + $bonus;
+	if($base === 0)return 0;
+	return $base + (!empty($islogin2) ? user_bonus_limit($userrow) : 0);
 }
 
 /* ==================== 多存储上传 ====================
@@ -2244,39 +2588,39 @@ function get_effective_upload_count_limit(){
  *   storage_pool  = oss:0|openlist:2   允许上传的存储和各自的门槛，顺序即前台下拉里的排序
  *                                     （当前存储除外，它由 storage_allowed_list() 恒排第一）
  *
- * 门槛（下面的「档位」）：0 所有人（含游客）、1 需登录、2 需高级用户。
- * 三档是按站点现有的用户体系来的：这站在卖套餐，高级用户就是 level>0 且权限还在有效期内。
+ * 门槛（下面的「档位」）：0 所有人（含游客）、1 需登录、2 需要会员等级带「可用全部存储」。
+ * 第三档原来叫「仅高级用户」，改成会员等级之后看的是当前等级的 storage_all（管理员恒有）。
  *
  * 「当前存储」($conf['storage']) 永远算在池子里、门槛恒为 0：它是全站兜底，
  * 万一池子配空了、或者访客的档位够不着任何一个，总得有个地方能写进去。
  */
 
-//当前访客的档位：2 高级用户、1 已登录、0 游客
+//当前访客的档位：2 等级带「可用全部存储」、1 已登录、0 游客
 function storage_user_tier(){
-	global $islogin2, $userrow;
+	global $islogin2;
 	if(empty($islogin2))return 0;
-	if(isset($userrow['level']) && intval($userrow['level']) > 0 && is_user_permission_active())return 2;
-	return 1;
+	return level_can('storage_all') ? 2 : 1;
 }
 
 /*
  * 当前下载者的速度上限，统一返回 KB/s。0 表示不限速。
- * 买过带下载限速的套餐（或后台给用户单独设了速度）、并且权限还在有效期内时，按用户自己的速度；
- * 否则按身份档位。权限到期后自动回到档位速度。
+ * 管理员不限速；后台给这个用户单独调过速度的（有效期内）按调的值；否则看会员等级；
+ * 等级填「跟随站点设置」的，按「存储类型设置」里游客 / 登录用户那两档。
  */
 function get_effective_download_speed_kbps(){
-	global $islogin2, $userrow;
-	if(!empty($islogin2) && is_user_permission_active() && isset($userrow['down_speed']) && $userrow['down_speed'] !== null && intval($userrow['down_speed']) >= 0){
-		return intval($userrow['down_speed']);
-	}
-	return download_tier_speed_kbps(storage_user_tier());
+	global $islogin2;
+	$level = current_level();
+	if(level_is_admin($level))return 0;
+	$own = user_override('down_speed');
+	if($own >= 0)return $own;
+	if(intval($level['down_speed']) >= 0)return intval($level['down_speed']);
+	return download_tier_speed_kbps(empty($islogin2) ? 0 : 1);
 }
 
-/* 某一档身份的速度上限（KB/s），0 不限速。档位：2 有效高级用户、1 普通登录用户、0 游客 */
+/* 站点设置里某一档的速度上限（KB/s），0 不限速。档位：1 登录用户、0 游客（原来还有一档高级用户，已并入会员等级） */
 function download_tier_speed_kbps($tier){
 	global $conf;
-	$tier = intval($tier);
-	$key = $tier >= 2 ? 'vip' : ($tier === 1 ? 'user' : 'guest');
+	$key = intval($tier) >= 1 ? 'user' : 'guest';
 	$value = isset($conf['down_speed_'.$key]) ? floatval($conf['down_speed_'.$key]) : 0;
 	if($value <= 0 || !is_finite($value))return 0;
 	$unit = isset($conf['down_speed_'.$key.'_unit']) ? strtoupper(trim($conf['down_speed_'.$key.'_unit'])) : 'KB';
@@ -2565,23 +2909,13 @@ function is_editable_file_type($type){
 	return $type !== '' && in_array($type, get_editable_file_types(), true);
 }
 
-function get_online_edit_mode(){
-	global $conf;
-	$mode = isset($conf['online_edit_mode']) ? strtolower(trim((string)$conf['online_edit_mode'])) : 'all';
-	return in_array($mode, ['all', 'login', 'uid', 'buy'], true) ? $mode : 'all';
-}
-
 /*
- * 在线编辑是不是「要有资格才能用」的状态：指定 UID、仅购买用户这两档算。
- * 所有人 / 登录用户都能用的时候它是免费开放的，套餐里的在线编辑没有意义
+ * 在线编辑包有没有卖的意义：普通用户这个等级不带在线编辑时才有。
+ * 普通用户都能用的话，登录就有了，在线编辑包不拿出来卖（函数名是改成会员等级之前起的）
  */
 function online_edit_is_paid_mode(){
-	return in_array(get_online_edit_mode(), ['uid', 'buy'], true);
-}
-
-function get_online_edit_uid_whitelist(){
-	global $conf;
-	return parse_uid_list(isset($conf['online_edit_uids']) ? $conf['online_edit_uids'] : '');
+	$level = level_builtin(2);
+	return intval($level['online_edit']) !== 1;
 }
 
 /*
@@ -2838,25 +3172,13 @@ function parse_uid_list($value){
 }
 
 function can_use_online_edit(){
-	global $islogin2, $uid, $userrow;
-	$mode = get_online_edit_mode();
-	if($mode === 'all'){
+	global $islogin2, $userrow;
+	//会员等级带在线编辑的直接能用（管理员恒有）
+	if(level_can('online_edit')){
 		return true;
 	}
-	if(empty($islogin2)){
-		return false;
-	}
-	if($mode === 'login'){
-		return true;
-	}
-	//买了含在线编辑的套餐、还在有效期内的，「指定 UID」「仅购买用户」两档下都能用
-	if(user_online_edit_active($userrow)){
-		return true;
-	}
-	if($mode === 'buy'){
-		return false;
-	}
-	return in_array(intval($uid), get_online_edit_uid_whitelist(), true);
+	//等级不带的，买了在线编辑包（或后台单独给开通）且还在有效期内也能用
+	return !empty($islogin2) && user_online_edit_active($userrow);
 }
 
 function can_edit_file_online($row){
@@ -2867,7 +3189,7 @@ function can_edit_file_online($row){
 }
 
 /*
- * 现在能不能买到在线编辑：购买功能开着、在线编辑是付费状态、并且有上架的含在线编辑的套餐。
+ * 现在能不能买到在线编辑：购买功能开着，并且有上架的在线编辑包、或者有带在线编辑的等级在卖。
  * 列表页每一行都会问一次，所以结果在本次请求里记住
  */
 function online_edit_purchasable(){
@@ -2875,8 +3197,8 @@ function online_edit_purchasable(){
 	static $cache = null;
 	if($cache !== null)return $cache;
 	$cache = false;
-	if(online_edit_is_paid_mode() && is_buy_open()){
-		$cache = intval($DB->getColumn("SELECT count(*) FROM pre_plan WHERE enable=1 AND online_edit=1")) > 0;
+	if(is_buy_open()){
+		$cache = intval($DB->getColumn("SELECT count(*) FROM pre_plan WHERE enable=1 AND (online_edit=1 OR level_id IN (SELECT id FROM pre_level WHERE type=0 AND online_edit=1))")) > 0;
 	}
 	return $cache;
 }

@@ -17,20 +17,12 @@ define('FOLDER_DEPTH_MAX', 10);    //最多几层
 define('FOLDER_COUNT_MAX', 500);   //每个归属者最多多少个文件夹
 define('FOLDER_BATCH_MAX', 200);   //一次移动/复制最多处理多少个文件
 
-function get_folder_mode(){
-	global $conf;
-	$mode = isset($conf['folder_mode']) ? strtolower(trim((string)$conf['folder_mode'])) : 'login';
-	return in_array($mode, ['all', 'login', 'uid'], true) ? $mode : 'login';
-}
-
-//总开关 + 开放范围，和在线编辑的 can_use_online_edit() 同一个思路
+//总开关 + 会员等级：等级带「用户文件夹」的能用（管理员恒有）；另外放行的 UID 名单照旧有效
 function can_use_folders(){
 	global $conf, $islogin2, $uid;
 	if(empty($conf['folder_open'])) return false;
-	$mode = get_folder_mode();
-	if($mode === 'all') return true;
+	if(level_can('folder')) return true;
 	if(empty($islogin2)) return false;
-	if($mode === 'login') return true;
 	return in_array(intval($uid), parse_uid_list(isset($conf['folder_uids']) ? $conf['folder_uids'] : ''), true);
 }
 
