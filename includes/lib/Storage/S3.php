@@ -220,12 +220,24 @@ class S3 implements IStorage
         $headers['host'] = $parts['host'] . (isset($parts['port']) ? ':' . $parts['port'] : '');
         $headers['x-amz-content-sha256'] = $payloadHash;
         $headers['x-amz-date'] = $amzDate;
-        ksort($headers);
-        $canonicalHeaders = '';
+        // Sign only what Signature V4 requires (host, x-amz-*) plus content-type. Anything
+        // else, notably Range, is sent but left out of the signature: a reverse proxy or
+        // cache in front of the storage may rewrite it, and a signed Range was rejected
+        // with SignatureDoesNotMatch on a real self-hosted endpoint, which broke every
+        // ranged download (resume, media seeking).
+        $signed = [];
         foreach ($headers as $header => $value) {
-            $canonicalHeaders .= strtolower($header) . ':' . trim(preg_replace('/\s+/', ' ', $value)) . "\n";
+            $lower = strtolower($header);
+            if ($lower === 'host' || $lower === 'content-type' || strpos($lower, 'x-amz-') === 0) {
+                $signed[$lower] = $value;
+            }
         }
-        $signedHeaders = implode(';', array_map('strtolower', array_keys($headers)));
+        ksort($signed);
+        $canonicalHeaders = '';
+        foreach ($signed as $header => $value) {
+            $canonicalHeaders .= $header . ':' . trim(preg_replace('/\s+/', ' ', $value)) . "\n";
+        }
+        $signedHeaders = implode(';', array_keys($signed));
         $canonicalRequest = $method . "\n" . $parts['path'] . "\n\n" . $canonicalHeaders . "\n" . $signedHeaders . "\n" . $payloadHash;
         $scope = $date . '/' . $this->region . '/s3/aws4_request';
         $stringToSign = "AWS4-HMAC-SHA256\n" . $amzDate . "\n" . $scope . "\n" . hash('sha256', $canonicalRequest);
