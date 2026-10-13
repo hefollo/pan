@@ -196,6 +196,50 @@ class Qiniu implements IStorage {
 		}
 	}
 
+	/*
+	 * 浏览器直传完成后的核对发布，在存储端完成，文件不经过本站（约定见 lib\VerifiedUpload::publish）。
+	 * 七牛对表单直传的文件会记下内容的 MD5（查询文件信息时的 md5 字段）。
+	 * 先把 pending 对象复制到一个浏览器写不了的快照键（直传凭证里的 key 是写死的，只能写它自己那一个），
+	 * 对快照核对校验值和长度，通过才复制成正式文件，最后删掉快照。
+	 * 只有真的发布了才返回 true；返回 false 表示「这里定不了」，调用方会改走取回本站核对的老办法。
+	 */
+	public function publishStaged($stagingName, $hash, $size, $content_type = null) {
+		$snapshot = 'pending/'.bin2hex(random_bytes(24));
+		$copied = false;
+		try {
+			$mgr = $this->bucketManager();
+			if(!$this->stagedMatches($mgr, $stagingName, $hash, $size))return false;
+			//七牛的接口出错不抛异常，错误在返回值的第二项里
+			list($ret, $err) = $mgr->copy($this->bucket, $this->filepath.$stagingName, $this->bucket, $this->filepath.$snapshot, true);
+			if($err !== null)return false;
+			$copied = true;
+			if(!$this->stagedMatches($mgr, $snapshot, $hash, $size))return false;
+			list($ret, $err) = $mgr->copy($this->bucket, $this->filepath.$snapshot, $this->bucket, $this->filepath.$hash, true);
+			if($err !== null)return false;
+			return $this->stagedMatches($mgr, $hash, $hash, $size);
+		} catch(\Throwable $e) {
+			return false;
+		} finally {
+			if($copied){
+				try { $this->bucketManager()->delete($this->bucket, $this->filepath.$snapshot); } catch(\Throwable $e) {}
+			}
+		}
+	}
+
+	private $bucketMgr = null;
+
+	private function bucketManager() {
+		if($this->bucketMgr === null)$this->bucketMgr = new \Qiniu\Storage\BucketManager($this->auth);
+		return $this->bucketMgr;
+	}
+
+	private function stagedMatches($mgr, $name, $hash, $size) {
+		list($res, $err) = $mgr->stat($this->bucket, $this->filepath.$name);
+		return $err === null && is_array($res) && isset($res['md5'], $res['fsize'])
+			&& intval($res['fsize']) === intval($size)
+			&& \lib\VerifiedUpload::sameMd5($res['md5'], $hash);
+	}
+
 	public function getUploadParam($name, $filename, $max_file_size = 0){
 		$config = new \Qiniu\Config();
 		$config->useHTTPS = true;

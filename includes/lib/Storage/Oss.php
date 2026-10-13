@@ -102,6 +102,44 @@ class Oss implements IStorage {
 		}
 	}
 
+	/*
+	 * 浏览器直传完成后的核对发布，在存储端完成，文件不经过本站（约定见 lib\VerifiedUpload::publish）。
+	 * 阿里云 OSS 上单次上传的对象，ETag 就是内容的 MD5。
+	 * 先把 pending 对象复制到一个浏览器写不了的快照键（直传凭证里的 key 是写死的，只能写它自己那一个），
+	 * 对快照核对校验值和长度，通过才复制成正式文件，最后删掉快照。
+	 * 只有真的发布了才返回 true；返回 false 表示「这里定不了」，调用方会改走取回本站核对的老办法。
+	 */
+	public function publishStaged($stagingName, $hash, $size, $content_type = null) {
+		$snapshot = 'pending/'.bin2hex(random_bytes(24));
+		$copied = false;
+		try {
+			if(!$this->stagedMatches($stagingName, $hash, $size))return false;
+			$this->ossClient->copyObject($this->bucket, $this->filepath.$stagingName, $this->bucket, $this->filepath.$snapshot);
+			$copied = true;
+			if(!$this->stagedMatches($snapshot, $hash, $size))return false;
+			$options = [];
+			if($content_type){
+				//直传表单带上去的 Content-Disposition（原始文件名）等不留在正式文件上，只给类型，和中转上传的结果一样
+				$options[\OSS\OssClient::OSS_HEADERS] = ['x-oss-metadata-directive' => 'REPLACE', \OSS\OssClient::OSS_CONTENT_TYPE => $content_type];
+			}
+			$this->ossClient->copyObject($this->bucket, $this->filepath.$snapshot, $this->bucket, $this->filepath.$hash, $options);
+			return $this->stagedMatches($hash, $hash, $size);
+		} catch(\Throwable $e) {
+			return false;
+		} finally {
+			if($copied){
+				try { $this->ossClient->deleteObject($this->bucket, $this->filepath.$snapshot); } catch(\Throwable $e) {}
+			}
+		}
+	}
+
+	private function stagedMatches($name, $hash, $size) {
+		$meta = $this->ossClient->getObjectMeta($this->bucket, $this->filepath.$name);
+		return is_array($meta) && isset($meta['etag'], $meta['content-length'])
+			&& intval($meta['content-length']) === intval($size)
+			&& \lib\VerifiedUpload::sameMd5($meta['etag'], $hash);
+	}
+
 	public function getUploadParam($name, $filename, $max_file_size = 0){
 		$url = 'https://'.$this->bucket.'.'.$this->config['endpoint'].'/';
 		$key = $this->filepath.$name;

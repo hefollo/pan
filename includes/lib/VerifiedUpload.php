@@ -4,6 +4,21 @@ namespace lib;
 /** Publish exactly the snapshot that was verified, never a mutable cloud-side copy. */
 class VerifiedUpload
 {
+    /**
+     * Whether a checksum reported by a storage is exactly this MD5. Storages hand it back as a
+     * quoted or bare hex ETag (any case) or as a base64 Content-MD5; anything else (multipart
+     * ETags such as "abc-3", empty values) is not a match.
+     */
+    public static function sameMd5($reported, $hash)
+    {
+        $reported = trim((string)$reported, " \t\r\n\"");
+        $hash = strtolower((string)$hash);
+        if (!preg_match('/^[a-f0-9]{32}$/D', $hash) || $reported === '') return false;
+        if (preg_match('/^[a-f0-9]{32}$/iD', $reported)) return hash_equals($hash, strtolower($reported));
+        $raw = base64_decode($reported, true);
+        return $raw !== false && strlen($raw) === 16 && hash_equals($hash, bin2hex($raw));
+    }
+
     public static function publish($storage, array $state)
     {
         $key = isset($state['staging_key']) ? $state['staging_key'] : '';

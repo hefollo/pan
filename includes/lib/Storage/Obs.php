@@ -139,6 +139,45 @@ class Obs implements IStorage {
 		}
 	}
 
+	/*
+	 * 浏览器直传完成后的核对发布，在存储端完成，文件不经过本站（约定见 lib\VerifiedUpload::publish）。
+	 * 华为云 OBS 上单次上传的对象，ETag 就是内容的 MD5。
+	 * 先把 pending 对象复制到一个浏览器写不了的快照键（直传凭证里的 key 是写死的，只能写它自己那一个），
+	 * 对快照核对校验值和长度，通过才复制成正式文件，最后删掉快照。
+	 * 只有真的发布了才返回 true；返回 false 表示「这里定不了」，调用方会改走取回本站核对的老办法。
+	 */
+	public function publishStaged($stagingName, $hash, $size, $content_type = null) {
+		$snapshot = 'pending/'.bin2hex(random_bytes(24));
+		$copied = false;
+		try {
+			if(!$this->stagedMatches($stagingName, $hash, $size))return false;
+			$this->obsClient->copyObject(['Bucket'=>$this->bucket, 'Key'=>$this->filepath.$snapshot, 'CopySource'=>$this->bucket.'/'.$this->filepath.$stagingName]);
+			$copied = true;
+			if(!$this->stagedMatches($snapshot, $hash, $size))return false;
+			$args = ['Bucket'=>$this->bucket, 'Key'=>$this->filepath.$hash, 'CopySource'=>$this->bucket.'/'.$this->filepath.$snapshot];
+			if($content_type){
+				//直传表单带上去的 Content-Disposition（原始文件名）等不留在正式文件上，只给类型，和中转上传的结果一样
+				$args['MetadataDirective'] = \Obs\ObsClient::ReplaceMetadata;
+				$args['ContentType'] = $content_type;
+			}
+			$this->obsClient->copyObject($args);
+			return $this->stagedMatches($hash, $hash, $size);
+		} catch(\Throwable $e) {
+			return false;
+		} finally {
+			if($copied){
+				try { $this->obsClient->deleteObject(['Bucket'=>$this->bucket, 'Key'=>$this->filepath.$snapshot]); } catch(\Throwable $e) {}
+			}
+		}
+	}
+
+	private function stagedMatches($name, $hash, $size) {
+		$meta = $this->obsClient->getObjectMetadata(['Bucket'=>$this->bucket, 'Key'=>$this->filepath.$name]);
+		return isset($meta['ETag'], $meta['ContentLength'])
+			&& intval($meta['ContentLength']) === intval($size)
+			&& \lib\VerifiedUpload::sameMd5($meta['ETag'], $hash);
+	}
+
 	public function getUploadParam($name, $filename, $max_file_size = 0){
 		$key = $this->filepath.$name;
 		$url = 'https://'.$this->bucket.'.'.$this->config['endpoint'].'/';
