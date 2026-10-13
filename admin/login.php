@@ -9,11 +9,13 @@ if(!function_exists("imagecreate") || !file_exists(__DIR__.'/code.php'))$verifyc
 define('IN_ADMIN', true);
 include("../includes/common.php");
 //登录失败按IP锁定：5次失败锁15分钟。计数记在服务端，清Cookie也绕不过。
-//这里刻意用 REMOTE_ADDR 而不是 $clientip：$clientip 默认信任 X-Forwarded-For，
+//这里刻意不用 $clientip：$clientip 默认信任 X-Forwarded-For，
 //可以被请求头随意伪造，拿它做限速等于没做。
+//trusted_client_ip() 只认站长指定的反向代理和 Cloudflare 传来的地址，其余都是连接的对端地址；
+//原来直接用 REMOTE_ADDR，站点前面有反向代理时所有人算成代理那一个地址，一个人输错密码全站被锁
 $login_max_fail = 5;
 $login_lock_time = 900;
-$login_ip = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '0.0.0.0';
+$login_ip = trusted_client_ip();
 //登录提示直接渲染在登录页上：成功/失败都就地显示，不再用 alert 弹窗二次确认
 $login_msg = '';
 $login_msg_type = '';

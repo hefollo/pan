@@ -76,12 +76,10 @@ class S3 implements IStorage
         if ($range) {
             $headers['range'] = 'bytes=' . intval($range[0]) . '-' . intval($range[1]);
         }
-        $response = $this->request('GET', $this->objectKey($name), $headers);
-        if ($response === false) {
-            return false;
-        }
-		\download_output_chunk($response['body']);
-        return true;
+        // Stream the object to the visitor as it arrives. Reading it into memory first
+        // breaks on anything larger than PHP's memory limit, and the visitor gets no
+        // byte until this server has fetched the whole file.
+        return $this->request('GET', $this->objectKey($name), $headers, null, null, true) !== false;
     }
 
     public function upload($name, $tmpfile, $content_type = null)
@@ -208,7 +206,7 @@ class S3 implements IStorage
         return $scheme . '://' . $host . $basePath . ($this->pathStyle ? '/' . rawurlencode($this->bucket) : '') . '/';
     }
 
-    private function request($method, $key, $headers = [], $file = null, $sink = null)
+    private function request($method, $key, $headers = [], $file = null, $sink = null, $stream = false)
     {
         if (!function_exists('curl_init')) {
             $this->errmsg = 'S3 storage requires the PHP cURL extension.';
@@ -240,11 +238,34 @@ class S3 implements IStorage
             $curlHeaders[] = $header . ': ' . $value;
         }
         curl_setopt($curl, CURLOPT_CUSTOMREQUEST, $method);
+        // CUSTOMREQUEST only renames the verb: without NOBODY libcurl still waits for the
+        // Content-Length bytes a HEAD response never sends, so the call fails on every
+        // non-empty object (exists() and getinfo() could never succeed).
+        if ($method === 'HEAD') curl_setopt($curl, CURLOPT_NOBODY, true);
         curl_setopt($curl, CURLOPT_HTTPHEADER, $curlHeaders);
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
         if ($sink) curl_setopt($curl, CURLOPT_FILE, $sink);
         curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, 15);
         curl_setopt($curl, CURLOPT_TIMEOUT, 300);
+        $errorBody = '';
+        if ($stream) {
+            // A rate-limited download of a big file can take hours, so there is no
+            // overall time limit; give up only when nothing has moved for 60 seconds.
+            curl_setopt($curl, CURLOPT_TIMEOUT, 0);
+            curl_setopt($curl, CURLOPT_LOW_SPEED_LIMIT, 1);
+            curl_setopt($curl, CURLOPT_LOW_SPEED_TIME, 60);
+            curl_setopt($curl, CURLOPT_WRITEFUNCTION, function ($curl, $data) use (&$errorBody) {
+                $code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+                if ($code >= 200 && $code < 300) {
+                    \download_output_chunk($data);
+                } elseif (strlen($errorBody) < 2048) {
+                    // An error response is the storage's XML message, not file content:
+                    // keep it for errmsg instead of sending it to the visitor.
+                    $errorBody .= $data;
+                }
+                return strlen($data);
+            });
+        }
         curl_setopt($curl, CURLOPT_HEADERFUNCTION, function ($curl, $line) use (&$responseHeaders) {
             $length = strlen($line);
             $pos = strpos($line, ':');
@@ -268,11 +289,12 @@ class S3 implements IStorage
             fclose($handle);
         }
         if ($body === false || $status < 200 || $status >= 300) {
-            $this->errmsg = 'S3 ' . $method . ' failed (' . $status . '): ' . ($error ? $error : $body);
+            $this->errmsg = 'S3 ' . $method . ' failed (' . $status . '): ' . ($error ? $error : ($stream ? $errorBody : $body));
             trigger_error($this->errmsg);
             return false;
         }
-        return ['status' => $status, 'headers' => $responseHeaders, 'body' => $body];
+        // With a sink or a stream the body has already gone elsewhere and curl_exec() returns true.
+        return ['status' => $status, 'headers' => $responseHeaders, 'body' => is_string($body) ? $body : ''];
     }
 
     private function presign($method, $key, $params, $expires)

@@ -55,8 +55,8 @@ function get_curl($url, $post=0, $referer=0, $cookie=0, $header=0, $ua=0, $nobao
  *   0 X-Forwarded-For（老行为，头可以伪造，只适合前面是自己可控的反代）
  *   1 X-Real-IP
  *   2 REMOTE_ADDR（直连时最准）
- *   3 Cloudflare：只在请求确实来自 CF 的 IP 段时才采信 CF-Connecting-IP，
- *     否则一律用 REMOTE_ADDR —— 套了 CF 的站点应该用这个
+ *   3 自动校验来源：只认站长指定的反向代理传来的地址，以及请求确实来自 CF 的 IP 段时的
+ *     CF-Connecting-IP，否则一律用 REMOTE_ADDR —— 套了 CF、或前面有自己的反向代理的站点应该用这个
  *
  * 四种方式都支持 IPv6：原来只匹配 IPv4，CF 转发过来的 IPv6 用户会识别不出来，
  * 退回 REMOTE_ADDR 变成 CF 边缘节点的地址，所有 IPv6 用户被算成同一个人。
@@ -1065,26 +1065,153 @@ function ip_in_cidr($ip, $cidr){
 }
 
 /*
+ * 站长在后台填的「可信反向代理地址」：本站前面自己那层反向代理（宿主机上的 Nginx、面板的反向代理、
+ * 内网穿透的 HTTP 代理……）的地址。返回单个 IP / 网段的数组，写错的条目直接丢掉。
+ * 分隔符不讲究，空格、逗号、分号、竖线、换行都认。
+ */
+function trusted_proxy_list(){
+	global $conf;
+	$raw = isset($conf['ip_proxy_trust']) ? trim((string)$conf['ip_proxy_trust']) : '';
+	if($raw === '')return [];
+	$items = preg_split('/[\s,;|，；]+/u', $raw, -1, PREG_SPLIT_NO_EMPTY);
+	if(!is_array($items))return [];
+	$list = [];
+	foreach($items as $item){
+		$parts = explode('/', $item);
+		$bin = @inet_pton($parts[0]);
+		if($bin === false)continue;
+		if(count($parts) === 1){
+			$list[] = $item;
+		}elseif(count($parts) === 2 && ctype_digit($parts[1]) && intval($parts[1]) <= strlen($bin) * 8){
+			$list[] = $item;
+		}
+	}
+	return $list;
+}
+
+//$ip 是否命中名单里的某个 IP 或网段。单个 IP 按二进制地址比，IPv6 的不同写法也认得出
+function ip_in_list($ip, $list){
+	$bin = @inet_pton((string)$ip);
+	if($bin === false)return false;
+	foreach($list as $entry){
+		if(strpos($entry, '/') !== false){
+			if(ip_in_cidr($ip, $entry))return true;
+		}elseif(@inet_pton($entry) === $bin){
+			return true;
+		}
+	}
+	return false;
+}
+
+//转发头里的一段地址：去掉空白、IPv6 的方括号和端口号（有的代理会带上），不是合法 IP 返回 null
+function forwarded_ip_clean($item){
+	$item = trim((string)$item);
+	if($item === '')return null;
+	if($item[0] === '['){
+		$end = strpos($item, ']');
+		if($end === false)return null;
+		$item = substr($item, 1, $end - 1);
+	}elseif(substr_count($item, ':') === 1 && strpos($item, '.') !== false){
+		$item = substr($item, 0, strpos($item, ':'));
+	}
+	return filter_var($item, FILTER_VALIDATE_IP) ? $item : null;
+}
+
+/*
+ * 连接对端是站长指定的反向代理时，从它带来的请求头里取访客地址；
+ * 对端不在名单里、或者它没带来可用的地址，返回 null。
+ *
+ * X-Forwarded-For 是「访客, 代理1, 代理2」的链，每层代理把自己看到的对端追加在最右边，
+ * 所以要从右往左看：跳过同样在名单里的代理，第一个不在名单里的才是访客。
+ * 最左边那段是访客自己能随便写的，不能像 real_ip(0) 那样从左边取。链里没有再看 X-Real-IP。
+ */
+function proxy_forwarded_ip($remote){
+	$trust = trusted_proxy_list();
+	if(!$trust || !ip_in_list($remote, $trust))return null;
+	if(!empty($_SERVER['HTTP_X_FORWARDED_FOR'])){
+		foreach(array_reverse(explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])) as $item){
+			$ip = forwarded_ip_clean($item);
+			//写坏的一段：它左边的更不可信，到此为止
+			if($ip === null)break;
+			if(!ip_in_list($ip, $trust))return $ip;
+		}
+	}
+	if(!empty($_SERVER['HTTP_X_REAL_IP'])){
+		$ip = forwarded_ip_clean($_SERVER['HTTP_X_REAL_IP']);
+		if($ip !== null && !ip_in_list($ip, $trust))return $ip;
+	}
+	return null;
+}
+
+/*
  * 限流专用的"可信 IP"。
  *
  * 站点的 $clientip 走的是后台配置的 real_ip()，它会无条件相信 X-Forwarded-For
  * 这类请求头——展示用没问题，但拿来做限流就等于没做：伪造一个头就是一个新 IP。
- * 这里只在"请求确实来自 Cloudflare 的 IP 段"时才采信 CF-Connecting-IP，
+ * 这里只认两种来源传来的地址：站长在后台指定的反向代理（见 proxy_forwarded_ip），
+ * 以及"请求确实来自 Cloudflare 的 IP 段"时的 CF-Connecting-IP。
  * 其余一律用 REMOTE_ADDR，这个值是 TCP 连接的对端地址，伪造不了。
+ *
+ * 注意：前面是纯端口转发（不是反向代理）时，REMOTE_ADDR 就是转发者自己的地址，
+ * 请求里也没有任何可信的线索，谁都还原不出访客地址——这种情况只能改转发方式。
  */
 function trusted_client_ip(){
 	$remote = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '';
 	if($remote === '')return '0.0.0.0';
+	//先剥掉站长自己那层反向代理：剩下的才是真正连到最外层的那个地址（代理后面还可以再套 CF）
+	$peer = proxy_forwarded_ip($remote);
+	if($peer === null)$peer = $remote;
 	if(!empty($_SERVER['HTTP_CF_CONNECTING_IP'])){
 		foreach(cloudflare_ranges() as $cidr){
-			if(ip_in_cidr($remote, $cidr)){
+			if(ip_in_cidr($peer, $cidr)){
 				$cf = trim($_SERVER['HTTP_CF_CONNECTING_IP']);
 				if(filter_var($cf, FILTER_VALIDATE_IP))return $cf;
 				break;
 			}
 		}
 	}
-	return $remote;
+	return $peer;
+}
+
+/*
+ * 后台「用户IP地址获取设置」页顶上的提示：按这一次访问的实际情况说明地址是怎么来的。
+ * 四个选项都显示同一个内网地址时，站长光看下拉框看不出原因（前面是纯端口转发，地址在到本站之前就丢了）。
+ * 返回 ['type'=>'warning|info|success', 'lines'=>[纯文本…]]，没什么可说的返回 null。输出时由页面转义。
+ */
+function ip_setting_hint(){
+	$remote = isset($_SERVER['REMOTE_ADDR']) ? (string)$_SERVER['REMOTE_ADDR'] : '';
+	if($remote === '')return null;
+	$xff = isset($_SERVER['HTTP_X_FORWARDED_FOR']) ? trim((string)$_SERVER['HTTP_X_FORWARDED_FOR']) : '';
+	$xri = isset($_SERVER['HTTP_X_REAL_IP']) ? trim((string)$_SERVER['HTTP_X_REAL_IP']) : '';
+	$trust = trusted_proxy_list();
+	if($trust && ip_in_list($remote, $trust)){
+		$ip = proxy_forwarded_ip($remote);
+		if($ip !== null){
+			return ['type'=>'success', 'lines'=>[
+				'这次访问是可信反向代理 '.$remote.' 转过来的，它带来的访客地址是 '.$ip.'。方式选「3_自动校验来源」就按这个地址算。',
+			]];
+		}
+		return ['type'=>'warning', 'lines'=>[
+			'这次访问是可信反向代理 '.$remote.' 转过来的，但它没有带来访客地址（X-Forwarded-For / X-Real-IP 是空的，或者里面只有代理自己的地址）。',
+			'请检查代理的配置，让它把访客地址追加进 X-Forwarded-For。如果你现在就是在代理那台机器上访问本站，这条可以忽略。',
+		]];
+	}
+	//不带这两个标志校验不过的，就是内网 / 回环 / 保留地址
+	if(filter_var($remote, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) !== false)return null;
+	if($xff !== '' || $xri !== ''){
+		$header = $xff !== '' ? 'X-Forwarded-For: '.$xff : 'X-Real-IP: '.$xri;
+		if(strlen($header) > 120)$header = substr($header, 0, 120).'…';
+		return ['type'=>'info', 'lines'=>[
+			'这次访问到达本站时，连接的对端是内网地址 '.$remote.'，并且带来了转发头（'.$header.'）。',
+			'如果 '.$remote.' 是你自己的反向代理，把它填进下面的「可信反向代理地址」，方式选「3_自动校验来源」：这样只认它传来的地址，别人伪造请求头不起作用。',
+		]];
+	}
+	return ['type'=>'warning', 'lines'=>[
+		'这次访问到达本站时，连接的对端是内网地址 '.$remote.'，请求里也没有 X-Forwarded-For / X-Real-IP。',
+		'这说明本站前面是纯端口转发（比如宿主机把端口转进虚拟机，或者端口映射时改写了来源地址）：访客的真实地址在到达本站之前就已经丢了，下面四种方式取到的都只能是 '.$remote.'，程序没有办法还原。这时所有访客会被当成同一个人，按 IP 的上传限制、禁止访问、登录失败锁定都会失准。',
+		'解决办法二选一：① 把前面的端口转发换成反向代理（Nginx、面板里的「反向代理」等），让它带上 X-Forwarded-For，再把代理的地址填进下面的「可信反向代理地址」，方式选 3；② 虚拟机改用桥接网络，或换成不改写来源地址的转发方式，方式选 2。',
+		'如果你现在只是在内网里直接访问本站，这条提示可以忽略。',
+	]];
 }
 
 /*
@@ -2338,7 +2465,8 @@ function admin_setting_keys(){
 		//检测命中后给站长发信：green_notify_last / green_notify_skip 是合并间隔的
 		//运行时状态，由 green_notify_send() 自己写，不从表单进来
 		'green_notify', 'green_notify_mail', 'green_notify_interval',
-		'green_label_terrorism', 'ip_type', 'keywords', 'login_apiurl',
+		//ip_proxy_trust：可信反向代理地址，只有这些地址传来的转发头才算数
+		'green_label_terrorism', 'ip_type', 'ip_proxy_trust', 'keywords', 'login_apiurl',
 		'login_appid', 'login_appkey', 'login_qq', 'login_wx',
 		'name_block', 'obs_ak', 'obs_bucket', 'obs_endpoint',
 		'obs_sk', 'online_edit_mode', 'online_edit_uids', 'oss_ak',

@@ -36,15 +36,30 @@ class Qiniu implements IStorage {
 	}
 
 	public function downloadTo($name, $path) {
-		try {
-			//Read the bucket's configured origin, not the current storage's shared download domain.
-			$url = rtrim($this->config['domain'], '/');
-			if(!preg_match('#^https?://#i', $url))$url = 'https://'.$url;
-			$url = $this->auth->privateDownloadUrl($url.'/'.$this->filepath.$name, 300);
-			$client = new Client(['timeout'=>300]);
-			$response = $client->request('GET', $url, ['sink'=>$path]);
-			return $response->getStatusCode() === 200;
-		} catch(\Throwable $e) { return false; }
+		//Read the bucket's configured origin, not the current storage's shared download domain.
+		$domain = rtrim(trim((string)$this->config['domain']), '/');
+		if($domain === ''){
+			$this->errmsg = __FUNCTION__ . ': 没有填写空间绑定域名';
+			trigger_error($this->errmsg);
+			return false;
+		}
+		//绑定域名一般不带协议，而七牛的域名不一定配了 HTTPS 证书（测试域名、没上证书的自有域名只有 http）。
+		//原来一律补 https://，这类域名直传完成后的回源核对必失败。没写协议就先试 https 再试 http，写了的按写的来
+		$bases = preg_match('#^https?://#i', $domain) ? [$domain] : ['https://'.$domain, 'http://'.$domain];
+		$client = new Client(['timeout'=>300, 'connect_timeout'=>15]);
+		foreach($bases as $base){
+			try {
+				//下载凭证是对整条地址（含协议）签的，换协议要重新签
+				$url = $this->auth->privateDownloadUrl($base.'/'.$this->filepath.$name, 300);
+				$response = $client->request('GET', $url, ['sink'=>$path]);
+				if($response->getStatusCode() === 200)return true;
+				$this->errmsg = __FUNCTION__ . ': HTTP ' . $response->getStatusCode();
+			} catch(\Throwable $e) {
+				$this->errmsg = __FUNCTION__ . ': ' . $e->getMessage();
+			}
+		}
+		trigger_error($this->errmsg);
+		return false;
 	}
 
 	public function get($name) {
@@ -66,31 +81,61 @@ class Qiniu implements IStorage {
 	public function downfile($name, $range = false) {
 		$headers = [];
 		if($range){
-			$headers['Range'] = 'bytes='.$range[0].'-'.$range[1];
+			$headers[] = 'Range: bytes='.intval($range[0]).'-'.intval($range[1]);
 		}
-		try {
-			$url = $this->getDownUrl($name);
-			if(!$url) return false;
-			$client = new Client(['timeout' => 30]);
-			$request = new Psr7\Request('GET', $url, $headers);
-			$response = $client->send($request);
-			$body = $response->getBody();
-			while(!$body -> eof()){
-				\download_output_chunk($body -> read(102400));
-			}
-			return true;
-        } catch(\Exception $e) {
-			$this->errmsg = __FUNCTION__ . ": " . $e->getMessage();
+		$url = $this->getDownUrl($name);
+		if(!$url) return false;
+		if(!function_exists('curl_init')){
+			$this->errmsg = __FUNCTION__ . ': 需要服务器开启 PHP cURL 扩展';
 			trigger_error($this->errmsg);
 			return false;
 		}
+		//边收边吐。原来是先把整个文件从七牛取回本站再输出，而且总时长只给 30 秒：
+		//文件稍大或线路慢一点，访客那边就是链接一直没反应，30 秒内取不完还会整个失败。
+		//现在不设总时长上限（限速下载大文件本来就久），连续 60 秒一个字节都没动才断开
+		$errbody = '';
+		$ch = curl_init($url);
+		curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+		curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+		curl_setopt($ch, CURLOPT_MAXREDIRS, 3);
+		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);
+		curl_setopt($ch, CURLOPT_TIMEOUT, 0);
+		curl_setopt($ch, CURLOPT_LOW_SPEED_LIMIT, 1);
+		curl_setopt($ch, CURLOPT_LOW_SPEED_TIME, 60);
+		curl_setopt($ch, CURLOPT_WRITEFUNCTION, function($ch, $data) use (&$errbody){
+			$code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+			if($code >= 200 && $code < 300){
+				\download_output_chunk($data);
+			}elseif(strlen($errbody) < 1024){
+				//不是 2xx 时收到的是七牛的报错（或跳转页），留给 errmsg，不能当文件内容吐给访客
+				$errbody .= $data;
+			}
+			return strlen($data);
+		});
+		$ok = curl_exec($ch);
+		$status = intval(curl_getinfo($ch, CURLINFO_HTTP_CODE));
+		$error = curl_error($ch);
+		curl_close($ch);
+		if($ok === false || $status < 200 || $status >= 300){
+			$this->errmsg = __FUNCTION__ . ': HTTP ' . $status . ' ' . ($error ? $error : trim($errbody));
+			trigger_error($this->errmsg);
+			return false;
+		}
+		return true;
 	}
 
 	public function upload($name, $tmpfile, $content_type = null) {
         try {
 			$token = $this->auth->uploadToken($this->bucket);
 			$uploadMgr = new \Qiniu\Storage\UploadManager();
-			$uploadMgr->putFile($token, $this->filepath.$name, $tmpfile);
+			//七牛拒绝上传时 putFile 不抛异常，错误在返回值的第二项里。不看的话没传上去也当成功，
+			//会建出一条下载时报 File Not Found 的记录
+			list($ret, $err) = $uploadMgr->putFile($token, $this->filepath.$name, $tmpfile);
+			if($err !== null){
+				$this->errmsg = __FUNCTION__ . ': ' . $err->message();
+				trigger_error($this->errmsg);
+				return false;
+			}
 			return true;
         } catch(\Exception $e) {
 			$this->errmsg = __FUNCTION__ . ": " . $e->getMessage();

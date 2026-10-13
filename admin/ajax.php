@@ -250,12 +250,24 @@ case 'siteiconReset':
 	exit(json_encode(['code'=>0, 'msg'=>'已恢复默认图标', 'url'=>site_icon_url('../'), 'custom'=>0], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
 break;
 case 'iptype':
-	$result = [
-	['name'=>'0_X_FORWARDED_FOR', 'ip'=>real_ip(0), 'city'=>get_ip_city(real_ip(0))],
-	['name'=>'1_X_REAL_IP', 'ip'=>real_ip(1), 'city'=>get_ip_city(real_ip(1))],
-	['name'=>'2_REMOTE_ADDR', 'ip'=>real_ip(2), 'city'=>get_ip_city(real_ip(2))],
-	['name'=>'3_Cloudflare（自动校验来源）', 'ip'=>real_ip(3), 'city'=>get_ip_city(real_ip(3))]
-	];
+	//归属地要问外部接口：先放开会话锁，免得接口慢的时候把同一管理员的其它请求全堵住
+	if(function_exists('session_write_close') && session_status() === PHP_SESSION_ACTIVE)session_write_close();
+	$names = ['0_X_FORWARDED_FOR', '1_X_REAL_IP', '2_REMOTE_ADDR', '3_自动校验来源（Cloudflare / 指定的反向代理）'];
+	$cities = [];
+	$result = [];
+	foreach($names as $type=>$name){
+		$ip = real_ip($type);
+		//四种方式经常取到同一个地址，一个地址只查一次；内网 / 保留地址没有归属地，不用去问
+		if(!isset($cities[$ip])){
+			if(filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false){
+				$cities[$ip] = '内网地址';
+			}else{
+				$city = get_ip_city($ip);
+				$cities[$ip] = $city ? $city : '';
+			}
+		}
+		$result[] = ['name'=>$name, 'ip'=>$ip, 'city'=>$cities[$ip]];
+	}
 	exit(json_encode($result));
 break;
 case 'userList':
