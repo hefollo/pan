@@ -118,6 +118,64 @@ class S3 implements IStorage
         return $this->request('DELETE', $this->objectKey($name)) !== false;
     }
 
+    /**
+     * Publish a browser-uploaded staging object as $hash without routing it through this server.
+     *
+     * For an object stored in a single PUT/POST, S3 and compatible services report the MD5 of
+     * its content as the ETag. The staging object is first copied, on the storage side, to a key
+     * the browser has no permission to write (its upload policy names the staging key only), so
+     * what gets checked can no longer be swapped. If that snapshot's ETag and length match what
+     * the browser declared, it is copied to the final key; the snapshot is removed either way.
+     *
+     * Returns true only when the object was published this way. false means "not decided here"
+     * (the ETag is not a plain MD5, e.g. multipart or KMS-encrypted objects, the values differ,
+     * or the service does not support the copy): the caller must fall back to downloading and
+     * comparing the content itself.
+     */
+    public function publishStaged($stagingName, $hash, $size, $content_type = null)
+    {
+        $hash = strtolower($hash);
+        // Cheap early exit: no point copying something that already does not match.
+        $staged = $this->request('HEAD', $this->objectKey($stagingName));
+        if ($staged === false || !$this->headMatches($staged, $hash, $size)) {
+            return false;
+        }
+        $snapshot = 'pending/' . bin2hex(random_bytes(24));
+        if (!$this->copyObject($stagingName, $snapshot)) {
+            return false;
+        }
+        $published = false;
+        $head = $this->request('HEAD', $this->objectKey($snapshot));
+        if ($head !== false && $this->headMatches($head, $hash, $size)) {
+            $published = $this->copyObject($snapshot, $hash, $content_type);
+        }
+        $this->request('DELETE', $this->objectKey($snapshot));
+        return $published;
+    }
+
+    private function headMatches($response, $hash, $size)
+    {
+        $etag = isset($response['headers']['etag']) ? strtolower(trim($response['headers']['etag'], " \t\"")) : '';
+        $length = isset($response['headers']['content-length']) ? intval($response['headers']['content-length']) : -1;
+        return preg_match('/^[a-f0-9]{32}$/', $etag) === 1 && hash_equals($hash, $etag) && $length === intval($size);
+    }
+
+    // Server-side copy inside the bucket; nothing is transferred through this server.
+    private function copyObject($from, $to, $content_type = null)
+    {
+        $headers = [
+            'x-amz-copy-source' => '/' . rawurlencode($this->bucket) . '/' . implode('/', array_map('rawurlencode', explode('/', $this->objectKey($from))))
+        ];
+        if ($content_type) {
+            // The browser's form upload carries no usable type; give the final object the same one a relayed upload gets.
+            $headers['x-amz-metadata-directive'] = 'REPLACE';
+            $headers['content-type'] = $content_type;
+        }
+        $response = $this->request('PUT', $this->objectKey($to), $headers);
+        // A failed copy can still answer 200 with an <Error> document in the body.
+        return $response !== false && stripos($response['body'], 'CopyObjectResult') !== false;
+    }
+
     public function getUploadParam($name, $filename, $max_file_size = 0)
     {
         $now = time();
@@ -292,6 +350,9 @@ class S3 implements IStorage
             curl_setopt($curl, CURLOPT_UPLOAD, true);
             curl_setopt($curl, CURLOPT_INFILE, $handle);
             curl_setopt($curl, CURLOPT_INFILESIZE, filesize($file));
+        } elseif ($method === 'PUT') {
+            // A PUT without a file (server-side copy) still has to announce an empty body.
+            curl_setopt($curl, CURLOPT_POSTFIELDS, '');
         }
         $body = curl_exec($curl);
         $status = curl_getinfo($curl, CURLINFO_HTTP_CODE);

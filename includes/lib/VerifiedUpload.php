@@ -13,6 +13,19 @@ class VerifiedUpload
             || !preg_match('/^[a-f0-9]{32}$/iD', $hash) || $size < 1
             || !method_exists($storage, 'downloadTo')) return false;
 
+        // A storage that can prove the staged object's content on its own side publishes it with a
+        // server-side copy (S3: publishStaged), so a browser direct upload is not pulled through this
+        // server and pushed back again. Anything short of a positive match falls through to the
+        // download-and-compare path below, which stays the authority on what gets rejected.
+        if (method_exists($storage, 'publishStaged')) {
+            try {
+                if ($storage->publishStaged($key, $hash, $size, \minetype($state['ext'])) === true) {
+                    try { $storage->delete($key); } catch (\Throwable $ignored) {}
+                    return true;
+                }
+            } catch (\Throwable $e) {}
+        }
+
         $tmp = tempnam(sys_get_temp_dir(), 'verified_');
         if ($tmp === false) return false;
         try {
