@@ -27,6 +27,11 @@ if($mod=='site'){
 	  <div class="col-sm-10"><input type="text" name="title" value="<?php echo htmlspecialchars($conf['title'], ENT_QUOTES, 'UTF-8'); ?>" class="form-control" required/></div>
 	</div><br/>
 	<div class="form-group">
+	  <label class="col-sm-2 control-label">副标题</label>
+	  <div class="col-sm-10"><input type="text" name="subtitle" value="<?php echo htmlspecialchars(isset($conf['subtitle']) ? $conf['subtitle'] : '', ENT_QUOTES, 'UTF-8'); ?>" class="form-control" placeholder="可不填"/>
+	  <span class="help-block">显示在首页的浏览器标签上，接在网站标题后面，即「网站标题 - 副标题」。不填就只显示网站标题；其它页面不受影响。</span></div>
+	</div><br/>
+	<div class="form-group">
 	  <label class="col-sm-2 control-label">关键字</label>
 	  <div class="col-sm-10"><input type="text" name="keywords" value="<?php echo $conf['keywords']; ?>" class="form-control"/></div>
 	</div><br/>

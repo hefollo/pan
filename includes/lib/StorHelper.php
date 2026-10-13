@@ -180,6 +180,19 @@ class StorHelper
         return in_array($storage, ['oss','qcloud','obs','upyun','qiniu'], true);
     }
 
+    /*
+     * 302 到直链时要不要让浏览器别带来源页（Referer）。
+     * OpenList 的直链是它后面那个网盘给的地址，有的网盘按 Referer 防盗链：挂阿里云盘时，
+     * 带着本站地址去取会被拒绝（You are denied by bucket referer policy），图片预览是裂图、下载是 403，
+     * 不带 Referer 反而能取。这些上游不可能把本站加进白名单，所以对 OpenList 一律不带。
+     * 对象存储不能照搬：站长可能在桶上配了「只允许本站 Referer、不允许空 Referer」的防盗链，去掉就取不到了。
+     */
+    public static function direct_no_referer($storage = null){
+        global $conf;
+        if($storage === null) $storage = $conf['storage'];
+        return in_array($storage, ['openlist'], true);
+    }
+
     //判断是否可以断点续传
     public static function is_range($storage = null){
         global $conf;

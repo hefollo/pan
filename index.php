@@ -37,7 +37,8 @@ if(isset($_GET['m']) && $_GET['m']=='mine'){
     }
     $link = '&m=mine';
 }else{
-    $title = $conf['title'];
+    //首页的标签标题带上后台填的副标题（没填就只有网站标题）
+    $title = site_home_title();
     $htext = '文件列表';
     //公共列表只列正常状态：封禁（block=1）和待审核（block=2）的都不上首页。
     //统计卡、筛选计数、占用空间、最近上传都用这个条件（$sql_base），会跟着一起排除

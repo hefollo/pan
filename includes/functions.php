@@ -2480,7 +2480,8 @@ function admin_setting_keys(){
 		'onedrive_type', 'onedrive_client_id', 'onedrive_client_secret', 'onedrive_path',
 		//openlist_cache_token / token_expire 由驱动登录后自己写，不从表单进来
 		'openlist_url', 'openlist_user', 'openlist_pass', 'openlist_token', 'openlist_path',
-		'site_theme', 'theme_gradient', 'storage', 'storage_multi', 'storage_pool', 'storagename', 'title',
+		//subtitle：副标题，首页浏览器标签上接在网站标题后面
+		'site_theme', 'theme_gradient', 'storage', 'storage_multi', 'storage_pool', 'storagename', 'title', 'subtitle',
 		//tongji 是老的单条「统计代码」，现在由 footer_codes 列表接替，留着只为兼容没保存过新列表的站点
 		'tongji', 'footer_codes', 'type_audio', 'type_block', 'type_image',
 		'type_video', 'upload_limit', 'upload_per_minute', 'upload_show_default', 'upload_size', 'uploadfile_type',
@@ -3080,6 +3081,18 @@ function admin_brand_html(){
 	global $conf;
 	$title = (isset($conf['title']) && $conf['title'] !== '') ? $conf['title'] : '彩虹外链网盘';
 	return htmlspecialchars($title, ENT_QUOTES, 'UTF-8').'管理中心';
+}
+
+/*
+ * 首页浏览器标签上的标题：「网站标题 - 副标题」，没填副标题就只有网站标题，和加这项之前一样。
+ * 副标题只用在首页：其它页面已经是「页面名 - 网站标题」，再接一段就太长了。
+ * 网站标题一直是原样输出的，这里不动它；副标题按纯文字转义。
+ */
+function site_home_title(){
+	global $conf;
+	$title = isset($conf['title']) ? $conf['title'] : '';
+	$sub = isset($conf['subtitle']) ? trim((string)$conf['subtitle']) : '';
+	return $sub === '' ? $title : $title.' - '.htmlspecialchars($sub, ENT_QUOTES, 'UTF-8');
 }
 
 /*
@@ -4804,6 +4817,8 @@ function file_output($hash, $type, $size, $name, $is_view = false, $is_admin = f
 	if($download_speed <= 0 && \lib\StorHelper::is_direct_down($storage) && $conf['downfile_type'] == 1 && !$domain_mismatch){
 		$redirect = $stor->getDownUrl($hash, $name, $is_view ? minetype($type) : null);
 		if($redirect){
+			//浏览器跟随跳转时按这个头决定带不带来源页：上游按 Referer 防盗链的存储，带着本站地址去取会被拒
+			if(\lib\StorHelper::direct_no_referer($storage))header("Referrer-Policy: no-referrer");
 			header("Location: ".$redirect);
 		}else{
 			ob_clean();

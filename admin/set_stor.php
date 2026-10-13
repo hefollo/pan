@@ -505,7 +505,7 @@ $cap_now = $stor_caps[$storage];
 				</div>
 			</div>
 			<div class="alert alert-info stor-note" id="row_onedrive_note"<?php echo $storage === 'onedrive' ? '' : ' style="display:none"'?>>OneDrive 的直链是微软给的一小时临时地址，本站会 302 过去，不消耗本站流量；代价是下载下来的文件名会变成站内的存储名（没有扩展名）。在意文件名就选网站中转。</div>
-			<div class="alert alert-info stor-note" id="row_openlist_note"<?php echo $storage === 'openlist' ? '' : ' style="display:none"'?>>OpenList 的直链由它自己给出：底层是对象存储或网盘时会直接跳到上游地址，底层开了代理时跳的是 OpenList 自己的带签名地址。和 OneDrive 一样，直链下载拿到的文件名会变成站内的存储名（没有扩展名），在意文件名就选网站中转。</div>
+			<div class="alert alert-info stor-note" id="row_openlist_note"<?php echo $storage === 'openlist' ? '' : ' style="display:none"'?>>OpenList 的直链由它自己给出：底层是对象存储或网盘时会直接跳到上游地址，底层开了代理时跳的是 OpenList 自己的带签名地址。和 OneDrive 一样，直链下载拿到的文件名会变成站内的存储名（没有扩展名），在意文件名就选网站中转。底层网盘的直链常有防盗链，本站跳转过去时已经不带来源页（挂阿里云盘靠这个才取得到）；外链贴到别的网站上、或者上游还要求特定的客户端标识时仍可能取不到，这种情况请选网站中转。</div>
 			<div class="form-group">
 				<div class="col-sm-offset-3 col-sm-9"><button type="submit" class="btn btn-primary">保存限速设置</button></div>
 			</div>
