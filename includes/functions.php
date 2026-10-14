@@ -748,20 +748,24 @@ function is_mail_reset_open(){
 	return has_mail_user();
 }
 /*
- * 邮箱域名是否在黑名单里（后台按行或逗号填一次性邮箱域名）
+ * 邮箱域名限制：旧设置默认黑名单，白名单只放行明确列出的完整域名。
+ * 找回密码不套用注册白名单，避免切换后已有账号无法找回；原黑名单行为保留。
  */
-function mail_domain_denied($email){
+function mail_domain_denied($email, $for_registration = true){
 	global $conf;
-	$deny = isset($conf['mail_domain_deny']) ? trim($conf['mail_domain_deny']) : '';
-	if($deny === '')return false;
+	$allow_mode = isset($conf['mail_domain_mode']) && $conf['mail_domain_mode'] === 'allow';
+	if($allow_mode && !$for_registration)return false;
+	$key = $allow_mode ? 'mail_domain_allow' : 'mail_domain_deny';
+	$list = isset($conf[$key]) ? trim($conf[$key]) : '';
+	if($list === '')return $allow_mode;
 	$at = strrpos($email, '@');
 	if($at === false)return true;
-	$domain = substr($email, $at + 1);
-	foreach(preg_split('/[\s,，;；]+/', $deny) as $item){
+	$domain = strtolower(trim(substr($email, $at + 1)));
+	foreach(preg_split('/[\s,，;；]+/', $list) as $item){
 		$item = strtolower(trim($item));
-		if($item !== '' && $item === $domain)return true;
+		if($item !== '' && $item === $domain)return !$allow_mode;
 	}
-	return false;
+	return $allow_mode;
 }
 
 /*
@@ -2503,7 +2507,7 @@ function admin_setting_keys(){
 		'mail_brevo_open', 'mail_brevo_key',
 		'mail_sendgrid_open', 'mail_sendgrid_key',
 		'mail_reg_open', 'mail_code_expire', 'mail_send_interval',
-		'mail_daily_limit', 'mail_ip_daily_limit', 'mail_domain_deny',
+		'mail_daily_limit', 'mail_ip_daily_limit', 'mail_domain_deny', 'mail_domain_mode', 'mail_domain_allow',
 		'mail_hour_limit', 'mail_site_daily', 'mail_captcha_open',
 	];
 }

@@ -110,9 +110,21 @@ $mail_names = implode('、', $mail_names);
 	  <p class="help-block">最后一道保险：就算有人换着邮箱和网络来刷，也烧不掉整个发信额度。正常站点碰不到这个数，按自己的邮箱额度设置即可（QQ 邮箱个人账号一天大约几十封）。</p></div>
 	</div><br/>
 	<div class="form-group">
+	  <label class="col-sm-3 control-label">邮箱域名限制模式</label>
+	  <div class="col-sm-9"><select class="form-control" name="mail_domain_mode" id="mailDomainMode">
+		<option value="deny"<?php echo empty($conf['mail_domain_mode']) || $conf['mail_domain_mode'] !== 'allow' ? ' selected' : '';?>>黑名单：禁止以下域名</option>
+		<option value="allow"<?php echo isset($conf['mail_domain_mode']) && $conf['mail_domain_mode'] === 'allow' ? ' selected' : '';?>>白名单：只允许以下域名</option>
+	  </select><p class="help-block">用于注册和绑定邮箱。黑白名单分别保存，切换不会清空；点击「保存注册设置」后生效。白名单不影响已有账号登录、找回密码。</p></div>
+	</div><br/>
+	<div class="form-group" id="mailDomainDenyRow"<?php echo isset($conf['mail_domain_mode']) && $conf['mail_domain_mode'] === 'allow' ? ' style="display:none"' : '';?>>
 	  <label class="col-sm-3 control-label">邮箱域名黑名单</label>
 	  <div class="col-sm-9"><textarea name="mail_domain_deny" class="form-control" rows="3" placeholder="mailinator.com&#10;10minutemail.com"><?php echo htmlspecialchars(isset($conf['mail_domain_deny'])?$conf['mail_domain_deny']:'', ENT_QUOTES, 'UTF-8')?></textarea>
-	  <p class="help-block">一行一个域名，用来挡一次性邮箱。留空表示不限制。</p></div>
+	  <p class="help-block">禁止这些域名，留空表示不限制。只填域名（不带 @），一行一个，也可用逗号或分号分隔。不区分大小写，精确匹配，不包含子域名。</p></div>
+	</div>
+	<div class="form-group" id="mailDomainAllowRow"<?php echo !isset($conf['mail_domain_mode']) || $conf['mail_domain_mode'] !== 'allow' ? ' style="display:none"' : '';?>>
+	  <label class="col-sm-3 control-label">邮箱域名白名单</label>
+	  <div class="col-sm-9"><textarea name="mail_domain_allow" class="form-control" rows="3" placeholder="qq.com&#10;163.com&#10;gmail.com"><?php echo htmlspecialchars(isset($conf['mail_domain_allow'])?$conf['mail_domain_allow']:'', ENT_QUOTES, 'UTF-8')?></textarea>
+	  <p class="help-block">只允许这些域名，<b>留空将禁止所有邮箱注册和绑定</b>。只填域名（不带 @），一行一个，也可用逗号或分号分隔。不区分大小写，精确匹配，不包含子域名。</p></div>
 	</div><br/>
 	<div class="form-group">
 	  <div class="col-sm-offset-3 col-sm-9"><input type="submit" value="保存注册设置" class="btn btn-primary form-control"/></div>
@@ -317,6 +329,12 @@ function esc(s){
 
 $(function(){
 	$('select[default]').each(function(){ $(this).val($(this).attr('default')); });
+	//选中状态由 PHP 输出，整页打开和后台动态换页都能立即按已保存模式显示。
+	$('#mailDomainMode').on('change', function(){
+		var allow = $(this).val() === 'allow';
+		$('#mailDomainDenyRow').toggle(!allow);
+		$('#mailDomainAllowRow').toggle(allow);
+	}).trigger('change');
 });
 </script>
 </body>

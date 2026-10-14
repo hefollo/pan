@@ -162,8 +162,8 @@ if(isset($_GET['logout'])){
 		//配额在查账号之前就扣掉：存在和不存在两条路消耗一样，免得靠"哪次没扣配额"反推
 		$_SESSION['sendcode_time'] = time();
 		$_SESSION['sendcode_num'] = intval($_SESSION['sendcode_num']) + 1;
-		//域名黑名单可以直说：它只说明这个域名不收，和站里有没有这个账号无关
-		if(mail_domain_denied($email))exit('{"code":-1,"msg":"该邮箱域名不被支持，请换一个邮箱"}');
+		//找回密码保留原黑名单限制，但不受新注册白名单影响。
+		if(mail_domain_denied($email, false))exit('{"code":-1,"msg":"该邮箱域名不被支持，请换一个邮箱"}');
 
 		$_SESSION['mail_token'] = md5(uniqid('', true).mt_rand());
 		$sent_msg = '如果该邮箱已注册，验证码已经发出，请查收（也看一下垃圾箱）。';
