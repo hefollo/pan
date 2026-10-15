@@ -55,6 +55,7 @@ if($act !== ''){
 	switch($act){
 	case 'createApiKey':
 		if(empty($conf['api_open']))uc_json(-1, '上传 API 已关闭');
+		if(!level_can('api'))uc_json(-1, '当前账号的会员等级不能使用上传接口');
 		$name = isset($_POST['name']) ? $_POST['name'] : '';
 		$allow_ip = isset($_POST['allow_ip']) ? $_POST['allow_ip'] : '';
 		$expire_days = isset($_POST['expire_days']) ? intval($_POST['expire_days']) : api_key_default_expire_days();
@@ -69,6 +70,7 @@ if($act !== ''){
 		$row = $DB->getRow("SELECT * FROM pre_api_key WHERE id=:id AND uid=:uid LIMIT 1", [':id'=>$id, ':uid'=>$uid]);
 		if(!$row)uc_json(-1, 'API 密钥不存在');
 		$enable = intval($row['enable']) === 1 ? 0 : 1;
+		if($enable && !level_can('api'))uc_json(-1, '当前账号的会员等级不能使用上传接口');
 		if($DB->exec("UPDATE pre_api_key SET enable=:enable WHERE id=:id AND uid=:uid", [':enable'=>$enable, ':id'=>$id, ':uid'=>$uid]) === false){
 			uc_json(-1, '修改密钥状态失败['.$DB->error().']');
 		}
@@ -289,8 +291,8 @@ $tabs = [
 ];
 //购买功能没开的话就不显示订单页签，免得点进去是一片空白
 if(!function_exists('is_buy_open') || !is_buy_open()) unset($tabs['orders']);
-//上传 API 关闭时，前台不显示密钥入口、创建功能和对接文档；已有密钥保留，重新开启后恢复。
-if(empty($conf['api_open'])) unset($tabs['api']);
+//站点关闭 API 或当前等级无权限时隐藏入口；已有密钥保留，恢复权限后可继续管理。
+if(empty($conf['api_open']) || !level_can('api')) unset($tabs['api']);
 
 $tab = (isset($_GET['tab']) && isset($tabs[$_GET['tab']])) ? $_GET['tab'] : 'overview';
 

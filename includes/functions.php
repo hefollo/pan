@@ -546,6 +546,10 @@ function create_user_api_key($uid, $name, $allow_ip = '', $expire_days = null){
 	$uid = intval($uid);
 	$name = trim(strip_tags((string)$name));
 	if($uid <= 0 || $name === '')return ['ok'=>false, 'msg'=>'请填写密钥名称'];
+	$user = $DB->getRow("SELECT * FROM pre_user WHERE uid=:uid LIMIT 1", [':uid'=>$uid]);
+	if(!$user || intval($user['enable']) !== 1)return ['ok'=>false, 'msg'=>'账号不存在或已被停用'];
+	$level = user_level($user);
+	if(!level_is_admin($level) && empty($level['api']))return ['ok'=>false, 'msg'=>'当前账号的会员等级不能使用上传接口'];
 	$name_length = function_exists('mb_strlen') ? mb_strlen($name, 'UTF-8') : strlen($name);
 	if($name_length > 32)return ['ok'=>false, 'msg'=>'密钥名称不能超过 32 个字'];
 	$error = '';
