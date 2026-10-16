@@ -4777,7 +4777,7 @@ function get_file_range($size){
 
 //$storage 传文件记录里的 storage 字段，换过全站存储之后老文件要回原存储去取；
 //$owner_uid 传文件记录里的 uid：限速按上传者算（见 file_download_speed_kbps），后台下载（$is_admin）不限速、不用传
-function file_output($hash, $type, $size, $name, $is_view = false, $is_admin = false, $storage = null, $owner_uid = 0){
+function file_output($hash, $type, $size, $name, $is_view = false, $is_admin = false, $storage = null, $owner_uid = 0, $protected = false){
 	global $conf;
 	$stor = \lib\StorHelper::get($storage);
 	//直链/断点续传这些能力要按这个文件所在的存储来判断，不能按当前存储：
@@ -4787,9 +4787,10 @@ function file_output($hash, $type, $size, $name, $is_view = false, $is_admin = f
 
 	@set_time_limit(0);
 	$size = intval($size);
-	if($is_admin){
+	if($is_admin || $protected){
 		header("Pragma: no-cache");
-    	header("Cache-Control: no-store, no-cache, must-revalidate");
+		header("Cache-Control: private, no-store, no-cache, must-revalidate");
+		$etag = '"'.$hash.'"';
 	}else{
 		//链接可能通过“替换文件”指向新内容，不能无条件长期缓存，改为用hash做校验的强制revalidate，
 		//这样同一个文件重复访问依然能省流量（304），但替换后能立刻拿到新内容
@@ -4822,7 +4823,7 @@ function file_output($hash, $type, $size, $name, $is_view = false, $is_admin = f
 		&& !empty($conf['downfile_domain'])
 		&& \lib\StorHelper::uses_down_domain($storage);
 
-	if($download_speed <= 0 && \lib\StorHelper::is_direct_down($storage) && $conf['downfile_type'] == 1 && !$domain_mismatch){
+	if(!$protected && $download_speed <= 0 && \lib\StorHelper::is_direct_down($storage) && $conf['downfile_type'] == 1 && !$domain_mismatch){
 		$redirect = $stor->getDownUrl($hash, $name, $is_view ? minetype($type) : null);
 		if($redirect){
 			//浏览器跟随跳转时按这个头决定带不带来源页：上游按 Referer 防盗链的存储，带着本站地址去取会被拒

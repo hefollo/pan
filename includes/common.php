@@ -4,8 +4,8 @@ if(defined('IN_CRONLITE'))return;
 define('IN_CRONLITE', true);
 define('SYSTEM_ROOT', dirname(__FILE__).'/');
 define('ROOT', dirname(SYSTEM_ROOT).'/');
-define('VERSION', '1637');
-define('DB_VERSION', '1027');
+define('VERSION', '1638');
+define('DB_VERSION', '1028');
 date_default_timezone_set('Asia/Shanghai');
 $date = date("Y-m-d H:i:s");
 
@@ -49,6 +49,7 @@ exit();
 
 include_once(SYSTEM_ROOT."functions.php");
 include_once(SYSTEM_ROOT."folders.php");
+include_once(SYSTEM_ROOT."folder_shares.php");
 include_once(SYSTEM_ROOT."theme_recolor.php");
 
 $conf=getAllSetting();

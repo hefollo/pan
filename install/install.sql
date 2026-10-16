@@ -16,7 +16,7 @@ create table `pre_config` (
 --   · 如果没有并进来 → 这里保持旧值不动，让全新安装照常跑一次升级把它补上。
 -- 改错方向（并进来了却不改版本号）只是多跑一趟空升级；
 -- 改反了（没并进来却改了版本号）会让新装的站永久缺表缺字段，且毫无报错。
-INSERT INTO `pre_config` VALUES ('version', '1027');
+INSERT INTO `pre_config` VALUES ('version', '1028');
 INSERT INTO `pre_config` VALUES ('level_migrated', '1');
 INSERT INTO `pre_config` VALUES ('admin_user', 'admin');
 INSERT INTO `pre_config` VALUES ('admin_pwd', '123456');
@@ -139,6 +139,24 @@ CREATE TABLE `pre_folder` (
   KEY `owner` (`uid`,`gkey`),
   KEY `addtime` (`addtime`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户文件夹（虚拟目录）';
+
+DROP TABLE IF EXISTS `pre_folder_share`;
+CREATE TABLE `pre_folder_share` (
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `uid` int(11) unsigned NOT NULL,
+  `folder_id` int(11) unsigned NOT NULL,
+  `token` char(64) NOT NULL,
+  `password_hash` varchar(255) NOT NULL DEFAULT '',
+  `auth_version` char(32) NOT NULL,
+  `enabled` tinyint(1) NOT NULL DEFAULT '1',
+  `expiretime` datetime DEFAULT NULL,
+  `addtime` datetime NOT NULL,
+  `updatetime` datetime NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `folder_id` (`folder_id`),
+  UNIQUE KEY `token` (`token`),
+  KEY `uid` (`uid`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='文件夹分享';
 
 DROP TABLE IF EXISTS `pre_sponsor`;
 CREATE TABLE `pre_sponsor` (

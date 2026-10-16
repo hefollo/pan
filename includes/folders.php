@@ -596,6 +596,7 @@ function folder_render_bar($all, $current, $url, $searching, $upload_url = ''){
 		}
 	}
 	$html .= '</nav><div class="fd-bar-acts">';
+    if($current > 0 && !$searching && !empty($GLOBALS['islogin2']))$html .= '<button type="button" class="uc-btn" id="fdShare" data-folder-id="'.$current.'"><i class="fa fa-share-alt" aria-hidden="true"></i> 分享文件夹</button>';
 	if(!$searching){
 		$html .= '<button type="button" class="uc-btn" id="fdPaste" hidden><i class="fa fa-clipboard" aria-hidden="true"></i> 粘贴<span id="fdPasteNum"></span></button>'
 			.'<button type="button" class="uc-btn" id="fdNew"><i class="fa fa-folder-o" aria-hidden="true"></i> 新建文件夹</button>';
@@ -621,6 +622,11 @@ function folder_render_rows($all, $current, $url){
 	$file_num = [];
 	$rs = $DB->getAll("SELECT folder_id, count(*) AS num FROM pre_file WHERE".folder_file_scope_sql()." AND folder_id IN (".implode(',', $ids).") GROUP BY folder_id");
 	foreach((array)$rs as $r) $file_num[intval($r['folder_id'])] = intval($r['num']);
+    $shares = [];
+    if(!empty($GLOBALS['islogin2'])){
+        $rs = $DB->getAll('SELECT folder_id,enabled,expiretime FROM pre_folder_share WHERE uid=:uid AND folder_id IN ('.implode(',', $ids).')', [':uid'=>intval($GLOBALS['uid'])]);
+        foreach((array)$rs as $r)if(!empty($r['enabled']) && !folder_share_expired($r))$shares[intval($r['folder_id'])] = true;
+    }
 	$kids = folder_kids_index($all);
 	$html = '';
 	foreach($rows as $f){
@@ -630,10 +636,11 @@ function folder_render_rows($all, $current, $url){
 			.'<td class="uc-col-check"><input type="checkbox" class="fd-check" title="选择文件夹"></td>'
 			.'<td class="uc-col-name"><a class="fd-link" href="'.folder_h($link).'"><i class="fa fa-folder fa-fw fd-icon" aria-hidden="true"></i><span class="uc-name">'.folder_h($f['name']).'</span></a></td>'
 			.'<td class="uc-col-size"><span class="fd-count">'.($n > 0 ? $n.' 项' : '空').'</span></td>'
-			.'<td class="uc-col-state"><span class="uc-badge">文件夹</span></td>'
+			.'<td class="uc-col-state"><span class="uc-badge">'.(isset($shares[$f['id']]) ? '已分享' : '文件夹').'</span></td>'
 			.'<td class="uc-col-time">'.folder_h($f['addtime']).'</td>'
 			.'<td class="uc-col-act"><div class="uc-acts">'
 				.'<a class="uc-act" href="'.folder_h($link).'" title="打开"><i class="fa fa-folder-open-o" aria-hidden="true"></i></a>'
+				 .(!empty($GLOBALS['islogin2']) ? '<button type="button" class="uc-act" data-fd="share" title="分享文件夹"><i class="fa fa-share-alt" aria-hidden="true"></i></button>' : '')
 				.'<button type="button" class="uc-act" data-fd="rename" title="重命名"><i class="fa fa-pencil" aria-hidden="true"></i></button>'
 				.'<button type="button" class="uc-act uc-act-danger" data-fd="delete" title="删除文件夹（里面的文件移到根目录）"><i class="fa fa-trash" aria-hidden="true"></i></button>'
 			.'</div></td></tr>';
@@ -661,6 +668,7 @@ function folder_render_batch_buttons(){
 function folder_render_script($current, $csrf, $searching, $file_check){
 	global $islogin2, $uid;
 	$cfg = [
+		'enabled' => can_use_folders(),
 		'current' => intval($current),
 		'csrf' => (string)$csrf,
 		'owner' => !empty($islogin2) ? 'u'.intval($uid) : 'g',

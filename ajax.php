@@ -587,6 +587,16 @@ break;
  * 这里只做入口校验（CSRF、总开关与开放范围），逻辑在 includes/folders.php，
  * 每个操作都按当前访客重新查一遍文件夹和文件的归属，不信前端传来的任何东西。
  */
+case 'folderShareGet':
+case 'folderShareList':
+case 'folderShareSave':
+case 'folderShareReset':
+case 'folderShareRevoke':
+    if(!isset($_POST['csrf_token'], $_SESSION['csrf_token']) || !is_string($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token']))exit('{"code":-1,"msg":"CSRF TOKEN ERROR"}');
+    $share_action = strtolower(substr($act, strlen('folderShare')));
+    exit(json_encode(folder_share_manage($share_action, folder_share_input($_POST, 'id', '0'), $_POST), JSON_UNESCAPED_UNICODE));
+break;
+
 case 'folderTree':
 case 'folderCreate':
 case 'folderRename':

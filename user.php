@@ -461,6 +461,7 @@ if($tab === 'overview'){
 <?php if($uc_ft !== ''){?><input type="hidden" name="ft" value="<?php echo htmlspecialchars($uc_ft, ENT_QUOTES, 'UTF-8')?>"><?php }?>
             <input class="uc-search" type="search" name="kw" value="<?php echo htmlspecialchars($uc_kw, ENT_QUOTES, 'UTF-8')?>" placeholder="搜索我的文件名">
             <button class="uc-btn" type="submit"><i class="fa fa-search" aria-hidden="true"></i> 搜索</button>
+            <button class="uc-btn" type="button" id="fdShareManage"><i class="fa fa-share-alt" aria-hidden="true"></i> 文件夹分享管理</button>
 <?php if($uc_kw !== ''){?><a class="uc-btn" href="./user.php?tab=files">清除</a><?php }?>
             <a class="uc-btn uc-btn-primary" href="./upload.php<?php echo ($fd_on && $fd_cur > 0 && !$fd_searching) ? '?folder='.$fd_cur : ''?>"><i class="fa fa-plus" aria-hidden="true"></i> <?php echo ($fd_on && $fd_cur > 0 && !$fd_searching) ? '上传到这里' : '上传文件'?></a>
         </form>
@@ -982,7 +983,7 @@ if($tab === 'files'){?>
 <script src="./assets/js/replace-upload.js?v=<?php echo VERSION?>"></script>
 <?php //操作完、切文件夹、翻页都只局部换列表，不整页刷新 ?>
 <script src="./assets/js/filelist-live.js?v=<?php echo VERSION?>"></script>
-<?php if($fd_on) echo folder_render_script($fd_cur, $csrf_token, $fd_searching, '.uc-check');?>
+<?php echo folder_render_script($fd_cur, $csrf_token, $fd_searching, '.uc-check');?>
 <?php }?>
 <script src="./assets/js/usercenter.js?v=<?php echo VERSION?>"></script>
 </body>

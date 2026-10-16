@@ -288,9 +288,11 @@ foreach($level_cols as $level_col){
 	if(!$q || !$q->fetchColumn())$need_1027 = true;
 }
 if($need_1027)$sqls = array_merge($sqls, read_sql('update_1027.sql'));
-$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1027')";
+// 每次补齐分享表，升级中断后重试也安全。
+$sqls = array_merge($sqls, read_sql('update_1028.sql'));
+$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1028')";
 //上面 else 分支只按 1022 判断「已是最新」，从 1022～1026 升上来时要改回「升级完成」的提示
-if($version < 1027)$uptodate = false;
+if($version < 1028)$uptodate = false;
 
 $success=0;$skipped=0;$error=0;$errorMsg=null;
 foreach ($sqls as $value) {
@@ -329,7 +331,7 @@ if($errorMsg){
  * 出过"版本号写上去了、表却没建出来"的情况，页面还提示升级成功，
  * 站长要等到用那个功能才会看见 1146 报错，这里提前说清楚。
  */
-$need_tables = ['pre_greenlog', 'pre_greenjob', 'pre_user_bind', 'pre_api_key', 'pre_folder', 'pre_level'];
+$need_tables = ['pre_greenlog', 'pre_greenjob', 'pre_user_bind', 'pre_api_key', 'pre_folder', 'pre_level', 'pre_folder_share'];
 $lost = [];
 foreach($need_tables as $t){
 	//ERRMODE_SILENT 下 query 出错会返回 false，不能直接往后链 fetchColumn
