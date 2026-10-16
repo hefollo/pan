@@ -235,16 +235,24 @@
   function refreshShares() {
     if (window.PanList) window.PanList.refresh();
   }
+  function copyShareValue(input) {
+    function fallback() {
+      input.focus(); input.select();
+      layer.msg(document.execCommand('copy') ? '链接已复制' : '请手动复制已选中的链接');
+    }
+    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(input.value).then(function () { layer.msg('链接已复制'); }, fallback);
+    else fallback();
+  }
   function shareDialog(id) {
     post('folderShareGet', { id: id }, function (res) {
       if (res.code !== 0) { layer.alert(res.msg); return; }
       var share = res.share;
       layer.open({
-        type: 1, title: '文件夹分享', area: Math.min(520, $(window).width() - 24) + 'px',
+        type: 1, title: share && share.enabled ? '查看文件夹分享' : '创建文件夹分享', area: Math.min(560, $(window).width() - 24) + 'px',
         content: '<div class="uc-dialog fd-share-dialog" style="padding:22px">' +
           '<h3 class="fd-share-name" style="margin-top:0;word-break:break-all"></h3>' +
           '<p>分享包含此文件夹及所有子文件夹中的正常文件，<b>包括设为私密的文件</b>。文件原有密码仍需单独输入。</p>' +
-          '<p class="fd-share-status"></p><label>分享链接</label><div style="display:flex;gap:8px;margin:8px 0 18px"><input class="uc-input fd-share-url" readonly aria-label="分享链接" style="flex:1;min-width:0"><button class="uc-btn fd-share-copy" type="button">复制</button></div>' +
+          '<p class="fd-share-status" style="font-weight:600"></p><label>分享链接</label><div style="display:flex;gap:8px;margin:8px 0 18px"><input class="uc-input fd-share-url" readonly aria-label="分享链接" style="flex:1;min-width:0"><a class="uc-btn fd-share-open" target="_blank" rel="noopener">打开</a><button class="uc-btn fd-share-copy" type="button">复制</button></div>' +
           '<label>访问密码 <select class="uc-input fd-share-mode"><option value="keep">保持现状</option><option value="set">设置新密码</option><option value="clear">取消密码</option></select></label>' +
           '<input class="uc-input fd-share-password" type="password" autocomplete="new-password" placeholder="输入新密码（4～72字节）" style="display:none;width:100%;margin-top:8px">' +
           '<p><label>有效期（北京时间，留空为永久）<input type="datetime-local" class="uc-input fd-share-expire" style="width:100%"></label></p>' +
@@ -255,13 +263,16 @@
           box.find('.fd-share-name').text(res.name);
           function paint() {
             var active = share && share.enabled;
-            box.find('.fd-share-url').val(active ? share.url : '');
+            layero.find('.layui-layer-title').text(active ? '查看文件夹分享' : '创建文件夹分享');
+            box.find('.fd-share-url').val(active ? share.url : '保存后生成分享链接');
+            box.find('.fd-share-open').attr('href', active ? share.url : '#').toggle(active);
             box.find('.fd-share-copy').prop('disabled', !active);
             box.find('.fd-share-status').text(!share ? '尚未创建分享' : !active ? '分享已取消' : share.expired ? '分享已过期，请修改有效期后保存' : share.has_password ? '分享已开启 · 需要密码' : '分享已开启 · 无需密码');
             box.find('.fd-share-expire').val(share && share.expiretime ? share.expiretime.slice(0, 16).replace(' ', 'T') : '');
             box.find('.fd-share-mode').val('keep');
             box.find('.fd-share-password').val('').hide();
             box.find('.fd-share-save,.fd-share-mode,.fd-share-expire,.fd-share-password').prop('disabled', !res.can_edit);
+            box.find('.fd-share-save').text(active ? '保存设置' : '开启分享');
             box.find('.fd-share-reset').prop('disabled', !res.can_edit || !active);
             box.find('.fd-share-revoke').prop('disabled', !active);
             box.find('.fd-share-permission').text(res.can_edit ? '' : '当前没有文件夹权限，仍可取消已有分享。');
@@ -271,9 +282,7 @@
           box.on('change', '.fd-share-mode', function () { box.find('.fd-share-password').toggle(this.value === 'set'); layer.style(index, { height: 'auto' }); });
           box.on('click', '.fd-share-copy', function () {
             var input = box.find('.fd-share-url')[0];
-            function fallback() { input.focus(); input.select(); layer.msg(document.execCommand('copy') ? '链接已复制' : '请手动复制已选中的链接'); }
-            if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(input.value).then(function () { layer.msg('链接已复制'); }, fallback);
-            else fallback();
+            copyShareValue(input);
           });
           function result(r) {
             if (r.code !== 0) { layer.alert(r.msg || '操作失败'); return; }
@@ -308,7 +317,15 @@
       res.shares.forEach(function (share) {
         var row = $('<div>').css({ padding: '12px 0', borderBottom: '1px solid #eee' });
         $('<strong>').text(share.name).appendTo(row);
-        $('<p>').text(share.missing ? '文件夹已删除，分享已失效' : !share.enabled ? '已取消' : share.expired ? '已过期' : '分享中').appendTo(row);
+        var state = share.missing ? '文件夹已删除，分享已失效' : !share.enabled ? '已取消' : share.expired ? '已过期' : '分享中';
+        if (share.enabled && !share.missing) state += ' · ' + (share.has_password ? '需要密码' : '无需密码') + ' · ' + (share.expiretime ? '有效期至 ' + share.expiretime : '永久有效');
+        $('<p>').text(state).css('margin', '6px 0').appendTo(row);
+        if (share.enabled) {
+          var link = $('<div>').css({ display: 'flex', gap: '8px', marginBottom: '10px' }).appendTo(row);
+          $('<input class="uc-input" readonly aria-label="分享链接">').val(share.url).css({ flex: 1, minWidth: 0 }).appendTo(link);
+          $('<a class="uc-btn" target="_blank" rel="noopener">打开</a>').attr('href', share.url).appendTo(link);
+          $('<button type="button" class="uc-btn">复制</button>').appendTo(link).on('click', function () { copyShareValue($(this).siblings('input')[0]); });
+        }
         if (!share.missing) $('<button type="button" class="uc-btn">管理</button>').appendTo(row).on('click', function () { layer.close(index); shareDialog(share.folder_id); });
         if (share.enabled) $('<button type="button" class="uc-btn">取消分享</button>').css('marginLeft', '8px').appendTo(row).on('click', function () {
           layer.confirm('取消此分享？原有独立文件链接不受影响。', function (idx) {
