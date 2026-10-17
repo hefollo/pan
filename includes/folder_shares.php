@@ -94,6 +94,11 @@ function folder_share_resolve($token){
     return ['share'=>$share, 'root'=>$root, 'ids'=>$ids, 'all'=>$all];
 }
 
+function folder_share_is_owner($ctx){
+    global $islogin2, $uid;
+    return $ctx && !empty($islogin2) && intval($uid) > 0 && intval($uid) === intval($ctx['share']['uid']);
+}
+
 function folder_share_grant_key($ctx, $file = null){
     $share = $ctx['share'];
     return hash_hmac('sha256', $share['token'].'|'.$share['auth_version'].'|'.($file ? $file['id'].'|'.$file['pwd'] : 'folder'), SYS_KEY);
@@ -156,7 +161,7 @@ function folder_share_listing($ctx, $input){
     if($total === false)throw new RuntimeException('分享列表读取失败');
     $pages = max(1, (int)ceil($total / 40));
     $page = max(1, min($pages, intval(folder_share_input($input, 'page', '1'))));
-    $rows = $DB->getAll('SELECT id,name,type,size,folder_id,addtime,(pwd IS NOT NULL AND pwd<>\'\') AS locked FROM pre_file WHERE '.$where.' ORDER BY '.$sorts[$sort].' LIMIT '.(($page-1)*40).',40', $params);
+    $rows = $DB->getAll('SELECT id,name,type,size,folder_id,addtime,hide,(pwd IS NOT NULL AND pwd<>\'\') AS locked FROM pre_file WHERE '.$where.' ORDER BY '.$sorts[$sort].' LIMIT '.(($page-1)*40).',40', $params);
     if($rows === false)throw new RuntimeException('分享列表读取失败');
     $folders = [];
     if(!$recursive)foreach($all as $f)if($f['parent_id'] === $current)$folders[] = $f;

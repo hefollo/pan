@@ -13,6 +13,34 @@ function share_url($args = []){
     global $token;
     return './share.php?'.http_build_query(array_merge(['token'=>$token], $args), '', '&', PHP_QUERY_RFC3986);
 }
+function share_icon($name){
+    $paths = [
+        'download'=>'M12 3v12m-4-4 4 4 4-4M5 16v5h14v-5',
+        'view'=>'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12 M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0',
+        'copy'=>'m10 13 4-4 M8 16l-1 1a4 4 0 0 1-6-6l5-5a4 4 0 0 1 6 0 M12 18a4 4 0 0 0 6 0l5-5a4 4 0 0 0-6-6l-1 1',
+        'rename'=>'m4 16-1 5 5-1L20 8l-4-4L4 16 M13 7l4 4',
+        'pwd'=>'M13 8a5 5 0 1 1-10 0 5 5 0 0 1 10 0 M12 12l9 9 M16 16l3-3 M19 19l3-3',
+        'hide'=>'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0 M3 12h18 M12 3c-5 5-5 13 0 18 5-5 5-13 0-18',
+        'replace'=>'M20 7a9 9 0 0 0-15-1L2 9 M2 3v6h6 M4 17a9 9 0 0 0 15 1l3-3 M22 21v-6h-6',
+        'del'=>'M3 6h18 M9 6V3h6v3 M6 6l1 15h10l1-15 M10 10v7 M14 10v7',
+    ];
+    return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="'.$paths[$name].'"/></svg>';
+}
+function share_actions($f){
+    global $owner;
+    $id = intval($f['id']);
+    $url = folder_h(share_url(['file'=>$id]));
+    echo '<div class="share-actions" data-file-id="'.$id.'" data-name="'.share_name($f['name']).'" data-hide="'.intval($f['hide']).'">';
+    echo '<a class="share-act" href="'.folder_h(share_url(['file'=>$id,'action'=>'down'])).'" title="下载" aria-label="下载">'.share_icon('download').'</a>';
+    echo '<a class="share-act" data-share-nav href="'.$url.'" title="查看" aria-label="查看">'.share_icon('view').'</a>';
+    echo '<button class="share-act" type="button" data-share-action="copy" data-url="'.$url.'" title="复制链接" aria-label="复制链接">'.share_icon('copy').'</button>';
+    if($owner){
+        foreach(['rename'=>['✎','重命名'], 'pwd'=>['⚿','访问密码'], 'hide'=>['◌',intval($f['hide']) ? '设为公开' : '设为私密'], 'replace'=>['⟳','重新上传替换'], 'del'=>['×','删除']] as $action=>$label){
+            echo '<button class="share-act'.($action === 'del' ? ' danger' : '').'" type="button" data-share-action="'.$action.'" title="'.$label[1].'" aria-label="'.$label[1].'">'.share_icon($action).'</button>';
+        }
+    }
+    echo '</div>';
+}
 function share_name($name){
     // 原有文件名入库时已做实体编码，输出时先还原再统一转义，避免双重编码。
     return folder_h(html_entity_decode($name, ENT_QUOTES, 'UTF-8'));
@@ -20,6 +48,11 @@ function share_name($name){
 
 $token = folder_share_input($_GET, 'token');
 $ctx = folder_share_resolve($token);
+$owner = folder_share_is_owner($ctx);
+if($owner){
+    header("Content-Security-Policy: default-src 'self'; script-src 'self' https://s4.zstatic.net; style-src 'self'; connect-src 'self' https:; img-src 'self' data:; media-src 'self'; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'self'");
+}
+$manage_csrf = $owner ? (isset($_SESSION['csrf_token']) && is_string($_SESSION['csrf_token']) ? $_SESSION['csrf_token'] : page_csrf_token()) : '';
 $file = null;
 $listing = null;
 $error = '';
@@ -100,10 +133,10 @@ $title = $ctx && $view !== 'unlock' ? $ctx['all'][$ctx['root']]['name'] : '文�
 $partial = isset($_SERVER['HTTP_X_PAN_SHARE']) && $_SERVER['HTTP_X_PAN_SHARE'] === '1';
 if(!$partial){
 ?><!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title><?php echo folder_h($title)?> · 文件夹分享</title><link rel="stylesheet" href="./assets/css/folder-share.css?v=<?php echo VERSION?>"><script src="./assets/js/folder-share.js?v=<?php echo VERSION?>" defer></script></head><body>
-<header class="share-header"><a href="./">文件分享</a><span>只读访问</span></header>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title><?php echo folder_h($title)?> · 文件夹分享</title><link rel="stylesheet" href="./assets/css/folder-share.css?v=<?php echo VERSION?>"><script src="./assets/js/folder-share.js?v=<?php echo VERSION?>" defer></script><?php if($owner){ ?><script src="https://s4.zstatic.net/ajax/libs/spark-md5/3.0.2/spark-md5.min.js" defer></script><?php } ?></head><body>
+<header class="share-header"><a href="./">文件分享</a><span><?php echo $owner ? '所有者管理' : '只读访问'?></span></header>
 <?php } ?>
-<main id="share-main" data-title="<?php echo folder_h($title)?>">
+<main data-manage-csrf="<?php echo folder_h($manage_csrf)?>" id="share-main" data-title="<?php echo folder_h($title)?>">
 <?php if($view === 'error'){ ?>
     <section class="share-card share-message"><h1>暂时无法访问</h1><p><?php echo folder_h($error)?></p><a class="share-button" href="./">返回首页</a></section>
 <?php }elseif($view === 'unlock' || $view === 'unlock_file'){ ?>
@@ -115,7 +148,7 @@ if(!$partial){
     <section class="share-heading"><span class="share-eyebrow">文件夹分享</span><h1><?php echo folder_h($title)?></h1><p>内容随文件夹实时更新<?php echo $ctx['share']['expiretime'] ? ' · 有效期至 '.folder_h($ctx['share']['expiretime']) : ''?></p></section>
     <?php if($view === 'file'){ ?>
     <nav class="share-breadcrumb"><a data-share-nav href="<?php echo folder_h(share_url(['folder'=>$file['folder_id']]))?>">返回所在文件夹</a></nav>
-    <section class="share-card"><div class="share-file-heading"><div><h2><?php echo share_name($file['name'])?></h2><p><?php echo folder_h(size_format($file['size']).' · '.$file['addtime'])?></p></div><a class="share-button primary" href="<?php echo folder_h(share_url(['file'=>$file_id, 'action'=>'down']))?>">下载文件</a></div>
+    <section class="share-card"><div class="share-file-heading"><div><h2><?php echo share_name($file['name'])?></h2><p><?php echo folder_h(size_format($file['size']).' · '.$file['addtime'])?></p></div><?php share_actions($file); ?></div>
     <?php
     $type = strtolower($file['type']);
     $src = folder_h(share_url(['file'=>$file_id, 'action'=>'view']));
@@ -139,7 +172,7 @@ if(!$partial){
     <nav class="share-breadcrumb" aria-label="分享内路径"><?php if($listing['recursive']){echo '分享内全部文件';}else{ foreach(folder_path($ctx['all'], $listing['current']) as $i=>$f){ if($i)echo '<span>/</span>'; ?><a data-share-nav href="<?php echo folder_h(share_url(['folder'=>$f['id']]))?>"><?php echo folder_h($f['name'])?></a><?php }} ?></nav>
     <div class="share-table-wrap"><table class="share-table"><thead><tr><th>名称</th><th>大小</th><th>上传时间</th><th>操作</th></tr></thead><tbody>
     <?php foreach($listing['folders'] as $f){ ?><tr><td><a data-share-nav class="share-entry" href="<?php echo folder_h(share_url(['folder'=>$f['id']]))?>"><span class="share-folder-icon" aria-hidden="true">▰</span><?php echo folder_h($f['name'])?></a></td><td>文件夹</td><td>—</td><td><a data-share-nav href="<?php echo folder_h(share_url(['folder'=>$f['id']]))?>">打开</a></td></tr><?php } ?>
-    <?php foreach($listing['files'] as $f){ $link = folder_h(share_url(['file'=>$f['id']])); ?><tr><td><a data-share-nav class="share-entry" href="<?php echo $link?>"><span class="share-file-icon" aria-hidden="true">▤</span><?php echo share_name($f['name'])?><?php if($f['locked'])echo '<small class="share-lock">有密码</small>';?></a><?php if($listing['recursive']){ $names = array_column(folder_path($ctx['all'], intval($f['folder_id'])), 'name'); array_shift($names); ?><span class="share-path"><?php echo folder_h($names ? implode(' / ', $names) : '分享根目录')?></span><?php } ?></td><td><?php echo folder_h(size_format($f['size']))?></td><td><?php echo folder_h($f['addtime'])?></td><td><a data-share-nav href="<?php echo $link?>">查看</a></td></tr><?php } ?>
+    <?php foreach($listing['files'] as $f){ $link = folder_h(share_url(['file'=>$f['id']])); ?><tr><td><a data-share-nav class="share-entry" href="<?php echo $link?>"><span class="share-file-icon" aria-hidden="true">▤</span><?php echo share_name($f['name'])?><?php if($f['locked'])echo '<small class="share-lock">有密码</small>';?></a><?php if($listing['recursive']){ $names = array_column(folder_path($ctx['all'], intval($f['folder_id'])), 'name'); array_shift($names); ?><span class="share-path"><?php echo folder_h($names ? implode(' / ', $names) : '分享根目录')?></span><?php } ?></td><td><?php echo folder_h(size_format($f['size']))?></td><td><?php echo folder_h($f['addtime'])?></td><td><?php share_actions($f); ?></td></tr><?php } ?>
     </tbody></table></div>
     <?php if(!$listing['files'] && !$listing['folders']){ ?><div class="share-empty"><?php echo $listing['q'] !== '' || $listing['type'] !== '' ? '未找到符合条件的文件' : '文件夹暂时为空'?></div><?php } ?>
     <nav class="share-pagination" aria-label="分页"><?php if($listing['page'] > 1){ ?><a data-share-nav class="share-button" href="<?php echo folder_h(share_url(array_merge($state, ['page'=>$listing['page']-1])))?>">上一页</a><?php } ?><span>第 <?php echo $listing['page']?> / <?php echo $listing['pages']?> 页</span><?php if($listing['page'] < $listing['pages']){ ?><a data-share-nav class="share-button" href="<?php echo folder_h(share_url(array_merge($state, ['page'=>$listing['page']+1])))?>">下一页</a><?php } ?></nav>
