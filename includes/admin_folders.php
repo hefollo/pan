@@ -19,8 +19,29 @@ function admin_folder_listing($input){
     $q = mb_substr(trim(folder_share_input($input, 'q')), 0, 100, 'UTF-8');
     $status = folder_share_input($input, 'status');
     if(!isset(admin_folder_state_labels()[$status]))$status = '';
-    $where = "f.uid>0 AND f.gkey=''";
-    $params = [];
+    $folder = max(0, intval(folder_share_input($input, 'folder', '0')));
+    $current = null;
+    $breadcrumbs = [];
+    if($folder){
+        $current = $DB->getRow("SELECT f.id,f.uid,f.parent_id,f.name,u.nickname,u.enable AS user_enable,s.id AS share_id,s.enabled,s.expiretime,(s.password_hash IS NOT NULL AND s.password_hash<>'') AS has_password FROM pre_folder f LEFT JOIN pre_user u ON u.uid=f.uid LEFT JOIN pre_folder_share s ON s.folder_id=f.id AND s.uid=f.uid WHERE f.id=:folder AND f.uid>0 AND f.gkey=''", [':folder'=>$folder]);
+        if(!$current || ($uid && $uid !== intval($current['uid'])))throw new InvalidArgumentException('文件夹不存在或不属于指定用户');
+        $uid = intval($current['uid']);
+        $breadcrumbs = folder_path(folder_all(['uid'=>$uid, 'gkey'=>'']), $folder);
+        $current['share_state'] = admin_folder_share_state($current, !empty($conf['folder_open']));
+        $current['inherited'] = [];
+        $shares = $DB->getAll('SELECT folder_id,id AS share_id,enabled,expiretime FROM pre_folder_share WHERE uid=:uid', [':uid'=>$uid]);
+        if($shares === false)throw new RuntimeException('读取当前目录分享失败');
+        $active = [];
+        foreach($shares as $share){
+            $share['user_enable'] = $current['user_enable'];
+            if(admin_folder_share_state($share, !empty($conf['folder_open'])) === 'active')$active[intval($share['folder_id'])] = true;
+        }
+        foreach($breadcrumbs as $crumb){
+            if(intval($crumb['id']) !== $folder && isset($active[intval($crumb['id'])]))$current['inherited'][] = $crumb['name'];
+        }
+    }
+    $where = "f.uid>0 AND f.gkey='' AND f.parent_id=:parent";
+    $params = [':parent'=>$folder];
     if($uid){ $where .= ' AND f.uid=:uid'; $params[':uid'] = $uid; }
     if($q !== ''){
         $where .= " AND f.name LIKE :name ESCAPE '='";
@@ -57,5 +78,28 @@ function admin_folder_listing($input){
         }
     }
     unset($row);
-    return ['rows'=>$rows, 'total'=>intval($total), 'page'=>$page, 'pages'=>$pages, 'uid'=>$uid, 'q'=>$q, 'status'=>$status];
+    $files = [];
+    $file_total = 0;
+    $file_pages = 1;
+    $file_page = 1;
+    if($uid){
+        $file_where = 'uid=:owner AND folder_id=:folder';
+        $file_params = [':owner'=>$uid, ':folder'=>$folder];
+        if($q !== ''){
+            $file_where .= " AND name LIKE :name ESCAPE '='";
+            $file_params[':name'] = '%'.str_replace(['=','%','_'], ['==','=%','=_'], htmlspecialchars($q, ENT_QUOTES, 'UTF-8')).'%';
+        }
+        $file_total = $DB->getColumn('SELECT COUNT(*) FROM pre_file WHERE '.$file_where, $file_params);
+        if($file_total === false)throw new RuntimeException('读取目录文件数量失败');
+        $file_pages = max(1, (int)ceil($file_total / 40));
+        $file_page = max(1, min($file_pages, intval(folder_share_input($input, 'file_page', '1'))));
+        $files = $DB->getAll('SELECT id,name,type,size,block,hide,addtime FROM pre_file WHERE '.$file_where.' ORDER BY id DESC LIMIT '.(($file_page-1)*40).',40', $file_params);
+        if($files === false)throw new RuntimeException('读取目录文件失败');
+    }
+    return ['rows'=>$rows, 'total'=>intval($total), 'page'=>$page, 'pages'=>$pages, 'uid'=>$uid, 'q'=>$q, 'status'=>$status,
+        'folder'=>$folder, 'current'=>$current, 'breadcrumbs'=>$breadcrumbs, 'files'=>$files, 'file_total'=>intval($file_total), 'file_page'=>$file_page, 'file_pages'=>$file_pages];
+}
+
+function admin_folder_url($args = []){
+    return './folders.php?'.http_build_query($args, '', '&', PHP_QUERY_RFC3986);
 }
