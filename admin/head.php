@@ -87,10 +87,11 @@ if(!function_exists('admin_sub_active')){
           <li class="<?php echo checkIfActive('index,')?>">
             <a href="./"><i class="fa fa-home"></i> 后台首页</a>
           </li>
-          <li class="dropdown <?php echo checkIfActive('file,replace,green_log')?>">
+          <li class="dropdown <?php echo checkIfActive('file,folders,replace,green_log')?>">
             <a href="#" class="dropdown-toggle" data-toggle="dropdown"><i class="fa fa-folder-open"></i> 文件<b class="caret"></b></a>
             <ul class="dropdown-menu">
               <li class="<?php echo admin_sub_active('file.php')?>"><a href="./file.php"><i class="fa fa-folder-open fa-fw"></i> 文件管理</a></li>
+              <li class="<?php echo admin_sub_active('folders.php')?>"><a href="./folders.php"><i class="fa fa-folder fa-fw"></i> 用户文件夹</a></li>
               <li class="<?php echo admin_sub_active('replace.php')?>"><a href="./replace.php"><i class="fa fa-refresh fa-fw"></i> 覆盖记录</a></li>
 <?php if($green_log_on){?>
               <li class="<?php echo admin_sub_active('green_log.php')?>"><a href="./green_log.php"><i class="fa fa-shield fa-fw"></i> 内容检测记录</a></li>

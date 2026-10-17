@@ -265,7 +265,7 @@ $(document).ready(function(){
 				title: '操作',
 				formatter: function(value, row, index) {
 					window.userRows[row.uid] = row;
-					return '<a href="javascript:setLevel('+row.uid+')" class="btn btn-xs btn-primary">等级</a>&nbsp;<a href="./file.php?uid='+row.uid+'" class="btn btn-xs btn-info" target="_blank">文件</a>'+(row.avatar_custom == 1 ? '&nbsp;<a href="javascript:resetAvatar('+row.uid+')" class="btn btn-xs btn-warning">清除头像</a>' : '')+'&nbsp;<a href="javascript:delUser('+row.uid+')" class="btn btn-xs btn-danger">删除</a></td></tr>';
+					return '<a href="javascript:setLevel('+row.uid+')" class="btn btn-xs btn-primary">等级</a>&nbsp;<a href="./file.php?uid='+row.uid+'" class="btn btn-xs btn-info" target="_blank">文件</a>&nbsp;<a href="./folders.php?uid='+row.uid+'" class="btn btn-xs btn-default" target="_blank" rel="noopener">文件夹</a>'+(row.avatar_custom == 1 ? '&nbsp;<a href="javascript:resetAvatar('+row.uid+')" class="btn btn-xs btn-warning">清除头像</a>' : '')+'&nbsp;<a href="javascript:delUser('+row.uid+')" class="btn btn-xs btn-danger">删除</a></td></tr>';
 				}
 			},
 		],
