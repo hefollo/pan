@@ -96,10 +96,99 @@ function admin_folder_listing($input){
         $files = $DB->getAll('SELECT id,name,type,size,block,hide,addtime FROM pre_file WHERE '.$file_where.' ORDER BY id DESC LIMIT '.(($file_page-1)*40).',40', $file_params);
         if($files === false)throw new RuntimeException('读取目录文件失败');
     }
-    return ['rows'=>$rows, 'total'=>intval($total), 'page'=>$page, 'pages'=>$pages, 'uid'=>$uid, 'q'=>$q, 'status'=>$status,
+    $listing = ['rows'=>$rows, 'total'=>intval($total), 'page'=>$page, 'pages'=>$pages, 'uid'=>$uid, 'q'=>$q, 'status'=>$status,
         'folder'=>$folder, 'current'=>$current, 'breadcrumbs'=>$breadcrumbs, 'files'=>$files, 'file_total'=>intval($file_total), 'file_page'=>$file_page, 'file_pages'=>$file_pages];
+    $listing['trail'] = admin_folder_trail($input, $listing);
+    return $listing;
 }
 
 function admin_folder_url($args = []){
     return './folders.php?'.http_build_query($args, '', '&', PHP_QUERY_RFC3986);
+}
+
+// 导航仅保存本页白名单状态，不接受回跳URL；每次请求按真实目录树验证祖先链。
+function admin_folder_view_state($input){
+    $state = [];
+    foreach(['uid','folder'] as $key)$state[$key] = max(0, intval(folder_share_input($input, $key, '0')));
+    foreach(['page','file_page'] as $key)$state[$key] = max(1, intval(folder_share_input($input, $key, '1')));
+    $state['q'] = mb_substr(folder_share_input($input, 'q'), 0, 100, 'UTF-8');
+    $state['status'] = folder_share_input($input, 'status');
+    if(!isset(admin_folder_state_labels()[$state['status']]))$state['status'] = '';
+    return $state;
+}
+
+function admin_folder_trail($input, $listing){
+    $raw = folder_share_input($input, 'nav');
+    if((!$listing['folder'] && !$listing['uid']) || strlen($raw) > 12000)return [];
+    $decoded = base64_decode(strtr($raw, '-_', '+/'), true);
+    $trail = $decoded === false ? null : json_decode($decoded, true);
+    if(!is_array($trail) || count($trail) > FOLDER_DEPTH_MAX + 2)return [];
+    $ancestors = [0];
+    foreach($listing['breadcrumbs'] as $crumb){
+        if(intval($crumb['id']) !== $listing['folder'])$ancestors[] = intval($crumb['id']);
+    }
+    $clean = []; $previous = -1;
+    foreach($trail as $entry){
+        if(!is_array($entry))return [];
+        $state = admin_folder_view_state($entry);
+        $position = array_search($state['folder'], $ancestors, true);
+        // 全用户总览和单用户根目录是两个相邻的虚拟层级，folder都为0。
+        $user_root = $position === 0 && $previous === 0 && count($clean) === 1 && $clean[0]['uid'] === 0 && $state['uid'] === $listing['uid'] && $state['uid'] > 0;
+        if($position === false || ($position <= $previous && !$user_root))return [];
+        if($state['uid'] !== $listing['uid'] && !($state['folder'] === 0 && $state['uid'] === 0))return [];
+        $previous = $position;
+        $clean[] = $state;
+    }
+    return $clean;
+}
+
+function admin_folder_nav_value($trail){
+    return rtrim(strtr(base64_encode(json_encode($trail, JSON_UNESCAPED_UNICODE)), '+/', '-_'), '=');
+}
+
+function admin_folder_link($listing, $overrides = []){
+    $state = array_merge(admin_folder_view_state($listing), $overrides);
+    if($listing['trail'])$state['nav'] = admin_folder_nav_value($listing['trail']);
+    return admin_folder_url($state);
+}
+
+function admin_folder_child_link($listing, $row){
+    $trail = $listing['trail'];
+    $trail[] = admin_folder_view_state($listing);
+    return admin_folder_url(['uid'=>intval($row['uid']), 'folder'=>intval($row['id']), 'nav'=>admin_folder_nav_value($trail)]);
+}
+
+function admin_folder_owner_link($listing, $uid){
+    return admin_folder_url(['uid'=>$uid, 'nav'=>admin_folder_nav_value([admin_folder_view_state($listing)])]);
+}
+
+function admin_folder_ancestor_link($listing, $folder, $uid){
+    foreach($listing['trail'] as $i=>$state){
+        if($state['folder'] === $folder && $state['uid'] === $uid){
+            if($i)$state['nav'] = admin_folder_nav_value(array_slice($listing['trail'], 0, $i));
+            return admin_folder_url($state);
+        }
+    }
+    $trail = array_values(array_filter($listing['trail'], function($state)use($listing,$folder){
+        if($folder === 0)return false;
+        foreach($listing['breadcrumbs'] as $crumb){
+            if(intval($crumb['id']) === $state['folder'])return true;
+            if(intval($crumb['id']) === $folder)break;
+        }
+        return $state['folder'] === 0;
+    }));
+    $state = ['uid'=>$uid, 'folder'=>$folder];
+    if($trail)$state['nav'] = admin_folder_nav_value($trail);
+    return admin_folder_url($state);
+}
+
+function admin_folder_up_link($listing){
+    if(!$listing['current'])return $listing['uid'] ? ($listing['trail'] ? admin_folder_ancestor_link($listing, 0, 0) : './folders.php') : '';
+    $parent = intval($listing['current']['parent_id']);
+    // 上级被删除/数据异常时回用户根，避免生成无法访问的导航。
+    if($parent && !in_array($parent, array_map('intval', array_column($listing['breadcrumbs'], 'id')), true))$parent = 0;
+    $uid = $listing['uid'];
+    $last = $listing['trail'] ? end($listing['trail']) : null;
+    if($last && $last['folder'] === $parent)$uid = $last['uid'];
+    return admin_folder_ancestor_link($listing, $parent, $uid);
 }
