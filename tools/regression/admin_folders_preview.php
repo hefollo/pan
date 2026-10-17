@@ -16,7 +16,10 @@ require SYSTEM_ROOT.'functions.php';
 require SYSTEM_ROOT.'folders.php';
 require SYSTEM_ROOT.'folder_shares.php';
 require SYSTEM_ROOT.'theme_recolor.php';
-$conf = ['title'=>'本地验收 · 用户文件夹', 'site_theme'=>'sky', 'folder_open'=>1, 'apiurl'=>'http://'.$_SERVER['HTTP_HOST'].'/'];
+$theme = isset($_GET['preview_theme']) && is_string($_GET['preview_theme']) ? $_GET['preview_theme'] : ($_COOKIE['pan_preview_theme'] ?? 'console');
+if(!in_array($theme, site_theme_keys(), true))$theme = 'console';
+setcookie('pan_preview_theme', $theme, ['path'=>'/', 'httponly'=>true, 'samesite'=>'Lax']);
+$conf = ['title'=>'本地验收 · 用户文件夹', 'site_theme'=>$theme, 'folder_open'=>1, 'apiurl'=>'http://'.$_SERVER['HTTP_HOST'].'/'];
 $siteurl = 'http://'.$_SERVER['HTTP_HOST'].'/admin/';
 $islogin = isset($_GET['fixture_auth']) && $_GET['fixture_auth'] === '0' ? 0 : 1;
 $pdo = new PDO('sqlite::memory:');
@@ -30,6 +33,8 @@ INSERT INTO pre_user VALUES(1,'测试用户A',1),(2,'测试用户B',1),(3,'停�
 INSERT INTO pre_folder VALUES(1,1,'',0,'项目资料','2026-10-17 09:00:00'),(2,1,'',1,'图片','2026-10-17 09:01:00'),(3,1,'',2,'空目录','2026-10-17 09:02:00'),(4,2,'',0,'另一个用户','2026-10-17 09:00:00'),(5,1,'',0,'已取消分享','2026-10-17 09:00:00'),(6,1,'',0,'已过期分享','2026-10-17 09:00:00'),(7,3,'',0,'账号停用的分享','2026-10-17 09:00:00');
 INSERT INTO pre_folder_share VALUES(1,1,1,1,NULL,'preview-only','hash'),(2,5,1,0,NULL,'cancelled',''),(3,6,1,1,'2000-01-01','expired',''),(4,7,3,1,NULL,'disabled','');
 INSERT INTO pre_file VALUES(1,2,1,'风景 &amp; 夜色.jpg','jpg',269000,0,1,'2026-10-17 09:00:00'),(2,0,1,'根目录说明.txt','txt',1024,0,0,'2026-10-17 09:00:00'),(3,2,1,'待复核文件.txt','txt',1024,2,0,'2026-10-17 09:00:00')");
+$pdo->exec("INSERT INTO pre_folder VALUES(8,1,'',2,'需要换行展示的长文件夹名称_abcdefghijklmnopqrstuvwx_资料归档','2026-10-17 09:02:00');
+INSERT INTO pre_file VALUES(4,2,1,'需要换行展示的长文件名称_abcdefghijklmnopqrstuvwx_附件说明.txt','txt',1024,0,1,'2026-10-17 09:00:00')");
 for($i=10;$i<95;$i++)$pdo->exec("INSERT INTO pre_folder VALUES($i,2,'',0,'分页目录 $i','2026-10-17 09:00:00')");
 for($i=10;$i<55;$i++)$pdo->exec("INSERT INTO pre_file VALUES($i,1,1,'文件 $i.txt','txt',1024,0,0,'2026-10-17 09:00:00')");
 $DB = new class($pdo){
