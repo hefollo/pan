@@ -628,6 +628,86 @@ function login_type_name($type){
 }
 
 /*
+ * 快捷登录按钮外观（后台「用户登录设置」）：每种方式可以改按钮底色、图标颜色和图标，
+ * 全部留空就是原来的样子（底色跟外观走 + Font Awesome 图标）。不改数据库，存在 pre_config。
+ * 图标可以填 Font Awesome 4 的图标名（fa-xxx），也可以填图片地址（http(s):// 或站内相对路径）。
+ */
+function login_btn_defaults(){
+	return [
+		'qq' => ['title'=>'QQ 登录', 'class'=>'btn-info', 'icon'=>'fa-qq', 'preview'=>'#12b7f5'],
+		'wx' => ['title'=>'微信登录', 'class'=>'btn-success', 'icon'=>'fa-wechat', 'preview'=>'#07c160'],
+	];
+}
+
+function login_btn_setting_keys(){
+	$keys = [];
+	foreach(array_keys(login_btn_defaults()) as $type){
+		$keys[] = 'login_'.$type.'_color';
+		$keys[] = 'login_'.$type.'_icon_color';
+		$keys[] = 'login_'.$type.'_icon';
+	}
+	return $keys;
+}
+
+/*
+ * 保存前规范化：颜色只收 #RGB / #RRGGBB；图标只收 fa- 图标名、http(s) 地址或站内相对路径。
+ * 不合格返回 false 并给出原因，由保存接口整单拒绝，免得站长以为存上了。
+ * 前台输出时还会再转义一次，这里主要是挡住写进 style / src 里会出问题的东西。
+ */
+function login_btn_normalize($k, $v, &$err = null){
+	$v = trim((string)$v);
+	if($v === '')return '';
+	if(substr($k, -6) === '_color'){
+		if(preg_match('/^#([0-9a-f]{3}|[0-9a-f]{6})$/i', $v))return strtolower($v);
+		$err = '按钮颜色要填 #RGB 或 #RRGGBB 形式的颜色值，例如 #12b7f5';
+		return false;
+	}
+	//允许把 Font Awesome 的完整写法「fa fa-xxx」原样粘进来
+	if(preg_match('/^(?:fa\s+)?(fa-[a-z0-9-]+)$/i', $v, $m))return strtolower($m[1]);
+	if(preg_match('#^https?://[^\s"\'<>\\\\]+$#i', $v))return $v;
+	if(strpos($v, '//') !== 0 && strpos($v, '..') === false && preg_match('#^/?[a-z0-9_\-./]+$#i', $v))return $v;
+	$err = '自定义图标要填 Font Awesome 图标名（如 fa-comments）、http(s):// 开头的图片地址或站内相对路径';
+	return false;
+}
+
+//按底色挑图标颜色：只改了底色、没指定图标颜色时，免得浅底配白图标看不见
+function login_btn_contrast($hex){
+	$hex = ltrim($hex, '#');
+	if(strlen($hex) === 3)$hex = $hex[0].$hex[0].$hex[1].$hex[1].$hex[2].$hex[2];
+	$r = hexdec(substr($hex, 0, 2)); $g = hexdec(substr($hex, 2, 2)); $b = hexdec(substr($hex, 4, 2));
+	return ($r * 299 + $g * 587 + $b * 114) / 1000 > 160 ? '#1f2937' : '#ffffff';
+}
+
+//登录页的快捷登录按钮。外观 CSS 给 btn-info / btn-success 的底色带了 !important，内联样式也得带
+function login_btn_html($type){
+	global $conf;
+	$defs = login_btn_defaults();
+	if(!isset($defs[$type]))return '';
+	$def = $defs[$type];
+	$get = function($k) use ($conf){
+		$v = isset($conf[$k]) ? $conf[$k] : '';
+		$ok = login_btn_normalize($k, $v);
+		return $ok === false ? '' : $ok;
+	};
+	$bg = $get('login_'.$type.'_color');
+	$fg = $get('login_'.$type.'_icon_color');
+	$icon = $get('login_'.$type.'_icon');
+	if($fg === '' && $bg !== '')$fg = login_btn_contrast($bg);
+	$style = '';
+	if($bg !== '')$style .= 'background:'.$bg.'!important;border-color:'.$bg.'!important;';
+	if($fg !== '')$style .= 'color:'.$fg.'!important;';
+	if($icon === '')$icon = $def['icon'];
+	$is_img = strpos($icon, 'fa-') !== 0;
+	if(!$is_img){
+		$inner = '<i class="fa '.htmlspecialchars($icon, ENT_QUOTES, 'UTF-8').'"></i>';
+	}else{
+		$inner = '<img class="loginbtn-img" src="'.htmlspecialchars($icon, ENT_QUOTES, 'UTF-8').'" alt="">';
+	}
+	return '<a href="javascript:connect(\''.$type.'\')" class="btn '.$def['class'].' btn-fab loginbtn'.($is_img ? ' has-img' : '').'" title="'.$def['title'].'"'
+		.($style !== '' ? ' style="'.$style.'"' : '').'>'.$inner.'</a>';
+}
+
+/*
  * 按登录方式找账号：先查主身份，再查绑定表。登录入口都要走这里，
  * 否则绑过去的身份登不进来。
  */
@@ -2476,6 +2556,9 @@ function admin_setting_keys(){
 		//ip_proxy_trust：可信反向代理地址，只有这些地址传来的转发头才算数
 		'green_label_terrorism', 'ip_type', 'ip_proxy_trust', 'keywords', 'login_apiurl',
 		'login_appid', 'login_appkey', 'login_qq', 'login_wx',
+		//快捷登录按钮外观：底色 / 图标颜色 / 图标，保存时由 login_btn_normalize() 把关
+		'login_qq_color', 'login_qq_icon_color', 'login_qq_icon',
+		'login_wx_color', 'login_wx_icon_color', 'login_wx_icon',
 		'name_block', 'obs_ak', 'obs_bucket', 'obs_endpoint',
 		'obs_sk', 'online_edit_mode', 'online_edit_uids', 'oss_ak',
 		'oss_bucket', 'oss_endpoint', 'oss_sk', 'qcloud_bucket',

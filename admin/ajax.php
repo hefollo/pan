@@ -211,6 +211,13 @@ case 'set':
 	}
 	if(isset($_POST['api_key_limit']))$_POST['api_key_limit'] = max(1, min(20, intval($_POST['api_key_limit'])));
 	if(isset($_POST['api_key_expire_days']))$_POST['api_key_expire_days'] = max(0, min(3650, intval($_POST['api_key_expire_days'])));
+	//快捷登录按钮的颜色和图标会进 style / src，不合格就整单不存，并告诉站长是哪一项
+	foreach(login_btn_setting_keys() as $btn_key){
+		if(!isset($_POST[$btn_key]))continue;
+		$btn_val = login_btn_normalize($btn_key, $_POST[$btn_key], $btn_err);
+		if($btn_val === false)exit(json_encode(['code'=>-1, 'msg'=>$btn_err], JSON_UNESCAPED_UNICODE));
+		$_POST[$btn_key] = $btn_val;
+	}
 	//只写白名单里的配置键，其余一律丢弃（admin_user/admin_pwd 走账号页自己的表单）
 	//表单里混进来的非配置字段（令牌、按钮之类）不算漏配，别报进 skipped 里干扰判断
 	$not_setting = ['csrf_token', 'ajax', 'do', 'fields', 'submit', 'act'];

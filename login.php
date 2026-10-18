@@ -504,8 +504,9 @@ $show_forget = $show_mail && is_mail_reset_open();
             <p class="text-muted text-center" style="margin-bottom:14px">请选择登录方式</p>
 <?php }?>
             <p id="loginform" class="text-center">
-                <?php if($conf['login_qq']){?><a href="javascript:connect('qq')" class="btn btn-info btn-fab loginbtn" title="QQ 登录"><i class="fa fa-qq"></i></a><?php }?>
-                <?php if($conf['login_wx']){?><a href="javascript:connect('wx')" class="btn btn-success btn-fab loginbtn" title="微信登录"><i class="fa fa-wechat"></i></a><?php }?>
+                <?php //底色、图标可在后台「用户登录设置」里改，都没设置时和原来一样?>
+                <?php if($conf['login_qq']){ echo login_btn_html('qq'); }?>
+                <?php if($conf['login_wx']){ echo login_btn_html('wx'); }?>
             </p>
             <p class="text-muted text-center login-tip">新用户快捷登录后会自动注册账号</p>
         </div>

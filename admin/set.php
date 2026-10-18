@@ -1090,6 +1090,40 @@ $folder_mode_now = (isset($conf['folder_mode']) && in_array($conf['folder_mode']
 	  </div>
 	</div><br/>
 	<div class="form-group">
+	  <label class="col-sm-3 control-label">快捷登录按钮外观</label>
+	  <div class="col-sm-9">
+<?php foreach(login_btn_defaults() as $btn_type=>$btn_def){
+	$btn_val = [];
+	foreach(['color', 'icon_color', 'icon'] as $btn_f){
+		$btn_k = 'login_'.$btn_type.'_'.$btn_f;
+		$btn_val[$btn_f] = htmlspecialchars(isset($conf[$btn_k]) ? $conf[$btn_k] : '', ENT_QUOTES, 'UTF-8');
+	}
+?>
+	  <?php /* 左边是预览：留空时前台跟外观配色，这里只能拿官方色示意；右边三项留空都是原样 */ ?>
+	  <div class="login-btn-set" data-type="<?php echo $btn_type?>" data-preview="<?php echo $btn_def['preview']?>" data-icon="<?php echo $btn_def['icon']?>">
+	    <span class="login-btn-preview"></span>
+	    <div class="login-btn-fields">
+	      <strong><?php echo login_type_name($btn_type)?>登录按钮</strong>
+	      <div class="login-btn-row">
+	        <div class="input-group">
+	          <span class="input-group-addon">底色</span>
+	          <input type="text" name="login_<?php echo $btn_type?>_color" value="<?php echo $btn_val['color']?>" class="form-control" maxlength="7" placeholder="留空跟随外观" oninput="loginBtnPreview()">
+	          <span class="input-group-addon login-btn-pick"><input type="color" title="取色" oninput="loginBtnPick(this)"></span>
+	        </div>
+	        <div class="input-group">
+	          <span class="input-group-addon">图标色</span>
+	          <input type="text" name="login_<?php echo $btn_type?>_icon_color" value="<?php echo $btn_val['icon_color']?>" class="form-control" maxlength="7" placeholder="留空自动" oninput="loginBtnPreview()">
+	          <span class="input-group-addon login-btn-pick"><input type="color" title="取色" oninput="loginBtnPick(this)"></span>
+	        </div>
+	      </div>
+	      <input type="text" name="login_<?php echo $btn_type?>_icon" value="<?php echo $btn_val['icon']?>" class="form-control" placeholder="自定义图标，留空用默认 <?php echo $btn_def['icon']?>；可填 fa-图标名 或 图片地址" oninput="loginBtnPreview()">
+	    </div>
+	  </div>
+<?php }?>
+	  <p class="help-block">颜色填 <code>#RRGGBB</code>，可点右边色块取色；只改底色时图标颜色会自动选黑或白。图标可以填 <a href="https://fontawesome.com/v4/icons/" target="_blank" rel="noopener">Font Awesome 4</a> 的图标名（如 <code>fa-comments</code>），也可以填图片地址（<code>https://</code> 开头，或站内路径如 <code>assets/img/qq.png</code>），图片建议用透明底的正方形 PNG / SVG。三项都留空就是原来的样子。</p>
+	  </div>
+	</div><br/>
+	<div class="form-group">
 	  <div class="col-sm-offset-3 col-sm-9"><input type="submit" name="submit" value="修改" class="btn btn-primary form-control"/><br/>
 	 </div>
 	</div>
@@ -1102,6 +1136,49 @@ $folder_mode_now = (isset($conf['folder_mode']) && in_array($conf['folder_mode']
 </div>
 </div>
 <script>
+//快捷登录按钮外观的预览。函数挂在全局：输入框用的是行内 oninput，动态换页重新执行这段时覆盖掉旧的即可
+function loginBtnColor(v){
+	v = $.trim(v || '');
+	return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v) ? v : '';
+}
+function loginBtnFull(hex){
+	return hex.length === 4 ? '#' + hex[1] + hex[1] + hex[2] + hex[2] + hex[3] + hex[3] : hex;
+}
+//和 login_btn_contrast() 同一个算法：只改了底色时挑黑或白的图标
+function loginBtnContrast(hex){
+	hex = loginBtnFull(hex);
+	var r = parseInt(hex.substr(1, 2), 16), g = parseInt(hex.substr(3, 2), 16), b = parseInt(hex.substr(5, 2), 16);
+	return (r * 299 + g * 587 + b * 114) / 1000 > 160 ? '#1f2937' : '#ffffff';
+}
+function loginBtnPick(el){
+	$(el).closest('.input-group').find('input[type=text]').val(el.value);
+	loginBtnPreview();
+}
+function loginBtnPreview(){
+	$('.login-btn-set').each(function(){
+		var box = $(this), type = box.data('type');
+		var bg = loginBtnColor(box.find('[name="login_' + type + '_color"]').val());
+		var fg = loginBtnColor(box.find('[name="login_' + type + '_icon_color"]').val());
+		var icon = $.trim(box.find('[name="login_' + type + '_icon"]').val()).replace(/^fa\s+/i, '');
+		var showBg = bg || box.data('preview');
+		if(!fg)fg = bg ? loginBtnContrast(bg) : '#ffffff';
+		if(!icon)icon = box.data('icon');
+		//取色块跟着输入框走；输入框空着就显示示意色
+		box.find('.login-btn-pick input').each(function(i){
+			var t = loginBtnColor($(this).closest('.input-group').find('input[type=text]').val());
+			this.value = loginBtnFull(t || (i === 0 ? showBg : fg));
+		});
+		var view = box.find('.login-btn-preview').css({background: showBg, color: fg}).empty();
+		if(/^fa-[a-z0-9-]+$/i.test(icon)){
+			view.append($('<i class="fa"></i>').addClass(icon.toLowerCase()));
+		}else{
+			//站内相对路径在后台要补 ../ 才能看到
+			var src = /^https?:\/\//i.test(icon) || icon.charAt(0) === '/' ? icon : '../' + icon;
+			view.append($('<img alt="">').attr('src', src));
+		}
+	});
+}
+loginBtnPreview();
 </script>
 <?php
 }elseif($mod=='green'){
