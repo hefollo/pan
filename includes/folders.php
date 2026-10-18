@@ -600,7 +600,7 @@ function folder_render_bar($all, $current, $url, $searching, $upload_url = ''){
 	if($current > 0 && !$searching && !empty($GLOBALS['islogin2'])){
 		$shared = $DB->getRow('SELECT enabled,expiretime FROM pre_folder_share WHERE uid=:uid AND folder_id=:folder', [':uid'=>intval($GLOBALS['uid']), ':folder'=>$current]);
 		$shared = $shared && !empty($shared['enabled']) && !folder_share_expired($shared);
-		$html .= '<button type="button" class="uc-btn'.($shared ? ' is-shared' : '').'" id="fdShare" data-folder-id="'.$current.'"><i class="fa '.($shared ? 'fa-link' : 'fa-share-alt').'" aria-hidden="true"></i> '.($shared ? '查看分享' : '分享文件夹').'</button>';
+		$html .= '<button type="button" class="uc-btn'.($shared ? ' is-shared' : '').'" id="fdShare" data-folder-id="'.$current.'"><i class="fa '.($shared ? 'fa-share-square-o' : 'fa-share-alt').'" aria-hidden="true"></i> '.($shared ? '查看分享' : '分享文件夹').'</button>';
 	}
 	if(!$searching){
 		$html .= '<button type="button" class="uc-btn" id="fdPaste" hidden><i class="fa fa-clipboard" aria-hidden="true"></i> 粘贴<span id="fdPasteNum"></span></button>'
@@ -645,7 +645,7 @@ function folder_render_rows($all, $current, $url){
 			.'<td class="uc-col-time">'.folder_h($f['addtime']).'</td>'
 			.'<td class="uc-col-act"><div class="uc-acts">'
 				.'<a class="uc-act" href="'.folder_h($link).'" title="打开"><i class="fa fa-folder-open-o" aria-hidden="true"></i></a>'
-				 .(!empty($GLOBALS['islogin2']) ? '<button type="button" class="uc-act" data-fd="share" title="'.(isset($shares[$f['id']]) ? '查看分享链接' : '分享文件夹').'"><i class="fa '.(isset($shares[$f['id']]) ? 'fa-link' : 'fa-share-alt').'" aria-hidden="true"></i></button>' : '')
+				 .(!empty($GLOBALS['islogin2']) ? '<button type="button" class="uc-act" data-fd="share" title="'.(isset($shares[$f['id']]) ? '查看分享链接' : '分享文件夹').'"><i class="fa '.(isset($shares[$f['id']]) ? 'fa-share-square-o' : 'fa-share-alt').'" aria-hidden="true"></i></button>' : '')
 				.'<button type="button" class="uc-act" data-fd="rename" title="重命名"><i class="fa fa-pencil" aria-hidden="true"></i></button>'
 				.'<button type="button" class="uc-act uc-act-danger" data-fd="delete" title="删除文件夹（里面的文件移到根目录）"><i class="fa fa-trash" aria-hidden="true"></i></button>'
 			.'</div></td></tr>';
