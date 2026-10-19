@@ -1000,8 +1000,8 @@ $(document).ready(function(){
 	  <div class="col-sm-9"><input type="text" name="name_block" value="<?php echo $conf['name_block']; ?>" class="form-control" placeholder="多个关键词用|隔开"/></div>
 	</div><br/>
 	<div class="form-group">
-	  <label class="col-sm-3 control-label">每IP每天限制上传数量</label>
-	  <div class="col-sm-9"><input type="text" name="upload_limit" value="<?php echo $conf['upload_limit']; ?>" class="form-control" placeholder="0或留空为不限制"/></div>
+	  <label class="col-sm-3 control-label">每日数量与单文件大小</label>
+	  <div class="col-sm-9"><p class="form-control-static">已并入 <a href="./level.php">会员等级设置</a>：游客、普通用户和各会员等级分别设置（游客按来源地址计，登录用户按账号计）。</p></div>
 	</div><br/>
 	<div class="form-group">
 	  <label class="col-sm-3 control-label">每分钟上传次数</label>
@@ -1011,10 +1011,6 @@ $(document).ready(function(){
 	<div class="form-group">
 	  <label class="col-sm-3 control-label">视频文件需要审核</label>
 	  <div class="col-sm-9"><select class="form-control" name="videoreview" default="<?php echo $conf['videoreview']?>"><option value="0">关闭</option><option value="1">开启</option></select></div>
-	</div><br/>
-	<div class="form-group">
-	  <label class="col-sm-3 control-label">上传大小限制</label>
-	  <div class="col-sm-9"><div class="input-group"><input type="text" name="upload_size" value="<?php echo $conf['upload_size']; ?>" class="form-control" placeholder="不填写则不限制大小"/><span class="input-group-addon">MB</span></div></div>
 	</div><br/>
 	<div class="form-group">
 	  <label class="col-sm-3 control-label">仅限登录用户上传</label>

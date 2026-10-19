@@ -7,6 +7,8 @@ $title = '会员等级设置';
  * 会员等级的增删改走本页自己的 POST（带来源校验），和「购买套餐设置」是同一种做法。
  * 一个等级就是一张权限表，谁是什么等级在「用户管理」里看和改，卖哪个等级在「购买套餐设置」里定。
  * 内置的三个等级不能删：游客、普通用户可以改权限；管理员不受任何限制，没有可改的东西。
+ * 每日上传数量、单文件大小只在这里设（原「文件上传设置」里的两项已并过来，DEC-20261019-001）：
+ * 游客、普通用户必须填具体值，自建等级填 -1 表示同普通用户。
  */
 
 //下载速度在库里一律存 KB/s，表单上按 KB/s 或 MB/s 填；-1（跟随站点设置）和 0（不限速）原样显示
@@ -16,7 +18,7 @@ function level_speed_input($kbps){
 	return [strval($kbps), 'KB'];
 }
 
-//表单里的数值项：负数一律当 -1（跟随站点设置），0 不限，其余取整
+//表单里的数值项：负数一律当 -1（数量、大小是同普通用户），0 不限，其余取整
 function level_form_int($key){
 	$value = isset($_POST[$key]) ? trim((string)$_POST[$key]) : '';
 	if($value === '' || !is_numeric($value))return -1;
@@ -24,11 +26,18 @@ function level_form_int($key){
 	return $value < 0 ? -1 : min(2147483647, $value);
 }
 
-function level_value_text($value, $unit, $site_text){
+//每日数量 / 单文件大小的实际值显示成文字：0 不限
+function level_upload_text($value, $key){
 	$value = intval($value);
-	if($value < 0)return '跟随站点设置（现为 '.$site_text.'）';
 	if($value === 0)return '不限';
-	return $value.' '.$unit;
+	return $key === 'upload_size' ? size_mb_text($value) : $value.' 个/天';
+}
+
+//列表里每日数量 / 单文件大小一格的文字：自建等级填 -1 的写明「同普通用户」（DEC-20261019-001）
+function level_upload_cell($level, $key){
+	$text = level_upload_text(level_upload_value($level, $key), $key);
+	if(intval($level[$key]) >= 0)return $text;
+	return level_is_custom($level) ? '同普通用户（现为 '.$text.'）' : '未设置（暂按 '.$text.'，请编辑填写）';
 }
 
 $msg = '';
@@ -69,6 +78,9 @@ if($islogin == 1 && isset($_POST['do'])){
 			$msg = '管理员等级不受任何限制，没有可以修改的权限'; $msgtype = 'danger';
 		}elseif((!$old || level_is_custom($old)) && $name === ''){
 			$msg = '等级名称不能为空'; $msgtype = 'danger';
+		}elseif($old && !level_is_custom($old) && (intval($data['upload_limit']) < 0 || intval($data['upload_size']) < 0)){
+			//游客、普通用户的数量和大小就是全站的基础额度，没有别处可以「跟随」了
+			$msg = '「'.$old['name'].'」的每日上传数量和单文件大小要填具体数值，0 表示不限'; $msgtype = 'danger';
 		}else{
 			//自己建的等级才能改名称和顺序；顺序限制在普通用户（10）和管理员（100000）之间
 			if(!$old || level_is_custom($old)){
@@ -140,8 +152,10 @@ if(is_array($rows))foreach($rows as $row)$plan_counts[intval($row['level_id'])] 
 $custom_count = 0;
 foreach($levels as $one){ if(level_is_custom($one))$custom_count++; }
 
-$site_limit = (isset($conf['upload_limit']) && intval($conf['upload_limit']) > 0) ? intval($conf['upload_limit']).' 个/天' : '不限';
-$site_size = (isset($conf['upload_size']) && intval($conf['upload_size']) > 0) ? size_mb_text($conf['upload_size']) : '不限';
+//自建等级填 -1 时跟的是普通用户，表单提示里显示普通用户现在的值
+$normal_level = level_builtin(2);
+$normal_limit = level_upload_text(level_upload_value($normal_level, 'upload_limit'), 'upload_limit');
+$normal_size = level_upload_text(level_upload_value($normal_level, 'upload_size'), 'upload_size');
 $type_names = [1=>'游客', 2=>'普通用户', 3=>'管理员'];
 $yes = '<i class="fa fa-check text-success"></i>';
 $no = '<span class="text-muted">-</span>';
@@ -189,8 +203,8 @@ $edit_builtin = $edit && !level_is_custom($edit);
 <?php if($admin){?>
       <td colspan="8"><span class="text-muted">不受任何限制：数量、大小、速度都不限，全部功能可用，上传免审核、不做内容检测、不限上传频率</span></td>
 <?php }else{?>
-      <td><?php echo htmlspecialchars(level_value_text($lv['upload_limit'], '个/天', $site_limit))?></td>
-      <td><?php echo intval($lv['upload_size']) > 0 ? htmlspecialchars(size_mb_text($lv['upload_size'])) : htmlspecialchars(level_value_text($lv['upload_size'], 'MB', $site_size))?></td>
+      <td><?php echo htmlspecialchars(level_upload_cell($lv, 'upload_limit'))?></td>
+      <td><?php echo htmlspecialchars(level_upload_cell($lv, 'upload_size'))?></td>
       <td><?php echo intval($lv['down_speed']) < 0 ? '跟随站点设置（现为 '.htmlspecialchars($tier_speed).'）' : htmlspecialchars(speed_text($lv['down_speed']))?></td>
       <td><?php echo intval($lv['online_edit']) === 1 ? $yes : $no?></td>
       <td><?php echo intval($lv['folder']) === 1 ? $yes : $no?></td>
@@ -259,13 +273,15 @@ $edit_builtin = $edit && !level_is_custom($edit);
 	<div class="row">
 	  <div class="col-sm-4 form-group">
 		<label>每日上传数量</label>
-		<input type="number" name="upload_limit" value="<?php echo $edit ? intval($edit['upload_limit']) : -1?>" class="form-control" min="-1" step="1"/>
-		<span class="hint">-1 跟随站点设置（现为 <?php echo htmlspecialchars($site_limit)?>）/ 0 不限 / N 每天 N 个</span>
+		<input type="number" name="upload_limit" value="<?php echo $edit ? intval($edit['upload_limit']) : -1?>" class="form-control" min="<?php echo $edit_builtin ? 0 : -1?>" step="1"/>
+		<span class="hint level-hint-custom"<?php echo $edit_builtin ? ' style="display:none"' : ''?>>-1 同普通用户（现为 <?php echo htmlspecialchars($normal_limit)?>）/ 0 不限 / N 每天 N 个</span>
+		<span class="hint level-hint-builtin"<?php echo $edit_builtin ? '' : ' style="display:none"'?>>0 不限 / N 每天 N 个。游客按来源地址计、登录用户按账号计</span>
 	  </div>
 	  <div class="col-sm-4 form-group">
 		<label>单文件大小（MB）</label>
-		<input type="number" name="upload_size" value="<?php echo $edit ? intval($edit['upload_size']) : -1?>" class="form-control" min="-1" step="1"/>
-		<span class="hint">-1 跟随站点设置（现为 <?php echo htmlspecialchars($site_size)?>）/ 0 不限 / N 最大 N MB，1 GB 填 1024</span>
+		<input type="number" name="upload_size" value="<?php echo $edit ? intval($edit['upload_size']) : -1?>" class="form-control" min="<?php echo $edit_builtin ? 0 : -1?>" step="1"/>
+		<span class="hint level-hint-custom"<?php echo $edit_builtin ? ' style="display:none"' : ''?>>-1 同普通用户（现为 <?php echo htmlspecialchars($normal_size)?>）/ 0 不限 / N 最大 N MB，1 GB 填 1024</span>
+		<span class="hint level-hint-builtin"<?php echo $edit_builtin ? '' : ' style="display:none"'?>>0 不限 / N 最大 N MB，1 GB 填 1024</span>
 	  </div>
 	  <div class="col-sm-4 form-group">
 		<label>下载速度</label>
@@ -357,6 +373,11 @@ $edit_builtin = $edit && !level_is_custom($edit);
 		var builtin = parseInt(d.type, 10) > 0;
 		field('name').readOnly = builtin;
 		field('sort').readOnly = builtin;
+		//游客、普通用户的数量和大小要填具体值，没有「同普通用户」这一档
+		field('upload_limit').min = builtin ? 0 : -1;
+		field('upload_size').min = builtin ? 0 : -1;
+		$(form).find('.level-hint-custom').toggle(!builtin);
+		$(form).find('.level-hint-builtin').toggle(builtin);
 	}
 	function state(editing, name){
 		document.getElementById('levelFormTitle').innerHTML = editing ? '编辑等级' : '添加等级';

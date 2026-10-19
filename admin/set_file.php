@@ -60,19 +60,12 @@ if($islogin==1){}else exit("<script language='javascript'>window.location.href='
                         <input type="text" class="form-control form-control-lg" name="name_block" value="<?php echo $conf['name_block']; ?>" placeholder="多个关键词用|隔开">
                     </div>
                     <div class="mb-4">
-                        <label class="form-label" for="upload_limit"><b>每IP每天限制上传数量</b></label>
-                        <input type="text" class="form-control form-control-lg" name="upload_limit" value="<?php echo $conf['upload_limit']; ?>" placeholder="0或留空为不限制">
+                        <label class="form-label"><b>每日数量与单文件大小</b></label>
+                        <div>已并入 <a href="./level.php">会员等级设置</a>：游客、普通用户和各会员等级分别设置（游客按来源地址计，登录用户按账号计）。</div>
                     </div>
                     <div class="mb-4">
                         <label class="form-label" for="videoreview">视频文件需要审核</label>
                         <select name="videoreview" class="form-select" default="<?php echo $conf['videoreview']?>"><option value="0">关闭</option><option value="1">开启</option></select>
-                    </div>
-                    <div class="mb-4">
-                        <label class="form-label" for="upload_size"><b>上传大小限制</b></label>
-                        <div class="input-group">
-                            <input type="text" class="form-control form-control-lg" name="upload_size" value="<?php echo $conf['upload_size']; ?>" placeholder="不填写则不限制大小">
-                            <span class="input-group-text">MB</span>
-                        </div>
                     </div>
                     <div class="mb-4">
                         <label class="form-label" for="forcelogin">仅限登录用户上传</label>

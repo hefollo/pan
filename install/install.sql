@@ -16,7 +16,8 @@ create table `pre_config` (
 --   · 如果没有并进来 → 这里保持旧值不动，让全新安装照常跑一次升级把它补上。
 -- 改错方向（并进来了却不改版本号）只是多跑一趟空升级；
 -- 改反了（没并进来却改了版本号）会让新装的站永久缺表缺字段，且毫无报错。
-INSERT INTO `pre_config` VALUES ('version', '1028');
+INSERT INTO `pre_config` VALUES ('version', '1029');
+INSERT INTO `pre_config` VALUES ('level_upload_migrated', '1');
 INSERT INTO `pre_config` VALUES ('level_migrated', '1');
 INSERT INTO `pre_config` VALUES ('admin_user', 'admin');
 INSERT INTO `pre_config` VALUES ('admin_pwd', '123456');
@@ -340,8 +341,8 @@ CREATE TABLE `pre_level` (
   `name` varchar(32) NOT NULL COMMENT '等级名称',
   `type` tinyint(1) NOT NULL DEFAULT '0' COMMENT '0自建 1游客 2普通用户 3管理员，后三种是内置的不能删',
   `sort` int(11) NOT NULL DEFAULT '0' COMMENT '高低顺序，数字大的等级更高',
-  `upload_limit` int(11) NOT NULL DEFAULT '-1' COMMENT '每日上传数量：-1跟随站点设置 0不限 N每天N个',
-  `upload_size` int(11) NOT NULL DEFAULT '-1' COMMENT '单文件大小MB：-1跟随站点设置 0不限',
+  `upload_limit` int(11) NOT NULL DEFAULT '-1' COMMENT '每日上传数量：-1同普通用户（游客、普通用户须填具体值） 0不限 N每天N个',
+  `upload_size` int(11) NOT NULL DEFAULT '-1' COMMENT '单文件大小MB：-1同普通用户（游客、普通用户须填具体值） 0不限',
   `down_speed` int(11) NOT NULL DEFAULT '-1' COMMENT '下载限速KB/s：-1跟随站点设置 0不限速',
   `online_edit` tinyint(1) NOT NULL DEFAULT '0' COMMENT '在线编辑',
   `folder` tinyint(1) NOT NULL DEFAULT '0' COMMENT '用户文件夹',
@@ -354,8 +355,8 @@ CREATE TABLE `pre_level` (
   KEY `type` (`type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-INSERT INTO `pre_level` (`id`,`name`,`type`,`sort`,`upload_limit`,`upload_size`,`down_speed`,`online_edit`,`folder`,`api`,`storage_all`,`no_review`,`remark`,`addtime`) VALUES (1, '游客', 1, 0, -1, -1, -1, 0, 0, 0, 0, 0, '没有登录的访客', NOW());
-INSERT INTO `pre_level` (`id`,`name`,`type`,`sort`,`upload_limit`,`upload_size`,`down_speed`,`online_edit`,`folder`,`api`,`storage_all`,`no_review`,`remark`,`addtime`) VALUES (2, '普通用户', 2, 10, -1, -1, -1, 0, 0, 0, 0, 0, '注册后默认的等级，会员到期后回到这里', NOW());
+INSERT INTO `pre_level` (`id`,`name`,`type`,`sort`,`upload_limit`,`upload_size`,`down_speed`,`online_edit`,`folder`,`api`,`storage_all`,`no_review`,`remark`,`addtime`) VALUES (1, '游客', 1, 0, 0, 0, -1, 0, 0, 0, 0, 0, '没有登录的访客', NOW());
+INSERT INTO `pre_level` (`id`,`name`,`type`,`sort`,`upload_limit`,`upload_size`,`down_speed`,`online_edit`,`folder`,`api`,`storage_all`,`no_review`,`remark`,`addtime`) VALUES (2, '普通用户', 2, 10, 0, 0, -1, 0, 0, 0, 0, 0, '注册后默认的等级，会员到期后回到这里', NOW());
 INSERT INTO `pre_level` (`id`,`name`,`type`,`sort`,`upload_limit`,`upload_size`,`down_speed`,`online_edit`,`folder`,`api`,`storage_all`,`no_review`,`remark`,`addtime`) VALUES (3, '管理员', 3, 100000, 0, 0, 0, 1, 1, 1, 1, 1, '不受任何限制，只能在用户管理里手动设置，不能购买', NOW());
 INSERT INTO `pre_level` (`id`,`name`,`type`,`sort`,`upload_limit`,`upload_size`,`down_speed`,`online_edit`,`folder`,`api`,`storage_all`,`no_review`,`remark`,`addtime`) VALUES (4, '入门会员', 0, 100, 50, 200, -1, 0, 1, 0, 0, 0, '轻度使用', NOW());
 INSERT INTO `pre_level` (`id`,`name`,`type`,`sort`,`upload_limit`,`upload_size`,`down_speed`,`online_edit`,`folder`,`api`,`storage_all`,`no_review`,`remark`,`addtime`) VALUES (5, '基础会员', 0, 200, 100, 500, -1, 0, 1, 0, 0, 0, '额度翻倍', NOW());

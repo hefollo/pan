@@ -290,9 +290,10 @@ foreach($level_cols as $level_col){
 if($need_1027)$sqls = array_merge($sqls, read_sql('update_1027.sql'));
 // 每次补齐分享表，升级中断后重试也安全。
 $sqls = array_merge($sqls, read_sql('update_1028.sql'));
-$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1028')";
-//上面 else 分支只按 1022 判断「已是最新」，从 1022～1026 升上来时要改回「升级完成」的提示
-if($version < 1028)$uptodate = false;
+//1029 只有数据迁移（每日数量、单文件大小并入会员等级），在最下面做，没有新的表结构
+$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1029')";
+//上面 else 分支只按 1022 判断「已是最新」，从 1022～1028 升上来时要改回「升级完成」的提示
+if($version < 1029)$uptodate = false;
 
 $success=0;$skipped=0;$error=0;$errorMsg=null;
 foreach ($sqls as $value) {
@@ -496,6 +497,31 @@ if(update_conf($db, 'level_migrated') !== '1'){
 		exit;
 	}
 	$db->exec("REPLACE INTO `pre_config` VALUES ('level_migrated', '1')");
+	$uptodate = false;
+}
+/*
+ * 1029 的数据迁移：每日上传数量、单文件大小只在会员等级里设（DEC-20261019-001），「文件上传设置」里不再有这两项。
+ * 等级里原来填 -1「跟随站点设置」的，一律写成站点原来的值（空或 0 是不限），升级前后每个人的额度不变；
+ * 以后自建等级的 -1 表示「同普通用户」，游客和普通用户必须是具体值。管理员等级本来就是不限，不动。
+ * pre_config 里的旧值不删：回退代码时还能接着用。只做一次，记 level_upload_migrated=1；可以重复执行。
+ */
+if(update_conf($db, 'level_upload_migrated') !== '1'){
+	$up_err = [];
+	foreach(['upload_limit', 'upload_size'] as $up_key){
+		$st = $db->prepare("UPDATE pre_level SET `".$up_key."`=? WHERE type<>3 AND `".$up_key."`<0");
+		if(!$st || !$st->execute([strval(max(0, intval(update_conf($db, $up_key))))])){
+			$info = $st ? $st->errorInfo() : $db->errorInfo();
+			$up_err[] = htmlspecialchars(isset($info[2]) ? $info[2] : '未知数据库错误', ENT_QUOTES, 'UTF-8');
+		}
+	}
+	if($up_err){
+		echo '<div style="font:13px/1.7 system-ui;margin:0 24px;padding:14px;border:1px solid #f0c2c2;background:#fff5f5;border-radius:8px;color:#a33">'
+			.'<b>升级没有完成：</b>把每日上传数量、单文件大小写进会员等级时出错：<br>'.implode('<br>', $up_err)
+			.'<br>在这之前站点会暂时按原来「文件上传设置」里的值限制；处理后重新打开本页再升级一次。</div>';
+		echo '<p style="font:14px/1.7 system-ui;padding:16px 24px"><a href="../">返回首页</a></p>';
+		exit;
+	}
+	$db->exec("REPLACE INTO `pre_config` VALUES ('level_upload_migrated', '1')");
 	$uptodate = false;
 }
 $done_msg =$uptodate ?'数据库结构已是最新，表结构校验通过！' : '网站数据库升级完成！';

@@ -1400,7 +1400,7 @@ function pay_method_name($method){
 
 /*
  * 内置的推荐会员等级（六个付费等级，从低到高）。后台「一键导入推荐等级和套餐」用的就是这份，导入后随便改。
- * 数值含义同 pre_level：每日数量 / 单文件大小（MB）/ 下载速度（KB/s）里 -1 是跟随站点设置、0 是不限。
+ * 数值含义同 pre_level：每日数量 / 单文件大小（MB）里 -1 是同普通用户，下载速度（KB/s）里 -1 是跟随站点设置，0 都是不限。
  */
 function default_levels(){
 	return [
@@ -1672,18 +1672,15 @@ function size_mb_text($mb){
 }
 
 /*
- * 一个等级的权益清单，购买页卡片和个人中心共用。数值填「跟随站点设置」的换成站点现在的实际值；
+ * 一个等级的权益清单，购买页卡片和个人中心共用。数值填 -1（同普通用户 / 跟随站点设置）的换成现在的实际值；
  * 站点没开的功能（文件夹、上传 API、多存储）不写，免得卖一个用不了的东西。
  */
 function level_features($level){
 	global $conf;
 	$list = [];
-	$limit = intval($level['upload_limit']);
-	if($limit < 0)$limit = isset($conf['upload_limit']) ? intval($conf['upload_limit']) : 0;
+	$limit = level_upload_value($level, 'upload_limit');
 	$list[] = '每日上传 '.($limit === 0 ? '不限' : $limit.' 个');
-	$size = intval($level['upload_size']);
-	if($size < 0)$size = isset($conf['upload_size']) ? intval($conf['upload_size']) : 0;
-	$list[] = '单文件 '.size_mb_text($size);
+	$list[] = '单文件 '.size_mb_text(level_upload_value($level, 'upload_size'));
 	$speed = intval($level['down_speed']);
 	if($speed < 0)$speed = download_tier_speed_kbps(intval($level['type']) === 1 ? 0 : 1);
 	//速度跟着上传者走：这个等级的用户上传的文件，任何人下载都是这个速度
@@ -1787,10 +1784,8 @@ function plan_quote($user, $plan){
 		return $res;
 	}
 	if($kind === 'bonus'){
-		global $conf;
 		$active = empty($user['expiretime']) || strtotime($user['expiretime']) > time();
-		$base = ($active && intval($user['upload_limit']) >= 0) ? intval($user['upload_limit']) : intval($current['upload_limit']);
-		if($base < 0)$base = isset($conf['upload_limit']) ? intval($conf['upload_limit']) : 0;
+		$base = ($active && intval($user['upload_limit']) >= 0) ? intval($user['upload_limit']) : level_upload_value($current, 'upload_limit');
 		if($base === 0){
 			$res['msg'] = '你的每日上传数量已经不限，不需要加量包';
 		}else{
@@ -1983,8 +1978,9 @@ function grant_legacy_plan($uid, $user, $order){
 	$size = resolve_plan_upload_size($user, $order);
 	$speed = resolve_plan_down_speed($user, $order);
 	if($has_forever){
-		$limit = better_permission($user['upload_limit'], $limit, isset($conf['upload_limit']) ? $conf['upload_limit'] : 0);
-		$size = better_permission($user['upload_size'], $size, isset($conf['upload_size']) ? $conf['upload_size'] : 0);
+		//-1 是「按等级」，比较时按他的等级实际值算
+		$limit = better_permission($user['upload_limit'], $limit, level_upload_value(user_level($user), 'upload_limit'));
+		$size = better_permission($user['upload_size'], $size, level_upload_value(user_level($user), 'upload_size'));
 		$speed = better_speed(isset($user['down_speed']) ? $user['down_speed'] : -1, $speed, download_tier_speed_kbps(1));
 	}
 	$data = ['upload_limit'=>strval(intval($limit)), 'upload_size'=>strval(intval($size)), 'down_speed'=>strval(intval($speed)), 'expiretime'=>$expiretime];
@@ -2006,7 +2002,7 @@ function resolve_plan_upload_limit($user, $order){
 }
 
 /*
- * 比较两个权限值哪个更强。0 表示不限，最强；-1 表示跟随全站，按全站的值算；其余按数值大小。
+ * 比较两个权限值哪个更强。0 表示不限，最强；-1 表示按等级，按传进来的等级实际值算；其余按数值大小。
  */
 function permission_weight($value, $site_value){
 	$value = intval($value);
@@ -2575,7 +2571,8 @@ function admin_setting_keys(){
 		'site_theme', 'theme_gradient', 'storage', 'storage_multi', 'storage_pool', 'storagename', 'title', 'subtitle',
 		//tongji 是老的单条「统计代码」，现在由 footer_codes 列表接替，留着只为兼容没保存过新列表的站点
 		'tongji', 'footer_codes', 'type_audio', 'type_block', 'type_image',
-		'type_video', 'upload_limit', 'upload_per_minute', 'upload_show_default', 'upload_size', 'uploadfile_type',
+		//upload_limit / upload_size 已并入会员等级（DEC-20261019-001），不再从设置表单写；库里的旧值留给升级迁移和兜底用
+		'type_video', 'upload_per_minute', 'upload_show_default', 'uploadfile_type',
 		'upyun_name', 'upyun_pwd', 'upyun_user', 'userlogin',
 		'videoreview', 'violation_notice', 'violation_open', 'sponsor_open',
 		//页脚「本站已安全运行」：开关与起算时间
@@ -2638,7 +2635,7 @@ function size_format($size)
 /* ==================== 会员等级 ====================
  *
  * 一个用户能做什么，只看他当前的会员等级（pre_level 里的一行权限表）：
- *   每日上传数量 / 单文件大小 / 下载速度（-1 跟随站点设置，0 不限）、在线编辑、用户文件夹、上传 API、
+ *   每日上传数量 / 单文件大小（自建等级 -1 同普通用户，0 不限；DEC-20261019-001）/ 下载速度（-1 跟随站点设置，0 不限）、在线编辑、用户文件夹、上传 API、
  *   能否用多存储里限定会员的存储、上传免审核。
  * 三个内置等级靠 type 认：1 游客、2 普通用户（注册默认，会员到期后也回到这里）、3 管理员（不受任何限制，
  * 只能在后台用户管理里手动给，不能卖）。其余 type=0 的是站长自己建的，套餐卖的就是它们。
@@ -2668,7 +2665,7 @@ function level_get($id){
 
 /*
  * 取内置等级：1 游客、2 普通用户、3 管理员。
- * 表里万一没有这一行（比如被人手工删了），给一份兜底的：游客和普通用户全部跟随站点设置、功能都不开，
+ * 表里万一没有这一行（比如被人手工删了），给一份兜底的：游客和普通用户数值填 -1（数量、大小按站点原来的设置兜底，速度跟随站点设置）、功能都不开，
  * 管理员全部放开——宁可少给权限，也不能让页面因为取不到等级而报错。
  */
 function level_builtin($type){
@@ -2773,29 +2770,39 @@ function is_user_permission_active($row = null){
 	return strtotime($row['expiretime']) > time();
 }
 
-function get_effective_upload_size_limit(){
+/*
+ * 一个等级实际的每日上传数量 / 单文件大小（$key 是 upload_limit / upload_size，0 不限）。
+ * 这两项只在会员等级里设（DEC-20261019-001）：自建等级填 -1 表示「同普通用户」；
+ * 游客、普通用户必须填具体值，万一还是 -1（站点还没跑 1029 的升级），临时按「文件上传设置」里原来的值算，
+ * 升级时会把那个值写进等级。
+ */
+function level_upload_value($level, $key){
 	global $conf;
+	if(level_is_admin($level))return 0;
+	$value = isset($level[$key]) ? intval($level[$key]) : -1;
+	if($value >= 0)return $value;
+	if(level_is_custom($level)){
+		$normal = level_builtin(2);
+		if(intval($normal[$key]) >= 0)return intval($normal[$key]);
+	}
+	return isset($conf[$key]) ? max(0, intval($conf[$key])) : 0;
+}
+
+function get_effective_upload_size_limit(){
 	$level = current_level();
 	if(level_is_admin($level))return 0;
 	$own = user_override('upload_size');
 	if($own >= 0)return $own;
-	if(intval($level['upload_size']) >= 0)return intval($level['upload_size']);
-	return isset($conf['upload_size']) ? intval($conf['upload_size']) : 0;
+	return level_upload_value($level, 'upload_size');
 }
 
 function get_effective_upload_count_limit(){
-	global $conf, $islogin2, $userrow;
+	global $islogin2, $userrow;
 	$level = current_level();
 	if(level_is_admin($level))return 0;
-	//基础数量：单独调整过的用调整值，否则看等级，等级填「跟随站点设置」的用全站的数量
+	//基础数量：单独调整过的用调整值，否则看等级
 	$own = user_override('upload_limit');
-	if($own >= 0){
-		$base = $own;
-	}elseif(intval($level['upload_limit']) >= 0){
-		$base = intval($level['upload_limit']);
-	}else{
-		$base = isset($conf['upload_limit']) ? intval($conf['upload_limit']) : 0;
-	}
+	$base = $own >= 0 ? $own : level_upload_value($level, 'upload_limit');
 	//加量包买的额度加在基础数量上；基础是“不限”时加多少都没意义
 	if($base === 0)return 0;
 	return $base + (!empty($islogin2) ? user_bonus_limit($userrow) : 0);
