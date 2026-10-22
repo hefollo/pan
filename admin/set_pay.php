@@ -27,6 +27,8 @@ function render_plan_rows($plans){
 		$content = '每天多传 '.max(0, intval($p['upload_limit'])).' 个';
 	}elseif($kind === 'edit'){
 		$content = '开通在线编辑';
+	}elseif($kind === 'traffic'){
+		$content = '分享流量 +'.htmlspecialchars(traffic_mb_text($p['traffic']));
 	}else{
 		$content = '<span class="text-muted">'.htmlspecialchars('每日 '.plan_limit_display($p).'，单文件 '.plan_limit_text($p['upload_size'], 'MB'), ENT_QUOTES, 'UTF-8').'</span>';
 	}
@@ -52,6 +54,7 @@ function render_plan_rows($plans){
            data-kind="<?php echo $kind?>"
            data-level-id="<?php echo intval($p['level_id'])?>"
            data-bonus="<?php echo $kind === 'bonus' ? max(0, intval($p['upload_limit'])) : 0?>"
+           data-traffic="<?php echo $kind === 'traffic' ? round(intval($p['traffic']) / 1024, 4) : 0?>"
            data-sort="<?php echo intval($p['sort'])?>"
            data-enable="<?php echo intval($p['enable'])?>"
            data-remark="<?php echo htmlspecialchars((string)$p['remark'], ENT_QUOTES, 'UTF-8')?>">编辑</a>
@@ -84,10 +87,14 @@ if($islogin != 1){
 		$name = trim($_POST['name']);
 		$price = round(floatval($_POST['price']), 2);
 		$days = intval($_POST['days']);
-		//套餐只有三种：卖会员等级、加量包、在线编辑包
-		$kind = (isset($_POST['kind']) && in_array($_POST['kind'], ['level', 'bonus', 'edit'], true)) ? $_POST['kind'] : 'level';
+		//套餐只有四种：卖会员等级、加量包、在线编辑包、流量包
+		$kind = (isset($_POST['kind']) && in_array($_POST['kind'], ['level', 'bonus', 'edit', 'traffic'], true)) ? $_POST['kind'] : 'level';
 		$level_id = isset($_POST['level_id']) ? intval($_POST['level_id']) : 0;
 		$bonus = isset($_POST['bonus']) ? intval($_POST['bonus']) : 0;
+		//流量包按 GB 填（可以带小数），库里存 MB；流量包永久有效，天数一律记 0
+		$traffic_gb = isset($_POST['traffic']) ? floatval($_POST['traffic']) : 0;
+		$traffic = is_finite($traffic_gb) && $traffic_gb > 0 ? max(1, min(2147483647, intval(round($traffic_gb * 1024)))) : 0;
+		if($kind === 'traffic')$days = 0;
 		$sort = intval($_POST['sort']);
 		$enable = intval($_POST['enable']) === 1 ? 1 : 0;
 		$remark = trim($_POST['remark']);
@@ -104,6 +111,8 @@ if($islogin != 1){
 			$msg = '请选择要卖的会员等级（内置的游客、普通用户、管理员不能卖）'; $msgtype = 'danger';
 		}elseif($kind === 'bonus' && $bonus <= 0){
 			$msg = '加量包每天增加的数量必须大于 0'; $msgtype = 'danger';
+		}elseif($kind === 'traffic' && $traffic <= 0){
+			$msg = '流量包增加的流量必须大于 0'; $msgtype = 'danger';
 		}else{
 			//写库的值一律用字符串：DB->insert / update 把 == '' 的值写成 NULL，整数 0 在老版本 PHP 上也会中
 			$data = [
@@ -117,6 +126,7 @@ if($islogin != 1){
 				'upload_size' => '-1',
 				'down_speed' => '-1',
 				'online_edit' => $kind === 'edit' ? '1' : '0',
+				'traffic' => $kind === 'traffic' ? strval($traffic) : '0',
 				'sort' => strval($sort),
 				'enable' => strval($enable),
 				'remark' => $remark,
@@ -370,6 +380,7 @@ if(isset($_GET['tab']) && $_GET['tab'] === 'epay')$pay_tab = 'epay';
 		  <option value="level" <?php echo $edit_kind === 'level' ? 'selected' : ''?>>会员等级（买了成为该等级的会员）</option>
 		  <option value="bonus" <?php echo $edit_kind === 'bonus' ? 'selected' : ''?>>加量包（每天多传几个）</option>
 		  <option value="edit" <?php echo $edit_kind === 'edit' ? 'selected' : ''?>>在线编辑包（单独开通在线编辑）</option>
+		  <option value="traffic" <?php echo $edit_kind === 'traffic' ? 'selected' : ''?>>流量包（增加分享流量，永久有效）</option>
 		</select>
 		<span class="hint">等级有什么权限在「会员等级设置」里定，这里只管卖哪个等级、卖多久、卖多少钱</span>
 	  </div>
@@ -391,6 +402,11 @@ if(isset($_GET['tab']) && $_GET['tab'] === 'epay')$pay_tab = 'epay';
 		<label>在线编辑</label>
 		<p class="form-control-static">有效期内可以使用在线编辑</p>
 		<span class="hint">卖给等级不带在线编辑的用户；有效期单独计算，不影响会员到期时间</span>
+	  </div>
+	  <div class="col-sm-4 form-group plan-kind-field" data-kind="traffic"<?php echo $edit_kind === 'traffic' ? '' : ' style="display:none"'?>>
+		<label>增加的流量（GB）</label>
+		<input type="number" name="traffic" value="<?php echo ($edit && $edit_kind === 'traffic') ? round(intval($edit['traffic']) / 1024, 4) : 10?>" class="form-control" min="0.001" step="any"/>
+		<span class="hint">加到用户的流量包余额上，永久有效、重复购买累加；本月等级的分享流量用完后才扣。下面的有效期对它不起作用</span>
 	  </div>
 	  <div class="col-sm-4 form-group">
 		<label>有效期（天）</label>
@@ -496,7 +512,7 @@ if(isset($_GET['tab']) && $_GET['tab'] === 'epay')$pay_tab = 'epay';
 		if(id)$('.plan-row[data-id="'+id+'"]').addClass('plan-row-active');
 	}
 
-	//按套餐类型显示对应的那一栏（等级下拉 / 加量数量 / 在线编辑说明）
+	//按套餐类型显示对应的那一栏（等级下拉 / 加量数量 / 在线编辑说明 / 流量）
 	function showKind(kind){
 		$('.plan-kind-field').each(function(){ this.style.display = this.getAttribute('data-kind') === kind ? '' : 'none'; });
 	}
@@ -509,6 +525,7 @@ if(isset($_GET['tab']) && $_GET['tab'] === 'epay')$pay_tab = 'epay';
 		field('kind').value = d.kind;
 		if(d.levelId && field('level_id').querySelector('option[value="'+d.levelId+'"]'))field('level_id').value = d.levelId;
 		field('bonus').value = parseInt(d.bonus, 10) > 0 ? d.bonus : 50;
+		field('traffic').value = parseFloat(d.traffic) > 0 ? d.traffic : 10;
 		showKind(d.kind);
 		field('sort').value = d.sort;
 		field('enable').value = d.enable;
@@ -530,6 +547,7 @@ if(isset($_GET['tab']) && $_GET['tab'] === 'epay')$pay_tab = 'epay';
 			kind: a.getAttribute('data-kind'),
 			levelId: a.getAttribute('data-level-id'),
 			bonus: a.getAttribute('data-bonus'),
+			traffic: a.getAttribute('data-traffic'),
 			sort: a.getAttribute('data-sort'),
 			enable: a.getAttribute('data-enable'),
 			remark: a.getAttribute('data-remark')
@@ -545,7 +563,7 @@ if(isset($_GET['tab']) && $_GET['tab'] === 'epay')$pay_tab = 'epay';
 	}
 
 	function toAdd(scroll){
-		fill({id:0, name:'', category:'', price:'', days:30, kind:'level', levelId:'', bonus:50, sort:0, enable:1, remark:''});
+		fill({id:0, name:'', category:'', price:'', days:30, kind:'level', levelId:'', bonus:50, traffic:10, sort:0, enable:1, remark:''});
 		title.innerHTML = '添加套餐';
 		submit.innerHTML = '添加套餐';
 		cancel.style.display = 'none';

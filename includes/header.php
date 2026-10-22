@@ -166,6 +166,15 @@ if(in_array($site_theme, $layout_themes, true)){
           <div class="layout-side-row"><strong>我的权限</strong><span class="layout-side-tag layout-side-tag-<?php echo $side_state_cls?>"><?php echo $side_state?></span></div>
           <div class="layout-side-kv"><span>每日上传</span><b><?php echo $side_limit > 0 ? $side_limit.' 个' : '不限制'?></b></div>
           <div class="layout-side-kv"><span>单文件</span><b><?php echo $side_size > 0 ? $side_size.' MB' : '不限制'?></b></div>
+          <?php
+            //每月分享流量：自己的文件本月被取走多少（DEC-20261022-001），不限的只写「不限制」
+            $side_traffic = function_exists('user_traffic_info') ? user_traffic_info($userrow) : null;
+            if($side_traffic){
+          ?>
+          <div class="layout-side-kv"><span>本月流量</span><b><?php echo $side_traffic['unlimited'] ? '不限制' : htmlspecialchars(size_format($side_traffic['used']).' / '.size_format($side_traffic['quota']))?></b></div>
+          <?php if(!$side_traffic['unlimited'] && $side_traffic['pack'] > 0){?>
+          <div class="layout-side-kv"><span>流量包</span><b><?php echo htmlspecialchars(size_format($side_traffic['pack']))?></b></div>
+          <?php } }?>
           <?php if(function_exists('user_bonus_limit') && user_bonus_limit($userrow) > 0 && $side_limit > 0){?>
           <div class="layout-side-kv"><span>其中加量包</span><b>+<?php echo user_bonus_limit($userrow)?> 个/天</b></div>
           <?php }?>

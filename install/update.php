@@ -291,9 +291,23 @@ if($need_1027)$sqls = array_merge($sqls, read_sql('update_1027.sql'));
 // 每次补齐分享表，升级中断后重试也安全。
 $sqls = array_merge($sqls, read_sql('update_1028.sql'));
 //1029 只有数据迁移（每日数量、单文件大小并入会员等级），在最下面做，没有新的表结构
-$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1029')";
-//上面 else 分支只按 1022 判断「已是最新」，从 1022～1028 升上来时要改回「升级完成」的提示
-if($version < 1029)$uptodate = false;
+/*
+ * 1030 每月分享流量（DEC-20261022-001）：等级、套餐、订单、用户各加一列，另有新表 pre_traffic。
+ * 做法同 1027：表或任何一列缺了就整份跑一遍（已有的那几条会报重复结构被跳过）；
+ * 文件里那条把游客、普通用户写成 0 的 UPDATE 只改还是 -1 的，重复跑没有副作用。
+ */
+$traffic_cols = [['pre_level', 'traffic'], ['pre_plan', 'traffic'], ['pre_order', 'traffic'], ['pre_user', 'traffic_pack']];
+$q = $db->query("SHOW TABLES LIKE 'pre_traffic'");
+$need_1030 = !$q || !$q->fetchColumn();
+foreach($traffic_cols as $traffic_col){
+	if($need_1030)break;
+	$q = $db->query("SHOW COLUMNS FROM `".$traffic_col[0]."` LIKE '".$traffic_col[1]."'");
+	if(!$q || !$q->fetchColumn())$need_1030 = true;
+}
+if($need_1030)$sqls = array_merge($sqls, read_sql('update_1030.sql'));
+$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1030')";
+//上面 else 分支只按 1022 判断「已是最新」，从 1022～1029 升上来时要改回「升级完成」的提示
+if($version < 1030)$uptodate = false;
 
 $success=0;$skipped=0;$error=0;$errorMsg=null;
 foreach ($sqls as $value) {

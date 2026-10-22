@@ -301,7 +301,18 @@ case 'userList':
 	$total = $DB->getColumn("SELECT count(*) from pre_user WHERE{$sql}");
 	$list = $DB->getAll("SELECT * FROM pre_user WHERE{$sql} order by uid desc limit $offset,$limit");
 	$list2 = [];
+	//本页这些用户本月的分享流量用量，一次查出来
+	$traffic_used = [];
+	$uids = [];
+	foreach($list as $row)$uids[] = intval($row['uid']);
+	if($uids){
+		$rows = $DB->getAll("SELECT uid, bytes FROM pre_traffic WHERE month='".date('Ym')."' AND uid IN (".implode(',', $uids).")");
+		if(is_array($rows))foreach($rows as $one)$traffic_used[intval($one['uid'])] = (int)$one['bytes'];
+	}
 	foreach($list as $row){
+		$row['traffic_used'] = isset($traffic_used[intval($row['uid'])]) ? size_format($traffic_used[intval($row['uid'])]) : '';
+		//流量包余额按 GB 填，保留两位小数
+		$row['traffic_pack_gb'] = round(max(0, (int)$row['traffic_pack']) / 1073741824, 2);
 		//登录方式的显示名统一走 login_type_name()：原来这里自带一张只有 qq/wx 的表，
 		//加了邮箱注册之后 type='mail' 查不到，列表里那一列就是空的
 		$row['type'] = login_type_name($row['type']);
@@ -386,6 +397,13 @@ case 'saveUserInfo':
 		$params[':online_edit'] = $online_edit;
 		$params[':edit_expire'] = $edit_expire;
 	}
+	//流量包余额：表单按 GB 填（可以带小数），库里存字节。表单没带、或者没改过（和打开时的值一样）的不动：
+	//显示的是四舍五入后的 GB，原样写回会把零头抹掉，也会盖掉打开弹窗之后下载扣掉的部分
+	if(isset($_POST['traffic_pack']) && is_numeric($_POST['traffic_pack'])
+		&& !(isset($_POST['traffic_pack_orig']) && trim((string)$_POST['traffic_pack_orig']) === trim((string)$_POST['traffic_pack']))){
+		$sql .= ", traffic_pack=:traffic_pack";
+		$params[':traffic_pack'] = strval(max(0, (int)round(floatval($_POST['traffic_pack']) * 1073741824)));
+	}
 	$sql .= " WHERE uid=:uid";
 	if($DB->exec($sql, $params)!==false)exit('{"code":0,"msg":"修改用户成功！"}');
 	else exit('{"code":-1,"msg":"修改用户失败['.$DB->error().']"}');
@@ -404,6 +422,8 @@ case 'delUser':
 		$DB->exec("DELETE FROM pre_folder WHERE uid=:uid", [':uid'=>$uid]);
 		//他自己上传的头像文件也删掉，不然就成了没人认领的文件
 		user_avatar_delete_file($row['faceimg']);
+		//他的分享流量用量记录没用了；他留下的文件以后记在游客名下（file_traffic_state）
+		$DB->exec("DELETE FROM pre_traffic WHERE uid=:uid", [':uid'=>$uid]);
 		exit('{"code":0,"msg":"删除用户成功！"}');
 	}
 	else exit('{"code":-1,"msg":"删除用户失败['.$DB->error().']"}');

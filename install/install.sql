@@ -16,7 +16,7 @@ create table `pre_config` (
 --   · 如果没有并进来 → 这里保持旧值不动，让全新安装照常跑一次升级把它补上。
 -- 改错方向（并进来了却不改版本号）只是多跑一趟空升级；
 -- 改反了（没并进来却改了版本号）会让新装的站永久缺表缺字段，且毫无报错。
-INSERT INTO `pre_config` VALUES ('version', '1029');
+INSERT INTO `pre_config` VALUES ('version', '1030');
 INSERT INTO `pre_config` VALUES ('level_upload_migrated', '1');
 INSERT INTO `pre_config` VALUES ('level_migrated', '1');
 INSERT INTO `pre_config` VALUES ('admin_user', 'admin');
@@ -233,6 +233,7 @@ CREATE TABLE `pre_user` (
   `edit_expire` datetime DEFAULT NULL COMMENT '在线编辑到期时间，已开通且为空表示永久',
   `level_id` int(11) NOT NULL DEFAULT '0' COMMENT '会员等级，0为普通用户，到期时间见expiretime',
   `bonus_expire` datetime DEFAULT NULL COMMENT '加量包到期时间，有加量额度且为空表示永久',
+  `traffic_pack` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT '流量包余额（字节），永久有效，月流量用完后才扣',
   `addtime` datetime NOT NULL,
   `lasttime` datetime NOT NULL,
   PRIMARY KEY (`uid`),
@@ -344,6 +345,7 @@ CREATE TABLE `pre_level` (
   `upload_limit` int(11) NOT NULL DEFAULT '-1' COMMENT '每日上传数量：-1同普通用户（游客、普通用户须填具体值） 0不限 N每天N个',
   `upload_size` int(11) NOT NULL DEFAULT '-1' COMMENT '单文件大小MB：-1同普通用户（游客、普通用户须填具体值） 0不限',
   `down_speed` int(11) NOT NULL DEFAULT '-1' COMMENT '下载限速KB/s：-1跟随站点设置 0不限速',
+  `traffic` int(11) NOT NULL DEFAULT '-1' COMMENT '每月分享流量MB：-1同普通用户（游客、普通用户须填具体值） 0不限',
   `online_edit` tinyint(1) NOT NULL DEFAULT '0' COMMENT '在线编辑',
   `folder` tinyint(1) NOT NULL DEFAULT '0' COMMENT '用户文件夹',
   `api` tinyint(1) NOT NULL DEFAULT '0' COMMENT '上传API',
@@ -355,15 +357,15 @@ CREATE TABLE `pre_level` (
   KEY `type` (`type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-INSERT INTO `pre_level` (`id`,`name`,`type`,`sort`,`upload_limit`,`upload_size`,`down_speed`,`online_edit`,`folder`,`api`,`storage_all`,`no_review`,`remark`,`addtime`) VALUES (1, '游客', 1, 0, 0, 0, -1, 0, 0, 0, 0, 0, '没有登录的访客', NOW());
-INSERT INTO `pre_level` (`id`,`name`,`type`,`sort`,`upload_limit`,`upload_size`,`down_speed`,`online_edit`,`folder`,`api`,`storage_all`,`no_review`,`remark`,`addtime`) VALUES (2, '普通用户', 2, 10, 0, 0, -1, 0, 0, 0, 0, 0, '注册后默认的等级，会员到期后回到这里', NOW());
-INSERT INTO `pre_level` (`id`,`name`,`type`,`sort`,`upload_limit`,`upload_size`,`down_speed`,`online_edit`,`folder`,`api`,`storage_all`,`no_review`,`remark`,`addtime`) VALUES (3, '管理员', 3, 100000, 0, 0, 0, 1, 1, 1, 1, 1, '不受任何限制，只能在用户管理里手动设置，不能购买', NOW());
-INSERT INTO `pre_level` (`id`,`name`,`type`,`sort`,`upload_limit`,`upload_size`,`down_speed`,`online_edit`,`folder`,`api`,`storage_all`,`no_review`,`remark`,`addtime`) VALUES (4, '入门会员', 0, 100, 50, 200, -1, 0, 1, 0, 0, 0, '轻度使用', NOW());
-INSERT INTO `pre_level` (`id`,`name`,`type`,`sort`,`upload_limit`,`upload_size`,`down_speed`,`online_edit`,`folder`,`api`,`storage_all`,`no_review`,`remark`,`addtime`) VALUES (5, '基础会员', 0, 200, 100, 500, -1, 0, 1, 0, 0, 0, '额度翻倍', NOW());
-INSERT INTO `pre_level` (`id`,`name`,`type`,`sort`,`upload_limit`,`upload_size`,`down_speed`,`online_edit`,`folder`,`api`,`storage_all`,`no_review`,`remark`,`addtime`) VALUES (6, '标准会员', 0, 300, 300, 1024, -1, 1, 1, 0, 0, 0, '日常够用，带在线编辑', NOW());
-INSERT INTO `pre_level` (`id`,`name`,`type`,`sort`,`upload_limit`,`upload_size`,`down_speed`,`online_edit`,`folder`,`api`,`storage_all`,`no_review`,`remark`,`addtime`) VALUES (7, '进阶会员', 0, 400, 600, 2048, 0, 1, 1, 1, 0, 0, '下载不限速，可用上传 API', NOW());
-INSERT INTO `pre_level` (`id`,`name`,`type`,`sort`,`upload_limit`,`upload_size`,`down_speed`,`online_edit`,`folder`,`api`,`storage_all`,`no_review`,`remark`,`addtime`) VALUES (8, '尊享会员', 0, 500, 1500, 5120, 0, 1, 1, 1, 1, 0, '可用全部存储', NOW());
-INSERT INTO `pre_level` (`id`,`name`,`type`,`sort`,`upload_limit`,`upload_size`,`down_speed`,`online_edit`,`folder`,`api`,`storage_all`,`no_review`,`remark`,`addtime`) VALUES (9, '旗舰会员', 0, 600, 0, 0, 0, 1, 1, 1, 1, 0, '数量和大小都不限', NOW());
+INSERT INTO `pre_level` (`id`,`name`,`type`,`sort`,`upload_limit`,`upload_size`,`down_speed`,`traffic`,`online_edit`,`folder`,`api`,`storage_all`,`no_review`,`remark`,`addtime`) VALUES (1, '游客', 1, 0, 0, 0, -1, 5120, 0, 0, 0, 0, 0, '没有登录的访客', NOW());
+INSERT INTO `pre_level` (`id`,`name`,`type`,`sort`,`upload_limit`,`upload_size`,`down_speed`,`traffic`,`online_edit`,`folder`,`api`,`storage_all`,`no_review`,`remark`,`addtime`) VALUES (2, '普通用户', 2, 10, 0, 0, -1, 10240, 0, 0, 0, 0, 0, '注册后默认的等级，会员到期后回到这里', NOW());
+INSERT INTO `pre_level` (`id`,`name`,`type`,`sort`,`upload_limit`,`upload_size`,`down_speed`,`traffic`,`online_edit`,`folder`,`api`,`storage_all`,`no_review`,`remark`,`addtime`) VALUES (3, '管理员', 3, 100000, 0, 0, 0, 0, 1, 1, 1, 1, 1, '不受任何限制，只能在用户管理里手动设置，不能购买', NOW());
+INSERT INTO `pre_level` (`id`,`name`,`type`,`sort`,`upload_limit`,`upload_size`,`down_speed`,`traffic`,`online_edit`,`folder`,`api`,`storage_all`,`no_review`,`remark`,`addtime`) VALUES (4, '入门会员', 0, 100, 50, 200, -1, 51200, 0, 1, 0, 0, 0, '轻度使用', NOW());
+INSERT INTO `pre_level` (`id`,`name`,`type`,`sort`,`upload_limit`,`upload_size`,`down_speed`,`traffic`,`online_edit`,`folder`,`api`,`storage_all`,`no_review`,`remark`,`addtime`) VALUES (5, '基础会员', 0, 200, 100, 500, -1, 102400, 0, 1, 0, 0, 0, '额度翻倍', NOW());
+INSERT INTO `pre_level` (`id`,`name`,`type`,`sort`,`upload_limit`,`upload_size`,`down_speed`,`traffic`,`online_edit`,`folder`,`api`,`storage_all`,`no_review`,`remark`,`addtime`) VALUES (6, '标准会员', 0, 300, 300, 1024, -1, 307200, 1, 1, 0, 0, 0, '日常够用，带在线编辑', NOW());
+INSERT INTO `pre_level` (`id`,`name`,`type`,`sort`,`upload_limit`,`upload_size`,`down_speed`,`traffic`,`online_edit`,`folder`,`api`,`storage_all`,`no_review`,`remark`,`addtime`) VALUES (7, '进阶会员', 0, 400, 600, 2048, 0, 819200, 1, 1, 1, 0, 0, '下载不限速，可用上传 API', NOW());
+INSERT INTO `pre_level` (`id`,`name`,`type`,`sort`,`upload_limit`,`upload_size`,`down_speed`,`traffic`,`online_edit`,`folder`,`api`,`storage_all`,`no_review`,`remark`,`addtime`) VALUES (8, '尊享会员', 0, 500, 1500, 5120, 0, 2097152, 1, 1, 1, 1, 0, '可用全部存储', NOW());
+INSERT INTO `pre_level` (`id`,`name`,`type`,`sort`,`upload_limit`,`upload_size`,`down_speed`,`traffic`,`online_edit`,`folder`,`api`,`storage_all`,`no_review`,`remark`,`addtime`) VALUES (9, '旗舰会员', 0, 600, 0, 0, 0, 0, 1, 1, 1, 1, 0, '数量、大小、流量都不限', NOW());
 
 DROP TABLE IF EXISTS `pre_plan`;
 CREATE TABLE `pre_plan` (
@@ -376,6 +378,7 @@ CREATE TABLE `pre_plan` (
   `upload_size` int(11) NOT NULL DEFAULT '-1' COMMENT '单文件大小MB：-1继承全站 0不限',
   `down_speed` int(11) NOT NULL DEFAULT '-1' COMMENT '下载限速KB/s：-1不改动 0不限速 N每秒N KB',
   `online_edit` tinyint(1) NOT NULL DEFAULT '0' COMMENT '是否含在线编辑权限：0不含 1含',
+  `traffic` int(11) NOT NULL DEFAULT '0' COMMENT '流量包加多少MB，0表示不是流量包',
   `level_id` int(11) NOT NULL DEFAULT '0' COMMENT '卖的是哪个会员等级，0表示附加包或旧版套餐',
   `days` int(11) NOT NULL DEFAULT '0' COMMENT '有效期天数，0为永久',
   `remark` varchar(255) DEFAULT NULL COMMENT '套餐说明',
@@ -401,8 +404,9 @@ CREATE TABLE `pre_order` (
   `upload_size` int(11) NOT NULL DEFAULT '-1',
   `down_speed` int(11) NOT NULL DEFAULT '-1' COMMENT '下单时的套餐下载限速快照',
   `online_edit` tinyint(1) NOT NULL DEFAULT '0' COMMENT '下单时套餐是否含在线编辑的快照',
+  `traffic` int(11) NOT NULL DEFAULT '0' COMMENT '下单时的流量包MB快照',
   `level_id` int(11) NOT NULL DEFAULT '0' COMMENT '下单时的会员等级快照',
-  `kind` varchar(10) NOT NULL DEFAULT '' COMMENT '订单类型：level upgrade bonus edit，空为旧订单',
+  `kind` varchar(10) NOT NULL DEFAULT '' COMMENT '订单类型：level upgrade bonus edit traffic，空为旧订单',
   `days` int(11) NOT NULL DEFAULT '0',
   `status` tinyint(1) NOT NULL DEFAULT '0' COMMENT '0待支付 1已支付并发放 2已关闭',
   `ip` varchar(46) DEFAULT NULL,
@@ -413,6 +417,14 @@ CREATE TABLE `pre_order` (
   KEY `uid` (`uid`,`id`),
   KEY `status` (`status`,`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+DROP TABLE IF EXISTS `pre_traffic`;
+CREATE TABLE `pre_traffic` (
+  `uid` int(11) unsigned NOT NULL COMMENT '上传者，0是游客上传的文件',
+  `month` char(6) NOT NULL COMMENT '年月，如202610',
+  `bytes` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT '这个月被取走的字节数',
+  PRIMARY KEY (`uid`,`month`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='分享流量用量';
 
 INSERT INTO `pre_plan` (`name`,`category`,`price`,`level_id`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('入门会员月卡', '入门会员', '2.90', 4, -1, 'set', -1, 30, NULL, 10, 1, NOW());
 INSERT INTO `pre_plan` (`name`,`category`,`price`,`level_id`,`upload_limit`,`limit_mode`,`upload_size`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('入门会员季卡', '入门会员', '7.90', 4, -1, 'set', -1, 90, '三个月，折合每月更便宜', 11, 1, NOW());
@@ -448,6 +460,11 @@ INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`u
 INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`online_edit`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('在线编辑季卡', '在线编辑', '8.00', -1, 'set', -1, 1, 90, '三个月，折合每月更便宜', 111, 1, NOW());
 INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`online_edit`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('在线编辑年卡', '在线编辑', '25.00', -1, 'set', -1, 1, 365, '整年可用，经常改文件选它', 112, 1, NOW());
 INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`online_edit`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('在线编辑永久', '在线编辑', '48.00', -1, 'set', -1, 1, 0, '一次买断，永久可用', 113, 1, NOW());
+INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`traffic`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('流量包 +10GB', '流量包', '2.00', -1, 'set', -1, 10240, 0, '永久有效，本月流量用完后才扣', 120, 1, NOW());
+INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`traffic`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('流量包 +50GB', '流量包', '8.00', -1, 'set', -1, 51200, 0, '永久有效，本月流量用完后才扣', 121, 1, NOW());
+INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`traffic`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('流量包 +100GB', '流量包', '15.00', -1, 'set', -1, 102400, 0, '永久有效，本月流量用完后才扣', 122, 1, NOW());
+INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`traffic`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('流量包 +500GB', '流量包', '60.00', -1, 'set', -1, 512000, 0, '永久有效，本月流量用完后才扣', 123, 1, NOW());
+INSERT INTO `pre_plan` (`name`,`category`,`price`,`upload_limit`,`limit_mode`,`upload_size`,`traffic`,`days`,`remark`,`sort`,`enable`,`addtime`) VALUES ('流量包 +1TB', '流量包', '100.00', -1, 'set', -1, 1048576, 0, '永久有效，本月流量用完后才扣', 124, 1, NOW());
 
 INSERT INTO `pre_config` VALUES ('alipay_open', '0');
 INSERT INTO `pre_config` VALUES ('epay_open', '0');

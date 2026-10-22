@@ -39,6 +39,9 @@ if($content === false)exit('Read file failed.');
 $decoded = decode_editable_content($content);
 if($decoded['code'] != 0)exit($decoded['msg']);
 
+//这里不经过 file_output()，上传者的分享流量在这里单独拦和记（DEC-20261022-001）
+file_traffic_guard($row['uid']);
+
 //列表页预览面板拉取的内容不计入下载次数
 if(!isset($_GET['preview'])){
 	$DB->exec("UPDATE `pre_file` SET `lasttime`=NOW(),`count`=`count`+1 WHERE `id`='{$row['id']}'");
@@ -46,4 +49,5 @@ if(!isset($_GET['preview'])){
 
 @header('Content-Type: text/plain; charset=UTF-8');
 @header('X-Content-Type-Options: nosniff');
-echo $decoded['content'];
+//走统一的输出函数，分享流量才记得上
+download_output_chunk($decoded['content']);

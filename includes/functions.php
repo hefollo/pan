@@ -1400,16 +1400,16 @@ function pay_method_name($method){
 
 /*
  * 内置的推荐会员等级（六个付费等级，从低到高）。后台「一键导入推荐等级和套餐」用的就是这份，导入后随便改。
- * 数值含义同 pre_level：每日数量 / 单文件大小（MB）里 -1 是同普通用户，下载速度（KB/s）里 -1 是跟随站点设置，0 都是不限。
+ * 数值含义同 pre_level：每日数量 / 单文件大小（MB）/ 每月分享流量（MB）里 -1 是同普通用户，下载速度（KB/s）里 -1 是跟随站点设置，0 都是不限。
  */
 function default_levels(){
 	return [
-		['name'=>'入门会员', 'sort'=>100, 'upload_limit'=>50, 'upload_size'=>200, 'down_speed'=>-1, 'online_edit'=>0, 'folder'=>1, 'api'=>0, 'storage_all'=>0, 'no_review'=>0, 'remark'=>'轻度使用'],
-		['name'=>'基础会员', 'sort'=>200, 'upload_limit'=>100, 'upload_size'=>500, 'down_speed'=>-1, 'online_edit'=>0, 'folder'=>1, 'api'=>0, 'storage_all'=>0, 'no_review'=>0, 'remark'=>'额度翻倍'],
-		['name'=>'标准会员', 'sort'=>300, 'upload_limit'=>300, 'upload_size'=>1024, 'down_speed'=>-1, 'online_edit'=>1, 'folder'=>1, 'api'=>0, 'storage_all'=>0, 'no_review'=>0, 'remark'=>'日常够用，带在线编辑'],
-		['name'=>'进阶会员', 'sort'=>400, 'upload_limit'=>600, 'upload_size'=>2048, 'down_speed'=>0, 'online_edit'=>1, 'folder'=>1, 'api'=>1, 'storage_all'=>0, 'no_review'=>0, 'remark'=>'下载不限速，可用上传 API'],
-		['name'=>'尊享会员', 'sort'=>500, 'upload_limit'=>1500, 'upload_size'=>5120, 'down_speed'=>0, 'online_edit'=>1, 'folder'=>1, 'api'=>1, 'storage_all'=>1, 'no_review'=>0, 'remark'=>'可用全部存储'],
-		['name'=>'旗舰会员', 'sort'=>600, 'upload_limit'=>0, 'upload_size'=>0, 'down_speed'=>0, 'online_edit'=>1, 'folder'=>1, 'api'=>1, 'storage_all'=>1, 'no_review'=>0, 'remark'=>'数量和大小都不限'],
+		['name'=>'入门会员', 'sort'=>100, 'upload_limit'=>50, 'upload_size'=>200, 'down_speed'=>-1, 'traffic'=>51200, 'online_edit'=>0, 'folder'=>1, 'api'=>0, 'storage_all'=>0, 'no_review'=>0, 'remark'=>'轻度使用'],
+		['name'=>'基础会员', 'sort'=>200, 'upload_limit'=>100, 'upload_size'=>500, 'down_speed'=>-1, 'traffic'=>102400, 'online_edit'=>0, 'folder'=>1, 'api'=>0, 'storage_all'=>0, 'no_review'=>0, 'remark'=>'额度翻倍'],
+		['name'=>'标准会员', 'sort'=>300, 'upload_limit'=>300, 'upload_size'=>1024, 'down_speed'=>-1, 'traffic'=>307200, 'online_edit'=>1, 'folder'=>1, 'api'=>0, 'storage_all'=>0, 'no_review'=>0, 'remark'=>'日常够用，带在线编辑'],
+		['name'=>'进阶会员', 'sort'=>400, 'upload_limit'=>600, 'upload_size'=>2048, 'down_speed'=>0, 'traffic'=>819200, 'online_edit'=>1, 'folder'=>1, 'api'=>1, 'storage_all'=>0, 'no_review'=>0, 'remark'=>'下载不限速，可用上传 API'],
+		['name'=>'尊享会员', 'sort'=>500, 'upload_limit'=>1500, 'upload_size'=>5120, 'down_speed'=>0, 'traffic'=>2097152, 'online_edit'=>1, 'folder'=>1, 'api'=>1, 'storage_all'=>1, 'no_review'=>0, 'remark'=>'可用全部存储'],
+		['name'=>'旗舰会员', 'sort'=>600, 'upload_limit'=>0, 'upload_size'=>0, 'down_speed'=>0, 'traffic'=>0, 'online_edit'=>1, 'folder'=>1, 'api'=>1, 'storage_all'=>1, 'no_review'=>0, 'remark'=>'数量、大小、流量都不限'],
 	];
 }
 
@@ -1442,6 +1442,10 @@ function default_plans(){
 	//在线编辑包：给等级不带在线编辑的用户单独开通，有效期单独算
 	foreach([['月卡', 30, '3.00', '文本、代码文件直接在网页里改'], ['季卡', 90, '8.00', '三个月，折合每月更便宜'], ['年卡', 365, '25.00', '整年可用，经常改文件选它'], ['永久', 0, '48.00', '一次买断，永久可用']] as $k => $pack){
 		$plans[] = ['name'=>'在线编辑'.$pack[0], 'category'=>'在线编辑', 'price'=>$pack[2], 'upload_limit'=>-1, 'limit_mode'=>'set', 'upload_size'=>-1, 'online_edit'=>1, 'days'=>$pack[1], 'remark'=>$pack[3], 'sort'=>110 + $k];
+	}
+	//流量包：加 N GB 分享流量，永久有效，本月等级流量用完后才扣（DEC-20261022-001）
+	foreach([['10GB', 10, '2.00'], ['50GB', 50, '8.00'], ['100GB', 100, '15.00'], ['500GB', 500, '60.00'], ['1TB', 1024, '100.00']] as $k => $pack){
+		$plans[] = ['name'=>'流量包 +'.$pack[0], 'category'=>'流量包', 'price'=>$pack[2], 'upload_limit'=>-1, 'limit_mode'=>'set', 'upload_size'=>-1, 'traffic'=>$pack[1] * 1024, 'days'=>0, 'remark'=>'永久有效，本月流量用完后才扣', 'sort'=>120 + $k];
 	}
 	return $plans;
 }
@@ -1596,18 +1600,20 @@ function plan_is_edit_only($plan){
  *   upgrade 补差价升级到更高等级，到期时间不变（只出现在订单上，没有对应的套餐）
  *   bonus   加量包：每天多传 N 个，有自己的到期时间
  *   edit    在线编辑包
+ *   traffic 流量包：加 N MB 分享流量（traffic 字段），永久有效
  *   legacy  改成会员等级之前按数值发放的旧套餐（时长卡、大文件包、永久卡），已经停售
  */
 function plan_kind($plan){
-	if(isset($plan['kind']) && in_array($plan['kind'], ['level', 'upgrade', 'bonus', 'edit'], true))return $plan['kind'];
+	if(isset($plan['kind']) && in_array($plan['kind'], ['level', 'upgrade', 'bonus', 'edit', 'traffic'], true))return $plan['kind'];
 	if(isset($plan['level_id']) && intval($plan['level_id']) > 0)return 'level';
+	if(isset($plan['traffic']) && intval($plan['traffic']) > 0)return 'traffic';
 	if((isset($plan['limit_mode']) ? $plan['limit_mode'] : 'set') === 'add')return 'bonus';
 	if(plan_is_edit_only($plan))return 'edit';
 	return 'legacy';
 }
 
 function plan_kind_name($kind){
-	$names = ['level'=>'会员等级', 'upgrade'=>'补差价升级', 'bonus'=>'加量包', 'edit'=>'在线编辑包', 'legacy'=>'旧版套餐（已停售）'];
+	$names = ['level'=>'会员等级', 'upgrade'=>'补差价升级', 'bonus'=>'加量包', 'edit'=>'在线编辑包', 'traffic'=>'流量包', 'legacy'=>'旧版套餐（已停售）'];
 	return isset($names[$kind]) ? $names[$kind] : $kind;
 }
 
@@ -1624,6 +1630,7 @@ function order_grant_lines($order){
 	}
 	if($kind === 'bonus')return ['加量 +'.max(0, intval($order['upload_limit'])).' 个/天', $days];
 	if($kind === 'edit')return ['在线编辑', $days];
+	if($kind === 'traffic')return ['分享流量 +'.traffic_mb_text(isset($order['traffic']) ? $order['traffic'] : 0), '永久有效'];
 	$lines = ['旧版套餐', '每日 '.plan_limit_display($order), '单文件 '.plan_limit_text($order['upload_size'], 'MB')];
 	if(isset($order['down_speed']) && intval($order['down_speed']) >= 0)$lines[] = '下载 '.plan_speed_text($order['down_speed']);
 	if(plan_has_online_edit($order))$lines[] = '在线编辑';
@@ -1671,6 +1678,13 @@ function size_mb_text($mb){
 	return $mb.' MB';
 }
 
+//分享流量（MB）的写法：0 不限，其余按 GB / TB 显示
+function traffic_mb_text($mb){
+	$mb = intval($mb);
+	if($mb <= 0)return '不限';
+	return size_format($mb * 1048576);
+}
+
 /*
  * 一个等级的权益清单，购买页卡片和个人中心共用。数值填 -1（同普通用户 / 跟随站点设置）的换成现在的实际值；
  * 站点没开的功能（文件夹、上传 API、多存储）不写，免得卖一个用不了的东西。
@@ -1685,6 +1699,9 @@ function level_features($level){
 	if($speed < 0)$speed = download_tier_speed_kbps(intval($level['type']) === 1 ? 0 : 1);
 	//速度跟着上传者走：这个等级的用户上传的文件，任何人下载都是这个速度
 	$list[] = '文件下载 '.speed_text($speed);
+	//流量也是算在上传者头上：这个等级的用户的文件，每月最多被取走这么多
+	$traffic = level_traffic_mb($level);
+	$list[] = '每月分享流量 '.traffic_mb_text($traffic);
 	if(intval($level['online_edit']) === 1)$list[] = '在线编辑文本、代码文件';
 	if(intval($level['folder']) === 1 && !empty($conf['folder_open']))$list[] = '用户文件夹';
 	if(intval($level['api']) === 1 && !empty($conf['api_open']))$list[] = '上传 API';
@@ -1778,6 +1795,14 @@ function plan_quote($user, $plan){
 			$res['msg'] = '你的会员等级已经自带在线编辑';
 		}elseif(user_online_edit_forever($user)){
 			$res['msg'] = '你已经永久开通在线编辑';
+		}else{
+			$res['ok'] = true;
+		}
+		return $res;
+	}
+	if($kind === 'traffic'){
+		if(user_traffic_quota_bytes($user) <= 0){
+			$res['msg'] = '你的分享流量已经不限，不需要流量包';
 		}else{
 			$res['ok'] = true;
 		}
@@ -1896,6 +1921,7 @@ function level_upgrade_list($user){
  *   upgrade 补差价升级：只换等级，到期时间不变（付款前等级刚好过期的，按订单上记的剩余天数重新起算）
  *   bonus   加量包：额度累加，到期时间单独记在 bonus_expire 上
  *   edit    在线编辑包：见 resolve_plan_online_edit
+ *   traffic 流量包：余额累加到 traffic_pack（字节），永久有效
  * 升级前的旧订单（legacy）走 grant_legacy_plan，规则和原来一样。
  * 管理员等级的用户不发任何等级（不然会把管理员降成买来的等级）。
  */
@@ -1911,6 +1937,11 @@ function grant_plan_to_user($uid, $order, $lock_user = false){
 	$now = time();
 
 	if($kind === 'legacy')return grant_legacy_plan($uid, $user, $order);
+	if($kind === 'traffic'){
+		$add = max(0, intval(isset($order['traffic']) ? $order['traffic'] : 0)) * 1048576;
+		//直接在库里加：下载结束时可能正在同一行上扣流量包
+		return $DB->exec("UPDATE pre_user SET traffic_pack=traffic_pack+{$add} WHERE uid={$uid}") !== false;
+	}
 	if($kind === 'edit'){
 		$data = resolve_plan_online_edit($user, $order);
 		return $data ? $DB->update('user', $data, ['uid'=>$uid]) !== false : false;
@@ -2677,7 +2708,7 @@ function level_builtin($type){
 	return [
 		'id' => 0, 'type' => $type, 'sort' => $admin ? 100000 : ($type === 2 ? 10 : 0),
 		'name' => $admin ? '管理员' : ($type === 2 ? '普通用户' : '游客'),
-		'upload_limit' => $admin ? 0 : -1, 'upload_size' => $admin ? 0 : -1, 'down_speed' => $admin ? 0 : -1,
+		'upload_limit' => $admin ? 0 : -1, 'upload_size' => $admin ? 0 : -1, 'down_speed' => $admin ? 0 : -1, 'traffic' => 0,
 		'online_edit' => $admin ? 1 : 0, 'folder' => $admin ? 1 : 0, 'api' => $admin ? 1 : 0,
 		'storage_all' => $admin ? 1 : 0, 'no_review' => $admin ? 1 : 0, 'remark' => '',
 	];
@@ -2855,11 +2886,150 @@ function user_download_speed_kbps($user){
  * 下载的人是谁不影响速度，唯一的例外：下载者自己是管理员等级时不限速（管理员等级不受任何限制）。
  */
 function file_download_speed_kbps($owner_uid){
-	global $DB;
 	if(level_is_admin(current_level()))return 0;
+	return user_download_speed_kbps(file_owner_row($owner_uid));
+}
+
+//文件上传者的用户行，游客上传（uid 为 0）或账号已删除的返回 null。限速和分享流量都要查，一个请求只查一次
+function file_owner_row($owner_uid){
+	global $DB;
+	static $cache = [];
 	$owner_uid = intval($owner_uid);
-	$owner = $owner_uid > 0 ? $DB->getRow("SELECT * FROM pre_user WHERE uid=:uid LIMIT 1", [':uid'=>$owner_uid]) : null;
-	return user_download_speed_kbps($owner ? $owner : null);
+	if($owner_uid <= 0)return null;
+	if(!array_key_exists($owner_uid, $cache)){
+		$row = $DB->getRow("SELECT * FROM pre_user WHERE uid=:uid LIMIT 1", [':uid'=>$owner_uid]);
+		$cache[$owner_uid] = $row ? $row : null;
+	}
+	return $cache[$owner_uid];
+}
+
+/*
+ * ================= 每月分享流量（DEC-20261022-001） =================
+ * 一个上传者名下的文件被别人下载、预览、经文件夹分享取走的字节，按自然月累计在 pre_traffic（每月 1 日起重新计）。
+ * 额度看上传者当前的会员等级（pre_level.traffic，MB/月：0 不限、自建等级 -1 同普通用户）；
+ * 月额度用完后再扣流量包余额（pre_user.traffic_pack，字节，买来永久有效）。两样都用完，前台就不再给他的文件出流量。
+ * 游客上传的文件、上传者账号已删除的文件没有人可以记，统一记在 uid 0 名下，共用「游客」等级的额度。
+ *
+ * 只有限额的上传者才计量：他的文件一律走网站中转，按实际输出的字节记（直链跳走之后本站看不到传了多少）。
+ * 不限额的照旧，可以走直链，也不记。后台下载、内容检测回源、下载的人自己是管理员等级时不计也不拦。
+ */
+
+//一个等级每月的分享流量（MB），0 不限
+function level_traffic_mb($level){
+	if(level_is_admin($level))return 0;
+	$value = isset($level['traffic']) ? intval($level['traffic']) : -1;
+	if($value >= 0)return $value;
+	if(level_is_custom($level)){
+		$normal = level_builtin(2);
+		if(isset($normal['traffic']) && intval($normal['traffic']) >= 0)return intval($normal['traffic']);
+	}
+	//内置等级还是 -1 只会出现在没跑 1030 升级的站点上，先按不限，免得升级前整站下不了
+	return 0;
+}
+
+//一个上传者每月的分享流量额度（字节），0 不限；传 null 是游客上传的文件
+function user_traffic_quota_bytes($user){
+	return level_traffic_mb($user ? user_level($user) : level_builtin(1)) * 1048576;
+}
+
+//流量包余额（字节）
+function user_traffic_pack_bytes($user){
+	return ($user && isset($user['traffic_pack'])) ? max(0, (int)$user['traffic_pack']) : 0;
+}
+
+//某个上传者（0 是游客池）这个月已经用掉多少字节
+function traffic_used_bytes($uid){
+	global $DB;
+	$bytes = $DB->getColumn("SELECT bytes FROM pre_traffic WHERE uid=:uid AND month=:m LIMIT 1", [':uid'=>max(0, intval($uid)), ':m'=>date('Ym')]);
+	return $bytes ? (int)$bytes : 0;
+}
+
+/*
+ * 个人中心、购买页显示用：['unlimited'=>不限, 'quota'=>月额度, 'used'=>本月已用, 'pack'=>流量包余额, 'left'=>还能用多少]，单位字节。
+ * 本月已用超过月额度的部分已经从流量包里扣过了，所以 left = 月额度剩余 + 流量包余额。
+ */
+function user_traffic_info($user){
+	$quota = user_traffic_quota_bytes($user);
+	$pack = user_traffic_pack_bytes($user);
+	$used = ($user && $quota > 0) ? traffic_used_bytes($user['uid']) : 0;
+	return ['unlimited'=>$quota <= 0, 'quota'=>$quota, 'used'=>$used, 'pack'=>$pack, 'left'=>max(0, $quota - $used) + $pack];
+}
+
+//「已用 3.2 GB / 共 100 GB，流量包剩 50 GB」这样的一句话，个人中心和购买页用；不限的返回「不限」
+function user_traffic_text($user){
+	$info = user_traffic_info($user);
+	if($info['unlimited'])return '不限';
+	$text = '本月已用 '.size_format($info['used']).' / 共 '.size_format($info['quota']);
+	if($info['pack'] > 0)$text .= '，流量包剩 '.size_format($info['pack']);
+	if($info['left'] <= 0)$text .= '（已用完）';
+	return $text;
+}
+
+/*
+ * 下载某个文件时要不要计量。不计量返回 null；要计量返回 ['uid'=>记在谁名下, 'quota'=>月额度字节, 'left'=>还能用多少字节]。
+ */
+function file_traffic_state($owner_uid){
+	if(level_is_admin(current_level()))return null;
+	$owner = file_owner_row($owner_uid);
+	if($owner && level_is_admin(user_level($owner)))return null;
+	$quota = user_traffic_quota_bytes($owner);
+	if($quota <= 0)return null;
+	$uid = $owner ? intval($owner['uid']) : 0;
+	$left = max(0, $quota - traffic_used_bytes($uid)) + user_traffic_pack_bytes($owner);
+	return ['uid'=>$uid, 'quota'=>$quota, 'left'=>$left];
+}
+
+//流量用完时的回应：不带任何文件内容，也不能被缓存（下个月或者买了流量包就要恢复）
+function traffic_exhausted_exit(){
+	if(function_exists('header_remove'))header_remove('ETag');
+	header('HTTP/1.1 403 Forbidden');
+	header('Cache-Control: private, no-store, no-cache, must-revalidate');
+	header('Content-Type: text/html; charset=utf-8');
+	exit('<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>流量已用完</title></head>'
+		.'<body style="font:15px/1.7 -apple-system,BlinkMacSystemFont,\'Microsoft YaHei\',sans-serif;color:#555;text-align:center;padding:60px 16px">'
+		.'<p>分享者本月的流量已经用完，暂时无法下载或预览这个文件。</p><p style="color:#999;font-size:13px">下个月 1 日自动恢复，或者等分享者购买流量包后再试。</p></body></html>');
+}
+
+/*
+ * 不经过 file_output()、自己输出文件内容的地方（text.php、文件夹分享的文本预览）用：
+ * 流量用完就拦下；要计量的话开始计，之后的内容必须走 download_output_chunk() 输出才记得上。
+ */
+function file_traffic_guard($owner_uid){
+	$traffic = file_traffic_state($owner_uid);
+	if(!$traffic)return;
+	if($traffic['left'] <= 0)traffic_exhausted_exit();
+	traffic_meter_start($traffic);
+}
+
+//请求结束时把这次实际输出的字节记到上传者名下（客户端中途断开也会走到这里，只记已经交出去的部分）
+function traffic_meter_start($state){
+	$GLOBALS['_download_bytes'] = 0;
+	register_shutdown_function(function() use ($state){
+		$bytes = isset($GLOBALS['_download_bytes']) ? intval($GLOBALS['_download_bytes']) : 0;
+		if($bytes > 0)traffic_record($state['uid'], $state['quota'], $bytes);
+	});
+}
+
+/*
+ * 记一笔用量：先加到本月用量上，超出月额度的那一段再从流量包里扣。
+ * 用 LAST_INSERT_ID(表达式) 拿到「这一笔加完之后」的累计值，同一上传者的几个下载同时结束也不会重复扣。
+ */
+function traffic_record($uid, $quota, $bytes){
+	global $DB;
+	$uid = max(0, intval($uid));
+	$bytes = max(0, intval($bytes));
+	$quota = max(0, intval($quota));
+	if($bytes <= 0)return;
+	$month = date('Ym');
+	$n = $DB->exec("INSERT INTO pre_traffic (uid,month,bytes) VALUES ({$uid},'{$month}',{$bytes}) ON DUPLICATE KEY UPDATE bytes=LAST_INSERT_ID(bytes+{$bytes})");
+	if($n === false)return;
+	$after = intval($n) === 1 ? $bytes : (int)$DB->getColumn("SELECT LAST_INSERT_ID()");
+	$before = max(0, $after - $bytes);
+	$over = max(0, $after - $quota) - max(0, $before - $quota);
+	if($over > 0 && $uid > 0){
+		//字段是无符号的，不能直接减成负数
+		$DB->exec("UPDATE pre_user SET traffic_pack=IF(traffic_pack>{$over}, traffic_pack-{$over}, 0) WHERE uid={$uid}");
+	}
 }
 
 /*
@@ -2901,8 +3071,11 @@ function download_output_chunk($data){
 	if($length === 0)return 0;
 	$state = isset($GLOBALS['_download_throttle']) ? $GLOBALS['_download_throttle'] : ['rate'=>0, 'sent'=>0, 'start'=>microtime(true)];
 	$rate = intval($state['rate']);
+	//分享流量按真正交给客户端的字节记（见 traffic_meter_start），限速和不限速两条路都要累计
+	if(!isset($GLOBALS['_download_bytes']))$GLOBALS['_download_bytes'] = 0;
 	if($rate <= 0){
 		echo $data;
+		$GLOBALS['_download_bytes'] += $length;
 		return $length;
 	}
 	$chunkSize = max(1024, min(65536, intval($rate / 4)));
@@ -2910,6 +3083,7 @@ function download_output_chunk($data){
 		$chunk = substr($data, $offset, $chunkSize);
 		echo $chunk;
 		$state['sent'] += strlen($chunk);
+		$GLOBALS['_download_bytes'] += strlen($chunk);
 		if(ob_get_level() > 0)@ob_flush();
 		@flush();
 		$wait = ($state['start'] + $state['sent'] / $rate) - microtime(true);
@@ -4874,6 +5048,8 @@ function file_output($hash, $type, $size, $name, $is_view = false, $is_admin = f
 	//旧文件在支持直链的 OSS 上、当前存储换成了不支持的 WebDAV，照样可以走直链
 	$storage = ($storage === null || $storage === '') ? $conf['storage'] : $storage;
 	$download_speed = $is_admin ? 0 : file_download_speed_kbps($owner_uid);
+	//上传者有每月分享流量限额时要计量（DEC-20261022-001），null 表示不计
+	$traffic = $is_admin ? null : file_traffic_state($owner_uid);
 
 	@set_time_limit(0);
 	$size = intval($size);
@@ -4887,7 +5063,8 @@ function file_output($hash, $type, $size, $name, $is_view = false, $is_admin = f
 		$etag = '"'.$hash.'"';
 		header("ETag: $etag");
 		//限速响应不能被 CDN 缓存，否则后续命中 CDN 会绕开 PHP 节流，直接按 CDN 带宽下载。
-		header($download_speed > 0 ? "Cache-Control: private, no-store, no-cache, must-revalidate" : "Cache-Control: no-cache");
+		//计分享流量的同理：CDN 拿 304 回源确认后直接从自己的缓存出内容，这部分流量就记不上了
+		header(($download_speed > 0 || $traffic) ? "Cache-Control: private, no-store, no-cache, must-revalidate" : "Cache-Control: no-cache");
 		$client_etag = isset($_SERVER['HTTP_IF_NONE_MATCH']) ? trim($_SERVER['HTTP_IF_NONE_MATCH']) : '';
 		if($client_etag !== '' && $client_etag === $etag){
 			header("HTTP/1.1 304 Not Modified");
@@ -4913,7 +5090,11 @@ function file_output($hash, $type, $size, $name, $is_view = false, $is_admin = f
 		&& !empty($conf['downfile_domain'])
 		&& \lib\StorHelper::uses_down_domain($storage);
 
-	if(!$protected && $download_speed <= 0 && \lib\StorHelper::is_direct_down($storage) && $conf['downfile_type'] == 1 && !$domain_mismatch){
+	//流量用完就不再出内容；304 在上面已经返回了，那种不耗流量
+	if($traffic && $traffic['left'] <= 0)traffic_exhausted_exit();
+
+	//要计量的一律走中转：直链跳走之后本站拿不到实际传了多少
+	if(!$protected && !$traffic && $download_speed <= 0 && \lib\StorHelper::is_direct_down($storage) && $conf['downfile_type'] == 1 && !$domain_mismatch){
 		$redirect = $stor->getDownUrl($hash, $name, $is_view ? minetype($type) : null);
 		if($redirect){
 			//浏览器跟随跳转时按这个头决定带不带来源页：上游按 Referer 防盗链的存储，带着本站地址去取会被拒
@@ -4925,6 +5106,7 @@ function file_output($hash, $type, $size, $name, $is_view = false, $is_admin = f
 		}
 	}else{
 		start_download_throttle($download_speed);
+		if($traffic)traffic_meter_start($traffic);
 		if($is_view){
 			header("Content-Type: ".minetype($type));
 			header("Content-Disposition: inline; filename={$filename}");

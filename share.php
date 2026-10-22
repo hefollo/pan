@@ -113,6 +113,8 @@ if(!$ctx){
             if($content === false){ http_response_code(502); exit('读取文件失败。'); }
             $decoded = decode_editable_content($content);
             if($decoded['code'] != 0){ http_response_code(415); exit('此文件无法作为文本预览。'); }
+            //文本预览不经过 file_output()，分享流量在这里单独拦和记
+            file_traffic_guard($file['uid']);
             header('Content-Type: text/plain; charset=UTF-8');
             start_download_throttle(file_download_speed_kbps($file['uid']));
             download_output_chunk($decoded['content']);
