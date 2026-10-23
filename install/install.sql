@@ -16,7 +16,7 @@ create table `pre_config` (
 --   · 如果没有并进来 → 这里保持旧值不动，让全新安装照常跑一次升级把它补上。
 -- 改错方向（并进来了却不改版本号）只是多跑一趟空升级；
 -- 改反了（没并进来却改了版本号）会让新装的站永久缺表缺字段，且毫无报错。
-INSERT INTO `pre_config` VALUES ('version', '1030');
+INSERT INTO `pre_config` VALUES ('version', '1031');
 INSERT INTO `pre_config` VALUES ('level_upload_migrated', '1');
 INSERT INTO `pre_config` VALUES ('level_migrated', '1');
 INSERT INTO `pre_config` VALUES ('admin_user', 'admin');
@@ -417,6 +417,15 @@ CREATE TABLE `pre_order` (
   KEY `uid` (`uid`,`id`),
   KEY `status` (`status`,`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+DROP TABLE IF EXISTS `pre_stor_map`;
+CREATE TABLE `pre_stor_map` (
+  `storage` varchar(20) NOT NULL COMMENT '存储类型键',
+  `name` varchar(150) NOT NULL COMMENT '本站存储名（pre_file.hash）',
+  `fid` varchar(255) NOT NULL COMMENT '远端文件 ID',
+  `addtime` datetime DEFAULT NULL,
+  PRIMARY KEY (`storage`,`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='按文件 ID 寻址的存储：本站文件名对应的远端 ID';
 
 DROP TABLE IF EXISTS `pre_traffic`;
 CREATE TABLE `pre_traffic` (

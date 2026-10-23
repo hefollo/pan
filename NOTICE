@@ -1,0 +1,55 @@
+彩虹外链网盘（hefollo/pan）版权与许可说明
+================================================
+
+本项目整体按 GNU Affero General Public License v3.0（AGPL-3.0）发布，许可证全文见 LICENSE。
+自 2026-10-23 起由 MIT 改为 AGPL-3.0，原因是 includes/lib/Storage/Ext/ 下的存储驱动
+移植自同为 AGPL-3.0 的 OpenList。
+
+一、原项目 netcccyun/pan（MIT）
+--------------------------------
+
+本项目基于 netcccyun/pan 二次开发：https://github.com/netcccyun/pan
+原项目采用 MIT 许可证，版权声明与许可原文见：
+https://github.com/netcccyun/pan/blob/main/LICENSE
+本项目继续保留原作者的版权声明。
+
+二、本项目改用 AGPL-3.0 之前的版本（MIT）
+------------------------------------------
+
+2026-10-23 之前发布的版本采用以下 MIT 许可，已经按该许可取得的副本仍按 MIT 使用：
+
+MIT License
+
+Copyright (c) 2026 hefollo
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+三、OpenList（AGPL-3.0）
+------------------------
+
+includes/lib/Storage/Ext/ 下的存储驱动是参照 OpenList 的 drivers 目录用 PHP 改写的：
+https://github.com/OpenListTeam/OpenList
+参照的提交：fbbded2f904e99e2cd642776269d5e297a3c2779（2026-10-22）
+OpenList 采用 GNU Affero General Public License v3.0，版权归 OpenList 的各位贡献者所有
+（OpenList 源自 AList，AList 的原始版权归其作者所有）。
+
+四、第三方依赖
+--------------
+
+includes/vendor/ 等目录下的第三方依赖和素材按各自的许可证执行。

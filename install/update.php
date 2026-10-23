@@ -305,9 +305,12 @@ foreach($traffic_cols as $traffic_col){
 	if(!$q || !$q->fetchColumn())$need_1030 = true;
 }
 if($need_1030)$sqls = array_merge($sqls, read_sql('update_1030.sql'));
-$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1030')";
-//上面 else 分支只按 1022 判断「已是最新」，从 1022～1029 升上来时要改回「升级完成」的提示
-if($version < 1030)$uptodate = false;
+//1031 移植自 OpenList 的存储驱动（DEC-20261023-001）：新表 pre_stor_map，建表语句本身可重复执行
+$q = $db->query("SHOW TABLES LIKE 'pre_stor_map'");
+if(!$q || !$q->fetchColumn())$sqls = array_merge($sqls, read_sql('update_1031.sql'));
+$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1031')";
+//上面 else 分支只按 1022 判断「已是最新」，从 1022～1030 升上来时要改回「升级完成」的提示
+if($version < 1031)$uptodate = false;
 
 $success=0;$skipped=0;$error=0;$errorMsg=null;
 foreach ($sqls as $value) {

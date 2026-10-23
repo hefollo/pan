@@ -7,9 +7,9 @@
 
 ## 开源许可
 
-本项目采用 [MIT 许可证](LICENSE)。原项目 [netcccyun/pan](https://github.com/netcccyun/pan) 同样采用 [MIT 许可证](https://github.com/netcccyun/pan/blob/main/LICENSE)，本项目保留原作者版权声明及二次开发作者署名。
+本项目采用 [GNU AGPL-3.0 许可证](LICENSE)。`includes/lib/Storage/Ext/` 下的存储驱动移植自同为 AGPL-3.0 的 [OpenList](https://github.com/OpenListTeam/OpenList)，所以项目自 2026-10-23 起由 MIT 改为 AGPL-3.0；此前发布的版本仍按 MIT。原项目 [netcccyun/pan](https://github.com/netcccyun/pan) 采用 [MIT 许可证](https://github.com/netcccyun/pan/blob/main/LICENSE)，本项目保留原作者版权声明及二次开发作者署名，详见 [NOTICE](NOTICE)。
 
-MIT 许可允许使用、修改、分发和商用；分发软件副本或实质性部分时，须保留版权声明及许可声明。第三方依赖和素材如有独立许可证，按各自许可证执行。
+AGPL-3.0 允许使用、修改、分发和商用；分发副本，或者把修改过的版本部署成网站给别人用时，必须以 AGPL-3.0 公开对应的完整源码，并保留版权与许可声明。第三方依赖和素材如有独立许可证，按各自许可证执行。
 
 ![蓝白工作台风](https://raw.githubusercontent.com/hefollo/pan/main/img/%E8%93%9D%E7%99%BD%E5%B7%A5%E4%BD%9C%E5%8F%B0%E9%A3%8E.png)
 ![深空科技风](https://raw.githubusercontent.com/hefollo/pan/main/img/%E6%B7%B1%E7%A9%BA%E7%A7%91%E6%8A%80%E9%A3%8E.png)
@@ -81,6 +81,7 @@ MIT 许可允许使用、修改、分发和商用；分发软件副本或实质�
 **存储与安全**
 
 - 支持本地存储及阿里云 OSS、腾讯云 COS、华为云 OBS、又拍云、七牛云、通用 S3 兼容存储、WebDAV、OneDrive、OpenList
+- 新增 20 种移植自 OpenList 的存储（FTP、SFTP、SMB、Seafile、Cloudreve、可道云、Azure Blob、Google Drive、Dropbox、Yandex Disk 等），设置页分组显示、可搜索，详见[移植自 OpenList 的存储](#移植自-openlist-的存储)
 - 存储类型设置改为卡片式：一眼看清每种存储支持直传 / 直链 / 断点续传，卡片上还标出每个存储里压着多少文件，并可一键做连接测试（用当前填写的参数测，不必先保存）
 - 有文件之后也能换存储：每个文件记着自己存在哪儿，切换只影响之后的新上传，已上传的文件照常能下、外链不失效
 - 可同时开放多个存储：上传页出现「存储位置」下拉让用户自己挑，每个存储还能限定所有人 / 仅登录用户 / 仅限会员（等级带「可用全部存储」）可用
@@ -804,12 +805,29 @@ define('UPDATE_ACCEL_BASE', 'https://gh-proxy.com');   // 设成 '' 则下拉框
 | WebDAV | - | - | 支持 |
 | OneDrive | - | 支持 | 支持 |
 | OpenList / AList | - | 支持 | 支持 |
+| FTP / SFTP / SMB | - | - | 支持 |
+| Seafile、Cloudreve（v3 / V4）、IPFS、Misskey 云盘、CloudFlare ImgBed、Azure Blob、GitHub 仓库、CNB Releases、OneDrive（应用授权）、Dropbox、Yandex Disk | - | 支持 | 支持 |
+| 可道云 KodBox、MediaFire、Google Drive | - | - | 支持 |
+| Bunny Storage | - | 填了拉取区地址时支持 | 支持 |
+| Teldrive | - | 打开「下载用分享链接」时支持 | 支持 |
 
 「浏览器直传」指文件由浏览器直接传给存储、不经过本站服务器；「直链下载」指下载时由本站 302 跳到存储自己的地址，不消耗本站流量。WebDAV、OneDrive 和 OpenList 的直传需要 PUT 或上传会话，和前端这套 POST 表单直传对不上，所以固定走网站中转。
 
 浏览器直传的文件先落在存储里的 `pending/` 临时位置，本站核对它的大小和 MD5 与浏览器声明的一致后才发布成正式文件，核对不过的直接丢弃。核对默认在存储那边完成：本站只问存储要这个文件的校验值和长度，对得上就让存储自己把它复制成正式文件，文件不经过本站，传完后的确认只要几秒、与文件大小无关。存储给不出内容的 MD5（分片上传、开了 KMS 加密的对象）、对不上、或者不支持存储端复制时，自动改为把文件取回本站核对后再上传，结果一样，只是会多占本站带宽、大文件要多等一会儿。这套做法通用 S3 已在真实服务上验证过；阿里云 OSS、腾讯云 COS、华为云 OBS、又拍云、七牛云是按各家 SDK 实现的，还没有在真实账号上验证，核对不了时同样会自动退回原来的做法。
 
 后台「存储类型设置」页上，每种存储都有「连接测试」按钮：它用已保存的参数往存储里写一个几十字节的小文件，读回来核对后再删掉，一次跑通写、读、删三项权限。
+
+### 移植自 OpenList 的存储
+
+`includes/lib/Storage/Ext/` 下的驱动是参照 [OpenList](https://github.com/OpenListTeam/OpenList)（AGPL-3.0，参照提交 `fbbded2`）的 drivers 目录用 PHP 改写的，所以本项目改用 AGPL-3.0，见[开源许可](#开源许可)。原有的 12 种存储代码和行为不变。
+
+- 设置页里新存储按「协议与自建服务」「对象存储与国外网盘」分组，顶部有搜索框；参数表单按驱动自带的字段说明生成，保存后整份存在配置表的 `stor_<类型>` 里，运行中刷新的令牌另存 `stor_<类型>_state`。
+- 很多网盘按文件 ID 而不是路径寻址，本站文件名对应的远端 ID 记在新表 `pre_stor_map` 里（数据库 1031）。
+- 新存储都不支持浏览器直传，上传走网站中转。下载地址必须带特定请求头、或者网址里带着账号令牌的（可道云、MediaFire、Google Drive、FTP / SFTP / SMB），只能走网站中转。
+- 和 OpenList 做法不同的地方都写在各驱动文件开头的注释里，主要是为了不误删、不改名、不泄露令牌：例如 MediaFire / Misskey 同内容不复用已有文件、Dropbox 上传同名直接覆盖、Yandex Disk 删除直接释放空间、GitHub 并发提交冲突时重试。
+- SFTP 需要服务器 libcurl 编进了 SFTP 支持（多数 Linux 发行版自带）；SMB 是纯 PHP 实现的 SMB2 客户端，不支持 SMB3 加密。GitHub 仓库单文件不超过 100MB，不支持 GPG 签名提交。
+
+**验证情况：** FTP、SFTP、Azure Blob（微软官方模拟器 Azurite）、IPFS（Kubo 节点）在本机真实服务上跑通了上传、读取、断点续传、删除；其余 16 种只用按 OpenList 接口写的模拟服务测过完整流程，**没有在真实账号上验证**，使用前请先在后台点「连接测试」。OpenList 里另有 37 种可写的网盘（多为国内网盘）尚未移植。
 
 ### 有文件之后也能换存储
 
@@ -932,7 +950,7 @@ WebDAV 上传下载都经过本站服务器中转，因此本站的带宽就是�
 - PHP >= 7.1，需启用 cURL 扩展
 - MySQL / MariaDB
 - 建议启用 GD 扩展：上传头像时服务端会重新裁剪编码一遍；没有 GD 也能上传头像
-- 当前程序版本 `VERSION` 为 `1640`，数据库版本 `DB_VERSION` 为 `1030`
+- 当前程序版本 `VERSION` 为 `1640`，数据库版本 `DB_VERSION` 为 `1031`
 - 视频检测还需要服务器上有 ffmpeg（自建检测服务的一键脚本会自动安装）
 
 ## 安装与升级
@@ -954,6 +972,8 @@ http(s)://你的域名/install/update.php
 从 1028 升到 1029 不改表结构：「文件上传设置」里原来的每日上传数量、单文件大小并入会员等级，升级时把原来的值写进还是「跟随站点设置」的等级，每个人的额度升级前后不变。
 
 从 1029 升到 1030 会给等级、套餐、订单、用户表各加一个流量字段，并新建分享流量用量表。升级后游客、普通用户的每月分享流量是「不限」，自建等级是「同普通用户」，所以谁的下载都不受影响；要限制流量，到「会员等级设置」里填额度。升级上来的站点不会自动出现流量包套餐，到「会员等级设置」或「购买套餐设置」点一次「一键导入推荐等级和套餐」（已有的同名等级和套餐会跳过），或者自己添加。
+
+从 1030 升到 1031 只新建一张表 `pre_stor_map`（移植自 OpenList 的存储用来记文件对应的远端 ID），不改已有数据。
 
 用户上传的头像放在 `assets/avatar/`，它是站点运行时产生的数据：更新包里没有这个目录，覆盖上传和后台在线更新都不会动它；**站点搬家时要连同这个目录一起搬**，否则头像会退回成图标。升到 1637（加入头像功能）没有改数据库，不需要跑升级。
 
@@ -993,6 +1013,7 @@ http(s)://你的域名/install/update.php
 - 新增 WebDAV 存储，可对接坚果云、Nextcloud、Alist、群晖等
 - 新增 OneDrive 存储，后台一键授权，支持个人版 / 商业版 / 世纪互联版
 - 新增 OpenList 存储，可对接自建的 OpenList / AList 聚合网盘，兼容 AList v3 接口
+- 新增 20 种移植自 OpenList 的存储类型（FTP、SFTP、SMB、Seafile、Cloudreve v3 / V4、可道云、Azure Blob、Bunny、IPFS、Teldrive、Misskey、GitHub 仓库、CNB Releases、CloudFlare ImgBed、OneDrive 应用授权、Google Drive、Dropbox、Yandex Disk、MediaFire），项目许可证随之改为 AGPL-3.0
 - 存储不再是全站唯一：文件表记下每条记录存在哪个存储，换存储后旧文件仍从原存储读取，外链不失效
 - 新增多存储上传：可同时开放多个存储供用户在上传页自选，并按所有人 / 仅登录用户 / 仅限会员分级授权
 - 存储类型设置页重做：卡片式选择、按能力显示传输方式、密钥默认打码、每种存储都能做连接测试

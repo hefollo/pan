@@ -66,6 +66,8 @@ class StorHelper
 
     public static function getModel($storage)
     {
+        //移植自 OpenList 的新驱动参数存法不一样，交给 StorExt（DEC-20261023-001）
+        if(StorExt::has($storage))return StorExt::model($storage);
         $class = "\\lib\\Storage\\".ucwords($storage);
         $config = self::getConfig($storage);
         if(class_exists($class)){
@@ -94,7 +96,14 @@ class StorHelper
             'openlist' => 'OpenList',
             'sae' => 'SaeStorage',
             'ace' => 'AceStorage',
-        ];
+        ] + self::ext_names();
+    }
+
+    private static function ext_names()
+    {
+        $names = [];
+        foreach(StorExt::keys() as $k)$names[$k] = StorExt::name($k);
+        return $names;
     }
 
     public static function name($storage)
@@ -166,7 +175,7 @@ class StorHelper
     public static function is_direct_down($storage = null){
         global $conf;
         if($storage === null) $storage = $conf['storage'];
-        return in_array($storage, ['oss','qcloud','obs','upyun','qiniu','s3','onedrive','openlist'], true);
+        return in_array($storage, ['oss','qcloud','obs','upyun','qiniu','s3','onedrive','openlist'], true) || StorExt::is_direct_down($storage);
     }
 
     /*
@@ -190,13 +199,13 @@ class StorHelper
     public static function direct_no_referer($storage = null){
         global $conf;
         if($storage === null) $storage = $conf['storage'];
-        return in_array($storage, ['openlist'], true);
+        return in_array($storage, ['openlist'], true) || StorExt::no_referer($storage);
     }
 
     //判断是否可以断点续传
     public static function is_range($storage = null){
         global $conf;
         if($storage === null) $storage = $conf['storage'];
-        return in_array($storage, ['local','oss','qcloud','obs','qiniu','s3','webdav','onedrive','openlist'], true);
+        return in_array($storage, ['local','oss','qcloud','obs','qiniu','s3','webdav','onedrive','openlist'], true) || StorExt::is_range($storage);
     }
 }

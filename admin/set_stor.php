@@ -72,8 +72,25 @@ if($islogin != 1){
 			'remaining' => isset($drive['quota']['remaining']) ? size_format($drive['quota']['remaining']) : '',
 		], JSON_UNESCAPED_UNICODE));
 	}
+	if($do === 'save_ext'){
+		//移植自 OpenList 的新驱动：参数整份存成 JSON（DEC-20261023-001），不走 ajax.php 的逐键白名单
+		$storage = isset($_POST['storage']) ? $_POST['storage'] : '';
+		$typed = [];
+		if(isset($_POST['fields']) && is_string($_POST['fields']))parse_str($_POST['fields'], $typed);
+		$ret = \lib\StorExt::save($storage, isset($typed['cfg']) ? $typed['cfg'] : []);
+		exit(json_encode($ret === true ? ['code'=>0, 'msg'=>'保存成功'] : ['code'=>-1, 'msg'=>$ret], JSON_UNESCAPED_UNICODE));
+	}
 	if($do === 'test'){
 		$storage = isset($_POST['storage']) ? $_POST['storage'] : '';
+		if(\lib\StorExt::has($storage)){
+			//新驱动同样用屏幕上填着的参数测，只在内存里覆盖，不落库
+			$typed = [];
+			if(isset($_POST['fields']) && is_string($_POST['fields']))parse_str($_POST['fields'], $typed);
+			$model = \lib\StorExt::model($storage, isset($typed['cfg']) && is_array($typed['cfg']) ? $typed['cfg'] : []);
+			if(!$model)exit(json_encode(['code'=>-1, 'msg'=>'存储模块加载失败'], JSON_UNESCAPED_UNICODE));
+			$ok = $model->test();
+			exit(json_encode(['code'=>$ok ? 0 : -1, 'msg'=>$ok ? '连接正常，读写测试通过' : $model->errmsg()], JSON_UNESCAPED_UNICODE));
+		}
 		/*
 		 * 用表单里「当前填着」的参数测，不是已经存进库的那份。
 		 *
@@ -144,6 +161,17 @@ $stor_list = [
 	'openlist' => ['icon'=>'fa-sitemap', 'desc'=>'自建的 OpenList / AList 聚合网盘，后面挂什么盘由它管，下载可用它给的直链。', 'link'=>'https://doc.oplist.org/', 'link_text'=>'官方文档'],
 ];
 if($has_sae)$stor_list['sae'] = ['icon'=>'fa-archive', 'desc'=>'新浪 SAE 平台自带的存储服务。'];
+//移植自 OpenList 的新驱动排在后面，按分组显示（DEC-20261023-001）
+$ext_groups = [];
+foreach(\lib\StorExt::keys() as $k){
+	$m = \lib\StorExt::meta($k);
+	$stor_list[$k] = ['icon'=>$m['icon'], 'desc'=>htmlspecialchars($m['desc'], ENT_QUOTES, 'UTF-8'), 'ext'=>true];
+	if(!empty($m['link'])){
+		$stor_list[$k]['link'] = htmlspecialchars($m['link'], ENT_QUOTES, 'UTF-8');
+		if(!empty($m['link_text']))$stor_list[$k]['link_text'] = htmlspecialchars($m['link_text'], ENT_QUOTES, 'UTF-8');
+	}
+	$ext_groups[$m['group']][] = $k;
+}
 //显示名统一从 StorHelper 取：前台上传框的存储下拉用的是同一份，别两头各写一遍
 foreach($stor_list as $k=>&$v){ $v['name'] = \lib\StorHelper::name($k); }
 unset($v);
@@ -160,7 +188,8 @@ foreach($stor_list as $k=>$v){
 		'range' => \lib\StorHelper::is_range($k),
 		//只有对象存储那几家的直链要自己填绑定域名；OneDrive 给的是微软临时地址，
 		//OpenList 给的是它自己拼好的完整地址，都轮不到这里改域名
-		'domain' => \lib\StorHelper::is_direct_down($k) && !in_array($k, ['onedrive','openlist'], true),
+		'domain' => \lib\StorHelper::is_direct_down($k) && !in_array($k, ['onedrive','openlist'], true) && empty($v['ext']),
+		'ext' => !empty($v['ext']),
 	];
 }
 
@@ -255,6 +284,42 @@ if($has_sae){
 		['name'=>'storagename', 'label'=>'SAE Storage 名称'],
 	];
 }
+foreach(\lib\StorExt::keys() as $k){
+	$stor_fields[$k] = \lib\StorExt::meta($k)['fields'];
+}
+
+/*
+ * 新驱动的参数框：外观同 stor_field()，值取自 stor_<类型> 那份 JSON，
+ * 输入框名字写成 cfg[字段]，保存时整份交给 StorExt::save()。
+ * 驱动的 tip 是写死在代码里的说明文字，允许带 <b> 之类的标记；label、默认值、选项一律转义。
+ */
+function stor_ext_field($type, $f, $cfg){
+	$name = $f['name'];
+	$ftype = isset($f['type']) ? $f['type'] : 'text';
+	$value = isset($cfg[$name]) ? $cfg[$name] : '';
+	$input = 'cfg['.htmlspecialchars($name, ENT_QUOTES, 'UTF-8').']';
+	$ph = isset($f['placeholder']) ? ' placeholder="'.htmlspecialchars($f['placeholder'], ENT_QUOTES, 'UTF-8').'"' : '';
+	$label = htmlspecialchars($f['label'], ENT_QUOTES, 'UTF-8').(!empty($f['required']) ? ' <span class="text-danger">*</span>' : '');
+	$html = '<div class="form-group"><label class="col-sm-3 control-label">'.$label.'</label><div class="col-sm-9">';
+	if($ftype === 'select'){
+		$html .= '<select class="form-control" name="'.$input.'">';
+		foreach($f['options'] as $ov=>$ol){
+			$sel = ((string)$ov === (string)$value) ? ' selected' : '';
+			$html .= '<option value="'.htmlspecialchars($ov, ENT_QUOTES, 'UTF-8').'"'.$sel.'>'.htmlspecialchars($ol, ENT_QUOTES, 'UTF-8').'</option>';
+		}
+		$html .= '</select>';
+	}elseif($ftype === 'secret'){
+		$html .= '<div class="input-group"><input type="password" class="form-control" name="'.$input.'" value="'.htmlspecialchars($value, ENT_QUOTES, 'UTF-8').'"'.$ph.' autocomplete="new-password"/>'
+			.'<span class="input-group-btn"><button class="btn btn-default stor-eye" type="button" title="显示 / 隐藏"><i class="fa fa-eye"></i></button></span></div>';
+	}elseif($ftype === 'textarea'){
+		$html .= '<textarea class="form-control" rows="3" name="'.$input.'"'.$ph.'>'.htmlspecialchars($value, ENT_QUOTES, 'UTF-8').'</textarea>';
+	}else{
+		$html .= '<input type="text" class="form-control" name="'.$input.'" value="'.htmlspecialchars($value, ENT_QUOTES, 'UTF-8').'"'.$ph.'/>';
+	}
+	if(!empty($f['tip']))$html .= '<p class="help-block">'.$f['tip'].'</p>';
+	$html .= '</div></div>';
+	return $html;
+}
 
 function stor_field($f){
 	global $conf;
@@ -282,6 +347,11 @@ function stor_field($f){
 	return $html;
 }
 ?>
+<style>
+.stor-ext-search{margin:0 0 14px}
+.stor-group-title{margin:22px 0 12px;font-size:15px;font-weight:600;color:var(--admin-text)}
+.stor-group-title small{margin-left:6px;font-size:12px;font-weight:400;color:var(--admin-muted)}
+</style>
 <div class="container stor-page">
 <div class="admin-page">
 
@@ -302,8 +372,20 @@ function stor_field($f){
 	<div class="panel-heading"><h3 class="panel-title"><i class="fa fa-database"></i> 存储类型</h3></div>
 	<div class="panel-body">
 		<form onsubmit="return saveSetting(this)" method="post" role="form">
+			<?php
+			//先排原有的存储，再按分组排移植自 OpenList 的新驱动
+			$card_sections = [['', array_keys(array_filter($stor_list, function($v){ return empty($v['ext']); }))]];
+			foreach($ext_groups as $gname=>$gkeys)$card_sections[] = [$gname, $gkeys];
+			if(count($card_sections) > 1){?>
+			<div class="stor-ext-search"><input type="text" class="form-control" id="stor_search" placeholder="搜索存储名称，例如 百度、FTP、Google"/></div>
+			<?php }
+			foreach($card_sections as $sec){
+				if($sec[0] !== ''){?>
+			<h4 class="stor-group-title" data-group><?php echo htmlspecialchars($sec[0], ENT_QUOTES, 'UTF-8')?> <small>移植自 OpenList</small></h4>
+			<?php }?>
 			<div class="stor-grid">
-			<?php foreach($stor_list as $k=>$v){
+			<?php foreach($sec[1] as $k){
+				$v = $stor_list[$k];
 				$cap = $stor_caps[$k];
 				$tags = [];
 				if($cap['up'])$tags[] = '直传';
@@ -325,6 +407,7 @@ function stor_field($f){
 				</label>
 			<?php }?>
 			</div>
+			<?php }?>
 			<div class="stor-submit">
 				<p class="stor-warn"><i class="fa fa-exclamation-triangle"></i> 每个文件都记着自己当初存在哪儿，<b>切换只影响之后的新上传，已经上传的文件仍然从原存储读取，链接不会失效</b>。所以切换前有两件事要做到：一是在下面填好新存储的参数并<b>测试通过</b>；二是<b>旧存储的参数原样留着别删</b>，删了旧文件就真的下不下来了。</p>
 				<button type="submit" class="btn btn-primary">保存并启用</button>
@@ -421,8 +504,23 @@ function stor_field($f){
 			</div>
 			</div>
 		<?php }?>
+		<?php if(\lib\StorExt::has($k)){
+			$ext_meta = \lib\StorExt::meta($k);
+			$ext_cfg = \lib\StorExt::config($k);
+			$ext_missing = [];
+			foreach($ext_meta['requires'] as $ext_need){ if(!extension_loaded($ext_need))$ext_missing[] = $ext_need; }
+			if($ext_missing){?>
+			<div class="alert alert-danger stor-note">服务器的 PHP 没有开启 <b><?php echo htmlspecialchars(implode('、', $ext_missing), ENT_QUOTES, 'UTF-8')?></b> 扩展，这个存储现在用不了。</div>
+			<?php }
+			if(!empty($ext_meta['note'])){?>
+			<div class="alert alert-info stor-note"><?php echo $ext_meta['note']?></div>
+			<?php }?>
+			<form onsubmit="return saveExt(this)" method="post" class="form-horizontal" role="form" data-stor="<?php echo $k?>">
+			<?php foreach($fields as $f){echo stor_ext_field($k, $f, $ext_cfg);}?>
+		<?php }else{?>
 			<form onsubmit="return saveSetting(this)" method="post" class="form-horizontal" role="form">
 			<?php foreach($fields as $f){echo stor_field($f);}?>
+		<?php }?>
 				<div class="form-group">
 					<div class="col-sm-offset-3 col-sm-9 stor-form-btns">
 						<button type="submit" class="btn btn-primary">保存参数</button>
@@ -434,7 +532,9 @@ function stor_field($f){
 					</div>
 				</div>
 			</form>
-			<?php if(!$stor_caps[$k]['up'] && $stor_caps[$k]['cloud']){?>
+			<?php if($stor_caps[$k]['ext']){?>
+			<div class="alert alert-info stor-note"><?php echo $stor_list[$k]['name']?> 的上传只能走本站中转，大文件会占用本站带宽<?php echo $stor_caps[$k]['down'] ? '；下载可以在下面选直接链接，跳到网盘自己的地址。' : '；它给的下载地址必须带特定请求头才能取，下载也只能走本站中转。'?></div>
+			<?php }elseif(!$stor_caps[$k]['up'] && $stor_caps[$k]['cloud']){?>
 			<div class="alert alert-info stor-note"><?php echo $stor_list[$k]['name']?> 的上传只能走本站中转（它的直传要用 PUT 上传会话，跟浏览器直传的表单方式对不上），大文件会占用本站带宽<?php echo $stor_caps[$k]['down'] ? '；下载可以在下面选直接链接，由存储自己扛流量。' : '，下载同理。'?></div>
 			<?php }?>
 			<div class="alert alert-warning stor-note">连接测试用的是<b>当前填在上面框里</b>的参数（不必先保存，但测通了记得点「保存参数」，否则不会生效）。测试会往存储里写一个几十字节的小文件，读回来核对后再删掉。</div>
@@ -538,6 +638,37 @@ function showStor(k){
 	$('#row_domain').toggle(cap.domain && $("select[name='downfile_type']").val() === '1');
 }
 $('.stor-card input[type=radio]').change(function(){ showStor($(this).val()); });
+
+//新驱动几十个，按名称或简介筛卡片；整组都筛没了就把组标题也藏起来
+$('#stor_search').on('input', function(){
+	var q = $.trim($(this).val()).toLowerCase();
+	$('.stor-card').each(function(){
+		var text = $(this).text().toLowerCase() + ' ' + String($(this).data('stor')).toLowerCase();
+		$(this).toggle(q === '' || text.indexOf(q) !== -1);
+	});
+	$('.stor-grid').each(function(){
+		var any = $(this).children('.stor-card').filter(function(){ return $(this).css('display') !== 'none'; }).length > 0;
+		$(this).toggle(any);
+		$(this).prev('.stor-group-title').toggle(any);
+	});
+});
+
+//新驱动的参数整份发给本页的 save_ext，存成一个 JSON
+function saveExt(obj){
+	var ii = layer.load(2, {shade:[0.1,'#fff']});
+	$.post('./set_stor.php', {ajax:'1', 'do':'save_ext', storage:$(obj).data('stor'), fields:$(obj).serialize()}, function(res){
+		layer.close(ii);
+		if(res.code === 0){
+			layer.alert('设置保存成功！', {icon: 1, closeBtn: false}, function(){ window.location.reload(); });
+		}else{
+			layer.alert(res.msg, {icon: 2});
+		}
+	}, 'json').fail(function(){
+		layer.close(ii);
+		layer.msg('服务器错误');
+	});
+	return false;
+}
 $("select[name='downfile_type']").change(function(){
 	var k = $('.stor-card.active').data('stor');
 	$('#row_domain').toggle($(this).val() === '1' && storCaps[k] && storCaps[k].domain);
