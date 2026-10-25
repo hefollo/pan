@@ -74,7 +74,7 @@ if($islogin==1){}else exit("<script language='javascript'>window.location.href='
 						</div>
 					</details>
 					<details class="user-adjust" id="addonBox">
-						<summary>附加包（加量包、在线编辑包各有自己的到期时间；流量包永久）</summary>
+						<summary>附加包（加量包、在线编辑包各有自己的到期时间；分享流量包、上传流量包永久）</summary>
 						<div class="form-group">
 							<label class="col-sm-2 control-label no-padding-right">加量额度</label>
 							<div class="col-sm-10">
@@ -102,14 +102,25 @@ if($islogin==1){}else exit("<script language='javascript'>window.location.href='
 							</div>
 						</div>
 						<div class="form-group">
-							<label class="col-sm-2 control-label no-padding-right">流量包余额</label>
+							<label class="col-sm-2 control-label no-padding-right">分享流量包</label>
 							<div class="col-sm-10">
 								<div class="input-group">
 									<input type="number" class="form-control" id="traffic_pack" name="traffic_pack" min="0" step="0.01"/>
 									<span class="input-group-addon">GB</span>
 								</div>
 								<input type="hidden" id="traffic_pack_orig" name="traffic_pack_orig"/>
-								<p class="help-block">永久有效，他的文件本月用完等级的分享流量之后才扣这里。</p>
+								<p class="help-block">余额，永久有效，他的文件本月用完等级的分享流量之后才扣这里。</p>
+							</div>
+						</div>
+						<div class="form-group">
+							<label class="col-sm-2 control-label no-padding-right">上传流量包</label>
+							<div class="col-sm-10">
+								<div class="input-group">
+									<input type="number" class="form-control" id="upload_traffic_pack" name="upload_traffic_pack" min="0" step="0.01"/>
+									<span class="input-group-addon">GB</span>
+								</div>
+								<input type="hidden" id="upload_traffic_pack_orig" name="upload_traffic_pack_orig"/>
+								<p class="help-block">余额，永久有效，他本月用完等级的上传流量之后才扣这里。</p>
 							</div>
 						</div>
 					</details>
@@ -257,8 +268,10 @@ $(document).ready(function(){
 					var bonus = parseInt(row.bonus_limit || 0, 10);
 					if(bonus > 0) lines.push('加量 +'+bonus+'：'+formatExpireTime(row.bonus_expire));
 					if(parseInt(row.online_edit, 10) === 1) lines.push('在线编辑：'+formatExpireTime(row.edit_expire));
-					if(parseFloat(row.traffic_pack_gb || 0) > 0) lines.push('流量包：'+row.traffic_pack_gb+' GB');
-					if(row.traffic_used) lines.push('本月流量：'+row.traffic_used);
+					if(parseFloat(row.traffic_pack_gb || 0) > 0) lines.push('分享流量包：'+row.traffic_pack_gb+' GB');
+					if(row.traffic_used) lines.push('本月分享：'+row.traffic_used);
+					if(parseFloat(row.upload_traffic_pack_gb || 0) > 0) lines.push('上传流量包：'+row.upload_traffic_pack_gb+' GB');
+					if(row.upload_traffic_used) lines.push('本月上传：'+row.upload_traffic_used);
 					return lines.length ? lines.join('<br/>') : '<span class="text-muted">-</span>';
 				}
 			},
@@ -358,10 +371,12 @@ function setLevel(uid){
 	$("#form-store #edit_expire").val(toDatetimeLocal(row.edit_expire));
 	$("#form-store #traffic_pack").val(String(row.traffic_pack_gb || 0));
 	$("#form-store #traffic_pack_orig").val(String(row.traffic_pack_gb || 0));
+	$("#form-store #upload_traffic_pack").val(String(row.upload_traffic_pack_gb || 0));
+	$("#form-store #upload_traffic_pack_orig").val(String(row.upload_traffic_pack_gb || 0));
 	//调过数值、买过附加包的，对应的折叠块直接展开，省得点开才发现有东西
 	var adjusted = parseLimitValue(row.upload_size) >= 0 || parseLimitValue(row.upload_limit) >= 0 || parseLimitValue(row.down_speed) >= 0;
 	document.getElementById('adjustBox').open = adjusted;
-	document.getElementById('addonBox').open = parseInt(row.bonus_limit || 0, 10) > 0 || parseInt(row.online_edit, 10) === 1 || parseFloat(row.traffic_pack_gb || 0) > 0;
+	document.getElementById('addonBox').open = parseInt(row.bonus_limit || 0, 10) > 0 || parseInt(row.online_edit, 10) === 1 || parseFloat(row.traffic_pack_gb || 0) > 0 || parseFloat(row.upload_traffic_pack_gb || 0) > 0;
 }
 
 function save(){

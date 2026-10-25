@@ -319,9 +319,16 @@ if(!$need_1032){
 	if(!$q || !$q->fetchColumn())$need_1032 = true;
 }
 if($need_1032)$sqls = array_merge($sqls, read_sql('update_1032.sql'));
-$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1032')";
-//上面 else 分支只按 1022 判断「已是最新」，从 1022～1031 升上来时要改回「升级完成」的提示
-if($version < 1032)$uptodate = false;
+//1033 上传流量包（DEC-20261025-002）：套餐、订单、用户各加一列，缺哪一列就整份跑一遍
+$need_1033 = false;
+foreach([['pre_plan', 'upload_traffic'], ['pre_order', 'upload_traffic'], ['pre_user', 'upload_traffic_pack']] as $col_1033){
+	$q = $db->query("SHOW COLUMNS FROM `".$col_1033[0]."` LIKE '".$col_1033[1]."'");
+	if(!$q || !$q->fetchColumn()){$need_1033 = true; break;}
+}
+if($need_1033)$sqls = array_merge($sqls, read_sql('update_1033.sql'));
+$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1033')";
+//上面 else 分支只按 1022 判断「已是最新」，从 1022～1032 升上来时要改回「升级完成」的提示
+if($version < 1033)$uptodate = false;
 
 $success=0;$skipped=0;$error=0;$errorMsg=null;
 foreach ($sqls as $value) {

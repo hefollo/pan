@@ -1443,9 +1443,15 @@ function default_plans(){
 	foreach([['月卡', 30, '3.00', '文本、代码文件直接在网页里改'], ['季卡', 90, '8.00', '三个月，折合每月更便宜'], ['年卡', 365, '25.00', '整年可用，经常改文件选它'], ['永久', 0, '48.00', '一次买断，永久可用']] as $k => $pack){
 		$plans[] = ['name'=>'在线编辑'.$pack[0], 'category'=>'在线编辑', 'price'=>$pack[2], 'upload_limit'=>-1, 'limit_mode'=>'set', 'upload_size'=>-1, 'online_edit'=>1, 'days'=>$pack[1], 'remark'=>$pack[3], 'sort'=>110 + $k];
 	}
-	//流量包：加 N GB 分享流量，永久有效，本月等级流量用完后才扣（DEC-20261022-001）
-	foreach([['10GB', 10, '2.00'], ['50GB', 50, '8.00'], ['100GB', 100, '15.00'], ['500GB', 500, '60.00'], ['1TB', 1024, '100.00']] as $k => $pack){
-		$plans[] = ['name'=>'流量包 +'.$pack[0], 'category'=>'流量包', 'price'=>$pack[2], 'upload_limit'=>-1, 'limit_mode'=>'set', 'upload_size'=>-1, 'traffic'=>$pack[1] * 1024, 'days'=>0, 'remark'=>'永久有效，本月流量用完后才扣', 'sort'=>120 + $k];
+	//分享流量包：加 N GB 分享流量，永久有效，本月等级流量用完后才扣（DEC-20261022-001）。
+	//原来叫「流量包 +N」，改名后 alias 记旧名，导入时站里已经有旧名的就不再导一份（DEC-20261025-002）
+	$packs = [['10GB', 10, '2.00'], ['50GB', 50, '8.00'], ['100GB', 100, '15.00'], ['500GB', 500, '60.00'], ['1TB', 1024, '100.00']];
+	foreach($packs as $k => $pack){
+		$plans[] = ['name'=>'分享流量包 +'.$pack[0], 'alias'=>'流量包 +'.$pack[0], 'category'=>'分享流量包', 'price'=>$pack[2], 'upload_limit'=>-1, 'limit_mode'=>'set', 'upload_size'=>-1, 'traffic'=>$pack[1] * 1024, 'days'=>0, 'remark'=>'永久有效，本月分享流量用完后才扣', 'sort'=>120 + $k];
+	}
+	//上传流量包：加 N GB 上传流量，档位、价格和分享流量包一样（DEC-20261025-002）
+	foreach($packs as $k => $pack){
+		$plans[] = ['name'=>'上传流量包 +'.$pack[0], 'category'=>'上传流量包', 'price'=>$pack[2], 'upload_limit'=>-1, 'limit_mode'=>'set', 'upload_size'=>-1, 'upload_traffic'=>$pack[1] * 1024, 'days'=>0, 'remark'=>'永久有效，本月上传流量用完后才扣', 'sort'=>130 + $k];
 	}
 	return $plans;
 }
@@ -1479,6 +1485,10 @@ function seed_default_levels_and_plans(){
 	$added_plans = 0;
 	foreach(default_plans() as $d){
 		if(isset($exists[$d['name']]))continue;
+		if(isset($d['alias'])){
+			if(isset($exists[$d['alias']]))continue;
+			unset($d['alias']);
+		}
 		if(isset($d['level'])){
 			if(!isset($ids[$d['level']]))continue;
 			$d['level_id'] = $ids[$d['level']];
@@ -1600,20 +1610,22 @@ function plan_is_edit_only($plan){
  *   upgrade 补差价升级到更高等级，到期时间不变（只出现在订单上，没有对应的套餐）
  *   bonus   加量包：每天多传 N 个，有自己的到期时间
  *   edit    在线编辑包
- *   traffic 流量包：加 N MB 分享流量（traffic 字段），永久有效
+ *   traffic 分享流量包：加 N MB 分享流量（traffic 字段），永久有效
+ *   utraffic 上传流量包：加 N MB 上传流量（upload_traffic 字段），永久有效；键名短是因为 pre_order.kind 只有 10 个字符
  *   legacy  改成会员等级之前按数值发放的旧套餐（时长卡、大文件包、永久卡），已经停售
  */
 function plan_kind($plan){
-	if(isset($plan['kind']) && in_array($plan['kind'], ['level', 'upgrade', 'bonus', 'edit', 'traffic'], true))return $plan['kind'];
+	if(isset($plan['kind']) && in_array($plan['kind'], ['level', 'upgrade', 'bonus', 'edit', 'traffic', 'utraffic'], true))return $plan['kind'];
 	if(isset($plan['level_id']) && intval($plan['level_id']) > 0)return 'level';
 	if(isset($plan['traffic']) && intval($plan['traffic']) > 0)return 'traffic';
+	if(isset($plan['upload_traffic']) && intval($plan['upload_traffic']) > 0)return 'utraffic';
 	if((isset($plan['limit_mode']) ? $plan['limit_mode'] : 'set') === 'add')return 'bonus';
 	if(plan_is_edit_only($plan))return 'edit';
 	return 'legacy';
 }
 
 function plan_kind_name($kind){
-	$names = ['level'=>'会员等级', 'upgrade'=>'补差价升级', 'bonus'=>'加量包', 'edit'=>'在线编辑包', 'traffic'=>'流量包', 'legacy'=>'旧版套餐（已停售）'];
+	$names = ['level'=>'会员等级', 'upgrade'=>'补差价升级', 'bonus'=>'加量包', 'edit'=>'在线编辑包', 'traffic'=>'分享流量包', 'utraffic'=>'上传流量包', 'legacy'=>'旧版套餐（已停售）'];
 	return isset($names[$kind]) ? $names[$kind] : $kind;
 }
 
@@ -1631,6 +1643,7 @@ function order_grant_lines($order){
 	if($kind === 'bonus')return ['加量 +'.max(0, intval($order['upload_limit'])).' 个/天', $days];
 	if($kind === 'edit')return ['在线编辑', $days];
 	if($kind === 'traffic')return ['分享流量 +'.traffic_mb_text(isset($order['traffic']) ? $order['traffic'] : 0), '永久有效'];
+	if($kind === 'utraffic')return ['上传流量 +'.traffic_mb_text(isset($order['upload_traffic']) ? $order['upload_traffic'] : 0), '永久有效'];
 	$lines = ['旧版套餐', '每日 '.plan_limit_display($order), '单文件 '.plan_limit_text($order['upload_size'], 'MB')];
 	if(isset($order['down_speed']) && intval($order['down_speed']) >= 0)$lines[] = '下载 '.plan_speed_text($order['down_speed']);
 	if(plan_has_online_edit($order))$lines[] = '在线编辑';
@@ -1804,7 +1817,15 @@ function plan_quote($user, $plan){
 	}
 	if($kind === 'traffic'){
 		if(user_traffic_quota_bytes($user) <= 0){
-			$res['msg'] = '你的分享流量已经不限，不需要流量包';
+			$res['msg'] = '你的分享流量已经不限，不需要分享流量包';
+		}else{
+			$res['ok'] = true;
+		}
+		return $res;
+	}
+	if($kind === 'utraffic'){
+		if(level_upload_traffic_mb($current) <= 0){
+			$res['msg'] = '你的上传流量已经不限，不需要上传流量包';
 		}else{
 			$res['ok'] = true;
 		}
@@ -1923,7 +1944,8 @@ function level_upgrade_list($user){
  *   upgrade 补差价升级：只换等级，到期时间不变（付款前等级刚好过期的，按订单上记的剩余天数重新起算）
  *   bonus   加量包：额度累加，到期时间单独记在 bonus_expire 上
  *   edit    在线编辑包：见 resolve_plan_online_edit
- *   traffic 流量包：余额累加到 traffic_pack（字节），永久有效
+ *   traffic 分享流量包：余额累加到 traffic_pack（字节），永久有效
+ *   utraffic 上传流量包：余额累加到 upload_traffic_pack（字节），永久有效
  * 升级前的旧订单（legacy）走 grant_legacy_plan，规则和原来一样。
  * 管理员等级的用户不发任何等级（不然会把管理员降成买来的等级）。
  */
@@ -1943,6 +1965,11 @@ function grant_plan_to_user($uid, $order, $lock_user = false){
 		$add = max(0, intval(isset($order['traffic']) ? $order['traffic'] : 0)) * 1048576;
 		//直接在库里加：下载结束时可能正在同一行上扣流量包
 		return $DB->exec("UPDATE pre_user SET traffic_pack=traffic_pack+{$add} WHERE uid={$uid}") !== false;
+	}
+	if($kind === 'utraffic'){
+		$add = max(0, intval(isset($order['upload_traffic']) ? $order['upload_traffic'] : 0)) * 1048576;
+		//同上：上传的时候可能正在同一行上扣上传流量包
+		return $DB->exec("UPDATE pre_user SET upload_traffic_pack=upload_traffic_pack+{$add} WHERE uid={$uid}") !== false;
 	}
 	if($kind === 'edit'){
 		$data = resolve_plan_online_edit($user, $order);
@@ -2962,7 +2989,7 @@ function user_traffic_text($user){
 	$info = user_traffic_info($user);
 	if($info['unlimited'])return '不限';
 	$text = '本月已用 '.size_format($info['used']).' / 共 '.size_format($info['quota']);
-	if($info['pack'] > 0)$text .= '，流量包剩 '.size_format($info['pack']);
+	if($info['pack'] > 0)$text .= '，分享流量包剩 '.size_format($info['pack']);
 	if($info['left'] <= 0)$text .= '（已用完）';
 	return $text;
 }
@@ -2989,7 +3016,7 @@ function traffic_exhausted_exit(){
 	header('Content-Type: text/html; charset=utf-8');
 	exit('<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>流量已用完</title></head>'
 		.'<body style="font:15px/1.7 -apple-system,BlinkMacSystemFont,\'Microsoft YaHei\',sans-serif;color:#555;text-align:center;padding:60px 16px">'
-		.'<p>分享者本月的流量已经用完，暂时无法下载或预览这个文件。</p><p style="color:#999;font-size:13px">下个月 1 日自动恢复，或者等分享者购买流量包后再试。</p></body></html>');
+		.'<p>分享者本月的流量已经用完，暂时无法下载或预览这个文件。</p><p style="color:#999;font-size:13px">下个月 1 日自动恢复，或者等分享者购买分享流量包后再试。</p></body></html>');
 }
 
 /*
@@ -3040,7 +3067,9 @@ function traffic_record($uid, $quota, $bytes){
  * 不管这次上传最后有没有建成文件记录都算：原来只按建成的记录限次数，没传完、重复传同一分块、
  * 故意报错 MD5 的上传都不占额度，有人就这样无限往站里灌数据跑流量，后台一个文件也看不到。
  * 登录用户按账号记（ukey = u:uid），游客按 IP 记（ukey = ip:ipkey）。额度看当前访客的会员等级
- * （pre_level.upload_traffic，MB/月：0 不限、自建等级 -1 同普通用户），管理员不限。用完只拒绝，下个月恢复。
+ * （pre_level.upload_traffic，MB/月：0 不限、自建等级 -1 同普通用户），管理员不限。
+ * 月额度用完后再扣上传流量包余额（pre_user.upload_traffic_pack，字节，买来永久有效，DEC-20261025-002）；
+ * 两样都用完只拒绝，下个月恢复。游客没有账号，只有按 IP 的月额度。
  * 请求体在 PHP 开始执行之前就已经收完了，拒绝挡不住已经发过来的数据，只能让它存不下来、也换不来额度。
  */
 
@@ -3076,18 +3105,29 @@ function upload_traffic_used_bytes($ukey){
 	return $bytes ? (int)$bytes : 0;
 }
 
-//当前访客的上传流量：['unlimited'=>不限, 'quota'=>月额度, 'used'=>本月已用, 'left'=>还剩多少]，单位字节
-function upload_traffic_info(){
-	$quota = upload_traffic_quota_bytes();
-	$used = $quota > 0 ? upload_traffic_used_bytes(upload_traffic_key()) : 0;
-	return ['unlimited'=>$quota <= 0, 'quota'=>$quota, 'used'=>$used, 'left'=>max(0, $quota - $used)];
+//当前登录用户的上传流量包余额（字节）；游客没有
+function upload_traffic_pack_bytes(){
+	global $islogin2, $userrow;
+	return (!empty($islogin2) && $userrow && isset($userrow['upload_traffic_pack'])) ? max(0, (int)$userrow['upload_traffic_pack']) : 0;
 }
 
-//「本月已用 3.2 GB / 共 10 GB」这样的一句话，个人中心和购买页用；不限的返回「不限」
+/*
+ * 当前访客的上传流量：['unlimited'=>不限, 'quota'=>月额度, 'used'=>本月已用, 'pack'=>上传流量包余额, 'left'=>还剩多少]，单位字节。
+ * 本月已用超过月额度的部分已经从上传流量包里扣过了，所以 left = 月额度剩余 + 上传流量包余额。
+ */
+function upload_traffic_info(){
+	$quota = upload_traffic_quota_bytes();
+	$pack = upload_traffic_pack_bytes();
+	$used = $quota > 0 ? upload_traffic_used_bytes(upload_traffic_key()) : 0;
+	return ['unlimited'=>$quota <= 0, 'quota'=>$quota, 'used'=>$used, 'pack'=>$pack, 'left'=>max(0, $quota - $used) + $pack];
+}
+
+//「本月已用 3.2 GB / 共 10 GB，上传流量包剩 50 GB」这样的一句话，个人中心和购买页用；不限的返回「不限」
 function upload_traffic_text(){
 	$info = upload_traffic_info();
 	if($info['unlimited'])return '不限';
 	$text = '本月已用 '.size_format($info['used']).' / 共 '.size_format($info['quota']);
+	if($info['pack'] > 0)$text .= '，上传流量包剩 '.size_format($info['pack']);
 	if($info['left'] <= 0)$text .= '（已用完）';
 	return $text;
 }
@@ -3102,12 +3142,30 @@ function upload_traffic_allows($bytes){
 	return $info['unlimited'] || $info['left'] >= max(1, intval($bytes));
 }
 
-//记一笔：本站这次实际收到的上传字节。不限额的不记，省一次写库
+/*
+ * 记一笔：本站这次实际收到的上传字节。不限额的不记，省一次写库。
+ * 加到本月用量上之后，超出月额度的那一段再从上传流量包里扣（同 traffic_record 的做法）：
+ * 用 LAST_INSERT_ID(表达式) 拿到「这一笔加完之后」的累计值，同一个人几个分块同时到也不会重复扣。
+ * 这一行是新插入的时候表达式不会执行，所以先把 LAST_INSERT_ID 清成 0，取回来还是 0 就说明是新行。
+ */
 function upload_traffic_record($bytes){
-	global $DB;
+	global $DB, $islogin2, $userrow;
 	$bytes = max(0, intval($bytes));
-	if($bytes <= 0 || upload_traffic_quota_bytes() <= 0)return;
-	$DB->exec("INSERT INTO pre_upload_traffic (ukey,month,bytes) VALUES (:k,:m,:b) ON DUPLICATE KEY UPDATE bytes=bytes+:b2", [':k'=>upload_traffic_key(), ':m'=>date('Ym'), ':b'=>$bytes, ':b2'=>$bytes]);
+	$quota = upload_traffic_quota_bytes();
+	if($bytes <= 0 || $quota <= 0)return;
+	$DB->getColumn("SELECT LAST_INSERT_ID(0)");
+	$ok = $DB->exec("INSERT INTO pre_upload_traffic (ukey,month,bytes) VALUES (:k,:m,:b) ON DUPLICATE KEY UPDATE bytes=LAST_INSERT_ID(bytes+:b2)", [':k'=>upload_traffic_key(), ':m'=>date('Ym'), ':b'=>$bytes, ':b2'=>$bytes]);
+	if($ok === false || empty($islogin2) || !$userrow)return;
+	$after = (int)$DB->getColumn("SELECT LAST_INSERT_ID()");
+	if($after <= 0)$after = $bytes;
+	$before = max(0, $after - $bytes);
+	$over = max(0, $after - $quota) - max(0, $before - $quota);
+	if($over <= 0)return;
+	$uid = intval($userrow['uid']);
+	//字段是无符号的，不能直接减成负数
+	$DB->exec("UPDATE pre_user SET upload_traffic_pack=IF(upload_traffic_pack>{$over}, upload_traffic_pack-{$over}, 0) WHERE uid={$uid}");
+	//同一个请求后面再算剩余量时要看到扣过的余额
+	$userrow['upload_traffic_pack'] = max(0, (int)(isset($userrow['upload_traffic_pack']) ? $userrow['upload_traffic_pack'] : 0) - $over);
 }
 
 //上传流量用完时的提示

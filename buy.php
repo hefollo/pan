@@ -110,6 +110,7 @@ if($act === 'create' || $act === 'query'){
 			&& intval($exist['upload_limit']) === intval($plan['upload_limit'])
 			&& plan_has_online_edit($exist) === plan_has_online_edit($plan)
 			&& intval(isset($exist['traffic']) ? $exist['traffic'] : 0) === intval(isset($plan['traffic']) ? $plan['traffic'] : 0)
+			&& intval(isset($exist['upload_traffic']) ? $exist['upload_traffic'] : 0) === intval(isset($plan['upload_traffic']) ? $plan['upload_traffic'] : 0)
 			&& intval($exist['days']) === intval($plan['days'])
 			&& (isset($exist['limit_mode']) ? $exist['limit_mode'] : 'set') === $limit_mode){
 			$trade_no = $exist['trade_no'];
@@ -143,6 +144,7 @@ if($act === 'create' || $act === 'query'){
 				'down_speed' => '-1',
 				'online_edit' => plan_has_online_edit($plan) ? '1' : '0',
 				'traffic' => strval(max(0, intval(isset($plan['traffic']) ? $plan['traffic'] : 0))),
+				'upload_traffic' => strval(max(0, intval(isset($plan['upload_traffic']) ? $plan['upload_traffic'] : 0))),
 				'days' => strval(intval($plan['days'])),
 				'status' => '0',
 				'ip' => $clientip,
@@ -328,12 +330,14 @@ include SYSTEM_ROOT.'header.php';
 	}elseif($kind === 'bonus'){
 		$features = ['每天多传 '.max(0, intval($plan['upload_limit'])).' 个，加在当前等级的数量上'];
 	}elseif($kind === 'traffic'){
-		$features = ['分享流量 +'.traffic_mb_text($plan['traffic']), '本月等级的流量用完后才扣'];
+		$features = ['分享流量 +'.traffic_mb_text($plan['traffic']), '本月等级的分享流量用完后才扣'];
+	}elseif($kind === 'utraffic'){
+		$features = ['上传流量 +'.traffic_mb_text($plan['upload_traffic']), '本月等级的上传流量用完后才扣'];
 	}else{
 		$features = ['在线编辑文本、代码文件'];
 	}
-	//流量包没有有效期，一律永久
-	$features[] = $kind === 'traffic' ? '永久有效，用完为止' : plan_days_text($plan['days']);
+	//两种流量包都没有有效期，一律永久
+	$features[] = ($kind === 'traffic' || $kind === 'utraffic') ? '永久有效，用完为止' : plan_days_text($plan['days']);
 	if(!empty($plan['remark']))$features[] = $plan['remark'];
 ?>
             <div class="buy-plan">
@@ -362,8 +366,9 @@ include SYSTEM_ROOT.'header.php';
         <p class="buy-tip">买的是会员等级：有效期内按该等级的权限使用，到期后回到普通用户；同一个等级再买是续费，天数接在到期时间后面。<br/>
         想换成更高的等级，限时会员用上面的「补差价升级」，只补到期前这段时间的差价，到期时间不变；升级后想延长时间，再买新等级的套餐。<br/>
         「文件下载」的速度跟着上传的人走：你上传的文件，任何人下载都按你当前等级的速度，和下载的人是不是会员无关。<br/>
-        「分享流量」也跟着上传的人走：你的文件每月被下载、预览取走的总量，每月 1 日重新计算；用完后再扣流量包，都用完了别人就暂时下载不了你的文件。<br/>
-        加量包和在线编辑包是附加包，各有自己的到期时间，不影响会员到期时间；流量包永久有效，用完为止。</p>
+        「分享流量」也跟着上传的人走：你的文件每月被下载、预览取走的总量，每月 1 日重新计算；用完后再扣分享流量包，都用完了别人就暂时下载不了你的文件。<br/>
+        「上传流量」是网站每月最多收你多少上传数据（没传完、失败的也算），用完后再扣上传流量包，都用完了就要等下个月才能再传。<br/>
+        加量包和在线编辑包是附加包，各有自己的到期时间，不影响会员到期时间；分享流量包、上传流量包永久有效，用完为止，两种不能互相抵扣。</p>
     </div>
 </div>
 
