@@ -869,8 +869,19 @@ function layout_render_studio_side($DB, $where_sql, $total_files = 0){
 	$rows = [
 		['fa-cloud-upload', 'blue', '每日上传', $limit > 0 ? ($limit.' 个') : '不限制'],
 		['fa-file-o', 'indigo', '单文件大小', $size_limit > 0 ? ($size_limit.' MB') : '不限制'],
-		['fa-bolt', 'amber', '下载速度', '不限制'],
+		['fa-bolt', 'amber', '下载速度', speed_text(get_effective_download_speed_kbps())],
 	];
+	//每月分享流量只给登录用户看：游客没有自己的用量可言（DEC-20261022-001）
+	$traffic = (!empty($islogin2) && function_exists('user_traffic_info')) ? user_traffic_info($userrow) : null;
+	if($traffic){
+		$rows[] = ['fa-exchange', 'cyan', '分享流量', $traffic['unlimited'] ? '不限制' : (size_format($traffic['used']).' / '.size_format($traffic['quota']))];
+		if(!$traffic['unlimited'] && $traffic['pack'] > 0) $rows[] = ['fa-archive', 'cyan', '流量包', size_format($traffic['pack'])];
+	}
+	//每月上传流量游客也有（按 IP 计），所以不分登录与否都显示（DEC-20261025-001）
+	if(function_exists('upload_traffic_info')){
+		$upload = upload_traffic_info();
+		$rows[] = ['fa-upload', 'blue', '上传流量', $upload['unlimited'] ? '不限制' : (size_format($upload['used']).' / '.size_format($upload['quota']))];
+	}
 	//深空科技风的原型里多一行，凑够四条
 	if($site_theme === 'nebula') $rows[] = ['fa-clone', 'cyan', '同时下载数', '不限制'];
 	$p_right = '<section class="studio-panel studio-panel-rights">'

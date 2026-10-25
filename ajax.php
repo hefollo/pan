@@ -226,11 +226,22 @@ case 'pre_upload':
 		exit(json_encode($result));
 	}
 
+	/*
+	 * 每月上传流量（DEC-20261025-001）：到这里才真要往站里传数据（秒传、站内已有的内容不占流量，所以放在它们后面），
+	 * 本月剩下的不够这个文件就别开始。分块到了以后另外按实际收到的字节记账。
+	 */
+	if(!upload_traffic_allows($size)){
+		exit(json_encode(['code'=>-1, 'msg'=>upload_traffic_deny_msg($size), 'error'=>'upload_traffic'], JSON_UNESCAPED_UNICODE));
+	}
+	upload_temp_cleanup(UPLOAD_STATE_TTL);
+
 	//能不能直传要按这次的目标存储判断，不能按全站当前存储
 	if(\lib\StorHelper::is_direct_upload($target_stor) && $conf['uploadfile_type'] == 1){
 		$staging_key = 'pending/'.bin2hex(random_bytes(24));
 		$param = $target_model->getUploadParam($staging_key, $name, $size);
 		if(!$param)exit('{"code":-1,"msg":"获取上传参数失败","errmsg":"'.$target_model->errmsg().'"}');
+		//直传的数据不经过本站，看不到实际传了多少：签出凭证就按声明的大小预扣上传流量，传失败也不退
+		upload_traffic_record($size);
 		set_upload_state($hash, [
 			'staging_key' => $staging_key,
 			'chunks' => 1,
@@ -271,6 +282,15 @@ case 'upload_part':
 	if(!isset($_FILES['file']))exit('{"code":-1,"msg":"请选择文件"}');
 	if(!$_POST['csrf_token'] || $_POST['csrf_token']!=$_SESSION['csrf_token'])exit('{"code":-1,"msg":"CSRF TOKEN ERROR"}');
 	if($conf['forcelogin']==1 && !$islogin2)exit('{"code":-1,"msg":"请先登录"}');
+	/*
+	 * 每月上传流量（DEC-20261025-001）：请求体已经收下了，后面成不成（状态失效、分块重复、校验失败）都先记上，
+	 * 按整个请求体的大小记；记之前就已经用满的直接拒绝。只按建成的文件记的话，这些请求可以无限发。
+	 */
+	$part_bytes = isset($_SERVER['CONTENT_LENGTH']) ? intval($_SERVER['CONTENT_LENGTH']) : 0;
+	if($part_bytes <= 0)$part_bytes = intval($_FILES['file']['size']);
+	$part_traffic_ok = upload_traffic_allows(1);
+	upload_traffic_record($part_bytes);
+	if(!$part_traffic_ok)exit(json_encode(['code'=>-1, 'msg'=>upload_traffic_exhausted_msg(), 'error'=>'upload_traffic'], JSON_UNESCAPED_UNICODE));
 	$chunk = intval($_POST['chunk']);
 	$hash = trim($_POST['hash']);
 	$upload_state = get_upload_state($hash);

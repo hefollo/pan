@@ -1400,16 +1400,16 @@ function pay_method_name($method){
 
 /*
  * 内置的推荐会员等级（六个付费等级，从低到高）。后台「一键导入推荐等级和套餐」用的就是这份，导入后随便改。
- * 数值含义同 pre_level：每日数量 / 单文件大小（MB）/ 每月分享流量（MB）里 -1 是同普通用户，下载速度（KB/s）里 -1 是跟随站点设置，0 都是不限。
+ * 数值含义同 pre_level：每日数量 / 单文件大小（MB）/ 每月分享流量、每月上传流量（MB）里 -1 是同普通用户，下载速度（KB/s）里 -1 是跟随站点设置，0 都是不限。
  */
 function default_levels(){
 	return [
-		['name'=>'入门会员', 'sort'=>100, 'upload_limit'=>50, 'upload_size'=>200, 'down_speed'=>-1, 'traffic'=>51200, 'online_edit'=>0, 'folder'=>1, 'api'=>0, 'storage_all'=>0, 'no_review'=>0, 'remark'=>'轻度使用'],
-		['name'=>'基础会员', 'sort'=>200, 'upload_limit'=>100, 'upload_size'=>500, 'down_speed'=>-1, 'traffic'=>102400, 'online_edit'=>0, 'folder'=>1, 'api'=>0, 'storage_all'=>0, 'no_review'=>0, 'remark'=>'额度翻倍'],
-		['name'=>'标准会员', 'sort'=>300, 'upload_limit'=>300, 'upload_size'=>1024, 'down_speed'=>-1, 'traffic'=>307200, 'online_edit'=>1, 'folder'=>1, 'api'=>0, 'storage_all'=>0, 'no_review'=>0, 'remark'=>'日常够用，带在线编辑'],
-		['name'=>'进阶会员', 'sort'=>400, 'upload_limit'=>600, 'upload_size'=>2048, 'down_speed'=>0, 'traffic'=>819200, 'online_edit'=>1, 'folder'=>1, 'api'=>1, 'storage_all'=>0, 'no_review'=>0, 'remark'=>'下载不限速，可用上传 API'],
-		['name'=>'尊享会员', 'sort'=>500, 'upload_limit'=>1500, 'upload_size'=>5120, 'down_speed'=>0, 'traffic'=>2097152, 'online_edit'=>1, 'folder'=>1, 'api'=>1, 'storage_all'=>1, 'no_review'=>0, 'remark'=>'可用全部存储'],
-		['name'=>'旗舰会员', 'sort'=>600, 'upload_limit'=>0, 'upload_size'=>0, 'down_speed'=>0, 'traffic'=>0, 'online_edit'=>1, 'folder'=>1, 'api'=>1, 'storage_all'=>1, 'no_review'=>0, 'remark'=>'数量、大小、流量都不限'],
+		['name'=>'入门会员', 'sort'=>100, 'upload_limit'=>50, 'upload_size'=>200, 'down_speed'=>-1, 'traffic'=>51200, 'upload_traffic'=>10240, 'online_edit'=>0, 'folder'=>1, 'api'=>0, 'storage_all'=>0, 'no_review'=>0, 'remark'=>'轻度使用'],
+		['name'=>'基础会员', 'sort'=>200, 'upload_limit'=>100, 'upload_size'=>500, 'down_speed'=>-1, 'traffic'=>102400, 'upload_traffic'=>20480, 'online_edit'=>0, 'folder'=>1, 'api'=>0, 'storage_all'=>0, 'no_review'=>0, 'remark'=>'额度翻倍'],
+		['name'=>'标准会员', 'sort'=>300, 'upload_limit'=>300, 'upload_size'=>1024, 'down_speed'=>-1, 'traffic'=>307200, 'upload_traffic'=>51200, 'online_edit'=>1, 'folder'=>1, 'api'=>0, 'storage_all'=>0, 'no_review'=>0, 'remark'=>'日常够用，带在线编辑'],
+		['name'=>'进阶会员', 'sort'=>400, 'upload_limit'=>600, 'upload_size'=>2048, 'down_speed'=>0, 'traffic'=>819200, 'upload_traffic'=>102400, 'online_edit'=>1, 'folder'=>1, 'api'=>1, 'storage_all'=>0, 'no_review'=>0, 'remark'=>'下载不限速，可用上传 API'],
+		['name'=>'尊享会员', 'sort'=>500, 'upload_limit'=>1500, 'upload_size'=>5120, 'down_speed'=>0, 'traffic'=>2097152, 'upload_traffic'=>204800, 'online_edit'=>1, 'folder'=>1, 'api'=>1, 'storage_all'=>1, 'no_review'=>0, 'remark'=>'可用全部存储'],
+		['name'=>'旗舰会员', 'sort'=>600, 'upload_limit'=>0, 'upload_size'=>0, 'down_speed'=>0, 'traffic'=>0, 'upload_traffic'=>0, 'online_edit'=>1, 'folder'=>1, 'api'=>1, 'storage_all'=>1, 'no_review'=>0, 'remark'=>'数量、大小、流量都不限'],
 	];
 }
 
@@ -1702,6 +1702,8 @@ function level_features($level){
 	//流量也是算在上传者头上：这个等级的用户的文件，每月最多被取走这么多
 	$traffic = level_traffic_mb($level);
 	$list[] = '每月分享流量 '.traffic_mb_text($traffic);
+	//上传流量算在上传的人自己头上：本站每月最多收他这么多上传数据，没传完、校验失败的也算
+	$list[] = '每月上传流量 '.traffic_mb_text(level_upload_traffic_mb($level));
 	if(intval($level['online_edit']) === 1)$list[] = '在线编辑文本、代码文件';
 	if(intval($level['folder']) === 1 && !empty($conf['folder_open']))$list[] = '用户文件夹';
 	if(intval($level['api']) === 1 && !empty($conf['api_open']))$list[] = '上传 API';
@@ -2708,7 +2710,7 @@ function level_builtin($type){
 	return [
 		'id' => 0, 'type' => $type, 'sort' => $admin ? 100000 : ($type === 2 ? 10 : 0),
 		'name' => $admin ? '管理员' : ($type === 2 ? '普通用户' : '游客'),
-		'upload_limit' => $admin ? 0 : -1, 'upload_size' => $admin ? 0 : -1, 'down_speed' => $admin ? 0 : -1, 'traffic' => 0,
+		'upload_limit' => $admin ? 0 : -1, 'upload_size' => $admin ? 0 : -1, 'down_speed' => $admin ? 0 : -1, 'traffic' => 0, 'upload_traffic' => 0,
 		'online_edit' => $admin ? 1 : 0, 'folder' => $admin ? 1 : 0, 'api' => $admin ? 1 : 0,
 		'storage_all' => $admin ? 1 : 0, 'no_review' => $admin ? 1 : 0, 'remark' => '',
 	];
@@ -3030,6 +3032,115 @@ function traffic_record($uid, $quota, $bytes){
 		//字段是无符号的，不能直接减成负数
 		$DB->exec("UPDATE pre_user SET traffic_pack=IF(traffic_pack>{$over}, traffic_pack-{$over}, 0) WHERE uid={$uid}");
 	}
+}
+
+/*
+ * ================= 每月上传流量（DEC-20261025-001） =================
+ * 本站实际收到的上传字节，按自然月累计在 pre_upload_traffic（每月 1 日起重新计）。
+ * 不管这次上传最后有没有建成文件记录都算：原来只按建成的记录限次数，没传完、重复传同一分块、
+ * 故意报错 MD5 的上传都不占额度，有人就这样无限往站里灌数据跑流量，后台一个文件也看不到。
+ * 登录用户按账号记（ukey = u:uid），游客按 IP 记（ukey = ip:ipkey）。额度看当前访客的会员等级
+ * （pre_level.upload_traffic，MB/月：0 不限、自建等级 -1 同普通用户），管理员不限。用完只拒绝，下个月恢复。
+ * 请求体在 PHP 开始执行之前就已经收完了，拒绝挡不住已经发过来的数据，只能让它存不下来、也换不来额度。
+ */
+
+//一个等级每月的上传流量（MB），0 不限
+function level_upload_traffic_mb($level){
+	if(level_is_admin($level))return 0;
+	$value = isset($level['upload_traffic']) ? intval($level['upload_traffic']) : -1;
+	if($value >= 0)return $value;
+	if(level_is_custom($level)){
+		$normal = level_builtin(2);
+		if(isset($normal['upload_traffic']) && intval($normal['upload_traffic']) >= 0)return intval($normal['upload_traffic']);
+	}
+	//内置等级还是 -1 只会出现在没跑 1032 升级的站点上，先按不限，免得升级前整站传不了
+	return 0;
+}
+
+//当前访客的用量记在哪一行：登录用户按账号，游客按 IP（IPv6 归并到 /64）
+function upload_traffic_key(){
+	global $islogin2, $userrow;
+	if(!empty($islogin2) && $userrow)return 'u:'.intval($userrow['uid']);
+	return 'ip:'.client_ip_key();
+}
+
+//当前访客每月的上传流量额度（字节），0 不限
+function upload_traffic_quota_bytes(){
+	return level_upload_traffic_mb(current_level()) * 1048576;
+}
+
+//某一行这个月已经收了多少字节
+function upload_traffic_used_bytes($ukey){
+	global $DB;
+	$bytes = $DB->getColumn("SELECT bytes FROM pre_upload_traffic WHERE ukey=:k AND month=:m LIMIT 1", [':k'=>$ukey, ':m'=>date('Ym')]);
+	return $bytes ? (int)$bytes : 0;
+}
+
+//当前访客的上传流量：['unlimited'=>不限, 'quota'=>月额度, 'used'=>本月已用, 'left'=>还剩多少]，单位字节
+function upload_traffic_info(){
+	$quota = upload_traffic_quota_bytes();
+	$used = $quota > 0 ? upload_traffic_used_bytes(upload_traffic_key()) : 0;
+	return ['unlimited'=>$quota <= 0, 'quota'=>$quota, 'used'=>$used, 'left'=>max(0, $quota - $used)];
+}
+
+//「本月已用 3.2 GB / 共 10 GB」这样的一句话，个人中心和购买页用；不限的返回「不限」
+function upload_traffic_text(){
+	$info = upload_traffic_info();
+	if($info['unlimited'])return '不限';
+	$text = '本月已用 '.size_format($info['used']).' / 共 '.size_format($info['quota']);
+	if($info['left'] <= 0)$text .= '（已用完）';
+	return $text;
+}
+
+/*
+ * 还能不能再收 $bytes 字节，不限额的永远可以。
+ * 申请上传时传整个文件的大小（剩余不够就别开始）；分块、API 请求到了传 1（只看是不是已经用满，
+ * 申请时已经按整个文件判断过，传到一半不会因为这个文件自己的分块被拦）。
+ */
+function upload_traffic_allows($bytes){
+	$info = upload_traffic_info();
+	return $info['unlimited'] || $info['left'] >= max(1, intval($bytes));
+}
+
+//记一笔：本站这次实际收到的上传字节。不限额的不记，省一次写库
+function upload_traffic_record($bytes){
+	global $DB;
+	$bytes = max(0, intval($bytes));
+	if($bytes <= 0 || upload_traffic_quota_bytes() <= 0)return;
+	$DB->exec("INSERT INTO pre_upload_traffic (ukey,month,bytes) VALUES (:k,:m,:b) ON DUPLICATE KEY UPDATE bytes=bytes+:b2", [':k'=>upload_traffic_key(), ':m'=>date('Ym'), ':b'=>$bytes, ':b2'=>$bytes]);
+}
+
+//上传流量用完时的提示
+function upload_traffic_exhausted_msg(){
+	return '本月上传流量已用完，下个月 1 日自动恢复';
+}
+
+//剩下的不够一个 $bytes 大小的文件时的提示：还剩一点的说清楚剩多少，一点不剩的说用完了
+function upload_traffic_deny_msg($bytes){
+	$left = upload_traffic_info()['left'];
+	return $left > 0 ? '本月上传流量只剩 '.size_format($left).'，不够上传这个文件，下个月 1 日恢复' : upload_traffic_exhausted_msg();
+}
+
+/*
+ * 没合并的上传分块（系统临时目录里的 <hash>.partN、<hash>.parttmp、<hash>.merge.lock）原来没有人清，
+ * 上传中断、或者被人故意只传一部分，就会一直占着磁盘。申请上传时顺手扫一遍，删掉超过 $ttl 秒没动过的。
+ * 每小时最多扫一次，用临时目录里的一个标记文件记上次扫的时间；只认这几种文件名，别的东西不碰。
+ */
+function upload_temp_cleanup($ttl){
+	$dir = sys_get_temp_dir();
+	$stamp = $dir.'/pan_upload_cleanup.stamp';
+	if(is_file($stamp) && filemtime($stamp) > time() - 3600)return;
+	@touch($stamp);
+	$expire = time() - max(3600, intval($ttl));
+	$dh = @opendir($dir);
+	if(!$dh)return;
+	while(($name = readdir($dh)) !== false){
+		if(!preg_match('/^[0-9a-f]{32}\.(part\d+|parttmp|merge\.lock)$/i', $name))continue;
+		$file = $dir.'/'.$name;
+		$mtime = @filemtime($file);
+		if($mtime !== false && $mtime < $expire && is_file($file))@unlink($file);
+	}
+	closedir($dh);
 }
 
 /*

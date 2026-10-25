@@ -3320,6 +3320,7 @@ body.studio-layout .studio-right-icon{display:inline-flex;align-items:center;jus
 body.studio-layout .studio-ico-blue{background:var(--tint);color:var(--primary)}
 body.studio-layout .studio-ico-indigo{background:#eef0ff;color:#6366f1}
 body.studio-layout .studio-ico-amber{background:#fff3e2;color:#f59e0b}
+body.studio-layout .studio-ico-cyan{background:#e3f8fc;color:#0891b2}
 body.studio-layout .studio-acts{display:flex;flex-wrap:wrap;gap:10px}
 /* 每个入口平分整行：3 个也好 4 个也好都铺满，不会像固定列数那样空出一格 */
 body.studio-layout .studio-act{flex:1 1 0;min-width:0}
@@ -3703,6 +3704,7 @@ body.theme-neo .studio-right-icon{border:1px solid #141414;border-radius:8px}
 body.theme-neo .studio-ico-blue{background:#cfe0ff;color:#1c4fd8}
 body.theme-neo .studio-ico-indigo{background:#e2d7ff;color:#5b3fd6}
 body.theme-neo .studio-ico-amber{background:#ffe6a8;color:#a06a00}
+body.theme-neo .studio-ico-cyan{background:#c8f1f7;color:#0e7490}
 body.theme-neo .studio-right-row em,body.theme-neo .studio-right-row b{font-weight:800}
 body.theme-neo .studio-act{border:var(--neo-edge);border-radius:10px;background:#fff;color:#141414!important;font-weight:800;box-shadow:2px 2px 0 #111111}
 body.theme-neo .studio-act i{color:#141414}

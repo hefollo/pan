@@ -54,6 +54,23 @@ function level_traffic_cell($level){
 	return level_is_custom($level) ? '同普通用户（现为 '.$text.'）' : '未设置（暂按 '.$text.'，请编辑填写）';
 }
 
+//每月上传流量（DEC-20261025-001），存法、填法同分享流量
+function level_upload_traffic_cell($level){
+	$mb = level_upload_traffic_mb($level);
+	$text = traffic_mb_text($mb).($mb > 0 ? '/月' : '');
+	if(isset($level['upload_traffic']) && intval($level['upload_traffic']) >= 0)return $text;
+	return level_is_custom($level) ? '同普通用户（现为 '.$text.'）' : '未设置（暂按 '.$text.'，请编辑填写）';
+}
+
+//表单里按 GB 填的流量：负数 = -1 同普通用户，0 不限，其余换成 MB，最少 1 MB
+function level_form_gb($key){
+	$raw = isset($_POST[$key]) ? trim((string)$_POST[$key]) : '';
+	$num = is_numeric($raw) ? floatval($raw) : -1;
+	if(!is_finite($num) || $num < 0)return -1;
+	if($num == 0)return 0;
+	return max(1, min(2147483647, intval(round($num * 1024))));
+}
+
 $msg = '';
 $msgtype = 'success';
 if($islogin == 1 && isset($_POST['do'])){
@@ -74,22 +91,16 @@ if($islogin == 1 && isset($_POST['do'])){
 			$unit = (isset($_POST['down_speed_unit']) && strtoupper($_POST['down_speed_unit']) === 'MB') ? 1024 : 1;
 			$down_speed = max(1, min(2147483647, intval(round($speed_num * $unit))));
 		}
-		//每月分享流量：按 GB 填，负数 = -1 同普通用户，0 不限，其余换成 MB，最少 1 MB
-		$traffic_raw = isset($_POST['traffic']) ? trim((string)$_POST['traffic']) : '';
-		$traffic_num = is_numeric($traffic_raw) ? floatval($traffic_raw) : -1;
-		if(!is_finite($traffic_num) || $traffic_num < 0){
-			$traffic = -1;
-		}elseif($traffic_num == 0){
-			$traffic = 0;
-		}else{
-			$traffic = max(1, min(2147483647, intval(round($traffic_num * 1024))));
-		}
+		//每月分享流量、每月上传流量：按 GB 填，见 level_form_gb()
+		$traffic = level_form_gb('traffic');
+		$upload_traffic = level_form_gb('upload_traffic');
 		//写库的值一律用字符串：DB->insert / update 把 == '' 的值写成 NULL，整数 0 在老版本 PHP 上也会中
 		$data = [
 			'upload_limit' => strval(level_form_int('upload_limit')),
 			'upload_size' => strval(level_form_int('upload_size')),
 			'down_speed' => strval($down_speed),
 			'traffic' => strval($traffic),
+			'upload_traffic' => strval($upload_traffic),
 			'online_edit' => !empty($_POST['online_edit']) ? '1' : '0',
 			'folder' => !empty($_POST['folder']) ? '1' : '0',
 			'api' => !empty($_POST['api']) ? '1' : '0',
@@ -103,9 +114,9 @@ if($islogin == 1 && isset($_POST['do'])){
 			$msg = '管理员等级不受任何限制，没有可以修改的权限'; $msgtype = 'danger';
 		}elseif((!$old || level_is_custom($old)) && $name === ''){
 			$msg = '等级名称不能为空'; $msgtype = 'danger';
-		}elseif($old && !level_is_custom($old) && (intval($data['upload_limit']) < 0 || intval($data['upload_size']) < 0 || $traffic < 0)){
+		}elseif($old && !level_is_custom($old) && (intval($data['upload_limit']) < 0 || intval($data['upload_size']) < 0 || $traffic < 0 || $upload_traffic < 0)){
 			//游客、普通用户的数量、大小、流量就是全站的基础额度，没有别处可以「跟随」了
-			$msg = '「'.$old['name'].'」的每日上传数量、单文件大小和每月分享流量要填具体数值，0 表示不限'; $msgtype = 'danger';
+			$msg = '「'.$old['name'].'」的每日上传数量、单文件大小、每月分享流量和每月上传流量要填具体数值，0 表示不限'; $msgtype = 'danger';
 		}else{
 			//自己建的等级才能改名称和顺序；顺序限制在普通用户（10）和管理员（100000）之间
 			if(!$old || level_is_custom($old)){
@@ -182,6 +193,7 @@ $normal_level = level_builtin(2);
 $normal_limit = level_upload_text(level_upload_value($normal_level, 'upload_limit'), 'upload_limit');
 $normal_size = level_upload_text(level_upload_value($normal_level, 'upload_size'), 'upload_size');
 $normal_traffic = traffic_mb_text(level_traffic_mb($normal_level));
+$normal_upload_traffic = traffic_mb_text(level_upload_traffic_mb($normal_level));
 $type_names = [1=>'游客', 2=>'普通用户', 3=>'管理员'];
 $yes = '<i class="fa fa-check text-success"></i>';
 $no = '<span class="text-muted">-</span>';
@@ -208,7 +220,7 @@ $edit_builtin = $edit && !level_is_custom($edit);
 </h3></div>
 <div class="table-responsive">
 <table class="table table-striped table-hover">
-  <thead><tr><th>等级</th><th>每日上传</th><th>单文件大小</th><th>文件下载速度</th><th>每月分享流量</th><th>在线编辑</th><th>文件夹</th><th>上传API</th><th>全部存储</th><th>免审核</th><th>用户数</th><th>在售套餐</th><th>操作</th></tr></thead>
+  <thead><tr><th>等级</th><th>每日上传</th><th>单文件大小</th><th>文件下载速度</th><th>每月分享流量</th><th>每月上传流量</th><th>在线编辑</th><th>文件夹</th><th>上传API</th><th>全部存储</th><th>免审核</th><th>用户数</th><th>在售套餐</th><th>操作</th></tr></thead>
   <tbody>
 <?php foreach($levels as $lv){
 	$lid = intval($lv['id']);
@@ -227,12 +239,13 @@ $edit_builtin = $edit && !level_is_custom($edit);
       <td><b><?php echo htmlspecialchars($lv['name'], ENT_QUOTES, 'UTF-8')?></b><?php if($type > 0){?> <span class="label label-default">内置</span><?php }?>
         <?php if(!empty($lv['remark'])){?><br/><small class="text-muted"><?php echo htmlspecialchars($lv['remark'], ENT_QUOTES, 'UTF-8')?></small><?php }?></td>
 <?php if($admin){?>
-      <td colspan="9"><span class="text-muted">不受任何限制：数量、大小、速度、流量都不限，全部功能可用，上传免审核、不做内容检测、不限上传频率</span></td>
+      <td colspan="10"><span class="text-muted">不受任何限制：数量、大小、速度、流量都不限，全部功能可用，上传免审核、不做内容检测、不限上传频率</span></td>
 <?php }else{?>
       <td><?php echo htmlspecialchars(level_upload_cell($lv, 'upload_limit'))?></td>
       <td><?php echo htmlspecialchars(level_upload_cell($lv, 'upload_size'))?></td>
       <td><?php echo intval($lv['down_speed']) < 0 ? '跟随站点设置（现为 '.htmlspecialchars($tier_speed).'）' : htmlspecialchars(speed_text($lv['down_speed']))?></td>
       <td><?php echo htmlspecialchars(level_traffic_cell($lv))?></td>
+      <td><?php echo htmlspecialchars(level_upload_traffic_cell($lv))?></td>
       <td><?php echo intval($lv['online_edit']) === 1 ? $yes : $no?></td>
       <td><?php echo intval($lv['folder']) === 1 ? $yes : $no?></td>
       <td><?php echo intval($lv['api']) === 1 ? $yes : $no?></td>
@@ -251,6 +264,7 @@ $edit_builtin = $edit && !level_is_custom($edit);
            data-upload-size="<?php echo intval($lv['upload_size'])?>"
            data-down-speed="<?php echo intval($lv['down_speed'])?>"
            data-traffic="<?php echo htmlspecialchars(level_traffic_input(isset($lv['traffic']) ? $lv['traffic'] : -1))?>"
+           data-upload-traffic="<?php echo htmlspecialchars(level_traffic_input(isset($lv['upload_traffic']) ? $lv['upload_traffic'] : -1))?>"
            data-online-edit="<?php echo intval($lv['online_edit'])?>"
            data-folder="<?php echo intval($lv['folder'])?>"
            data-api="<?php echo intval($lv['api'])?>"
@@ -342,6 +356,21 @@ $edit_builtin = $edit && !level_is_custom($edit);
 		</span>
 	  </div>
 	</div>
+	<div class="row">
+	  <div class="col-sm-4 form-group">
+		<label>每月上传流量（GB）</label>
+		<input type="number" name="upload_traffic" value="<?php echo htmlspecialchars(level_traffic_input($edit && isset($edit['upload_traffic']) ? $edit['upload_traffic'] : -1), ENT_QUOTES, 'UTF-8')?>" class="form-control" min="<?php echo $edit_builtin ? 0 : -1?>" step="any"/>
+		<span class="hint level-hint-custom"<?php echo $edit_builtin ? ' style="display:none"' : ''?>>-1 同普通用户（现为 <?php echo htmlspecialchars($normal_upload_traffic)?>）/ 0 不限 / N 每月 N GB</span>
+		<span class="hint level-hint-builtin"<?php echo $edit_builtin ? '' : ' style="display:none"'?>>0 不限 / N 每月 N GB。「游客」这一项按 IP 分别计算</span>
+	  </div>
+	  <div class="col-sm-8 form-group">
+		<label>&nbsp;</label>
+		<span class="hint">
+		  本站每个月最多收这个等级的用户多少上传数据，每月 1 日重新计算。按网站实际收到的字节算：没传完、校验失败、重复发的上传也都算在内，
+		  用完后不能再上传，直到下个月。上传到站内已有的同一个文件（秒传）不占流量；直传到云存储的按文件大小在开始上传时扣。
+		</span>
+	  </div>
+	</div>
 	<div class="form-group level-flags">
 	  <label>可用功能</label>
 	  <div>
@@ -409,6 +438,7 @@ $edit_builtin = $edit && !level_is_custom($edit);
 		}
 		//流量在属性里已经换成 GB 了（level_traffic_input），原样填
 		field('traffic').value = (d.traffic === null || d.traffic === undefined || d.traffic === '') ? -1 : d.traffic;
+		field('upload_traffic').value = (d.uploadTraffic === null || d.uploadTraffic === undefined || d.uploadTraffic === '') ? -1 : d.uploadTraffic;
 		field('online_edit').checked = String(d.onlineEdit) === '1';
 		field('folder').checked = String(d.folder) === '1';
 		field('api').checked = String(d.api) === '1';
@@ -422,6 +452,7 @@ $edit_builtin = $edit && !level_is_custom($edit);
 		field('upload_limit').min = builtin ? 0 : -1;
 		field('upload_size').min = builtin ? 0 : -1;
 		field('traffic').min = builtin ? 0 : -1;
+		field('upload_traffic').min = builtin ? 0 : -1;
 		$(form).find('.level-hint-custom').toggle(!builtin);
 		$(form).find('.level-hint-builtin').toggle(builtin);
 	}
@@ -439,7 +470,7 @@ $edit_builtin = $edit && !level_is_custom($edit);
 			id: a.getAttribute('data-id'), type: a.getAttribute('data-type'), name: a.getAttribute('data-name'),
 			sort: a.getAttribute('data-sort'), remark: a.getAttribute('data-remark'),
 			uploadLimit: a.getAttribute('data-upload-limit'), uploadSize: a.getAttribute('data-upload-size'),
-			downSpeed: a.getAttribute('data-down-speed'), traffic: a.getAttribute('data-traffic'), onlineEdit: a.getAttribute('data-online-edit'),
+			downSpeed: a.getAttribute('data-down-speed'), traffic: a.getAttribute('data-traffic'), uploadTraffic: a.getAttribute('data-upload-traffic'), onlineEdit: a.getAttribute('data-online-edit'),
 			folder: a.getAttribute('data-folder'), api: a.getAttribute('data-api'),
 			storageAll: a.getAttribute('data-storage-all'), noReview: a.getAttribute('data-no-review')
 		});
@@ -451,7 +482,7 @@ $edit_builtin = $edit && !level_is_custom($edit);
 	var cancel = document.getElementById('levelCancel');
 	if(cancel)cancel.onclick = function(e){
 		e.preventDefault();
-		fill({id:0, type:0, name:'', sort:100, remark:'', uploadLimit:-1, uploadSize:-1, downSpeed:-1, traffic:-1, onlineEdit:0, folder:0, api:0, storageAll:0, noReview:0});
+		fill({id:0, type:0, name:'', sort:100, remark:'', uploadLimit:-1, uploadSize:-1, downSpeed:-1, traffic:-1, uploadTraffic:-1, onlineEdit:0, folder:0, api:0, storageAll:0, noReview:0});
 		state(false, '');
 		$('.level-row').removeClass('level-row-active');
 		return false;

@@ -86,6 +86,15 @@ if($conf['forcelogin']==1 && !$islogin2)showresult(['code'=>-1, 'msg'=>'请先�
 if(!isset($_FILES['file']))showresult(['code'=>-1, 'msg'=>'请选择文件']);
 if($_FILES['file']['error'] !== UPLOAD_ERR_OK)showresult(['code'=>-1, 'msg'=>'文件上传失败，可能超出服务器限制', 'error'=>'upload']);
 if(!is_uploaded_file($_FILES['file']['tmp_name']))showresult(['code'=>-1, 'msg'=>'非法的上传请求']);
+//每月上传流量（DEC-20261025-001）：文件已经收下了，后面成不成（被拦、秒传）都按请求体大小记上；
+//记之前剩下的就不够这个文件的，不保存
+$api_bytes = isset($_SERVER['CONTENT_LENGTH']) ? intval($_SERVER['CONTENT_LENGTH']) : 0;
+if($api_bytes <= 0)$api_bytes = intval($_FILES['file']['size']);
+$api_traffic_ok = upload_traffic_allows(intval($_FILES['file']['size']));
+//提示要按记账之前的剩余量说，所以先取好
+$api_traffic_msg = $api_traffic_ok ? '' : upload_traffic_deny_msg(intval($_FILES['file']['size']));
+upload_traffic_record($api_bytes);
+if(!$api_traffic_ok)showresult(['code'=>-1, 'msg'=>$api_traffic_msg, 'error'=>'upload_traffic']);
 //ENT_QUOTES 不能省：PHP 8.1 以下默认不转义单引号，文件名会被拼进播放器的 JS 字符串
 $name=trim(htmlspecialchars($_FILES['file']['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'));
 $size=intval($_FILES['file']['size']);

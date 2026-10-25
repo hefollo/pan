@@ -368,6 +368,8 @@ if($tab === 'overview'){
                 <div><dt>会员等级</dt><dd><?php echo htmlspecialchars(user_level($userrow)['name'], ENT_QUOTES, 'UTF-8')?></dd></div>
                 <div><dt>每日上传</dt><dd><?php echo limit_number_text($uc_limit, '个/天')?><?php if(user_bonus_limit($userrow) > 0 && $uc_limit > 0){?>（含加量包 +<?php echo user_bonus_limit($userrow)?>，<?php echo empty($userrow['bonus_expire']) ? '永久' : htmlspecialchars($userrow['bonus_expire'], ENT_QUOTES, 'UTF-8').' 到期'?>）<?php }?></dd></div>
                 <div><dt>单文件大小</dt><dd><?php echo size_mb_text($uc_size)?></dd></div>
+                <div><dt>分享流量</dt><dd><?php echo htmlspecialchars(user_traffic_text($userrow), ENT_QUOTES, 'UTF-8')?></dd></div>
+                <div><dt>上传流量</dt><dd><?php echo htmlspecialchars(upload_traffic_text(), ENT_QUOTES, 'UTF-8')?></dd></div>
                 <div><dt>有效期</dt><dd><?php echo empty($uc_expire) ? '永久有效' : htmlspecialchars($uc_expire, ENT_QUOTES, 'UTF-8').($uc_active ? ' 到期' : ' 已过期')?></dd></div>
 <?php $uc_edit = current_online_edit_text(); if($uc_edit !== ''){?>
                 <div><dt>在线编辑</dt><dd><?php echo htmlspecialchars($uc_edit, ENT_QUOTES, 'UTF-8')?></dd></div>

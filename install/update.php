@@ -308,9 +308,20 @@ if($need_1030)$sqls = array_merge($sqls, read_sql('update_1030.sql'));
 //1031 移植自 OpenList 的存储驱动（DEC-20261023-001）：新表 pre_stor_map，建表语句本身可重复执行
 $q = $db->query("SHOW TABLES LIKE 'pre_stor_map'");
 if(!$q || !$q->fetchColumn())$sqls = array_merge($sqls, read_sql('update_1031.sql'));
-$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1031')";
-//上面 else 分支只按 1022 判断「已是最新」，从 1022～1030 升上来时要改回「升级完成」的提示
-if($version < 1031)$uptodate = false;
+/*
+ * 1032 每月上传流量（DEC-20261025-001）：等级加一列，另有新表 pre_upload_traffic。
+ * 表或列缺了就整份跑一遍；把游客、普通用户写成 0 的 UPDATE 只改还是 -1 的，重复跑没有副作用。
+ */
+$q = $db->query("SHOW TABLES LIKE 'pre_upload_traffic'");
+$need_1032 = !$q || !$q->fetchColumn();
+if(!$need_1032){
+	$q = $db->query("SHOW COLUMNS FROM `pre_level` LIKE 'upload_traffic'");
+	if(!$q || !$q->fetchColumn())$need_1032 = true;
+}
+if($need_1032)$sqls = array_merge($sqls, read_sql('update_1032.sql'));
+$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1032')";
+//上面 else 分支只按 1022 判断「已是最新」，从 1022～1031 升上来时要改回「升级完成」的提示
+if($version < 1032)$uptodate = false;
 
 $success=0;$skipped=0;$error=0;$errorMsg=null;
 foreach ($sqls as $value) {

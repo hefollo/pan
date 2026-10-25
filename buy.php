@@ -267,7 +267,7 @@ include SYSTEM_ROOT.'header.php';
 ?>
         <div class="buy-current">
             <span>当前等级</span>
-            <strong><?php echo htmlspecialchars(user_level_text($userrow), ENT_QUOTES, 'UTF-8')?>　每日上传 <?php echo htmlspecialchars($cur_limit)?><?php if($cur_bonus > 0 && get_effective_upload_count_limit() > 0){?>（含加量包 +<?php echo $cur_bonus?>，<?php echo empty($userrow['bonus_expire']) ? '永久' : htmlspecialchars($userrow['bonus_expire']).' 到期'?>）<?php }?>　单文件 <?php echo htmlspecialchars($cur_size)?>　文件下载 <?php echo htmlspecialchars($cur_speed)?>　分享流量 <?php echo htmlspecialchars(user_traffic_text($userrow))?>　在线编辑 <?php echo htmlspecialchars($cur_edit)?></strong>
+            <strong><?php echo htmlspecialchars(user_level_text($userrow), ENT_QUOTES, 'UTF-8')?>　每日上传 <?php echo htmlspecialchars($cur_limit)?><?php if($cur_bonus > 0 && get_effective_upload_count_limit() > 0){?>（含加量包 +<?php echo $cur_bonus?>，<?php echo empty($userrow['bonus_expire']) ? '永久' : htmlspecialchars($userrow['bonus_expire']).' 到期'?>）<?php }?>　单文件 <?php echo htmlspecialchars($cur_size)?>　文件下载 <?php echo htmlspecialchars($cur_speed)?>　分享流量 <?php echo htmlspecialchars(user_traffic_text($userrow))?>　上传流量 <?php echo htmlspecialchars(upload_traffic_text())?>　在线编辑 <?php echo htmlspecialchars($cur_edit)?></strong>
         </div>
 <?php }?>
 <?php if(count($methods) > 1){?>
