@@ -7,10 +7,19 @@
  * 后台页面的内容是页面自己捕获的面板（admin.panel），可添加的面板 = 主题默认布局里出现过的 + 预览页报上来的。
  * 写进页面的文字一律走 jQuery .text()/.val()，不拼 HTML。
  */
-(function($){
+/*
+ * 后台侧栏是动态换页（admin/shell_script）：外部脚本按地址只加载、执行一次，第二次进「页面布局」时这个文件不会再跑。
+ * 所以这里只定义初始化函数，由 admin/layout.php 里的内联脚本调用（内联脚本每次换页都会执行）。
+ * 每次初始化是一个新实例；旧实例（上一次进来时建的）挂在 window 上的监听和定时器发现自己不是当前实例就什么都不做。
+ */
+window.panLayoutEditor = function(){ (function($){
 	var $root = $('#layoutEditor');
 	if(!$root.length || $root.data('leInit'))return;
 	$root.data('leInit', 1);
+	var inst = {};
+	window.__panLayoutEditorInst = inst;
+	//这个实例还在用：是当前实例，而且编辑器还在页面上（动态换页走开以后就不在了）
+	function alive(){ return window.__panLayoutEditorInst === inst && document.body.contains($root[0]); }
 	var boot = {};
 	try{ boot = JSON.parse($root.attr('data-boot') || '{}'); }catch(e){}
 
@@ -527,7 +536,10 @@
 			complete:function(){ if(done)done(); }
 		});
 	}
-	setInterval(function(){ if(state.previewAt)previewToken(); }, 10 * 60 * 1000);
+	var tokenTimer = setInterval(function(){
+		if(!alive()){ clearInterval(tokenTimer); return; }
+		if(state.previewAt)previewToken();
+	}, 10 * 60 * 1000);
 	//isRetry：这次加载本身就是续凭证之后的重试，再不对也不重试了（避免来回刷新）
 	function checkPreviewMode(frame, isRetry){
 		$(frame).one('load', function(){
@@ -580,6 +592,7 @@
 		$nf.attr('src', src).appendTo($wrap);
 	}
 	window.addEventListener('message', function(e){
+		if(!alive())return;
 		var from = false;
 		$('#lePreviewWrap iframe').each(function(){ if(this.contentWindow === e.source)from = true; });
 		if(!from || !e.data)return;
@@ -835,7 +848,7 @@
 		});
 	});
 	window.addEventListener('beforeunload', function(e){
-		if(state.dirty){ e.preventDefault(); e.returnValue = ''; }
+		if(alive() && state.dirty){ e.preventDefault(); e.returnValue = ''; }
 	});
 
 	/* ---------- 起步 ---------- */
@@ -848,4 +861,4 @@
 	pageOps();
 	if(!window.Sortable)$('#leTree').before('<div class="alert alert-warning">拖动组件（SortableJS）没加载上，只能用添加/删除，不能拖动排序。</div>');
 	previewOn(loadPage);
-})(jQuery);
+})(jQuery); };

@@ -95,5 +95,7 @@ echo theme_render_layout('admin/layout', [], 'admin', $site_theme);?>
 <script src="https://s4.zstatic.net/ajax/libs/codemirror/5.65.16/addon/edit/closetag.min.js"></script>
 <script src="https://s4.zstatic.net/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
 <script src="../assets/js/layout-editor.js?v=<?php echo asset_ver('assets/js/layout-editor.js')?>"></script>
+<?php //初始化放在内联脚本里：后台动态换页时外部脚本只执行一次，内联脚本每次都执行（见 layout-editor.js 开头） ?>
+<script>if(window.panLayoutEditor)window.panLayoutEditor();</script>
 </body>
 </html>
