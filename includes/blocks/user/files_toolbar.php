@@ -6,6 +6,9 @@ return [
 	'group' => '个人中心',
 	'scope' => 'front',
 	'pages' => ['user'],
+	'schema' => [
+		['key'=>'placeholder', 'type'=>'text', 'label'=>'搜索框提示', 'default'=>'搜索我的文件名'],
+	],
 	'data' => function($cfg, &$ctx){
 		include_once SYSTEM_ROOT.'usercenter.php';
 		$s = uc_files_state();

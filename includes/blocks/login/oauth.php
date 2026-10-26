@@ -6,6 +6,12 @@ return [
 	'group' => '登录页',
 	'scope' => 'front',
 	'pages' => ['login'],
+	'description' => 'QQ / 微信按钮的颜色和图标在后台「用户登录设置」里改',
+	'schema' => [
+		['key'=>'divider', 'type'=>'text', 'label'=>'和邮箱登录之间的分隔文字', 'default'=>'其他方式登录'],
+		['key'=>'choose', 'type'=>'text', 'label'=>'只有快捷登录时的提示', 'default'=>'请选择登录方式'],
+		['key'=>'tip', 'type'=>'text', 'label'=>'底部说明', 'default'=>'新用户快捷登录后会自动注册账号', 'help'=>'清空不显示'],
+	],
 	'data' => function($cfg, &$ctx){
 		global $conf;
 		$d = $ctx['data'];

@@ -9,6 +9,9 @@ return [
 	'group' => '个人中心',
 	'scope' => 'front',
 	'pages' => ['user'],
+	'schema' => [
+		['key'=>'title', 'type'=>'text', 'label'=>'标题', 'default'=>'登录方式'],
+	],
 	'data' => function($cfg, &$ctx){
 		global $userrow;
 		$has = [];

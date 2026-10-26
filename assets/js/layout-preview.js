@@ -4,6 +4,7 @@
  *   - 点页面上的元素：找出包着它的最里层那张卡片，把节点 id 发给编辑器（父窗口），编辑器选中它；
  *   - 编辑器发 {panHighlight: 节点id} 过来：给那张卡片的范围画个框。
  * 页面上的链接和按钮在预览框里照常能点；按住 Alt 点才是「选卡片」，免得把正常操作吞掉。
+ * 编辑器开着「点文字直接改」时，带 data-pan-edit 的文字点了就地编辑（见下面）。
  */
 (function(){
 	if(window.parent === window)return;
@@ -80,7 +81,65 @@
 	}, true);
 	window.addEventListener('message', function(e){
 		if(e.data && typeof e.data.panHighlight === 'string')highlight(e.data.panHighlight);
+		if(e.data && typeof e.data.panEditMode === 'boolean')setEditMode(e.data.panEditMode);
 	});
+
+	/*
+	 * 点文字直接改（DEC-20261026-002）：服务端在预览里把卡片的单行文字包成 <span data-pan-edit="节点:键">。
+	 * 编辑器打开「点文字直接改」时，点这些文字就地变成可编辑（链接、按钮里的也一样，不会跳走）；
+	 * 回车或点别处完成，Esc 放弃；改了的把新文字发给编辑器，由编辑器写回卡片配置、存草稿、刷新预览。
+	 */
+	var editMode = false, editing = null, original = '';
+	function setEditMode(on){
+		editMode = !!on;
+		document.documentElement.classList.toggle('pan-edit-on', editMode);
+		if(!document.getElementById('panEditStyle')){
+			var st = document.createElement('style');
+			st.id = 'panEditStyle';
+			st.textContent = '.pan-edit-on [data-pan-edit]{outline:1px dashed rgba(59,130,246,.6);outline-offset:2px;cursor:text}'
+				+ '.pan-edit-on [data-pan-edit]:hover{background:rgba(59,130,246,.10)}'
+				+ '[data-pan-edit][contenteditable]{outline:2px solid #3b82f6!important;background:rgba(59,130,246,.12);cursor:text}';
+			document.head.appendChild(st);
+		}
+	}
+	function finish(save){
+		var el = editing;
+		if(!el)return;
+		editing = null;
+		el.removeAttribute('contenteditable');
+		//只留纯文字：粘贴进来的格式、换行一律去掉
+		var text = (el.textContent || '').replace(/[\r\n]+/g, ' ');
+		if(!save){ el.textContent = original; return; }
+		el.textContent = text;
+		if(text === original)return;
+		var p = el.getAttribute('data-pan-edit').split(':');
+		window.parent.postMessage({panEdit: {id: p[0], key: p[1], value: text}}, '*');
+	}
+	document.addEventListener('click', function(e){
+		if(!editMode || e.altKey || !e.target.closest)return;
+		var el = e.target.closest('[data-pan-edit]');
+		if(!el || el === editing)return;
+		e.preventDefault();
+		e.stopPropagation();
+		finish(true);
+		editing = el;
+		original = el.textContent;
+		el.setAttribute('contenteditable', 'true');
+		el.focus();
+		var r = document.createRange();
+		r.selectNodeContents(el);
+		var s = window.getSelection();
+		s.removeAllRanges();
+		s.addRange(r);
+	}, true);
+	document.addEventListener('keydown', function(e){
+		if(!editing)return;
+		if(e.key === 'Enter'){ e.preventDefault(); finish(true); }
+		else if(e.key === 'Escape'){ e.preventDefault(); finish(false); }
+	}, true);
+	document.addEventListener('focusout', function(e){
+		if(editing && e.target === editing)finish(true);
+	}, true);
 	//告诉编辑器：这一页加载好了、地址是什么、有哪些后台面板（后台页面才有，见 theme_render_layout）
 	function ready(){
 		scan();

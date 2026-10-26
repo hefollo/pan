@@ -16,6 +16,9 @@ return [
 	 */
 	'schema' => [
 		['key'=>'menu', 'type'=>'menu', 'label'=>'菜单项', 'default'=>'', 'help'=>'菜单全站共用，换外观不变；拖动排序；内置项的开关（赞助名单、购买、违规公示）关掉时不显示'],
+		['key'=>'show_mine', 'type'=>'switch', 'label'=>'右侧显示「我的文件」', 'default'=>1],
+		['key'=>'mine_text', 'type'=>'text', 'label'=>'「我的文件」文字', 'default'=>'我的文件'],
+		['key'=>'login_text', 'type'=>'text', 'label'=>'没登录时右侧的文字', 'default'=>'未登录'],
 	],
 	'data' => function($cfg, &$ctx){
 		global $conf, $islogin2, $userrow, $is_file;

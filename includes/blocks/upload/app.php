@@ -11,4 +11,5 @@ return [
 	'pages' => ['upload'],
 	'container' => true,
 	'required' => true,
+	'description' => '上传组件（Vue）挂在这里，上传页的卡片放在它里面才能用',
 ];

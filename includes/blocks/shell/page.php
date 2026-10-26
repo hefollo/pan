@@ -9,6 +9,7 @@ return [
 	'scope' => 'front',
 	'pages' => ['_shell'],
 	'required' => true,
+	'description' => '各页面自己的内容放在这里；页面内容在页面下拉框里选对应页面编辑',
 	'data' => function($cfg, &$ctx){
 		return ['marker_html' => theme_shell_marker()];
 	},

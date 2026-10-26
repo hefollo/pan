@@ -1,12 +1,14 @@
         <div class="login-other">
 {{#show_mail}}
-            <div class="login-divider"><span>其他方式登录</span></div>
+            <div class="login-divider"><span>{{cfg.divider}}</span></div>
 {{/show_mail}}
 {{^show_mail}}
-            <p class="text-muted text-center" style="margin-bottom:14px">请选择登录方式</p>
+            <p class="text-muted text-center" style="margin-bottom:14px">{{cfg.choose}}</p>
 {{/show_mail}}
             <p id="loginform" class="text-center">
                 {{{qq_html}}}                {{{wx_html}}}
             </p>
-            <p class="text-muted text-center login-tip">新用户快捷登录后会自动注册账号</p>
+{{#cfg.tip}}
+            <p class="text-muted text-center login-tip">{{cfg.tip}}</p>
+{{/cfg.tip}}
         </div>

@@ -44,15 +44,15 @@
          
 <%&slot_html%>         <div id="upload_frame">
 <%#forbid%>
-         <button id="uploadFile" class="btn btn-raised btn-primary" style="height:50px;font-size:20px;" onclick="window.location.href='./login.php'"><i class="fa fa-sign-in"></i> 请先登录<div class="ripple-container"></div></button>
+         <button id="uploadFile" class="btn btn-raised btn-primary" style="height:50px;font-size:20px;" onclick="window.location.href='./login.php'"><i class="fa fa-sign-in"></i> <%&login_html%><div class="ripple-container"></div></button>
          <script>var forbid = true;</script>
 <%/forbid%>
 <%^forbid%>
-         <button id="uploadFile" class="btn btn-raised btn-primary" style="height:50px;font-size:20px;" @click="clickUpload"><i class="fa fa-upload"></i> 选择文件/批量上传<div class="ripple-container"></div></button>
+         <button id="uploadFile" class="btn btn-raised btn-primary" style="height:50px;font-size:20px;" @click="clickUpload"><i class="fa fa-upload"></i> <%&pick_html%><div class="ripple-container"></div></button>
 <%/forbid%>
 <%#has_storage%>
 <div class="form-group upload-storage">
-<label for="storage_select">存储位置</label>
+<label for="storage_select"><%&storage_html%></label>
 <div class="upload-storage-select">
 <select class="form-control" id="storage_select" v-model="input.storage">
 <%#storages%>
@@ -65,12 +65,12 @@
 <div class="form-group">
 <div class="checkbox">
 <label>
-<input type="checkbox" id="show" v-model="input.show"> 在首页文件列表显示
+<input type="checkbox" id="show" v-model="input.show"> <%&show_html%>
 </label>
 </div>
 </div>
 <div class="form-group upload-pwd" id="pwd_frame">
-<input type="text" class="form-control" id="pwd" placeholder="请输入密码（留空则不设置）" autocomplete="off" maxlength="32" v-model="input.pwd">
+<input type="text" class="form-control" id="pwd" placeholder="<%pwd_placeholder%>" autocomplete="off" maxlength="32" v-model="input.pwd">
 <p class="help-block" v-if="input.pwd">密码只能为字母或数字</p>
 </div>
          </div>

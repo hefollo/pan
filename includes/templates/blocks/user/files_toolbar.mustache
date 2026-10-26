@@ -1,6 +1,6 @@
         <form class="uc-toolbar" method="get" action="./user.php">
             <input type="hidden" name="tab" value="files">
-{{#ft}}<input type="hidden" name="ft" value="{{ft}}">{{/ft}}            <input class="uc-search" type="search" name="kw" value="{{kw}}" placeholder="搜索我的文件名">
+{{#ft}}<input type="hidden" name="ft" value="{{ft}}">{{/ft}}            <input class="uc-search" type="search" name="kw" value="{{kw}}" placeholder="{{cfg.placeholder}}">
             <button class="uc-btn" type="submit"><i class="fa fa-search" aria-hidden="true"></i> 搜索</button>
             <button class="uc-btn" type="button" id="fdShareManage"><i class="fa fa-share-alt" aria-hidden="true"></i> 文件夹分享管理</button>
 {{#kw}}<a class="uc-btn" href="./user.php?tab=files">清除</a>{{/kw}}            <a class="uc-btn uc-btn-primary" href="./upload.php{{#here}}?folder={{folder}}{{/here}}"><i class="fa fa-plus" aria-hidden="true"></i> {{#here}}上传到这里{{/here}}{{^here}}上传文件{{/here}}</a>

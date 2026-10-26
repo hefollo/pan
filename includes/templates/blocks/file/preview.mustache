@@ -13,7 +13,7 @@
   <div class="tubiao"><i class="fa {{icon}}"></i> </div>
 </div>
 <div class="elsetext"><p>{{{name_html}}} ({{size}})</p>
-<a href="{{{downurl_html}}}" class="btn btn-raised btn-primary btn-lg"><i class="fa fa-download" aria-hidden="true"></i> 下载文件<div class="ripple-container"></div></a>{{#text_viewable}}&nbsp;<a href="{{{texturl_html}}}" class="btn btn-raised btn-info btn-lg" target="_blank"><i class="fa fa-eye" aria-hidden="true"></i> 查看内容<div class="ripple-container"></div></a>{{/text_viewable}}{{#office_url_html}}&nbsp;<a href="{{{office_url_html}}}" class="btn btn-raised btn-info btn-lg" target="_blank"><i class="fa fa-eye" aria-hidden="true"></i> 在线预览<div class="ripple-container"></div></a>{{/office_url_html}}
+<a href="{{{downurl_html}}}" class="btn btn-raised btn-primary btn-lg"><i class="fa fa-download" aria-hidden="true"></i> {{cfg.download_text}}<div class="ripple-container"></div></a>{{#text_viewable}}&nbsp;<a href="{{{texturl_html}}}" class="btn btn-raised btn-info btn-lg" target="_blank"><i class="fa fa-eye" aria-hidden="true"></i> {{cfg.view_text}}<div class="ripple-container"></div></a>{{/text_viewable}}{{#office_url_html}}&nbsp;<a href="{{{office_url_html}}}" class="btn btn-raised btn-info btn-lg" target="_blank"><i class="fa fa-eye" aria-hidden="true"></i> {{cfg.office_text}}<div class="ripple-container"></div></a>{{/office_url_html}}
 </div>
 </div>{{/is_other}}
 </div>

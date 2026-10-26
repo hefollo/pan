@@ -6,6 +6,10 @@ return [
 	'group' => '个人中心',
 	'scope' => 'front',
 	'pages' => ['user'],
+	'schema' => [
+		['key'=>'title', 'type'=>'text', 'label'=>'标题', 'default'=>'创建上传 API 密钥'],
+		['key'=>'btn', 'type'=>'text', 'label'=>'创建按钮', 'default'=>'创建密钥'],
+	],
 	'data' => function($cfg, &$ctx){
 		$def = api_key_default_expire_days();
 		$options = [];

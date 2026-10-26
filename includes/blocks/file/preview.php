@@ -9,6 +9,14 @@ return [
 	'group' => '文件页',
 	'scope' => 'front',
 	'pages' => ['file'],
+	'description' => '图片、音视频直接预览，其它文件显示下载按钮；预览方式不能改，这里改文字',
+	'schema' => [
+		['key'=>'download_text', 'type'=>'text', 'label'=>'下载按钮', 'default'=>'下载文件'],
+		['key'=>'view_text', 'type'=>'text', 'label'=>'查看内容按钮（文本类）', 'default'=>'查看内容'],
+		['key'=>'office_text', 'type'=>'text', 'label'=>'在线预览按钮（Office 类）', 'default'=>'在线预览'],
+		['key'=>'review_text', 'type'=>'text', 'label'=>'视频待审核时', 'default'=>'视频文件需审核通过后才能在线播放和下载，请等待审核通过。'],
+		['key'=>'blocked_text', 'type'=>'text', 'label'=>'视频被屏蔽时', 'default'=>'该视频已被屏蔽，无法在线播放或下载。'],
+	],
 	'data' => function($cfg, &$ctx){
 		$d = $ctx['data'];
 		$row = $d['row'];
@@ -37,7 +45,7 @@ return [
 			'is_video' => $video_ok,
 			'is_video_blocked' => $ft == 3 && !$video_ok,
 			'is_other' => !in_array($ft, [1, 2, 3]),
-			'blocked_text' => $row['block'] == 2 ? '视频文件需审核通过后才能在线播放和下载，请等待审核通过。' : '该视频已被屏蔽，无法在线播放或下载。',
+			'blocked_text' => $row['block'] == 2 ? $cfg['review_text'] : $cfg['blocked_text'],
 			'icon' => type_to_icon($d['type']),
 			'name_html' => $d['name'],
 			'size' => size_format($row['size']),

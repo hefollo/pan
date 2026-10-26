@@ -8,6 +8,7 @@ return [
 	'group' => '外壳',
 	'scope' => 'front',
 	'pages' => ['_shell'],
+	'description' => '加载广告位脚本（includes/ads.php），没有可见内容',
 	'data' => function($cfg, &$ctx){
 		return ['version' => VERSION];
 	},

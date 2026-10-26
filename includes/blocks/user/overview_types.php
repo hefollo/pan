@@ -6,6 +6,9 @@ return [
 	'group' => '个人中心',
 	'scope' => 'front',
 	'pages' => ['user'],
+	'schema' => [
+		['key'=>'title', 'type'=>'text', 'label'=>'标题', 'default'=>'文件类型分布'],
+	],
 	'data' => function($cfg, &$ctx){
 		global $DB, $uid;
 		$stat = theme_memo('uc.stat', function() use ($DB, $uid){

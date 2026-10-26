@@ -9,6 +9,9 @@ return [
 	'group' => '个人中心',
 	'scope' => 'front',
 	'pages' => ['user'],
+	'schema' => [
+		['key'=>'title', 'type'=>'text', 'label'=>'标题', 'default'=>'个人中心', 'help'=>'清空不显示'],
+	],
 	'data' => function($cfg, &$ctx){
 		global $userrow, $uid;
 		include_once SYSTEM_ROOT.'usercenter.php';

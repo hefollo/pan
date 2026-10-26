@@ -1,4 +1,6 @@
-        <h2>个人中心</h2>
+{{#cfg.title}}
+        <h2>{{cfg.title}}</h2>
+{{/cfg.title}}
         <div class="uc-head">
             <span class="uc-avatar uc-avatar-pick" id="ucAvatar" data-user-face role="button" tabindex="0" title="点击更换头像">{{{face_icon_html}}}{{{avatar_img_html}}}<span class="uc-avatar-edit" aria-hidden="true"><i class="fa fa-camera"></i></span></span>
             <input type="file" id="ucAvatarFile" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none">

@@ -10,6 +10,7 @@ return [
 	'name' => '后台导航',
 	'group' => '后台外壳',
 	'scope' => 'admin',
+	'description' => '后台菜单是固定的，只能用通用选项调样式',
 	'pages' => ['admin/_shell'],
 	'data' => function($cfg, &$ctx){
 		global $conf, $islogin;

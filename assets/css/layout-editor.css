@@ -53,3 +53,34 @@
 .layout-editor .le-code-box .CodeMirror-scroll{min-height:120px}
 .layout-editor .le-code{font-family:Consolas,Menlo,monospace;font-size:12px}
 @media (min-width:1200px){.layout-editor.le-wide .le-side{width:60%}.layout-editor.le-wide .le-main{width:40%}}
+/* 通用选项（DEC-20261026-002） */
+.layout-editor .le-badge{display:inline-block;margin-left:4px;padding:0 5px;border-radius:3px;font-size:11px;line-height:16px;background:rgba(245,158,11,.16);color:#b45309;white-space:nowrap}
+.layout-editor .le-opts{margin-top:10px;border-top:1px dashed rgba(127,127,127,.35);padding-top:8px}
+.layout-editor .le-opts-head{display:block;font-weight:bold;color:inherit;text-decoration:none}
+.layout-editor .le-opts-head:before{content:"\f105";font-family:FontAwesome;display:inline-block;width:12px;transition:transform .15s}
+.layout-editor .le-opts-open .le-opts-head:before{transform:rotate(90deg)}
+.layout-editor .le-opts-body{display:none;margin-top:6px}
+.layout-editor .le-opts-open .le-opts-body{display:block}
+.layout-editor .le-opts .form-group{margin-bottom:8px}
+.layout-editor .le-opts-reset{font-size:12px}
+.layout-editor .le-color{display:flex;gap:6px;align-items:center}
+.layout-editor .le-color select{flex:1 1 auto}
+.layout-editor .le-color-pick{width:34px;height:30px;padding:0;border:1px solid rgba(127,127,127,.35);border-radius:4px;background:none;flex:0 0 auto}
+.layout-editor .le-color-hex{width:92px;flex:0 0 auto}
+/* 通用选项分页签、两列排；预览停在视口里（用户反馈界面太长，handoff 149） */
+.layout-editor .le-opts-tabs{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0 8px;border-bottom:1px solid rgba(127,127,127,.25)}
+.layout-editor .le-opts-tab{padding:4px 10px;margin-bottom:-1px;border:1px solid transparent;border-radius:4px 4px 0 0;color:inherit;opacity:.7;text-decoration:none;font-size:12px}
+.layout-editor .le-opts-tab:hover{opacity:1;text-decoration:none}
+.layout-editor .le-opts-tab.active{opacity:1;font-weight:bold;border-color:rgba(127,127,127,.25);border-bottom-color:transparent;background:rgba(127,127,127,.06)}
+.layout-editor .le-opts-tab-n{display:inline-block;min-width:16px;margin-left:4px;padding:0 4px;border-radius:8px;background:rgba(245,158,11,.2);color:#b45309;font-size:11px;line-height:16px;text-align:center}
+.layout-editor .le-opts-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 10px}
+.layout-editor .le-opts-grid .form-group{margin-bottom:6px;min-width:0}
+.layout-editor .le-opts-grid .form-group label{font-size:12px;margin-bottom:2px}
+.layout-editor .le-opts-grid .le-opts-full{grid-column:1 / -1}
+.layout-editor .le-opts-help{margin-left:4px;opacity:.55;cursor:help;font-weight:normal}
+.layout-editor .le-opts-grid .le-switch{margin-top:20px}
+@media (min-width:1200px){
+	.panel.layout-editor{overflow:visible!important}
+	.layout-editor .le-main{position:-webkit-sticky;position:sticky;top:var(--le-sticky-top,12px)}
+	.layout-editor .le-preview iframe{height:calc(100vh - var(--le-sticky-top,12px) - 56px);min-height:420px}
+}

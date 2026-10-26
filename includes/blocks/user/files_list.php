@@ -10,6 +10,7 @@ return [
 	'group' => '个人中心',
 	'scope' => 'front',
 	'pages' => ['user'],
+	'description' => '文件列表和批量操作（列表行为不能改）；页面靠它工作',
 	'data' => function($cfg, &$ctx){
 		global $DB;
 		include_once SYSTEM_ROOT.'usercenter.php';

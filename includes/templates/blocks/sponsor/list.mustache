@@ -10,10 +10,10 @@
                 </tr>
             </thead>
             <tbody>
-{{#rows}}<tr><td><b>{{n}}</b></td><td>{{name}}</td><td><span class="file-type-badge">{{platform}}</span></td><td>{{amount}}</td><td>{{time}}</td></tr>{{/rows}}{{^rows}}<tr><td colspan="5" align="center">暂无赞助记录，成为第一个赞助者吧！</td></tr>{{/rows}}
+{{#rows}}<tr><td><b>{{n}}</b></td><td>{{name}}</td><td><span class="file-type-badge">{{platform}}</span></td><td>{{amount}}</td><td>{{time}}</td></tr>{{/rows}}{{^rows}}<tr><td colspan="5" align="center">{{cfg.empty}}</td></tr>{{/rows}}
             </tbody>
         </table>
         </div>
         <div class="filelist-footer">
-            <div class="filelist-summary">共 {{count}} 条赞助记录</div>
+            <div class="filelist-summary">{{{summary_html}}}</div>
         </div>

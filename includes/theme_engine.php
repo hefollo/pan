@@ -607,7 +607,13 @@ function block_render_node($node, array &$ctx){
 	$def = block_get($node['block'], $ctx['theme_id']);
 	if(!$def || ($def['scope'] !== 'both' && $def['scope'] !== $ctx['scope']))return '';
 	if($def['pages'] !== ['*'] && !in_array($ctx['page'], $def['pages'], true))return '';
+	//通用选项里的显示条件（给谁看、什么时间段）：不满足就不输出；编辑器预览里照样画出来，标上虚线
+	$opts = isset($node['opts']) && is_array($node['opts']) ? $node['opts'] : [];
+	$cond = $opts ? layout_opts_hidden_reason($opts, $ctx) : '';
+	if($cond !== '' && empty($ctx['preview']))return '';
 	$cfg = block_config($def, isset($node['config']) ? $node['config'] : []);
+	$nid = isset($node['id']) && preg_match('/^[A-Za-z0-9_\-]{1,40}$/', (string)$node['id']) ? (string)$node['id'] : '';
+	if(!empty($ctx['preview']) && $nid !== '')$cfg = layout_inline_edit_mark($cfg, $def, $nid);
 	//先问卡片自己这次要不要输出，不输出的容器连子卡片都不渲染：
 	//子卡片的 data 回调可能有副作用（登记页脚后的脚本），比如个人中心没打开的页签
 	$data = [];
@@ -646,8 +652,9 @@ function block_render_node($node, array &$ctx){
 		return '';
 	}
 	$html = theme_tpl_render($def['template'], $data, $ctx['theme_id']);
+	if(!empty($ctx['preview']))$html = layout_inline_edit_spans($html);
+	if($opts)$html = layout_opts_wrap($html, $opts, $cond);
 	if(!empty($ctx['preview'])){
-		$nid = isset($node['id']) && preg_match('/^[A-Za-z0-9_\-]{1,40}$/', (string)$node['id']) ? $node['id'] : '';
 		$html = '<!--pan-block:'.$nid.':'.$def['id'].'-->'.$html.'<!--/pan-block:'.$nid.'-->';
 	}
 	return $html;
@@ -657,6 +664,173 @@ function block_render_nodes(array $nodes, array &$ctx){
 	$html = '';
 	foreach($nodes as $node)$html .= block_render_node($node, $ctx);
 	return $html;
+}
+
+/* ============ 预览里点文字直接改（DEC-20261026-002） ============ */
+
+/*
+ * 只在编辑器预览里：卡片的单行文字配置项（text 类型）前后加不可见的定位符 U+2063 节点:键 U+2062 … U+2064，
+ * 渲染完由 layout_inline_edit_spans() 把落在正文里的换成 <span data-pan-edit="节点:键">，
+ * layout-preview.js 让它们可以点了直接改，改完把新文字发回编辑器。
+ * 链接、图标、类名、提示占位这类不是给人看的字段不加；含 {占位} 的不加（显示出来的是替换后的样子，改了会丢占位）；空值不加。
+ */
+function layout_inline_edit_mark(array $cfg, array $def, $nid){
+	foreach($def['schema'] as $f){
+		if($f['type'] !== 'text' || preg_match('/link|href|url|placeholder|icon|cls|class|style|dom_id/', $f['key']))continue;
+		$v = isset($cfg[$f['key']]) ? $cfg[$f['key']] : '';
+		if(!is_string($v) || $v === '' || strpos($v, '{') !== false || preg_match('/[\x{2062}-\x{2064}]/u', $v))continue;
+		$cfg[$f['key']] = "\u{2063}".$nid.':'.$f['key']."\u{2062}".$v."\u{2064}";
+	}
+	return $cfg;
+}
+
+/* 定位符换成可编辑的 span；落在标签属性里、或 option/textarea/title/script/style 里的只去掉定位符 */
+function layout_inline_edit_spans($html){
+	if(strpos($html, "\u{2063}") === false)return $html;
+	return preg_replace_callback('/\x{2063}([A-Za-z0-9_\-]{1,40}):([a-z0-9_]{1,31})\x{2062}(.*?)\x{2064}/su', function($m) use ($html){
+		$text = $m[3][0];
+		$before = substr($html, 0, $m[0][1]);
+		$lt = strrpos($before, '<');
+		$gt = strrpos($before, '>');
+		if($lt !== false && ($gt === false || $lt > $gt))return $text;
+		if(preg_match_all('#<(/?)(option|textarea|title|script|style)\b#i', $before, $mm) && $mm[1][count($mm[1]) - 1] === '')return $text;
+		return '<span class="pan-edit" data-pan-edit="'.$m[1][0].':'.$m[2][0].'">'.$text.'</span>';
+	}, $html, -1, $count, PREG_OFFSET_CAPTURE);
+}
+
+/* ============ 卡片通用选项（DEC-20261026-002） ============ */
+
+/*
+ * 每张卡片（包括后台面板）都有的一组选项，存在布局节点的 opts 里，和卡片自己的 config 分开。
+ * 显示条件（who / from / to）在服务端判断，不满足就整张不输出；
+ * 其余是排版和外观，设了任何一项才在卡片外面包一层 <div class="pan-blk">，一项都没设时输出和原来逐字一样。
+ * 颜色除了 #rrggbb 还可以选外观自己的颜色（primary 主色、surface 面板色……），换外观跟着变。
+ */
+function layout_opts_schema(){
+	$px = function($list){ $o = [''=>'默认']; foreach($list as $v)$o[(string)$v] = $v.' px'; return $o; };
+	return [
+		['key'=>'who', 'type'=>'select', 'group'=>'显示条件', 'label'=>'给谁看', 'default'=>'', 'front'=>1, 'options'=>[''=>'所有人', 'login'=>'仅登录用户', 'guest'=>'仅游客（未登录）', 'member'=>'仅付费会员', 'nonmember'=>'非付费会员（含游客）']],
+		['key'=>'device', 'type'=>'select', 'group'=>'显示条件', 'label'=>'在哪显示', 'default'=>'', 'options'=>[''=>'电脑和手机', 'pc'=>'只在电脑上（宽度 ≥ 768px）', 'mobile'=>'只在手机上（宽度 < 768px）'], 'help'=>'编辑器右边的预览框比较窄时算手机；看电脑效果点预览上方的「新窗口打开」'],
+		['key'=>'from', 'type'=>'datetime', 'group'=>'显示条件', 'label'=>'从这个时间开始显示', 'default'=>'', 'help'=>'留空不限，按网站时间'],
+		['key'=>'to', 'type'=>'datetime', 'group'=>'显示条件', 'label'=>'到这个时间停止显示', 'default'=>''],
+		['key'=>'mt', 'type'=>'select', 'group'=>'间距与宽度', 'label'=>'上边距', 'default'=>'', 'options'=>$px([0, 8, 16, 24, 40, 64])],
+		['key'=>'mb', 'type'=>'select', 'group'=>'间距与宽度', 'label'=>'下边距', 'default'=>'', 'options'=>$px([0, 8, 16, 24, 40, 64])],
+		['key'=>'pad', 'type'=>'select', 'group'=>'间距与宽度', 'label'=>'内边距', 'default'=>'', 'options'=>$px([8, 16, 24, 40])],
+		['key'=>'maxw', 'type'=>'number', 'group'=>'间距与宽度', 'label'=>'最大宽度', 'default'=>0, 'min'=>0, 'max'=>4000, 'unit'=>'px', 'help'=>'0 不限'],
+		['key'=>'center', 'type'=>'switch', 'group'=>'间距与宽度', 'label'=>'限宽后居中', 'default'=>0],
+		['key'=>'align', 'type'=>'select', 'group'=>'外观', 'label'=>'文字对齐', 'default'=>'', 'options'=>[''=>'默认', 'left'=>'靠左', 'center'=>'居中', 'right'=>'靠右']],
+		['key'=>'bg', 'type'=>'color', 'group'=>'外观', 'label'=>'背景色', 'default'=>'', 'presets'=>[''=>'不设', 'surface'=>'外观的面板色', 'primary'=>'外观的主色', 'soft'=>'淡灰', 'transparent'=>'透明']],
+		['key'=>'color', 'type'=>'color', 'group'=>'外观', 'label'=>'文字颜色', 'default'=>'', 'presets'=>[''=>'不设', 'primary'=>'外观的主色', 'white'=>'白色', 'muted'=>'浅一些']],
+		['key'=>'radius', 'type'=>'select', 'group'=>'外观', 'label'=>'圆角', 'default'=>'', 'options'=>$px([0, 4, 8, 12, 20])],
+		['key'=>'shadow', 'type'=>'select', 'group'=>'外观', 'label'=>'阴影', 'default'=>'', 'options'=>[''=>'无', 'sm'=>'浅', 'md'=>'中', 'lg'=>'深']],
+		['key'=>'border', 'type'=>'select', 'group'=>'外观', 'label'=>'边框', 'default'=>'', 'options'=>[''=>'无', 'line'=>'细线', 'primary'=>'主色线']],
+		['key'=>'cls', 'type'=>'text', 'group'=>'高级', 'label'=>'CSS 类名', 'default'=>'', 'help'=>'加在外层 div 上，多个用空格隔开'],
+		['key'=>'css', 'type'=>'text', 'group'=>'高级', 'label'=>'行内样式', 'default'=>'', 'help'=>'如 font-size:18px;，不能有引号、尖括号、url()'],
+	];
+}
+
+/* 整理一个节点的 opts：只留认识的键和合法的值，和默认值一样的不存 */
+function layout_opts_clean($raw){
+	$out = [];
+	if(!is_array($raw))return $out;
+	foreach(layout_opts_schema() as $f){
+		$k = $f['key'];
+		if(!isset($raw[$k]) || !is_scalar($raw[$k]))continue;
+		$v = trim((string)$raw[$k]);
+		switch($f['type']){
+			case 'select':
+				if(!array_key_exists($v, $f['options']))$v = '';
+				break;
+			case 'switch':
+				$v = ($v !== '' && $v !== '0') ? 1 : 0;
+				break;
+			case 'number':
+				$v = is_numeric($v) ? max($f['min'], min($f['max'], intval($v))) : 0;
+				break;
+			case 'datetime':
+				$v = str_replace('T', ' ', $v);
+				if(!preg_match('/^\d{4}-\d{2}-\d{2}( \d{2}:\d{2})?$/', $v))$v = '';
+				break;
+			case 'color':
+				if(!array_key_exists($v, $f['presets']) && !preg_match('/^#[0-9a-fA-F]{6}$/', $v))$v = '';
+				$v = strtolower($v);
+				break;
+			default:
+				if($k === 'cls')$v = trim(preg_replace('/\s+/', ' ', preg_replace('/[^A-Za-z0-9_\- ]+/', '', $v)));
+				//行内样式带了能跳出属性或注入的东西就整条不要（同容器卡片）
+				if($k === 'css')$v = preg_match('/url\s*\(|expression|javascript|[<>"\'\\\\]/i', $v) ? '' : $v;
+				$v = mb_substr($v, 0, 300, 'UTF-8');
+		}
+		if($v !== '' && $v !== 0 && $v !== $f['default'])$out[$k] = $v;
+	}
+	return $out;
+}
+
+/* 显示条件不满足的原因（给编辑器预览标注用）；满足返回空串 */
+function layout_opts_hidden_reason(array $o, array $ctx){
+	global $islogin2;
+	if(!empty($o['who']) && $ctx['scope'] === 'front'){
+		$login = !empty($islogin2);
+		$member = false;
+		if($login && function_exists('current_level')){
+			$lv = current_level();
+			//付费等级（站长自建的）和管理员等级都算会员
+			$member = in_array(intval($lv['type']), [0, 3], true);
+		}
+		$labels = ['login'=>'仅登录用户可见', 'guest'=>'仅游客可见', 'member'=>'仅付费会员可见', 'nonmember'=>'仅非付费会员可见'];
+		$ok = ['login'=>$login, 'guest'=>!$login, 'member'=>$member, 'nonmember'=>!$member];
+		if(isset($ok[$o['who']]) && !$ok[$o['who']])return $labels[$o['who']];
+	}
+	$now = date('Y-m-d H:i');
+	if(!empty($o['from']) && $now < (strlen($o['from']) === 10 ? $o['from'].' 00:00' : $o['from']))return $o['from'].' 起显示';
+	if(!empty($o['to']) && $now >= (strlen($o['to']) === 10 ? $o['to'].' 23:59' : $o['to']))return '已于 '.$o['to'].' 停止显示';
+	return '';
+}
+
+/*
+ * 引擎自己要的一小段样式（通用选项的电脑/手机显示、分栏）：同一段一个页面只输出一次，第一次用到时随卡片输出。
+ * 不写进外观样式表，是因为后台、无外壳的代码页不加载前台样式表，也免得没用到的页面多出样式。
+ */
+function layout_inline_css_once($key, $css){
+	if(!empty($GLOBALS['_pan_inline_css'][$key]))return '';
+	$GLOBALS['_pan_inline_css'][$key] = 1;
+	return '<style>'.$css.'</style>';
+}
+
+/* 通用选项里的颜色换成 CSS 值 */
+function layout_opts_color($v, $what){
+	$map = $what === 'bg'
+		? ['surface'=>'var(--surface,rgba(127,127,127,.06))', 'primary'=>'var(--primary,var(--admin-primary,#2563eb))', 'soft'=>'rgba(127,127,127,.08)', 'transparent'=>'transparent']
+		: ['primary'=>'var(--primary,var(--admin-primary,#2563eb))', 'white'=>'#fff', 'muted'=>'var(--muted,rgba(127,127,127,.95))'];
+	return isset($map[$v]) ? $map[$v] : (preg_match('/^#[0-9a-f]{6}$/', $v) ? $v : '');
+}
+
+/* 按通用选项给卡片包一层；只有显示条件的不包。$cond 非空是预览里本来看不到的卡片，加虚线和说明 */
+function layout_opts_wrap($html, array $o, $cond = ''){
+	$style = '';
+	if(isset($o['mt']))$style .= 'margin-top:'.intval($o['mt']).'px;';
+	if(isset($o['mb']))$style .= 'margin-bottom:'.intval($o['mb']).'px;';
+	if(isset($o['pad']))$style .= 'padding:'.intval($o['pad']).'px;';
+	if(!empty($o['maxw']))$style .= 'max-width:'.intval($o['maxw']).'px;';
+	if(!empty($o['center']))$style .= 'margin-left:auto;margin-right:auto;';
+	if(!empty($o['align']))$style .= 'text-align:'.$o['align'].';';
+	if(!empty($o['bg']) && ($c = layout_opts_color($o['bg'], 'bg')) !== '')$style .= 'background:'.$c.';';
+	if(!empty($o['color']) && ($c = layout_opts_color($o['color'], 'color')) !== '')$style .= 'color:'.$c.';';
+	if(isset($o['radius']))$style .= 'border-radius:'.intval($o['radius']).'px;';
+	$shadows = ['sm'=>'0 1px 3px rgba(0,0,0,.08)', 'md'=>'0 4px 14px rgba(0,0,0,.10)', 'lg'=>'0 12px 32px rgba(0,0,0,.14)'];
+	if(!empty($o['shadow']) && isset($shadows[$o['shadow']]))$style .= 'box-shadow:'.$shadows[$o['shadow']].';';
+	if(!empty($o['border']))$style .= 'border:1px solid '.($o['border'] === 'primary' ? 'var(--primary,var(--admin-primary,#2563eb))' : 'var(--line,rgba(127,127,127,.25))').';';
+	if(!empty($o['css']))$style .= $o['css'];
+	$cls = '';
+	if(!empty($o['device']))$cls .= $o['device'] === 'pc' ? ' pan-only-pc' : ' pan-only-m';
+	if(!empty($o['cls']))$cls .= ' '.$o['cls'];
+	if($cond !== ''){
+		$html = '<div class="pan-preview-cond" style="outline:2px dashed rgba(245,158,11,.75);outline-offset:2px;opacity:.6;position:relative"><span style="position:absolute;right:0;top:-1.5em;font:12px/1.4 sans-serif;color:#b45309;background:#fffbeb;padding:0 6px;border-radius:3px;z-index:5">'.htmlspecialchars($cond, ENT_QUOTES, 'UTF-8').'</span>'.$html.'</div>';
+	}
+	if($style === '' && $cls === '')return $html;
+	//只在电脑 / 只在手机靠一小段样式
+	$pre = empty($o['device']) ? '' : layout_inline_css_once('device', '@media (max-width:767px){.pan-only-pc{display:none!important}}@media (min-width:768px){.pan-only-m{display:none!important}}');
+	return $pre.'<div class="pan-blk'.htmlspecialchars($cls, ENT_QUOTES, 'UTF-8').'"'.($style !== '' ? ' style="'.htmlspecialchars($style, ENT_QUOTES, 'UTF-8').'"' : '').'>'.$html.'</div>';
 }
 
 /* ============ 布局 ============ */
@@ -683,6 +857,7 @@ function layout_normalize($nodes, $depth = 0, &$count = 0){
 			'config' => (isset($n['config']) && is_array($n['config'])) ? $n['config'] : [],
 		];
 		if(!empty($n['hidden']))$item['hidden'] = 1;
+		if(isset($n['opts']) && is_array($n['opts']) && ($o = layout_opts_clean($n['opts'])))$item['opts'] = $o;
 		if(isset($n['children']) && is_array($n['children']))$item['children'] = layout_normalize($n['children'], $depth + 1, $count);
 		$out[] = $item;
 	}
@@ -856,6 +1031,21 @@ function theme_deferred_html(){
 	});
 	$html = '';
 	foreach($list as $item)$html .= $item[2];
+	return $html;
+}
+
+/*
+ * 卡片上站长可改的一段文字（DEC-20261026-002）：先转义，再把 {名字} 换成给定的值（值是已经安全的 HTML，比如数字、带链接的网站名）。
+ * 默认文字和原来模板里写死的一样，所以没改过时输出逐字不变。$br 为 true 时换行变成 <br>。
+ */
+function theme_text_html($text, array $vars = [], $br = false){
+	$html = htmlspecialchars((string)$text, ENT_QUOTES, 'UTF-8');
+	if($br)$html = implode('<br>', preg_split('/\r\n|\r|\n/', $html));
+	if($vars){
+		$map = [];
+		foreach($vars as $k => $v)$map['{'.$k.'}'] = (string)$v;
+		$html = strtr($html, $map);
+	}
 	return $html;
 }
 

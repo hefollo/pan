@@ -9,6 +9,12 @@ return [
 	'group' => '文件夹分享',
 	'scope' => 'front',
 	'pages' => ['share'],
+	'schema' => [
+		['key'=>'tab_folder', 'type'=>'text', 'label'=>'按目录浏览', 'default'=>'按目录浏览'],
+		['key'=>'tab_all', 'type'=>'text', 'label'=>'全部文件', 'default'=>'全部文件'],
+		['key'=>'empty_folder', 'type'=>'text', 'label'=>'文件夹为空时', 'default'=>'文件夹暂时为空'],
+		['key'=>'empty_filtered', 'type'=>'text', 'label'=>'搜不到时', 'default'=>'未找到符合条件的文件'],
+	],
 	'data' => function($cfg, &$ctx){
 		$d = $ctx['data'];
 		if($d['view'] !== 'list' || !$d['listing'])return null;

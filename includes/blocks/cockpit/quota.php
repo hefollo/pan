@@ -8,6 +8,11 @@ return [
 	'name' => '额度卡',
 	'group' => '仪表盘',
 	'scope' => 'front',
+	'schema' => [
+		['key'=>'label', 'type'=>'text', 'label'=>'左上角文字', 'default'=>'已用存储'],
+		['key'=>'sub', 'type'=>'text', 'label'=>'数字下面一行', 'default'=>'共 {total} 个文件 · 今日新增 {today} 个', 'help'=>'{total} 文件数，{today} 今日新增；清空不显示'],
+		['key'=>'ring_label', 'type'=>'text', 'label'=>'圆环下的文字', 'default'=>'今日额度'],
+	],
 	'data' => function($cfg, &$ctx){
 		global $DB, $islogin2, $userrow;
 		$limit = function_exists('get_effective_upload_count_limit') ? get_effective_upload_count_limit() : 0;
@@ -39,7 +44,7 @@ return [
 			'used_num' => isset($parts[0]) ? $parts[0] : '0',
 			'used_unit' => isset($parts[1]) ? $parts[1] : 'B',
 			'total' => number_format($counts['']),
-			'today_site' => number_format(layout_ctx_today_total($ctx)),
+			'sub_html' => theme_text_html($cfg['sub'], ['total'=>number_format($counts['']), 'today'=>number_format(layout_ctx_today_total($ctx))]),
 			'pills' => $pills,
 			//圆环半径 54，周长 2πr ≈ 339.3，按百分比截出实线段
 			'dash' => round(339.3 * $percent / 100, 1),

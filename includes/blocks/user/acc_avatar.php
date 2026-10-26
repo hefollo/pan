@@ -6,6 +6,11 @@ return [
 	'group' => '个人中心',
 	'scope' => 'front',
 	'pages' => ['user'],
+	'schema' => [
+		['key'=>'title', 'type'=>'text', 'label'=>'标题', 'default'=>'头像'],
+		['key'=>'btn', 'type'=>'text', 'label'=>'上传按钮', 'default'=>'上传头像'],
+		['key'=>'tip', 'type'=>'text', 'label'=>'说明', 'default'=>'支持 JPG、PNG、GIF、WebP。选好图片后可以拖动、缩放，选取要显示的部分。', 'help'=>'清空不显示'],
+	],
 	'data' => function($cfg, &$ctx){
 		global $userrow;
 		include_once SYSTEM_ROOT.'usercenter.php';

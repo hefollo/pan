@@ -1,7 +1,7 @@
 {{#groups}}
         <div class="buy-group">
 {{^only_one}}
-            <div class="buy-group-title"><span>{{name}}</span><i>{{count}} 个套餐</i></div>
+            <div class="buy-group-title"><span>{{name}}</span>{{#count_html}}<i>{{{count_html}}}</i>{{/count_html}}</div>
 {{/only_one}}
         <div class="buy-plans">
 {{#plans}}
@@ -22,7 +22,7 @@
 {{/can_buy}}
 {{/logged_in}}
 {{^logged_in}}
-                <a class="buy-plan-btn" href="./login.php">登录后购买</a>
+                <a class="buy-plan-btn" href="./login.php">{{login_text}}</a>
 {{/logged_in}}
             </div>
 {{/plans}}

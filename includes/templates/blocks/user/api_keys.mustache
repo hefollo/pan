@@ -1,5 +1,5 @@
         <div class="uc-section">
-            <div class="uc-section-title"><span>已有密钥</span></div>
+            <div class="uc-section-title"><span>{{cfg.title}}</span></div>
             <div class="table-responsive">
             <table class="table table-hover uc-api-key-list">
                 <thead><tr><th>名称</th><th>密钥前缀</th><th>状态</th><th>IP 白名单</th><th>到期时间</th><th>最近使用</th><th>操作</th></tr></thead>
@@ -15,7 +15,7 @@
                         <td><div class="uc-acts"><button type="button" class="uc-act" data-api-key-toggle title="{{#enabled}}停用{{/enabled}}{{^enabled}}启用{{/enabled}}"><i class="fa fa-{{#enabled}}pause{{/enabled}}{{^enabled}}play{{/enabled}}" aria-hidden="true"></i></button><button type="button" class="uc-act uc-act-danger" data-api-key-delete title="删除"><i class="fa fa-trash" aria-hidden="true"></i></button></div></td>
                     </tr>
 {{/keys}}
-{{^keys}}<tr><td colspan="7" class="uc-empty">还没有创建 API 密钥</td></tr>{{/keys}}                </tbody>
+{{^keys}}<tr><td colspan="7" class="uc-empty">{{cfg.empty}}</td></tr>{{/keys}}                </tbody>
             </table>
             </div>
             <p class="uc-tip">外部程序调用上传接口时，在请求头中发送 <code>Authorization: Bearer 你的密钥</code>，并通过名为 <code>file</code> 的表单字段提交文件。上传会使用当前账号的文件大小和每日数量额度。</p>

@@ -10,6 +10,15 @@ return [
 	'group' => '文件页',
 	'scope' => 'front',
 	'pages' => ['file'],
+	'description' => '「管理」页签只有上传者自己看得到',
+	'schema' => [
+		['key'=>'tab_link', 'type'=>'text', 'label'=>'外链页签', 'default'=>'文件外链'],
+		['key'=>'show_code', 'type'=>'switch', 'label'=>'显示「代码调用」页签', 'default'=>1],
+		['key'=>'tab_code', 'type'=>'text', 'label'=>'代码调用页签', 'default'=>'代码调用'],
+		['key'=>'show_info', 'type'=>'switch', 'label'=>'显示「文件详情」页签', 'default'=>1],
+		['key'=>'tab_info', 'type'=>'text', 'label'=>'文件详情页签', 'default'=>'文件详情'],
+		['key'=>'tab_manage', 'type'=>'text', 'label'=>'管理页签', 'default'=>'管理'],
+	],
 	'data' => function($cfg, &$ctx){
 		$d = $ctx['data'];
 		$row = $d['row'];

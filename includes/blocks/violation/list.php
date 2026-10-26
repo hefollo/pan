@@ -8,6 +8,9 @@ return [
 	'name' => '违规公示列表',
 	'group' => '赞助与公示',
 	'scope' => 'front',
+	'schema' => [
+		['key'=>'empty', 'type'=>'text', 'label'=>'没有记录时', 'default'=>'暂无违规封禁记录'],
+	],
 	'data' => function($cfg, &$ctx){
 		global $DB;
 		$sql = " is_show=1";

@@ -2,30 +2,36 @@
 <div class="portal-hero" id="app">
   <div class="portal-hero-inner">
     <div class="portal-hero-copy">
-      <span class="portal-kicker">快速 · 安全 · 长期可用</span>
-      <h1>把文件放上来，<br>链接带去任何地方。</h1>
-      <p>上传图片、视频、文档或压缩包，即刻生成可分享的外链。无需安装客户端，打开浏览器就能用。</p>
+<%#kicker_html%>
+      <span class="portal-kicker"><%& kicker_html%></span>
+<%/kicker_html%>
+      <h1><%& title_html%></h1>
+<%#desc_html%>
+      <p><%& desc_html%></p>
+<%/desc_html%>
+<%#has_trust%>
       <div class="portal-trust">
-        <span><i class="fa fa-check" aria-hidden="true"></i> 支持批量上传</span>
-        <span><i class="fa fa-check" aria-hidden="true"></i> 自动生成外链</span>
-        <span><i class="fa fa-check" aria-hidden="true"></i> 多种存储可选</span>
+<%#trust%>
+        <span><i class="fa fa-check" aria-hidden="true"></i> <%& text_html%></span>
+<%/trust%>
       </div>
+<%/has_trust%>
     </div>
     <div class="portal-drop-wrap">
 <%#forbid%>
       <a class="portal-drop" href="./login.php">
         <span class="portal-drop-icon"><i class="fa fa-cloud-upload" aria-hidden="true"></i></span>
-        <strong>登录后即可上传</strong>
-        <small>本站要求登录后才能上传文件</small>
-        <span class="portal-drop-btn"><i class="fa fa-sign-in" aria-hidden="true"></i> 去登录</span>
+        <strong><%& login_title_html%></strong>
+        <small><%& login_sub_html%></small>
+        <span class="portal-drop-btn"><i class="fa fa-sign-in" aria-hidden="true"></i> <%& login_btn_html%></span>
       </a>
 <%/forbid%>
 <%^forbid%>
       <a class="portal-drop" id="fileInput" href="./upload.php" @click.prevent="clickUpload" :class="{'is-dragover':dragging, 'is-busy':isBlock}">
         <span class="portal-drop-icon"><i class="fa fa-cloud-upload" aria-hidden="true"></i></span>
         <strong v-text="dragging ? '释放鼠标立即上传' : '把文件拖到这里上传'">把文件拖到这里上传</strong>
-        <small><%size_text%>，也可以 Ctrl+V 粘贴</small>
-        <span class="portal-drop-btn"><i class="fa fa-upload" aria-hidden="true"></i> 选择本地文件</span>
+        <small><%& hint_html%></small>
+        <span class="portal-drop-btn"><i class="fa fa-upload" aria-hidden="true"></i> <%& pick_html%></span>
       </a>
 <%/forbid%>
       <div class="portal-upload-panel" v-cloak v-if="showtype>0 || batchQueue.length>0">
@@ -62,7 +68,9 @@
           </div>
         </div>
       </div>
+<%#cfg.tip%>
       <p class="portal-drop-tip">要设访问密码、选存储位置，或者查看完整上传说明，去 <a href="./upload.php">上传页</a>。</p>
+<%/cfg.tip%>
     </div>
   </div>
   <input type="hidden" id="csrf_token" value="<%csrf%>">

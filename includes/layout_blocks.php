@@ -387,6 +387,21 @@ function common_card_href($u){
 	return preg_match('#^(https?://[^\s"\'<>]+|(?![A-Za-z][A-Za-z0-9+.\-]*:)[^\s"\'<>]+)$#', $u) ? $u : '';
 }
 
+/*
+ * 站长自己写的链接列表（快捷入口、快捷操作卡片，DEC-20261026-002）：一行一个「文字|链接|图标」，
+ * 图标是 Font Awesome 4 的 fa-xxx，不写或写错用 fa-link；链接不合格的行跳过。返回 [{label, href, icon}]，没有合格的行返回空数组。
+ */
+function theme_link_lines($text){
+	$out = [];
+	foreach(theme_config_lines($text, 3) as $row){
+		list($label, $href, $icon) = $row;
+		$href = common_card_href($href);
+		if($label === '' || $href === '')continue;
+		$out[] = ['label'=>$label, 'href'=>$href, 'icon'=>preg_match('/^fa-[a-z0-9\-]{1,30}$/', $icon) ? $icon : 'fa-link'];
+	}
+	return $out;
+}
+
 /* 多行说明拆成段落数组 [{text}]，空行去掉 */
 function common_card_lines($text){
 	$out = [];

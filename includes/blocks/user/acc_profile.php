@@ -6,6 +6,9 @@ return [
 	'group' => '个人中心',
 	'scope' => 'front',
 	'pages' => ['user'],
+	'schema' => [
+		['key'=>'title', 'type'=>'text', 'label'=>'标题', 'default'=>'账号资料'],
+	],
 	'data' => function($cfg, &$ctx){
 		global $userrow;
 		return [

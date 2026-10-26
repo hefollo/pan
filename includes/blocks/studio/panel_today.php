@@ -5,6 +5,11 @@ return [
 	'name' => '今日上传面板',
 	'group' => '工作台',
 	'scope' => 'front',
+	'schema' => [
+		['key'=>'title', 'type'=>'text', 'label'=>'标题', 'default'=>'今日上传'],
+		['key'=>'summary', 'type'=>'text', 'label'=>'圆环右边第一行', 'default'=>'今日已上传 {today} 个文件', 'help'=>'{today} 今日上传数'],
+		['key'=>'quota_label', 'type'=>'text', 'label'=>'额度标签', 'default'=>'今日上传额度'],
+	],
 	'data' => function($cfg, &$ctx){
 		global $DB;
 		$limit = function_exists('get_effective_upload_count_limit') ? get_effective_upload_count_limit() : 0;
@@ -12,6 +17,7 @@ return [
 		$percent = $limit > 0 ? min(100, round($today / $limit * 100)) : 0;
 		return [
 			'today' => $today,
+			'summary_html' => theme_text_html($cfg['summary'], ['today'=>'<b>'.$today.'</b>']),
 			'percent' => $percent,
 			//圆环半径 42，周长 2πr ≈ 263.9
 			'dash' => round(263.9 * $percent / 100, 1),

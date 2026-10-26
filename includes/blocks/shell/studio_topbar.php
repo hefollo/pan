@@ -9,6 +9,11 @@ return [
 	'group' => '外壳',
 	'scope' => 'front',
 	'pages' => ['_shell'],
+	'schema' => [
+		['key'=>'placeholder', 'type'=>'text', 'label'=>'搜索框提示文字', 'default'=>'搜索文件名、格式、标签…'],
+		['key'=>'kbd', 'type'=>'switch', 'label'=>'显示快捷键提示 Ctrl K', 'default'=>1],
+		['key'=>'upload_text', 'type'=>'text', 'label'=>'上传按钮文字', 'default'=>'上传文件'],
+	],
 	'data' => function($cfg, &$ctx){
 		global $conf, $islogin2, $userrow;
 		$data = [

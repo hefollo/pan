@@ -9,6 +9,11 @@ return [
 	'group' => '侧栏',
 	'scope' => 'front',
 	'pages' => ['_shell'],
+	'schema' => [
+		['key'=>'title', 'type'=>'text', 'label'=>'标题', 'default'=>'今日上传'],
+		['key'=>'tip_limit', 'type'=>'text', 'label'=>'有限额时的提示', 'default'=>'今日还可上传 {n} 个文件', 'help'=>'{n} 是今天还能传几个'],
+		['key'=>'tip_free', 'type'=>'text', 'label'=>'不限额时的提示', 'default'=>'当前账号不限每日上传数量'],
+	],
 	'data' => function($cfg, &$ctx){
 		global $DB;
 		$limit = function_exists('get_effective_upload_count_limit') ? get_effective_upload_count_limit() : 0;
@@ -17,7 +22,7 @@ return [
 		return [
 			'count_text' => $limit > 0 ? $today.' / '.$limit : $today.' 个',
 			'percent' => intval($percent),
-			'tip' => $limit > 0 ? ('今日还可上传 '.max(0, $limit - $today).' 个文件') : '当前账号不限每日上传数量',
+			'tip_html' => $limit > 0 ? theme_text_html($cfg['tip_limit'], ['n'=>max(0, $limit - $today)]) : theme_text_html($cfg['tip_free']),
 		];
 	},
 ];

@@ -6,4 +6,5 @@ return [
 	'group' => '上传页',
 	'scope' => 'front',
 	'pages' => ['upload'],
+	'description' => '页面脚本加载完之前的动画，没有文字',
 ];

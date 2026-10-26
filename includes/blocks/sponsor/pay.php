@@ -8,12 +8,18 @@ return [
 	'name' => '赞助收款码',
 	'group' => '赞助与公示',
 	'scope' => 'front',
+	'description' => '收款码图片在后台「赞助设置」里换',
+	'schema' => [
+		['key'=>'label_wx', 'type'=>'text', 'label'=>'微信', 'default'=>'微信赞助'],
+		['key'=>'label_qq', 'type'=>'text', 'label'=>'QQ 钱包', 'default'=>'QQ钱包赞助'],
+		['key'=>'label_ali', 'type'=>'text', 'label'=>'支付宝', 'default'=>'支付宝赞助'],
+	],
 	'data' => function($cfg, &$ctx){
 		global $conf;
 		$methods = [
-			['key'=>'sponsor_img_weixin', 'default'=>'images/weixin.png',   'label'=>'微信赞助'],
-			['key'=>'sponsor_img_qq',     'default'=>'images/qq.png',       'label'=>'QQ钱包赞助'],
-			['key'=>'sponsor_img_alipay', 'default'=>'images/zhifubao.png', 'label'=>'支付宝赞助'],
+			['key'=>'sponsor_img_weixin', 'default'=>'images/weixin.png',   'label'=>$cfg['label_wx']],
+			['key'=>'sponsor_img_qq',     'default'=>'images/qq.png',       'label'=>$cfg['label_qq']],
+			['key'=>'sponsor_img_alipay', 'default'=>'images/zhifubao.png', 'label'=>$cfg['label_ali']],
 		];
 		$list = [];
 		foreach($methods as $m){

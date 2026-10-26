@@ -13,9 +13,18 @@ return [
 	'scope' => 'front',
 	'pages' => ['upload'],
 	'container' => true,
+	'description' => '上传区本体（选择文件、存储位置、密码）；上传的行为不能改，这里改文字',
+	'schema' => [
+		['key'=>'pick', 'type'=>'text', 'label'=>'选择文件按钮', 'default'=>'选择文件/批量上传'],
+		['key'=>'login', 'type'=>'text', 'label'=>'要求登录时的按钮', 'default'=>'请先登录'],
+		['key'=>'storage', 'type'=>'text', 'label'=>'存储位置标签', 'default'=>'存储位置'],
+		['key'=>'show', 'type'=>'text', 'label'=>'「在首页显示」勾选框文字', 'default'=>'在首页文件列表显示'],
+		['key'=>'pwd', 'type'=>'text', 'label'=>'密码框提示', 'default'=>'请输入密码（留空则不设置）'],
+	],
 	'data' => function($cfg, &$ctx){
 		global $conf, $islogin2;
 		$d = $ctx['data'];
+		$vue = function($h){ return str_replace(['{{', '}}'], ['{&#8203;{', '}&#8203;}'], $h); };
 		$storages = [];
 		foreach($d['storage_options'] as $o)$storages[] = ['key'=>$o['key'], 'name'=>$o['name']];
 		theme_defer('upload.scripts', theme_tpl_render('blocks/upload/scripts', [
@@ -31,6 +40,11 @@ return [
 		], $ctx['theme_id']), 10);
 		return [
 			'csrf' => $d['csrf_token'],
+			'pick_html' => $vue(theme_text_html($cfg['pick'])),
+			'login_html' => $vue(theme_text_html($cfg['login'])),
+			'storage_html' => $vue(theme_text_html($cfg['storage'])),
+			'show_html' => $vue(theme_text_html($cfg['show'])),
+			'pwd_placeholder' => str_replace(['{{', '}}'], ['{ {', '} }'], $cfg['pwd']),
 			'forbid' => $conf['forcelogin'] == 1 && !$islogin2,
 			'has_storage' => !empty($storages),
 			'storages' => $storages,

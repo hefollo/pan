@@ -13,6 +13,19 @@ return [
 	'group' => '首页',
 	'scope' => 'front',
 	'pages' => ['index'],
+	'schema' => [
+		['key'=>'kicker', 'type'=>'text', 'label'=>'小标题', 'default'=>'快速 · 安全 · 长期可用', 'help'=>'清空不显示'],
+		['key'=>'title', 'type'=>'textarea', 'label'=>'大标题', 'default'=>"把文件放上来，\n链接带去任何地方。", 'help'=>'换行就是标题里的换行'],
+		['key'=>'desc', 'type'=>'textarea', 'label'=>'说明', 'default'=>'上传图片、视频、文档或压缩包，即刻生成可分享的外链。无需安装客户端，打开浏览器就能用。'],
+		['key'=>'trust', 'type'=>'lines', 'label'=>'打勾的卖点', 'default'=>"支持批量上传\n自动生成外链\n多种存储可选", 'help'=>'一行一条；清空不显示'],
+		['key'=>'hint_size', 'type'=>'text', 'label'=>'上传框提示（有大小限制）', 'default'=>'单个文件最大 {size} MB，支持任意格式，也可以 Ctrl+V 粘贴', 'help'=>'{size} 是单个文件上限（MB）'],
+		['key'=>'hint_free', 'type'=>'text', 'label'=>'上传框提示（不限大小）', 'default'=>'不限制文件大小，支持任意格式，也可以 Ctrl+V 粘贴'],
+		['key'=>'pick_btn', 'type'=>'text', 'label'=>'选择文件按钮', 'default'=>'选择本地文件'],
+		['key'=>'login_title', 'type'=>'text', 'label'=>'要求登录时的标题', 'default'=>'登录后即可上传'],
+		['key'=>'login_sub', 'type'=>'text', 'label'=>'要求登录时的说明', 'default'=>'本站要求登录后才能上传文件'],
+		['key'=>'login_btn', 'type'=>'text', 'label'=>'去登录按钮', 'default'=>'去登录'],
+		['key'=>'tip', 'type'=>'switch', 'label'=>'显示底部「去上传页」提示', 'default'=>1],
+	],
 	'data' => function($cfg, &$ctx){
 		global $DB, $conf, $islogin2;
 		$d = $ctx['data'];
@@ -40,9 +53,22 @@ return [
 				'version' => VERSION,
 			], $ctx['theme_id']), 30);
 		}
+		//这块是 Vue 的挂载点，文字里的 {{ 会被 Vue 当成表达式，拆开
+		$vue = function($html){ return str_replace(['{{', '}}'], ['{&#8203;{', '}&#8203;}'], $html); };
+		$trust = [];
+		foreach(common_card_lines($cfg['trust']) as $l)$trust[] = ['text_html'=>$vue(theme_text_html($l['text']))];
 		return [
 			'forbid' => $forbid,
-			'size_text' => $size > 0 ? ('单个文件最大 '.$size.' MB，支持任意格式') : '不限制文件大小，支持任意格式',
+			'hint_html' => $vue($size > 0 ? theme_text_html($cfg['hint_size'], ['size'=>intval($size)]) : theme_text_html($cfg['hint_free'])),
+			'kicker_html' => $vue(theme_text_html(trim($cfg['kicker']))),
+			'title_html' => $vue(theme_text_html(trim($cfg['title']), [], true)),
+			'desc_html' => $vue(theme_text_html(trim($cfg['desc']), [], true)),
+			'trust' => $trust,
+			'has_trust' => !empty($trust),
+			'pick_html' => $vue(theme_text_html($cfg['pick_btn'])),
+			'login_title_html' => $vue(theme_text_html($cfg['login_title'])),
+			'login_sub_html' => $vue(theme_text_html($cfg['login_sub'])),
+			'login_btn_html' => $vue(theme_text_html($cfg['login_btn'])),
 			'csrf' => $d['csrf_token'],
 		];
 	},

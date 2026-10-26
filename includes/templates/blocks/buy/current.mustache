@@ -1,4 +1,4 @@
         <div class="buy-current">
-            <span>当前等级</span>
-            <strong>{{level_text}}　每日上传 {{limit_text}}{{#bonus}}（含加量包 +{{bonus}}，{{bonus_expire_text}}）{{/bonus}}　单文件 {{size_text}}　文件下载 {{speed_text}}　分享流量 {{traffic_text}}　上传流量 {{upload_text}}　在线编辑 {{edit_text}}</strong>
+            <span>{{cfg.label}}</span>
+            <strong>{{level_text}}{{#cfg.show_limit}}　每日上传 {{limit_text}}{{#bonus}}（含加量包 +{{bonus}}，{{bonus_expire_text}}）{{/bonus}}{{/cfg.show_limit}}{{#cfg.show_size}}　单文件 {{size_text}}{{/cfg.show_size}}{{#cfg.show_speed}}　文件下载 {{speed_text}}{{/cfg.show_speed}}{{#cfg.show_traffic}}　分享流量 {{traffic_text}}{{/cfg.show_traffic}}{{#cfg.show_upload}}　上传流量 {{upload_text}}{{/cfg.show_upload}}{{#cfg.show_edit}}　在线编辑 {{edit_text}}{{/cfg.show_edit}}</strong>
         </div>

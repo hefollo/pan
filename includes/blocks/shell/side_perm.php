@@ -8,6 +8,17 @@ return [
 	'group' => '侧栏',
 	'scope' => 'front',
 	'pages' => ['_shell'],
+	'description' => '登录后侧栏里的权限摘要；没登录时不显示',
+	'schema' => [
+		['key'=>'title', 'type'=>'text', 'label'=>'标题', 'default'=>'我的权限'],
+		['key'=>'show_traffic', 'type'=>'switch', 'label'=>'显示分享流量', 'default'=>1],
+		['key'=>'show_upload', 'type'=>'switch', 'label'=>'显示上传流量', 'default'=>1],
+		['key'=>'show_expire', 'type'=>'switch', 'label'=>'显示到期时间', 'default'=>1],
+		['key'=>'show_plan', 'type'=>'switch', 'label'=>'显示会员等级', 'default'=>1],
+		['key'=>'show_buy', 'type'=>'switch', 'label'=>'显示购买按钮', 'default'=>1],
+		['key'=>'buy_new', 'type'=>'text', 'label'=>'购买按钮文字（没买过）', 'default'=>'购买会员'],
+		['key'=>'buy_renew', 'type'=>'text', 'label'=>'购买按钮文字（买过）', 'default'=>'续费 / 升级会员'],
+	],
 	'data' => function($cfg, &$ctx){
 		global $DB, $islogin2, $userrow;
 		if(empty($islogin2))return null;
@@ -30,7 +41,7 @@ return [
 			'size_text' => $size > 0 ? $size.' MB' : '不限制',
 		];
 		//每月分享流量：自己的文件本月被取走多少（DEC-20261022-001）
-		$traffic = function_exists('user_traffic_info') ? user_traffic_info($userrow) : null;
+		$traffic = (!empty($cfg['show_traffic']) && function_exists('user_traffic_info')) ? user_traffic_info($userrow) : null;
 		if($traffic){
 			$data['traffic'] = [
 				'text' => $traffic['unlimited'] ? '不限制' : size_format($traffic['used']).' / '.size_format($traffic['quota']),
@@ -38,7 +49,7 @@ return [
 			];
 		}
 		//每月上传流量：本月本站收了自己多少上传数据（DEC-20261025-001）
-		$upload = function_exists('upload_traffic_info') ? upload_traffic_info() : null;
+		$upload = (!empty($cfg['show_upload']) && function_exists('upload_traffic_info')) ? upload_traffic_info() : null;
 		if($upload){
 			$data['upload'] = [
 				'text' => $upload['unlimited'] ? '不限制' : size_format($upload['used']).' / '.size_format($upload['quota']),
@@ -48,10 +59,10 @@ return [
 		if(function_exists('user_bonus_limit') && user_bonus_limit($userrow) > 0 && $limit > 0){
 			$data['bonus'] = user_bonus_limit($userrow);
 		}
-		if(!empty($expire))$data['expire_date'] = date('Y-m-d', strtotime($expire));
-		if($plan && $plan['bought'])$data['plan_name'] = $plan['plan_name'];
-		if(function_exists('is_buy_open') && is_buy_open()){
-			$data['buy_text'] = ($plan && $plan['bought']) ? '续费 / 升级会员' : '购买会员';
+		if(!empty($expire) && !empty($cfg['show_expire']))$data['expire_date'] = date('Y-m-d', strtotime($expire));
+		if($plan && $plan['bought'] && !empty($cfg['show_plan']))$data['plan_name'] = $plan['plan_name'];
+		if(!empty($cfg['show_buy']) && function_exists('is_buy_open') && is_buy_open()){
+			$data['buy_text'] = ($plan && $plan['bought']) ? $cfg['buy_renew'] : $cfg['buy_new'];
 		}
 		return $data;
 	},

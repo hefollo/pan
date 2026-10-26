@@ -30,7 +30,7 @@
 <div class="container">
 	<div class="panel panel-primary">
 		<div class="panel-heading">
-			<h3 class="panel-title"><i class="fa fa-pencil-square-o"></i> 在线编辑：{{{file_name_html}}}</h3>
+			<h3 class="panel-title"><i class="fa fa-pencil-square-o"></i> {{cfg.title}}{{{file_name_html}}}</h3>
 		</div>
 		<div class="panel-body">
 			<div class="editor-toolbar">
@@ -43,13 +43,13 @@
 				</div>
 				<div>
 					<button type="button" id="save_editor" class="btn btn-raised btn-primary">
-						<i class="fa fa-save"></i> 保存
+						<i class="fa fa-save"></i> {{cfg.save_text}}
 					</button>
 					<a id="view_file_link" href="{{{view_url_html}}}" class="btn btn-raised btn-default">
-						<i class="fa fa-eye"></i> 查看文件
+						<i class="fa fa-eye"></i> {{cfg.view_text}}
 					</a>
 					<a href="./?m=mine" class="btn btn-raised btn-default">
-						<i class="fa fa-folder-open"></i> 我的文件
+						<i class="fa fa-folder-open"></i> {{cfg.mine_text}}
 					</a>
 				</div>
 			</div>

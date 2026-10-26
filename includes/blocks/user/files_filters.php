@@ -6,6 +6,7 @@ return [
 	'group' => '个人中心',
 	'scope' => 'front',
 	'pages' => ['user'],
+	'description' => '分组和图片/视频/音频格式跟着后台「文件设置」走',
 	'data' => function($cfg, &$ctx){
 		include_once SYSTEM_ROOT.'usercenter.php';
 		$s = uc_files_state();

@@ -6,6 +6,10 @@ return [
 	'group' => '购买页',
 	'scope' => 'front',
 	'pages' => ['buy'],
+	'description' => '支付方式在后台「支付设置」里开关',
+	'schema' => [
+		['key'=>'label', 'type'=>'text', 'label'=>'前面的文字', 'default'=>'支付方式'],
+	],
 	'data' => function($cfg, &$ctx){
 		$methods = pay_methods();
 		$keys = array_keys($methods);

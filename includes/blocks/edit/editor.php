@@ -9,6 +9,13 @@ return [
 	'group' => '在线编辑',
 	'scope' => 'front',
 	'pages' => ['edit'],
+	'description' => '编辑器本身不能改，这里改标题和按钮文字',
+	'schema' => [
+		['key'=>'title', 'type'=>'text', 'label'=>'标题前缀', 'default'=>'在线编辑：'],
+		['key'=>'save_text', 'type'=>'text', 'label'=>'保存按钮', 'default'=>'保存'],
+		['key'=>'view_text', 'type'=>'text', 'label'=>'查看文件按钮', 'default'=>'查看文件'],
+		['key'=>'mine_text', 'type'=>'text', 'label'=>'我的文件按钮', 'default'=>'我的文件'],
+	],
 	'data' => function($cfg, &$ctx){
 		$d = $ctx['data'];
 		$row = $d['row'];

@@ -6,6 +6,16 @@ return [
 	'group' => '购买页',
 	'scope' => 'front',
 	'pages' => ['buy'],
+	'description' => '登录后才显示',
+	'schema' => [
+		['key'=>'label', 'type'=>'text', 'label'=>'前面的文字', 'default'=>'当前等级'],
+		['key'=>'show_limit', 'type'=>'switch', 'label'=>'显示每日上传', 'default'=>1],
+		['key'=>'show_size', 'type'=>'switch', 'label'=>'显示单文件大小', 'default'=>1],
+		['key'=>'show_speed', 'type'=>'switch', 'label'=>'显示下载速度', 'default'=>1],
+		['key'=>'show_traffic', 'type'=>'switch', 'label'=>'显示分享流量', 'default'=>1],
+		['key'=>'show_upload', 'type'=>'switch', 'label'=>'显示上传流量', 'default'=>1],
+		['key'=>'show_edit', 'type'=>'switch', 'label'=>'显示在线编辑', 'default'=>1],
+	],
 	'data' => function($cfg, &$ctx){
 		global $islogin2, $userrow;
 		if(!$islogin2)return null;

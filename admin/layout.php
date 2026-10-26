@@ -17,7 +17,7 @@ if($islogin==1){}else exit("<script language='javascript'>window.location.href='
 
 $le_themes = [];
 foreach(theme_registry() as $id => $m)$le_themes[] = ['id'=>$id, 'name'=>$m['name'].($m['_source'] === 'upload' ? '（上传）' : ''), 'active'=>$id === $site_theme];
-$le_boot = ['themes'=>$le_themes, 'pages'=>layout_editor_page_list(), 'theme'=>$site_theme, 'db_ready'=>theme_db_ready(), 'site_base'=>'../', 'home'=>home_page_slug()];
+$le_boot = ['themes'=>$le_themes, 'pages'=>layout_editor_page_list(), 'theme'=>$site_theme, 'db_ready'=>theme_db_ready(), 'site_base'=>'../', 'home'=>home_page_slug(), 'opts'=>layout_opts_schema()];
 ?>
 <?php theme_panel_begin('editor', '布局编辑器');?>
 <link rel="stylesheet" href="../assets/css/layout-editor.css?v=<?php echo asset_ver('assets/css/layout-editor.css')?>">
@@ -48,6 +48,7 @@ $le_boot = ['themes'=>$le_themes, 'pages'=>layout_editor_page_list(), 'theme'=>$
           <button type="button" class="btn btn-sm btn-primary" id="leDraft"><i class="fa fa-save"></i> 保存草稿并预览</button>
           <button type="button" class="btn btn-sm btn-success" id="lePublish"><i class="fa fa-check"></i> 发布</button>
           <label class="le-live" title="改动后自动保存草稿并刷新右边的预览；访客要等「发布」才看得到"><input type="checkbox" id="leLive" checked> 实时预览</label>
+          <label class="le-live" title="在右边预览里点带虚线框的文字，就地修改；回车或点别处完成，Esc 放弃"><input type="checkbox" id="leEditText" checked> 点文字直接改</label>
           <button type="button" class="btn btn-sm btn-default" id="leWide" title="左边编辑区放宽（写代码时用），再点一次恢复"><i class="fa fa-arrows-h"></i> 宽屏编辑</button>
           <div class="btn-group btn-group-sm">
             <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">更多 <span class="caret"></span></button>
@@ -63,7 +64,7 @@ $le_boot = ['themes'=>$le_themes, 'pages'=>layout_editor_page_list(), 'theme'=>$
           </div>
           <input type="file" id="leImportFile" accept=".json,application/json" style="display:none">
         </div>
-        <p class="help-block le-tip">拖动 <i class="fa fa-bars"></i> 调整顺序，可以拖进带 <i class="fa fa-folder-o"></i> 的容器里。点卡片名字在下面改参数；在右边预览里按住 <kbd>Alt</kbd> 点页面，选中对应的卡片。勾着「实时预览」时每次改动都会自动存成草稿、右边马上刷新；满意了再「发布」，发布前访客看不到变化。</p>
+        <p class="help-block le-tip">拖动 <i class="fa fa-bars"></i> 调整顺序，可以拖进带 <i class="fa fa-folder-o"></i> 的容器里。点卡片名字在下面改参数；在右边预览里按住 <kbd>Alt</kbd> 点页面，选中对应的卡片；勾着「点文字直接改」时，预览里带虚线框的文字点一下就能改。勾着「实时预览」时每次改动都会自动存成草稿、右边马上刷新；满意了再「发布」，发布前访客看不到变化。</p>
         <div class="le-tree" id="leTree"></div>
         <div class="le-config" id="leConfig"></div>
       </div>

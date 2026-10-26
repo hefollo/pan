@@ -9,6 +9,11 @@ return [
 	'group' => '文件夹分享',
 	'scope' => 'front',
 	'pages' => ['share'],
+	'schema' => [
+		['key'=>'back_text', 'type'=>'text', 'label'=>'返回链接', 'default'=>'返回所在文件夹'],
+		['key'=>'media_note', 'type'=>'text', 'label'=>'音视频下方的说明', 'default'=>'若浏览器不支持此格式，请下载后播放。', 'help'=>'清空不显示'],
+		['key'=>'none_text', 'type'=>'text', 'label'=>'不能预览时', 'default'=>'此格式暂不支持在线预览，可下载后查看。'],
+	],
 	'data' => function($cfg, &$ctx){
 		$d = $ctx['data'];
 		if($d['view'] !== 'file')return null;

@@ -65,7 +65,7 @@ window.panLayoutEditor = function(){ (function($){
 			$.each(arr || [], function(_, n){
 				if(!n || !n.block)return;
 				var id = n.id && !state.nodes[n.id] ? String(n.id) : newId();
-				state.nodes[id] = {id:id, block:n.block, config:$.isPlainObject(n.config) ? clone(n.config) : {}, hidden:!!n.hidden};
+				state.nodes[id] = {id:id, block:n.block, config:$.isPlainObject(n.config) ? clone(n.config) : {}, opts:$.isPlainObject(n.opts) ? clone(n.opts) : {}, hidden:!!n.hidden};
 				var item = {id:id, children:[]};
 				walk(n.children, item.children);
 				out.push(item);
@@ -79,6 +79,7 @@ window.panLayoutEditor = function(){ (function($){
 				var n = state.nodes[item.id];
 				var o = {id:n.id, block:n.block, config:n.config};
 				if(n.hidden)o.hidden = 1;
+				if(n.opts && !$.isEmptyObject(n.opts))o.opts = n.opts;
 				var def = state.blocks[n.block];
 				if((def && def.container) || item.children.length)o.children = walk(item.children);
 				return o;
@@ -136,7 +137,9 @@ window.panLayoutEditor = function(){ (function($){
 					var pid = n.config.panel || '';
 					label = '面板：' + (state.panels[pid] || pid || '（未选）');
 				}
+				if(n.block === 'core.col')label = '第 ' + (_ + 1) + ' 栏';
 				$('<a href="javascript:void(0)" class="le-name"></a>').text(label).attr('title', n.block + ' #' + n.id).appendTo($row);
+				$.each(optsBadges(n.opts), function(_, b){ $('<span class="le-badge"></span>').text(b).appendTo($row); });
 				if(def && def.required)$row.append('<span class="label label-default le-req" title="页面靠它工作，不能删也不能隐藏">必需</span>');
 				if(!def)$row.append('<span class="label label-warning">不适用于这个页面</span>');
 				var $ops = $('<span class="le-ops"></span>');
@@ -185,7 +188,8 @@ window.panLayoutEditor = function(){ (function($){
 		}
 		var groups = {}, order = [];
 		$.each(state.blockList, function(_, b){
-			if(b.id === 'admin.panel' || b.required)return;
+			//「栏」由「分栏」按栏数自动建，不单独添加
+			if(b.id === 'admin.panel' || b.id === 'core.col' || b.required)return;
 			var g = b.group || '其它';
 			if(!groups[g]){ groups[g] = []; order.push(g); }
 			groups[g].push(b);
@@ -202,7 +206,7 @@ window.panLayoutEditor = function(){ (function($){
 	//加到选中的容器里；选中的是普通卡片就加在它后面；没选中加在最外层末尾
 	function addNode(bid, config){
 		var id = newId();
-		state.nodes[id] = {id:id, block:bid, config:config || {}, hidden:false};
+		state.nodes[id] = {id:id, block:bid, config:config || {}, opts:{}, hidden:false};
 		var item = {id:id, children:[]};
 		var sel = state.selected ? findItem(state.selected) : null;
 		if(sel){
@@ -212,10 +216,35 @@ window.panLayoutEditor = function(){ (function($){
 		}else{
 			state.tree.push(item);
 		}
+		if(bid === 'core.cols')syncCols(id);
 		state.selected = id;
 		setDirty();
 		renderTree();
 		renderConfig();
+	}
+	/*
+	 * 分栏的栏数跟着「栏数和比例」走：少了补空栏；多了只删末尾的空栏，里面有卡片的留着并提示。
+	 * 直接放在分栏里、不在任何一栏里的卡片不动（它们会排在栏后面）。
+	 */
+	function syncCols(id){
+		var f = findItem(id), n = state.nodes[id];
+		if(!f || !n)return;
+		var want = String(n.config.ratio || '1-1').split('-').length;
+		var cols = $.grep(f.item.children, function(c){ return state.nodes[c.id] && state.nodes[c.id].block === 'core.col'; });
+		while(cols.length < want){
+			var cid = newId();
+			state.nodes[cid] = {id:cid, block:'core.col', config:{}, opts:{}, hidden:false};
+			var c = {id:cid, children:[]};
+			f.item.children.push(c);
+			cols.push(c);
+		}
+		var kept = 0;
+		for(var i = cols.length - 1; i >= want; i--){
+			if(cols[i].children.length){ kept++; continue; }
+			delete state.nodes[cols[i].id];
+			f.item.children.splice($.inArray(cols[i], f.item.children), 1);
+		}
+		if(kept)msg('多出来的栏里还有卡片，先留着；把卡片挪走后再改一次栏数就会删掉');
 	}
 
 	/* ---------- 配置表单 ---------- */
@@ -240,59 +269,196 @@ window.panLayoutEditor = function(){ (function($){
 			if(!seen)$sel.prepend($('<option></option>').val(cur).text(cur ? cur + '（这一页没有这个面板）' : '（未选）'));
 			$sel.val(cur).on('change', function(){ n.config.panel = $(this).val(); setDirty(); renderTree(); });
 			$c.append($('<div class="form-group"></div>').append('<label>放哪个面板</label>').append($sel));
-			return;
+		}else if(!def || !def.schema || !def.schema.length){
+			$c.append('<p class="le-empty">这张卡片没有专属参数，下面的「通用选项」照样能用。</p>');
+		}else{
+			$.each(def.schema, function(_, f){
+				var v = Object.prototype.hasOwnProperty.call(n.config, f.key) ? n.config[f.key] : f['default'];
+				$c.append(formField(f, n, v, function(val){
+					n.config[f.key] = val;
+					if(n.block === 'core.cols' && f.key === 'ratio'){ syncCols(n.id); renderTree(); }
+				}));
+			});
 		}
-		if(!def || !def.schema || !def.schema.length){ $c.append('<p class="le-empty">这张卡片没有可调的参数。</p>'); return; }
-		$.each(def.schema, function(_, f){
-			var v = Object.prototype.hasOwnProperty.call(n.config, f.key) ? n.config[f.key] : f['default'];
-			var $g = $('<div class="form-group"></div>');
-			var $in;
-			if(f.type === 'code'){
-				$g.append($('<label></label>').text(f.label));
-				$g.append(codeField(f, n, v));
-				if(f.help)$g.append($('<span class="help-block"></span>').text(f.help));
-				$c.append($g);
-				return;
-			}
-			if(f.type === 'menu'){
-				$g.append($('<label></label>').text(f.label));
-				$g.append(menuField(f, n, v));
-				if(f.help)$g.append($('<span class="help-block"></span>').text(f.help));
-				$c.append($g);
-				return;
-			}
-			if(f.type === 'switch'){
-				$in = $('<input type="checkbox">').prop('checked', !!(v && v !== '0'));
-				$g.append($('<label class="le-switch"></label>').append($in).append(document.createTextNode(' ' + f.label)));
-				$in.on('change', function(){ n.config[f.key] = this.checked ? 1 : 0; setDirty(); });
+		renderOpts($c, n);
+	}
+
+	/*
+	 * 一个配置项的表单行。set(val) 负责把值写回去（卡片配置写 n.config，通用选项写 n.opts）。
+	 * code / menu 两种只有卡片自己的配置会用到，仍按原来的办法直接写 n.config。
+	 */
+	function formField(f, n, v, set){
+		var $g = $('<div class="form-group"></div>');
+		var $in;
+		var change = function(val){ set(val); setDirty(); };
+		if(f.type === 'code' || f.type === 'menu'){
+			$g.append($('<label></label>').text(f.label));
+			$g.append(f.type === 'code' ? codeField(f, n, v) : menuField(f, n, v));
+		}else if(f.type === 'switch'){
+			$in = $('<input type="checkbox">').prop('checked', !!(v && v !== '0'));
+			$g.append($('<label class="le-switch"></label>').append($in).append(document.createTextNode(' ' + f.label)));
+			$in.on('change', function(){ change(this.checked ? 1 : 0); });
+		}else if(f.type === 'color'){
+			$g.append($('<label></label>').text(f.label));
+			$g.append(colorField(f, v, change));
+		}else{
+			$g.append($('<label></label>').text(f.label));
+			if(f.type === 'select'){
+				$in = $('<select class="form-control input-sm"></select>');
+				$.each(f.options || {}, function(k, label){ $in.append($('<option></option>').val(k).text(label)); });
+				$in.val(String(v == null ? '' : v));
+			}else if(f.type === 'textarea' || f.type === 'html' || f.type === 'lines'){
+				$in = $('<textarea class="form-control input-sm" rows="4"></textarea>').val(v == null ? '' : String(v));
+				if(f.type === 'html')$in.addClass('le-code');
+			}else if(f.type === 'number'){
+				$in = $('<input type="number" class="form-control input-sm">').val(v);
+				if(f.min !== null && f.min !== undefined)$in.attr('min', f.min);
+				if(f.max !== null && f.max !== undefined)$in.attr('max', f.max);
+			}else if(f.type === 'datetime'){
+				//存的是「2026-10-26 08:00」，datetime-local 要「2026-10-26T08:00」
+				var dv = v ? String(v).replace(' ', 'T') : '';
+				if(/^\d{4}-\d{2}-\d{2}$/.test(dv))dv += 'T00:00';
+				$in = $('<input type="datetime-local" class="form-control input-sm">').val(dv);
 			}else{
-				$g.append($('<label></label>').text(f.label));
-				if(f.type === 'select'){
-					$in = $('<select class="form-control input-sm"></select>');
-					$.each(f.options || {}, function(k, label){ $in.append($('<option></option>').val(k).text(label)); });
-					$in.val(String(v));
-				}else if(f.type === 'textarea' || f.type === 'html' || f.type === 'lines'){
-					$in = $('<textarea class="form-control input-sm" rows="4"></textarea>').val(v == null ? '' : String(v));
-					if(f.type === 'html')$in.addClass('le-code');
-				}else if(f.type === 'number'){
-					$in = $('<input type="number" class="form-control input-sm">').val(v);
-					if(f.min !== null && f.min !== undefined)$in.attr('min', f.min);
-					if(f.max !== null && f.max !== undefined)$in.attr('max', f.max);
-				}else if(f.type === 'color'){
-					$in = $('<input type="text" class="form-control input-sm" placeholder="#rrggbb">').val(v == null ? '' : String(v));
-				}else{
-					$in = $('<input type="text" class="form-control input-sm">').val(v == null ? '' : String(v));
-				}
-				$in.on('input change', function(){
-					var val = $(this).val();
-					n.config[f.key] = f.type === 'number' ? (val === '' ? f['default'] : Number(val)) : val;
-					setDirty();
-				});
-				$g.append($in);
+				$in = $('<input type="text" class="form-control input-sm">').val(v == null ? '' : String(v));
 			}
-			if(f.help)$g.append($('<span class="help-block"></span>').text(f.help));
-			$c.append($g);
+			$in.on('input change', function(){
+				var val = $(this).val();
+				if(f.type === 'number')val = val === '' ? f['default'] : Number(val);
+				if(f.type === 'datetime')val = val.replace('T', ' ');
+				change(val);
+			});
+			$g.append($in);
+		}
+		if(f.help)$g.append($('<span class="help-block"></span>').text(f.help));
+		return $g;
+	}
+
+	/* 颜色：有预设（外观自己的颜色）时先选预设，选「自定义」再出取色器；没有预设就是取色器 + 色值 */
+	function colorField(f, v, change){
+		var $box = $('<div class="le-color"></div>');
+		var presets = f.presets || null;
+		var hex = /^#[0-9a-fA-F]{6}$/.test(String(v || '')) ? String(v).toLowerCase() : '';
+		var $pick = $('<input type="color" class="le-color-pick">').val(hex || '#3b82f6');
+		var $txt = $('<input type="text" class="form-control input-sm le-color-hex" maxlength="7" placeholder="#rrggbb">').val(hex);
+		var $sel = null;
+		var custom = function(on){ $pick.toggle(on); $txt.toggle(on); };
+		if(presets){
+			$sel = $('<select class="form-control input-sm"></select>');
+			$.each(presets, function(k, label){ $sel.append($('<option></option>').val(k).text(label)); });
+			$sel.append('<option value="#">自定义颜色…</option>');
+			$sel.val(hex ? '#' : String(v || '')).on('change', function(){
+				var x = $(this).val();
+				custom(x === '#');
+				if(x === '#'){ $txt.val($pick.val()); change($pick.val()); }
+				else change(x);
+			});
+			$box.append($sel);
+		}
+		$pick.on('input change', function(){ $txt.val(this.value); change(this.value); });
+		$txt.on('input', function(){
+			var x = $.trim($(this).val());
+			if(/^#[0-9a-fA-F]{6}$/.test(x)){ $pick.val(x.toLowerCase()); change(x.toLowerCase()); }
+			else if(x === '' && !presets)change('');
 		});
+		$box.append($pick).append($txt);
+		custom(!presets || !!hex);
+		return $box;
+	}
+
+	/*
+	 * 通用选项（DEC-20261026-002）：每张卡片都有，清单来自 boot.opts（服务端 layout_opts_schema()）。
+	 * 和默认值一样的不存（不存 = 输出和原来一样）；设了的在卡片树上显示角标。折叠状态记在浏览器里。
+	 */
+	var optsSchema = boot.opts || [];
+	function optIsDefault(f, v){
+		return v === undefined || v === null || v === '' || String(v) === String(f['default']) || (f.type === 'number' && Number(v) === 0) || (f.type === 'switch' && !Number(v));
+	}
+	/*
+	 * 界面要短（用户反馈「太长了，改了不方便看效果」）：四个分组做成页签，一次只显示一组，页签上标这组设了几项；
+	 * 下拉、数字、开关、时间两列排，说明文字收进标签后面的问号（鼠标停上去看）。选的页签记在浏览器里。
+	 */
+	function renderOpts($c, n){
+		if(!optsSchema.length)return;
+		if(!$.isPlainObject(n.opts))n.opts = {};
+		var open = !$.isEmptyObject(n.opts);
+		try{ if(localStorage.getItem('layoutEditorOpts') === '1')open = true; }catch(e){}
+		var $wrap = $('<div class="le-opts"></div>').toggleClass('le-opts-open', open).appendTo($c);
+		var count = function(){ var k = 0; $.each(n.opts, function(){ k++; }); return k; };
+		var $head = $('<a href="javascript:void(0)" class="le-opts-head"></a>')
+			.attr('title', '设了间距、宽度、外观里的任何一项，卡片外面会多包一层 div；显示条件不满足的卡片在预览里用虚线标出来，访客看不到')
+			.appendTo($wrap);
+		var head = function(){ $head.empty().append('<i class="fa fa-sliders"></i> 通用选项').append(count() ? $('<span class="le-badge"></span>').text('已设 ' + count() + ' 项') : ''); };
+		head();
+		var $body = $('<div class="le-opts-body"></div>').appendTo($wrap);
+		$head.on('click', function(){
+			$wrap.toggleClass('le-opts-open');
+			try{ localStorage.setItem('layoutEditorOpts', $wrap.hasClass('le-opts-open') ? '1' : '0'); }catch(e){}
+		});
+		var groups = [], byGroup = {};
+		$.each(optsSchema, function(_, f){
+			if(f.front && isAdminPage())return;
+			if(!byGroup[f.group]){ byGroup[f.group] = []; groups.push(f.group); }
+			byGroup[f.group].push(f);
+		});
+		var cur = groups[0];
+		try{ var saved = localStorage.getItem('layoutEditorOptsTab'); if(saved && byGroup[saved])cur = saved; }catch(e){}
+		var $tabs = $('<div class="le-opts-tabs"></div>').appendTo($body);
+		var $grid = $('<div class="le-opts-grid"></div>').appendTo($body);
+		var setIn = function(g){ var k = 0; $.each(byGroup[g], function(_, f){ if(Object.prototype.hasOwnProperty.call(n.opts, f.key))k++; }); return k; };
+		var drawTabs = function(){
+			$tabs.empty();
+			$.each(groups, function(_, g){
+				var $t = $('<a href="javascript:void(0)" class="le-opts-tab"></a>').text(g).toggleClass('active', g === cur);
+				if(setIn(g))$t.append($('<span class="le-opts-tab-n"></span>').text(setIn(g)));
+				$t.on('click', function(){
+					cur = g;
+					try{ localStorage.setItem('layoutEditorOptsTab', g); }catch(e){}
+					drawTabs();
+					drawFields();
+				});
+				$tabs.append($t);
+			});
+		};
+		var drawFields = function(){
+			$grid.empty();
+			$.each(byGroup[cur], function(_, f){
+				var v = Object.prototype.hasOwnProperty.call(n.opts, f.key) ? n.opts[f.key] : f['default'];
+				var $g = formField(f, n, v, function(val){
+					if(optIsDefault(f, val))delete n.opts[f.key];
+					else n.opts[f.key] = val;
+					head();
+					drawTabs();
+					renderTreeSoon();
+				});
+				//说明收进问号；颜色、类名、行内样式占一整行，其余半行
+				var $help = $g.children('.help-block');
+				if($help.length){
+					$('<i class="fa fa-question-circle-o le-opts-help"></i>').attr('title', $help.text()).appendTo($g.children('label').first());
+					$help.remove();
+				}
+				if(f.type === 'color' || f.type === 'text')$g.addClass('le-opts-full');
+				$grid.append($g);
+			});
+		};
+		drawTabs();
+		drawFields();
+		$('<a href="javascript:void(0)" class="le-opts-reset">清除这张卡片的通用选项</a>').on('click', function(){ n.opts = {}; setDirty(); renderTree(); renderConfig(); }).appendTo($body);
+	}
+	//改通用选项时更新树上的角标；打字时别每个字都重画
+	var treeTimer = null;
+	function renderTreeSoon(){ clearTimeout(treeTimer); treeTimer = setTimeout(renderTree, 300); }
+	function optsBadges(o){
+		var out = [];
+		if(!o)return out;
+		var who = {login:'仅登录', guest:'仅游客', member:'仅会员', nonmember:'非会员'};
+		if(o.who && who[o.who])out.push(who[o.who]);
+		if(o.device)out.push(o.device === 'pc' ? '仅电脑' : '仅手机');
+		if(o.from || o.to)out.push('定时');
+		var styled = false;
+		$.each(o, function(k){ if(k !== 'who' && k !== 'device' && k !== 'from' && k !== 'to')styled = true; });
+		if(styled)out.push('样式');
+		return out;
 	}
 
 	/*
@@ -609,6 +775,12 @@ window.panLayoutEditor = function(){ (function($){
 				msg('这是公共外壳里的卡片，在页面下拉框里选「' + (isAdminPage() ? '后台公共外壳' : '前台公共外壳') + '」再编辑');
 			}
 		}
+		//预览页加载好了：告诉它要不要开「点文字直接改」
+		if(e.data.panPreviewReady !== undefined){
+			try{ e.source.postMessage({panEditMode: editText()}, '*'); }catch(err){}
+		}
+		//预览里改了一段文字：写回那张卡片的配置
+		if(e.data.panEdit && typeof e.data.panEdit === 'object')applyInlineEdit(e.data.panEdit);
 		if(e.data.panPanels && typeof e.data.panPanels === 'object'){
 			var changed = false;
 			$.each(e.data.panPanels, function(id, label){
@@ -619,6 +791,33 @@ window.panLayoutEditor = function(){ (function($){
 		}
 		if(state.selected)highlight(state.selected);
 	});
+
+	/*
+	 * 点文字直接改（DEC-20261026-002）：开关记在浏览器里，默认开。
+	 * 预览发来的 {id, key, value}：节点在当前编辑的布局里、而且是这张卡片的单行文字配置项才收，
+	 * 其它（比如点的是外壳里的文字，而现在编辑的是页面）提示去对应页面改。
+	 */
+	function editText(){ return $('#leEditText').prop('checked'); }
+	try{ if(localStorage.getItem('layoutEditorEditText') === '0')$('#leEditText').prop('checked', false); }catch(e){}
+	$('#leEditText').on('change', function(){
+		try{ localStorage.setItem('layoutEditorEditText', this.checked ? '1' : '0'); }catch(e){}
+		var on = this.checked;
+		$('#lePreviewWrap iframe').each(function(){ try{ this.contentWindow.postMessage({panEditMode: on}, '*'); }catch(err){} });
+	});
+	function applyInlineEdit(d){
+		var n = typeof d.id === 'string' ? state.nodes[d.id] : null;
+		var def = n ? state.blocks[n.block] : null;
+		var field = null;
+		if(def)$.each(def.schema || [], function(_, f){ if(f.key === d.key && f.type === 'text')field = f; });
+		if(!n || !field || typeof d.value !== 'string'){
+			msg('这段文字不在正在编辑的布局里：在页面下拉框里选「' + (isAdminPage() ? '后台公共外壳' : '前台公共外壳') + '」或对应页面再改');
+			return;
+		}
+		n.config[d.key] = d.value.slice(0, 300);
+		select(d.id, true);
+		setDirty();
+		if(!live())msg('已改，记得保存草稿或发布', true);
+	}
 
 	/* ---------- 导入导出 ---------- */
 
@@ -667,7 +866,7 @@ window.panLayoutEditor = function(){ (function($){
 			var f = findItem(id);
 			var dup = function(item){
 				var src = state.nodes[item.id], nid = newId();
-				state.nodes[nid] = {id:nid, block:src.block, config:clone(src.config), hidden:src.hidden};
+				state.nodes[nid] = {id:nid, block:src.block, config:clone(src.config), opts:clone(src.opts || {}), hidden:src.hidden};
 				return {id:nid, children:$.map(item.children, dup)};
 			};
 			var copy = dup(f.item);
@@ -859,6 +1058,20 @@ window.panLayoutEditor = function(){ (function($){
 	state.page = m && pageItem(decodeURIComponent(m[1])) ? decodeURIComponent(m[1]) : 'index';
 	renderPageSelect();
 	pageOps();
+	/*
+	 * 右边预览在宽屏上用 position:sticky 停在视口里（样式见 layout-editor.css），左边配置再长也看得到效果。
+	 * 后台有的外观顶部是固定导航条、有的是固定侧栏：只有横跨页面顶部的固定导航条才要让开它的高度。
+	 */
+	function stickyTop(){
+		var top = 0;
+		$('.navbar-fixed-top').each(function(){
+			var r = this.getBoundingClientRect();
+			if(r.top <= 0 && r.width > window.innerWidth / 2 && r.height < window.innerHeight / 2)top = Math.max(top, r.bottom);
+		});
+		$root[0].style.setProperty('--le-sticky-top', Math.round(top + 12) + 'px');
+	}
+	stickyTop();
+	$(window).on('resize', function(){ if(alive())stickyTop(); });
 	if(!window.Sortable)$('#leTree').before('<div class="alert alert-warning">拖动组件（SortableJS）没加载上，只能用添加/删除，不能拖动排序。</div>');
 	previewOn(loadPage);
 })(jQuery); };

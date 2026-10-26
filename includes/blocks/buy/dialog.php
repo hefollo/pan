@@ -10,6 +10,7 @@ return [
 	'scope' => 'front',
 	'pages' => ['buy'],
 	'required' => true,
+	'description' => '点购买后弹出的支付窗口，里面的文字由脚本按支付方式填写',
 	'data' => function($cfg, &$ctx){
 		$methods = pay_methods();
 		$icons = ['alipay'=>'credit-card', 'wxpay'=>'weixin', 'qqpay'=>'qq'];

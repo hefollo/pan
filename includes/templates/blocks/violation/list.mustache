@@ -11,7 +11,7 @@
                 </tr>
             </thead>
             <tbody>
-{{#rows}}<tr><td class="fl-num"><b>{{n}}</b></td><td class="fl-name"><i class="fa {{icon}} fa-fw"></i><span>{{name}}{{#remark}}<br/><small class="text-muted">{{remark}}</small>{{/remark}}</span></td><td class="fl-size">{{size}}</td><td class="fl-type"><span class="file-type-badge">{{type}}</span></td><td class="fl-extra" data-label="上传者IP">{{ip}}</td><td class="fl-time">{{addtime}}</td></tr>{{/rows}}{{#empty}}<tr class="fl-empty"><td colspan="6" align="center">暂无违规封禁记录</td></tr>{{/empty}}
+{{#rows}}<tr><td class="fl-num"><b>{{n}}</b></td><td class="fl-name"><i class="fa {{icon}} fa-fw"></i><span>{{name}}{{#remark}}<br/><small class="text-muted">{{remark}}</small>{{/remark}}</span></td><td class="fl-size">{{size}}</td><td class="fl-type"><span class="file-type-badge">{{type}}</span></td><td class="fl-extra" data-label="上传者IP">{{ip}}</td><td class="fl-time">{{addtime}}</td></tr>{{/rows}}{{#empty}}<tr class="fl-empty"><td colspan="6" align="center">{{cfg.empty}}</td></tr>{{/empty}}
             </tbody>
         </table>
         </div>

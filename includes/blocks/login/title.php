@@ -6,6 +6,10 @@ return [
 	'group' => '登录页',
 	'scope' => 'front',
 	'pages' => ['login'],
+	'schema' => [
+		['key'=>'text_reg', 'type'=>'text', 'label'=>'开放注册时', 'default'=>'登录 / 注册'],
+		['key'=>'text_login', 'type'=>'text', 'label'=>'不开放注册时', 'default'=>'登录'],
+	],
 	'data' => function($cfg, &$ctx){
 		$d = $ctx['data'];
 		if(!$d['has_oauth'] && !$d['show_mail'])return null;

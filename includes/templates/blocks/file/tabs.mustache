@@ -1,13 +1,17 @@
       <div class="panel panel-default">
           <div class="panel-body" style="padding: 0px;">
               <ul class="nav nav-tabs" style="margin-bottom: 15px;">
-                  <li class="active"><a href="#link" data-toggle="tab"><i class="fa fa-link" aria-hidden="true"></i> 文件外链</a>
+                  <li class="active"><a href="#link" data-toggle="tab"><i class="fa fa-link" aria-hidden="true"></i> {{cfg.tab_link}}</a>
                   </li>
-                  <li><a href="#code" data-toggle="tab"><i class="fa fa-code" aria-hidden="true"></i> 代码调用</a>
+{{#cfg.show_code}}
+                  <li><a href="#code" data-toggle="tab"><i class="fa fa-code" aria-hidden="true"></i> {{cfg.tab_code}}</a>
                   </li>
-                  <li><a href="#info" data-toggle="tab"><i class="fa fa-info-circle" aria-hidden="true"></i> 文件详情</a>
+{{/cfg.show_code}}
+{{#cfg.show_info}}
+                  <li><a href="#info" data-toggle="tab"><i class="fa fa-info-circle" aria-hidden="true"></i> {{cfg.tab_info}}</a>
                   </li>
-                  <li class="{{^is_mine}}hide{{/is_mine}}"><a href="#manager" data-toggle="tab"><i class="fa fa-cog" aria-hidden="true"></i> 管理</a>
+{{/cfg.show_info}}
+                  <li class="{{^is_mine}}hide{{/is_mine}}"><a href="#manager" data-toggle="tab"><i class="fa fa-cog" aria-hidden="true"></i> {{cfg.tab_manage}}</a>
                   </li>
               </ul>
               <div id="myTabContent" class="tab-content" style="padding: 19px;">
@@ -46,6 +50,7 @@
                       </div>
                     </div>
                   </div>
+{{#cfg.show_code}}
                   <div class="tab-pane fade" id="code">
                     <div class="form-group row {{^is_player}}hide{{/is_player}}">
                       <label for="code1" class="col-md-2 control-label">播放器代码：</label>
@@ -81,6 +86,8 @@
                       </div>
                     </div>
                   </div>
+{{/cfg.show_code}}
+{{#cfg.show_info}}
                   <div class="tab-pane fade" id="info">
                       <div class="row" align="center">
                           <table class="table table-bordered fileinfo-table">
@@ -95,6 +102,7 @@
                           </table>
                       </div>
                   </div>
+{{/cfg.show_info}}
                   <div class="tab-pane fade" id="manager">
                       <div class="row" align="center">
                           <div class="col-md-12">

@@ -5,6 +5,10 @@ return [
 	'name' => '公示页标题',
 	'group' => '赞助与公示',
 	'scope' => 'front',
+	'description' => '标题下面的说明在后台「违规公示设置」里改',
+	'schema' => [
+		['key'=>'title', 'type'=>'text', 'label'=>'标题', 'default'=>'违规文件公示'],
+	],
 	'data' => function($cfg, &$ctx){
 		global $conf;
 		return ['notice' => isset($conf['violation_notice']) && $conf['violation_notice'] !== '' ? $conf['violation_notice']

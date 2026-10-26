@@ -1,28 +1,26 @@
       <div class="panel panel-primary">
 <div class="panel-heading">
-<h3 class="panel-title"><i class="fa fa-exclamation-circle"></i> 上传提示</h3>
+<h3 class="panel-title"><i class="fa fa-exclamation-circle"></i> {{{title_html}}}</h3>
 </div>
+{{#ip_html}}
 <div class="list-group-item">
-**您的IP是{{clientip}}，请不要上传违规文件！
+{{{ip_html}}}
 </div>
-{{#size}}
-<div class="list-group-item">**上传无格式限制，当前服务器单个文件上传最大支持<b>{{size}}MB</b>！
+{{/ip_html}}
+{{#size_html}}
+<div class="list-group-item">{{{size_html}}}
 </div>
-{{/size}}
-{{^size}}
-<div class="list-group-item">**上传无格式限制，无大小限制</b>！
+{{/size_html}}
+{{#limit_html}}
+<div class="list-group-item">{{{limit_html}}}
 </div>
-{{/size}}
-{{#limit}}
-<div class="list-group-item">**当前账号每天最多可上传 <b>{{limit}}</b> 个文件，今日剩余 <b>{{remaining}}</b> 个。
+{{/limit_html}}
+{{#expire_html}}
+<div class="list-group-item">{{{expire_html}}}
 </div>
-{{/limit}}
-{{#expire_text}}
-<div class="list-group-item">**当前账号权限：<b>{{expire_text}}</b>。
+{{/expire_html}}
+{{#video_html}}
+<div class="list-group-item">{{{video_html}}}
 </div>
-{{/expire_text}}
-{{#videoreview}}
-<div class="list-group-item">**当前网站已开启视频文件审核，如果上传的是视频文件，需要等待审核通过后才能下载和播放。
-</div>
-{{/videoreview}}
+{{/video_html}}
 </div>

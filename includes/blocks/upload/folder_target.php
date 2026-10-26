@@ -10,6 +10,11 @@ return [
 	'group' => '上传页',
 	'scope' => 'front',
 	'pages' => ['upload'],
+	'description' => '从「我的文件」某个文件夹点上传时才显示',
+	'schema' => [
+		['key'=>'label', 'type'=>'text', 'label'=>'前面的文字', 'default'=>'上传到：'],
+		['key'=>'root', 'type'=>'text', 'label'=>'根目录的名字', 'default'=>'我的文件'],
+	],
 	'data' => function($cfg, &$ctx){
 		$d = $ctx['data'];
 		if($d['folder_id'] <= 0)return null;
@@ -17,6 +22,7 @@ return [
 		foreach($d['folder_path'] as $f){
 			$path[] = ['href'=>$d['folder_back'].'&folder='.$f['id'], 'name'=>$f['name']];
 		}
-		return ['back'=>$d['folder_back'], 'path'=>$path];
+		$vue = function($h){ return str_replace(['{{', '}}'], ['{&#8203;{', '}&#8203;}'], $h); };
+		return ['back'=>$d['folder_back'], 'path'=>$path, 'label_html'=>$vue(theme_text_html($cfg['label'])), 'root_html'=>$vue(theme_text_html($cfg['root']))];
 	},
 ];

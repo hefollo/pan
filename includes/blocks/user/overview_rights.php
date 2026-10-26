@@ -6,6 +6,14 @@ return [
 	'group' => '个人中心',
 	'scope' => 'front',
 	'pages' => ['user'],
+	'schema' => [
+		['key'=>'title', 'type'=>'text', 'label'=>'标题', 'default'=>'权限与额度'],
+		['key'=>'show_traffic', 'type'=>'switch', 'label'=>'显示分享流量', 'default'=>1],
+		['key'=>'show_upload', 'type'=>'switch', 'label'=>'显示上传流量', 'default'=>1],
+		['key'=>'show_expire', 'type'=>'switch', 'label'=>'显示有效期', 'default'=>1],
+		['key'=>'show_edit', 'type'=>'switch', 'label'=>'显示在线编辑', 'default'=>1],
+		['key'=>'show_buy', 'type'=>'switch', 'label'=>'显示购买按钮', 'default'=>1],
+	],
 	'data' => function($cfg, &$ctx){
 		global $DB, $userrow;
 		$limit = get_effective_upload_count_limit();

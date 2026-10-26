@@ -1,6 +1,6 @@
 {{#multi}}
         <div class="buy-methods">
-            <span>支付方式</span>
+            <span>{{cfg.label}}</span>
 {{#list}}
             <label class="buy-method{{#first}} is-on{{/first}}">
                 <input type="radio" name="pay_type" value="{{key}}"{{#first}} checked{{/first}}/>
@@ -12,7 +12,7 @@
 {{/multi}}
 {{#single}}
         <div class="buy-methods buy-methods-single">
-            <span>支付方式</span>
+            <span>{{cfg.label}}</span>
             <b>{{single_name}}</b>
             <input type="hidden" name="pay_type" value="{{single}}"/>
         </div>

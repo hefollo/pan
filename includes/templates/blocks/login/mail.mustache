@@ -1,7 +1,7 @@
         <ul class="nav nav-tabs login-tabs" role="tablist">
-            <li class="active"><a href="#tab-mail" data-toggle="tab" role="tab">邮箱登录</a></li>
+            <li class="active"><a href="#tab-mail" data-toggle="tab" role="tab">{{cfg.tab_login}}</a></li>
 {{#show_reg}}
-            <li><a href="#tab-reg" data-toggle="tab" role="tab">注册</a></li>
+            <li><a href="#tab-reg" data-toggle="tab" role="tab">{{cfg.tab_reg}}</a></li>
 {{/show_reg}}
         </ul>
         <div class="tab-content">
@@ -9,9 +9,9 @@
                 <form class="loginform" onsubmit="return mailLogin()">
                     <div class="form-group"><input type="email" id="login_email" class="form-control" placeholder="邮箱地址" autocomplete="username" required/></div>
                     <div class="form-group"><input type="password" id="login_pwd" class="form-control" placeholder="密码" autocomplete="current-password" required/></div>
-                    <button type="submit" class="btn btn-primary btn-block loginsubmit">登录</button>
+                    <button type="submit" class="btn btn-primary btn-block loginsubmit">{{cfg.btn_login}}</button>
 {{#show_forget}}
-                    <p class="text-center" style="margin:12px 0 0"><a href="javascript:;" onclick="showTab('forget')">忘记密码？</a></p>
+                    <p class="text-center" style="margin:12px 0 0"><a href="javascript:;" onclick="showTab('forget')">{{cfg.forget_text}}</a></p>
 {{/show_forget}}
                 </form>
             </div>
@@ -31,14 +31,14 @@
                     </div>
                     <div class="form-group"><input type="password" id="reg_pwd" class="form-control" placeholder="设置密码（6-32 位，含字母和数字）" autocomplete="new-password" required/></div>
                     <div class="form-group"><input type="text" id="reg_nick" class="form-control" placeholder="昵称（选填，默认用邮箱前缀）" maxlength="20" autocomplete="off"/></div>
-                    <button type="submit" class="btn btn-primary btn-block loginsubmit">注册并登录</button>
+                    <button type="submit" class="btn btn-primary btn-block loginsubmit">{{cfg.btn_reg}}</button>
                 </form>
             </div>
 {{/show_reg}}
 {{#show_forget}}
             <div class="tab-pane" id="tab-forget">
                 <form class="loginform" onsubmit="return doReset()">
-                    <p class="text-muted" style="margin-bottom:12px">填注册时用的邮箱，我们会发一封验证码过去。改完密码所有设备都要重新登录。</p>
+                    {{#cfg.forget_tip}}<p class="text-muted" style="margin-bottom:12px">{{cfg.forget_tip}}</p>{{/cfg.forget_tip}}
                     <div class="form-group"><input type="email" id="forget_email" class="form-control" placeholder="邮箱地址" autocomplete="username" required/></div>
 {{#captcha}}
                     <div class="form-group field-wrap has-prefix">
@@ -52,7 +52,7 @@
                     </div>
                     <div class="form-group"><input type="password" id="forget_pwd" class="form-control" placeholder="新密码（6-32 位，含字母和数字）" autocomplete="new-password" required/></div>
                     <div class="form-group"><input type="password" id="forget_pwd2" class="form-control" placeholder="再输一次新密码" autocomplete="new-password" required/></div>
-                    <button type="submit" class="btn btn-primary btn-block loginsubmit">重置密码</button>
+                    <button type="submit" class="btn btn-primary btn-block loginsubmit">{{cfg.btn_reset}}</button>
                     <p class="text-center" style="margin:12px 0 0"><a href="javascript:;" onclick="showTab('mail')">返回登录</a></p>
                 </form>
             </div>

@@ -6,6 +6,10 @@ return [
 	'group' => '个人中心',
 	'scope' => 'front',
 	'pages' => ['user'],
+	'schema' => [
+		['key'=>'title', 'type'=>'text', 'label'=>'标题', 'default'=>'修改昵称'],
+		['key'=>'btn', 'type'=>'text', 'label'=>'保存按钮', 'default'=>'保存'],
+	],
 	'data' => function($cfg, &$ctx){
 		global $userrow;
 		return ['nickname_html' => $userrow['nickname']];

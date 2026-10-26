@@ -6,6 +6,10 @@ return [
 	'group' => '个人中心',
 	'scope' => 'front',
 	'pages' => ['user'],
+	'schema' => [
+		['key'=>'title', 'type'=>'text', 'label'=>'标题', 'default'=>'已有密钥'],
+		['key'=>'empty', 'type'=>'text', 'label'=>'没有密钥时', 'default'=>'还没有创建 API 密钥'],
+	],
 	'data' => function($cfg, &$ctx){
 		global $DB, $uid;
 		$keys = [];

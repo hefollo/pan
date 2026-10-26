@@ -9,6 +9,13 @@ return [
 	'group' => '购买页',
 	'scope' => 'front',
 	'pages' => ['buy'],
+	'description' => '套餐在后台「套餐设置」里增删改；这里改按钮文字',
+	'schema' => [
+		['key'=>'buy_text', 'type'=>'text', 'label'=>'购买按钮', 'default'=>'立即购买'],
+		['key'=>'renew_text', 'type'=>'text', 'label'=>'续费按钮', 'default'=>'续费'],
+		['key'=>'login_text', 'type'=>'text', 'label'=>'没登录时的按钮', 'default'=>'登录后购买'],
+		['key'=>'count_text', 'type'=>'text', 'label'=>'分组标题后面的数量', 'default'=>'{n} 个套餐', 'help'=>'{n} 是这一组有几个套餐；清空不显示'],
+	],
 	'data' => function($cfg, &$ctx){
 		global $islogin2, $userrow;
 		$groups = plan_group_list($ctx['data']['plans']);
@@ -44,15 +51,16 @@ return [
 					'features' => $features,
 					'warn' => $warn,
 					'can_buy' => $quote && $quote['ok'],
-					'btn' => ($quote && $kind === 'level' && strpos($quote['note'], '续费') === 0) ? '续费' : '立即购买',
+					'btn' => ($quote && $kind === 'level' && strpos($quote['note'], '续费') === 0) ? $cfg['renew_text'] : $cfg['buy_text'],
 				];
 			}
-			$out[] = ['name'=>(string)$group_name, 'count'=>count($group_plans), 'plans'=>$plans];
+			$out[] = ['name'=>(string)$group_name, 'count_html'=>theme_text_html($cfg['count_text'], ['n'=>count($group_plans)]), 'plans'=>$plans];
 		}
 		return [
 			'groups' => $out,
 			'only_one' => count($groups) === 1 && !$ctx['data']['upgrades'],
 			'logged_in' => !empty($islogin2),
+			'login_text' => $cfg['login_text'],
 		];
 	},
 ];

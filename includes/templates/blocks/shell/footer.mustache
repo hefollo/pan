@@ -1,9 +1,9 @@
 <div class="site-footer-gap" id="siteFooterGap" aria-hidden="true"></div>
 <footer class="footer text-center">
       <div class="container">
-        <p class="text-muted site-footer-line"><span class="site-footer-item">Copyright &copy; {{year}} <a href="/">{{{site.title_html}}}</a></span>{{#shown}}<span class="site-footer-item">{{{code_html}}}</span>{{/shown}}</p>
+        <p class="text-muted site-footer-line">{{#copyright_html}}<span class="site-footer-item">{{{copyright_html}}}</span>{{/copyright_html}}{{#shown}}<span class="site-footer-item">{{{code_html}}}</span>{{/shown}}</p>
 {{#runtime_open}}
-        <p class="text-muted site-runtime">本站已安全运行：<span id="site-runtime-time"></span></p>
+        <p class="text-muted site-runtime">{{cfg.runtime_label}}<span id="site-runtime-time"></span></p>
 {{/runtime_open}}
 {{#has_silent}}
         <div class="site-footer-extra">{{{silent_html}}}</div>

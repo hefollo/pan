@@ -13,7 +13,7 @@
                     <td>{{paytime}}</td>
                 </tr>
 {{/orders}}
-{{^orders}}<tr><td colspan="7" class="uc-empty">还没有购买记录</td></tr>{{/orders}}            </tbody>
+{{^orders}}<tr><td colspan="7" class="uc-empty">{{cfg.empty}}</td></tr>{{/orders}}            </tbody>
         </table>
         </div>
 {{#multi}}

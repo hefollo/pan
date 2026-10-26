@@ -8,6 +8,10 @@ return [
 	'name' => '存储分布',
 	'group' => '仪表盘',
 	'scope' => 'front',
+	'schema' => [
+		['key'=>'title', 'type'=>'text', 'label'=>'标题', 'default'=>'存储分布'],
+		['key'=>'sub', 'type'=>'text', 'label'=>'小字', 'default'=>'按文件类型', 'help'=>'清空不显示'],
+	],
 	'data' => function($cfg, &$ctx){
 		$counts = layout_ctx_counts($ctx);
 		$total = intval($counts['']);

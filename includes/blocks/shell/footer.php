@@ -12,12 +12,19 @@ return [
 	'group' => '外壳',
 	'scope' => 'front',
 	'pages' => ['_shell'],
+	'description' => '页脚代码、建站时间在后台「网站信息设置」里改，这里改版权文字和运行时间的说明',
+	'schema' => [
+		['key'=>'copyright', 'type'=>'text', 'label'=>'版权文字', 'default'=>'Copyright © {year} {title}', 'help'=>'{year} 是今年，{title} 是带链接的网站名；清空就不显示这一项'],
+		['key'=>'runtime_label', 'type'=>'text', 'label'=>'运行时间前面的文字', 'default'=>'本站已安全运行：', 'help'=>'是否显示运行时间在「网站信息设置」里开关'],
+	],
 	'data' => function($cfg, &$ctx){
 		$groups = footer_code_groups();
 		$shown = [];
 		foreach($groups['shown'] as $code)$shown[] = ['code_html'=>$code];
+		//© 写成 &copy;：和原来模板里的写法一致
+		$copy = str_replace('©', '&copy;', theme_text_html($cfg['copyright'], ['year'=>date('Y'), 'title'=>'<a href="/">'.$ctx['site_vars']['title_html'].'</a>']));
 		return [
-			'year' => date('Y'),
+			'copyright_html' => $copy,
 			'shown' => $shown,
 			'runtime_open' => site_runtime_open(),
 			'runtime_start_ms' => site_runtime_start() * 1000,

@@ -16,12 +16,14 @@
 {{/nav_left}}
         </ul>
         <ul class="nav navbar-nav navbar-right">
+{{#cfg.show_mine}}
 {{#logged_in}}
-          <li class="{{mine_user_cls}}"><a href="./user.php?tab=files"><i class="fa fa-folder-open" aria-hidden="true"></i> 我的文件</a></li>
+          <li class="{{mine_user_cls}}"><a href="./user.php?tab=files"><i class="fa fa-folder-open" aria-hidden="true"></i> {{cfg.mine_text}}</a></li>
 {{/logged_in}}
 {{^logged_in}}
-          <li class="{{mine_guest_cls}}"><a href="./?m=mine"><i class="fa fa-folder-open" aria-hidden="true"></i> 我的文件</a></li>
+          <li class="{{mine_guest_cls}}"><a href="./?m=mine"><i class="fa fa-folder-open" aria-hidden="true"></i> {{cfg.mine_text}}</a></li>
 {{/logged_in}}
+{{/cfg.show_mine}}
 {{#userlogin}}
 {{#logged_in}}
             <li class="dropdown">
@@ -33,7 +35,7 @@
             </li>
 {{/logged_in}}
 {{^logged_in}}
-            <li class="{{login_cls}}"><a href="./login.php"><i class="fa fa-user-circle" aria-hidden="true"></i> 未登录</a></li>
+            <li class="{{login_cls}}"><a href="./login.php"><i class="fa fa-user-circle" aria-hidden="true"></i> {{cfg.login_text}}</a></li>
 {{/logged_in}}
 {{/userlogin}}
         </ul>

@@ -117,6 +117,8 @@ function normalize($html, $hosts){
 	$html = preg_replace('/[A-Za-z0-9+\/]{40,}={0,2}/', 'B64', $html);
 	//重构里有意新增、基线没有的内容（外观设置页的「主题包」面板及其脚本），抹掉再比，其余部分照样逐字对
 	$html = preg_replace('#<div class="panel panel-default theme-packages-panel">.*?</script>#s', '', $html);
+	//上传提示「无大小限制</b>！」原来多了一个没有开头的 </b>（浏览器不显示），改成可编辑文字时去掉了（DEC-20261026-002）
+	$html = str_replace('无大小限制</b>！', '无大小限制！', $html);
 	//后台导航里新增的「页面布局」一项（后台布局编辑器）
 	$html = preg_replace('#\s*<li class="[^"]*"><a href="\./layout\.php"><i class="fa fa-th-large fa-fw"></i> 页面布局</a></li>#u', '', $html);
 	//HTML 注释不渲染，抹掉再比（后台拆成卡片后 <!-- /.row --> 这类注释不再逐字保留）；IE 条件注释留着

@@ -1,17 +1,27 @@
         <div class="uc-section">
-            <div class="uc-section-title"><span>权限与额度</span></div>
+            <div class="uc-section-title"><span>{{cfg.title}}</span></div>
             <dl class="uc-kv">
                 <div><dt>会员等级</dt><dd>{{level_name}}</dd></div>
                 <div><dt>每日上传</dt><dd>{{{limit_text_html}}}{{#bonus}}（含加量包 +{{bonus}}，{{bonus_expire_text}}）{{/bonus}}</dd></div>
                 <div><dt>单文件大小</dt><dd>{{{size_text_html}}}</dd></div>
+{{#cfg.show_traffic}}
                 <div><dt>分享流量</dt><dd>{{traffic_text}}</dd></div>
+{{/cfg.show_traffic}}
+{{#cfg.show_upload}}
                 <div><dt>上传流量</dt><dd>{{upload_text}}</dd></div>
+{{/cfg.show_upload}}
+{{#cfg.show_expire}}
                 <div><dt>有效期</dt><dd>{{expire_text}}</dd></div>
+{{/cfg.show_expire}}
+{{#cfg.show_edit}}
 {{#edit_text}}
                 <div><dt>在线编辑</dt><dd>{{edit_text}}</dd></div>
 {{/edit_text}}
+{{/cfg.show_edit}}
             </dl>
+{{#cfg.show_buy}}
 {{#buy_text}}
             <a class="uc-btn uc-btn-primary" href="./buy.php"><i class="fa fa-shopping-cart" aria-hidden="true"></i> {{buy_text}}</a>
 {{/buy_text}}
+{{/cfg.show_buy}}
         </div>

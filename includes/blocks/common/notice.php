@@ -7,6 +7,7 @@ return [
 	'name' => '站点公告',
 	'group' => '通用',
 	'scope' => 'front',
+	'description' => '公告内容在后台「广告公告位设置」里改',
 	'data' => function($cfg, &$ctx){
 		global $conf;
 		include_once SYSTEM_ROOT.'script_manager.php';

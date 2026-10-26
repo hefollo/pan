@@ -319,9 +319,32 @@ body.admin-theme-sample-note.admin-body .panel{ border-radius: 14px; }
 | `block` | 卡片 id |
 | `config` | 卡片配置，没写的用默认值；卡片配置项里没有的键会被丢掉 |
 | `hidden` | `1` 表示先不显示（保留配置，随时能打开） |
+| `opts` | 通用选项（所有卡片都有，见下面），和卡片自己的 `config` 分开存 |
 | `children` | 子卡片，只有容器卡片会渲染 |
 
 最多 8 层、400 个节点。放在页面上不适用的卡片（比如把购买页卡片放进首页）不输出。
+
+### 通用选项（opts）
+
+每张卡片（包括后台面板）都能设，编辑器里在卡片配置下面的「通用选项」。没设的项不存；**一项都没设时卡片输出和原来逐字一样**。
+
+| 键 | 取值 | 作用 |
+|---|---|---|
+| `who` | `login` / `guest` / `member` / `nonmember` | 只给登录用户 / 游客 / 付费会员（站长建的等级和管理员等级）/ 非付费会员看；服务端判断，不满足就不输出。只对前台页面有效 |
+| `device` | `pc` / `mobile` | 只在电脑（宽度 ≥ 768px）/ 只在手机上显示 |
+| `from`、`to` | `2026-11-01 08:00` 或 `2026-11-01` | 显示的起止时间（网站时间）；只写日期时 `to` 算到当天 23:59 |
+| `mt`、`mb` | `0` `8` `16` `24` `40` `64` | 上 / 下外边距（px） |
+| `pad` | `8` `16` `24` `40` | 内边距（px） |
+| `maxw`、`center` | 数字 / `1` | 最大宽度（px）、限宽后居中 |
+| `align` | `left` / `center` / `right` | 文字对齐 |
+| `bg` | `#rrggbb` 或 `surface` `primary` `soft` `transparent` | 背景色；后几个取外观自己的颜色，换外观跟着变 |
+| `color` | `#rrggbb` 或 `primary` `white` `muted` | 文字颜色 |
+| `radius` | `0` `4` `8` `12` `20` | 圆角（px） |
+| `shadow` | `sm` / `md` / `lg` | 阴影 |
+| `border` | `line` / `primary` | 细线边框 / 主色边框 |
+| `cls`、`css` | 类名 / 行内样式 | 高级：类名只留字母数字下划线短横线；行内样式带引号、尖括号、`url(`、`expression` 的整条丢掉 |
+
+显示条件之外的任何一项设了，卡片外面会多包一层 `<div class="pan-blk …" style="…">`；卡片原来依赖「父元素 > 子元素」选择器的，包一层后可能要调样式。`device` 用到的两条样式随页面输出一次，不依赖外观样式表。
 
 ### 页面名
 
@@ -380,94 +403,99 @@ body.admin-theme-sample-note.admin-body .panel{ border-radius: 14px; }
 
 `必需` 的卡片页面靠它工作，编辑器里不能删也不能隐藏。`容器` 可以放子卡片。
 
+大多数卡片上原来写死的标题、说明、按钮文字都做成了配置项（默认值就是原来的文字，没改过时输出不变）：清空某段文字一般就是不显示它；带 `{名字}` 的会换成数字或链接（比如「今日还可上传 {n} 个文件」），每项的说明里写了有哪些。`switch` 类型的 `show_xxx` 是显示 / 隐藏卡片里的某一部分。快捷入口、快捷操作这类的 `links`（lines）一行一个「文字\|链接\|图标」，留空用程序默认的那几项。
+
+**覆盖了程序模板的主题注意**：这些文字现在从 `{{cfg.xxx}}` 或 `xxx_html` 里取；继续用自己模板里写死的文字也能显示，只是站长在编辑器里改了不生效。
+
 #### 前台
 
 | 卡片 id | 名称 | 能放的页面 | 类型 | 配置项 |
 |---|---|---|---|---|
-| `buy.current` | 当前等级 | buy | — | — |
+| `buy.current` | 当前等级 | buy | — | `label`（text）、`show_limit`（switch）、`show_size`（switch）、`show_speed`（switch）、`show_traffic`（switch）、`show_upload`（switch）、`show_edit`（switch） |
 | `buy.dialog` | 支付弹窗 | buy | 必需 | — |
-| `buy.header` | 购买页标题 | buy | — | — |
-| `buy.methods` | 支付方式 | buy | — | — |
-| `buy.plans` | 套餐列表 | buy | — | — |
-| `buy.tips` | 购买说明 | buy | — | — |
-| `buy.upgrades` | 补差价升级 | buy | — | — |
-| `cockpit.head` | 问候栏 | 任意 | — | — |
-| `cockpit.panel_dist` | 存储分布 | 任意 | — | — |
+| `buy.header` | 购买页标题 | buy | — | `title`（text）、`sub`（text）、`paid_ok`（text）、`paid_fail`（text） |
+| `buy.methods` | 支付方式 | buy | — | `label`（text） |
+| `buy.plans` | 套餐列表 | buy | — | `buy_text`（text）、`renew_text`（text）、`login_text`（text）、`count_text`（text） |
+| `buy.tips` | 购买说明 | buy | — | `text`（textarea） |
+| `buy.upgrades` | 补差价升级 | buy | — | `title`（text）、`sub`（text）、`name_text`（text）、`expire_text`（text）、`btn`（text） |
+| `cockpit.head` | 问候栏 | 任意 | — | `guest_name`（text）、`summary`（text）、`upload_text`（text） |
+| `cockpit.panel_dist` | 存储分布 | 任意 | — | `title`（text）、`sub`（text） |
 | `cockpit.panel_feed` | 最近上传 | 任意 | — | `limit`（number） |
-| `cockpit.panel_links` | 快捷入口 | 任意 | — | — |
-| `cockpit.quota` | 额度卡 | 任意 | — | — |
+| `cockpit.panel_links` | 快捷入口 | 任意 | — | `title`（text）、`links`（lines） |
+| `cockpit.quota` | 额度卡 | 任意 | — | `label`（text）、`sub`（text）、`ring_label`（text） |
 | `common.ads_banner` | 广告位 | 任意 | — | — |
 | `common.notice` | 站点公告 | 任意 | — | — |
 | `common.permbar` | 权限条 | 任意 | — | `where`（select） |
 | `common.reward` | 打赏码 | 任意 | — | `heading_bg`（text）、`qr_comment`（switch） |
 | `common.subtitle` | 说明文字 | 任意 | — | `text`（text） |
-| `edit.editor` | 在线编辑器 | edit | — | — |
-| `file.preview` | 文件预览 | file | — | — |
-| `file.tabs` | 外链与管理 | file | — | — |
-| `file.tips` | 文件页提示 | 任意 | — | — |
-| `index.crumb` | 面包屑 | index | — | — |
+| `core.code` | 代码（只能放前台页面） | 任意 | — | `html`、`css`、`js`（code，代码框） |
+| `edit.editor` | 在线编辑器 | edit | — | `title`（text）、`save_text`（text）、`view_text`（text）、`mine_text`（text） |
+| `file.preview` | 文件预览 | file | — | `download_text`（text）、`view_text`（text）、`office_text`（text）、`review_text`（text）、`blocked_text`（text） |
+| `file.tabs` | 外链与管理 | file | — | `tab_link`（text）、`show_code`（switch）、`tab_code`（text）、`show_info`（switch）、`tab_info`（text）、`tab_manage`（text） |
+| `file.tips` | 文件页提示 | 任意 | — | `title`（text） |
+| `index.crumb` | 面包屑 | index | — | `root`（text）、`all_text`（text）、`mine_text`（text） |
 | `index.filelist` | 文件列表 | index | — | `action_col`（select）、`cards`（switch） |
 | `index.filterbar` | 类型筛选 | index | — | `tools`（switch） |
-| `index.mac_drop` | 拖拽上传入口 | index | — | — |
-| `index.portal_hero` | 首屏上传区 | index | — | — |
-| `index.preview` | 文件预览面板 | index | — | — |
+| `index.mac_drop` | 拖拽上传入口 | index | — | `title`（text）、`hint_size`（text）、`hint_free`（text） |
+| `index.portal_hero` | 首屏上传区 | index | — | `kicker`（text）、`title`（textarea）、`desc`（textarea）、`trust`（lines）、`hint_size`（text）、`hint_free`（text）、`pick_btn`（text）、`login_title`（text）、`login_sub`（text）、`login_btn`（text）、`tip`（switch） |
+| `index.preview` | 文件预览面板 | index | — | `title`（text）、`empty`（text）、`download_text`（text）、`copy_text`（text）、`link_label`（text）、`open_text`（text） |
 | `index.stats` | 统计卡 | 任意 | — | `extra`（select） |
 | `index.title` | 标题与搜索 | index | — | `cta`（text）、`mac_toggle`（switch） |
-| `login.empty` | 无法登录提示 | login | — | — |
-| `login.mail` | 邮箱登录与注册 | login | — | — |
-| `login.oauth` | 快捷登录 | login | — | — |
-| `login.title` | 登录标题 | login | — | — |
-| `share.file` | 分享文件预览 | share | — | — |
-| `share.heading` | 分享标题 | share | — | — |
-| `share.listing` | 分享文件列表 | share | — | — |
-| `share.message` | 分享提示与解锁 | share | — | — |
+| `login.empty` | 无法登录提示 | login | — | `title`（text）、`text`（text） |
+| `login.mail` | 邮箱登录与注册 | login | — | `tab_login`（text）、`tab_reg`（text）、`btn_login`（text）、`btn_reg`（text）、`forget_text`（text）、`forget_tip`（text）、`btn_reset`（text） |
+| `login.oauth` | 快捷登录 | login | — | `divider`（text）、`choose`（text）、`tip`（text） |
+| `login.title` | 登录标题 | login | — | `text_reg`（text）、`text_login`（text） |
+| `share.file` | 分享文件预览 | share | — | `back_text`（text）、`media_note`（text）、`none_text`（text） |
+| `share.heading` | 分享标题 | share | — | `eyebrow`（text）、`sub`（text）、`expire_text`（text） |
+| `share.listing` | 分享文件列表 | share | — | `tab_folder`（text）、`tab_all`（text）、`empty_folder`（text）、`empty_filtered`（text） |
+| `share.message` | 分享提示与解锁 | share | — | `error_title`（text）、`home_text`（text）、`lock_eyebrow`（text）、`h1_folder`（text）、`p_folder`（text）、`h1_file`（text）、`p_file`（text）、`pwd_label`（text）、`unlock_btn`（text）、`back_text`（text） |
 | `shell.ads` | 广告位脚本 | _shell | — | — |
-| `shell.footer` | 页脚 | _shell | — | — |
-| `shell.navbar` | 导航栏 | _shell | 容器 | `menu`（menu，网站级菜单，见第 8 节） |
+| `shell.footer` | 页脚 | _shell | — | `copyright`（text）、`runtime_label`（text） |
+| `shell.navbar` | 导航栏 | _shell | 容器 | `menu`（menu，网站级菜单，见第 8 节）、`show_mine`（switch）、`mine_text`（text）、`login_text`（text） |
 | `shell.page` | 页面内容 | _shell | 必需 | — |
-| `shell.side_perm` | 我的权限 | _shell | — | — |
-| `shell.side_today` | 今日上传 | _shell | — | — |
-| `shell.studio_topbar` | 顶部搜索条 | _shell | — | — |
-| `shell.studio_upsell` | 升级卡 | _shell | — | — |
+| `shell.side_perm` | 我的权限 | _shell | — | `title`（text）、`show_traffic`（switch）、`show_upload`（switch）、`show_expire`（switch）、`show_plan`（switch）、`show_buy`（switch）、`buy_new`（text）、`buy_renew`（text） |
+| `shell.side_today` | 今日上传 | _shell | — | `title`（text）、`tip_limit`（text）、`tip_free`（text） |
+| `shell.studio_topbar` | 顶部搜索条 | _shell | — | `placeholder`（text）、`kbd`（switch）、`upload_text`（text） |
+| `shell.studio_upsell` | 升级卡 | _shell | — | `title_new`（text）、`title_renew`（text）、`text`（textarea）、`btn_new`（text）、`btn_renew`（text）、`href`（text） |
 | `sponsor.intro` | 赞助页标题 | 任意 | — | `text`（text） |
-| `sponsor.list` | 赞助记录 | 任意 | — | — |
-| `sponsor.pay` | 赞助收款码 | 任意 | — | — |
+| `sponsor.list` | 赞助记录 | 任意 | — | `empty`（text）、`summary`（text） |
+| `sponsor.pay` | 赞助收款码 | 任意 | — | `label_wx`（text）、`label_qq`（text）、`label_ali`（text） |
 | `studio.hero` | 主视觉横幅 | 任意 | — | `kicker`（html）、`title`（html）、`sub`（html）、`tags`（html）、`slogan`（html）、`checks`（lines）、`feats`（lines）、`cta`（switch）、`cta_text`（text）、`badge`（switch）、`search`（switch） |
-| `studio.panel_acts` | 快捷操作面板 | 任意 | — | — |
-| `studio.panel_drop` | 上传卡 | 任意 | — | — |
+| `studio.panel_acts` | 快捷操作面板 | 任意 | — | `title`（text）、`links`（lines） |
+| `studio.panel_drop` | 上传卡 | 任意 | — | `title`（text）、`sub`（text）、`btn`（text）、`feat1`（text）、`feat2`（text） |
 | `studio.panel_feed` | 最近动态面板 | 任意 | — | `limit`（number） |
 | `studio.panel_rights` | 我的权限面板 | 任意 | — | `extra_rows`（lines）、`vip_btn`（switch） |
-| `studio.panel_store` | 存储空间面板 | 任意 | — | — |
-| `studio.panel_today` | 今日上传面板 | 任意 | — | — |
+| `studio.panel_store` | 存储空间面板 | 任意 | — | `title`（text）、`used_label`（text）、`count_label`（text）、`size_label`（text） |
+| `studio.panel_today` | 今日上传面板 | 任意 | — | `title`（text）、`summary`（text）、`quota_label`（text） |
 | `studio.promo` | 推广横幅 | 任意 | — | `title`（html）、`sub`（html）、`chips`（lines）、`slogan`（html）、`need_buy`（switch） |
 | `upload.app` | 上传页挂载点 | upload | 容器 必需 | — |
-| `upload.folder_target` | 上传目标文件夹 | upload | — | — |
+| `upload.folder_target` | 上传目标文件夹 | upload | — | `label`（text）、`root`（text） |
 | `upload.loading` | 加载动画 | upload | — | — |
-| `upload.panel` | 上传面板 | upload | 容器 | — |
-| `upload.tips` | 上传提示 | upload | — | — |
-| `user.acc_avatar` | 头像设置 | user | — | — |
-| `user.acc_binds` | 登录方式 | user | — | — |
-| `user.acc_nickname` | 修改昵称 | user | — | — |
-| `user.acc_password` | 密码 | user | — | — |
-| `user.acc_profile` | 账号资料 | user | — | — |
-| `user.api_about` | API 说明 | user | — | — |
-| `user.api_create` | 创建 API 密钥 | user | — | — |
-| `user.api_docs` | API 对接文档 | user | — | — |
-| `user.api_keys` | API 密钥列表 | user | — | — |
-| `user.api_secret` | 新密钥展示框 | user | — | — |
+| `upload.panel` | 上传面板 | upload | 容器 | `pick`（text）、`login`（text）、`storage`（text）、`show`（text）、`pwd`（text） |
+| `upload.tips` | 上传提示 | upload | — | `title`（text）、`ip`（text）、`size`（text）、`nosize`（text）、`limit`（text）、`expire`（text）、`video`（text） |
+| `user.acc_avatar` | 头像设置 | user | — | `title`（text）、`btn`（text）、`tip`（text） |
+| `user.acc_binds` | 登录方式 | user | — | `title`（text） |
+| `user.acc_nickname` | 修改昵称 | user | — | `title`（text）、`btn`（text） |
+| `user.acc_password` | 密码 | user | — | `title`（text）、`btn`（text）、`tip`（text）、`nopwd_title`（text）、`nopwd_tip`（text） |
+| `user.acc_profile` | 账号资料 | user | — | `title`（text） |
+| `user.api_about` | API 说明 | user | — | `heading`（text）、`text`（textarea） |
+| `user.api_create` | 创建 API 密钥 | user | — | `title`（text）、`btn`（text） |
+| `user.api_docs` | API 对接文档 | user | — | `title`（text） |
+| `user.api_keys` | API 密钥列表 | user | — | `title`（text）、`empty`（text） |
+| `user.api_secret` | 新密钥展示框 | user | — | `title`（text）、`sub`（text） |
 | `user.files_filters` | 文件类型筛选 | user | — | — |
-| `user.files_hint` | 私密说明 | user | — | — |
+| `user.files_hint` | 私密说明 | user | — | `text`（textarea） |
 | `user.files_list` | 我的文件列表 | user | — | — |
-| `user.files_toolbar` | 文件工具条 | user | — | — |
-| `user.head` | 个人中心头部 | user | — | — |
-| `user.orders` | 订单记录 | user | — | — |
-| `user.overview_cards` | 概览数字卡 | user | — | — |
-| `user.overview_rights` | 权限与额度 | user | — | — |
-| `user.overview_types` | 文件类型分布 | user | — | — |
+| `user.files_toolbar` | 文件工具条 | user | — | `placeholder`（text） |
+| `user.head` | 个人中心头部 | user | — | `title`（text） |
+| `user.orders` | 订单记录 | user | — | `empty`（text） |
+| `user.overview_cards` | 概览数字卡 | user | — | `files`（text）、`bytes`（text）、`today`（text）、`size`（text） |
+| `user.overview_rights` | 权限与额度 | user | — | `title`（text）、`show_traffic`（switch）、`show_upload`（switch）、`show_expire`（switch）、`show_edit`（switch）、`show_buy`（switch） |
+| `user.overview_types` | 文件类型分布 | user | — | `title`（text） |
 | `user.tab` | 页签内容 | user | 容器 | `tab`（select） |
-| `user.tabs` | 页签导航 | user | — | — |
-| `violation.intro` | 公示页标题 | 任意 | — | — |
-| `violation.list` | 违规公示列表 | 任意 | — | — |
+| `user.tabs` | 页签导航 | user | — | `label_overview`（text）、`label_files`（text）、`label_orders`（text）、`label_api`（text）、`label_account`（text） |
+| `violation.intro` | 公示页标题 | 任意 | — | `title`（text） |
+| `violation.list` | 违规公示列表 | 任意 | — | `empty`（text） |
 
 **通用展示**（任意前台页面，跨 28 套外观都能用，颜色只取外观变量，适合首页和自定义页面）：
 
@@ -487,8 +515,9 @@ body.admin-theme-sample-note.admin-body .panel{ border-radius: 14px; }
 | 卡片 id | 名称 | 能放的页面 | 类型 | 配置项 |
 |---|---|---|---|---|
 | `core.box` | 容器 | 任意 | 容器 | `tag`（select）、`class`（text）、`dom_id`（text）、`style`（text） |
+| `core.col` | 栏 | 任意 | 容器 | — |
+| `core.cols` | 分栏 | 任意 | 容器 | `ratio`（select）、`gap`（select）、`valign`（select）、`stack`（select） |
 | `core.html` | 自定义 HTML | 任意 | — | `html`（textarea） |
-| `core.code` | 代码（只能放前台页面） | 任意 | — | `html`、`css`、`js`（code，代码框） |
 
 #### 后台
 
@@ -507,9 +536,10 @@ body.admin-theme-sample-note.admin-body .panel{ border-radius: 14px; }
 
 1. 上面选**主题**和**页面**。可以编辑没在使用的主题，换外观之前先把布局摆好。
 2. 左边是卡片树：拖 <kbd>☰</kbd> 调整顺序，能拖进带文件夹图标的容器；眼睛图标隐藏 / 显示，还有复制、删除。
-3. 点卡片名，在下面改它的配置。
+3. 点卡片名，在下面改它的配置；再下面是可折叠的「**通用选项**」，分「显示条件 / 间距与宽度 / 外观 / 高级」四个页签（显示给谁、电脑 / 手机、显示时间段、间距、宽度、背景、圆角、阴影、边框……，见第 8 节；页签上的数字是这组设了几项，选项说明在问号上），设了的卡片在树上带角标（仅登录、仅手机、定时、样式……）。显示条件不满足的卡片在预览里用虚线框标出来，访客看不到。
+   要并排几列，加「**分栏**」卡片：选栏数和比例（2～4 栏），会自动建好「第 1 栏」「第 2 栏」……，把卡片拖进各栏；手机上自动叠成一列。
 4. 「添加卡片」：加到选中的容器里，选中的是普通卡片就加在它后面。后台页面这里列的是这一页的面板。
-5. 右边是**预览**，显示的是草稿。在预览里按住 <kbd>Alt</kbd> 点页面，左边选中对应的卡片。
+5. 右边是**预览**，显示的是草稿。在预览里按住 <kbd>Alt</kbd> 点页面，左边选中对应的卡片。勾着「**点文字直接改**」（默认）时，预览里带虚线框的文字点一下就能改，回车或点别处完成、<kbd>Esc</kbd> 放弃，改完自动写回那张卡片的配置；链接、按钮里的文字也一样（点了不会跳走）。带 `{占位}` 的文字、链接地址这类只能在左边改。预览框比较窄，「只在电脑上」的卡片在里面看不到，点「新窗口打开」看电脑效果。宽屏下页面往下滚时预览停在窗口里，左边改参数时一直看得到效果。
 6. 勾着「**实时预览**」（默认）时，每次改动都会自动存成草稿、右边马上刷新；取消勾选就回到手动的「保存草稿并预览」。满意了再 **发布**，发布之前访客看不到任何变化。
 7. 「更多」里：丢弃草稿、恢复主题默认布局、导出 / 导入这一页的布局 JSON、退出预览模式。
 8. 页面下拉框旁边：**新建页面**（填标题、地址名，选「从卡片开始」或「空白代码页」，可勾「显示网站外壳」「设为网站入口」）；选中自定义页面时还有「页面设置」（改标题、外壳开关、设 / 取消入口；地址名建好后不能改）和「删除页面」。

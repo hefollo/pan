@@ -8,6 +8,9 @@ return [
 	'group' => '个人中心',
 	'scope' => 'front',
 	'pages' => ['user'],
+	'schema' => [
+		['key'=>'empty', 'type'=>'text', 'label'=>'没有订单时', 'default'=>'还没有购买记录'],
+	],
 	'data' => function($cfg, &$ctx){
 		global $DB, $uid, $userrow;
 		$uid = intval($uid);

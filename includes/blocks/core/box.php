@@ -9,6 +9,7 @@ return [
 	'group' => '布局',
 	'scope' => 'both',
 	'container' => true,
+	'description' => '把子卡片包进一个标签里；背景、圆角、阴影、间距在下面的「通用选项」里调，要并排几列用「分栏」',
 	'schema' => [
 		['key'=>'tag', 'type'=>'select', 'label'=>'标签', 'default'=>'div', 'options'=>['div'=>'div', 'section'=>'section', 'aside'=>'aside', 'main'=>'main', 'header'=>'header', 'nav'=>'nav']],
 		['key'=>'class', 'type'=>'text', 'label'=>'CSS 类名', 'default'=>'', 'help'=>'多个类名用空格隔开'],

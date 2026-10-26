@@ -6,6 +6,12 @@ return [
 	'group' => '个人中心',
 	'scope' => 'front',
 	'pages' => ['user'],
+	'schema' => [
+		['key'=>'files', 'type'=>'text', 'label'=>'文件数', 'default'=>'我的文件'],
+		['key'=>'bytes', 'type'=>'text', 'label'=>'占用空间', 'default'=>'占用空间'],
+		['key'=>'today', 'type'=>'text', 'label'=>'今日上传', 'default'=>'今日上传'],
+		['key'=>'size', 'type'=>'text', 'label'=>'单文件上限', 'default'=>'单文件上限'],
+	],
 	'data' => function($cfg, &$ctx){
 		global $DB, $uid;
 		$limit = get_effective_upload_count_limit();
