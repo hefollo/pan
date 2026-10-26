@@ -1,0 +1,12 @@
+{
+    "id": "sunset",
+    "name": "落日熔金",
+    "description": "珊瑚橙到品红的落日渐变，叠磨砂玻璃卡片与暖色辉光，浓烈张扬，适合首页和活动页。",
+    "version": "1.0.0",
+    "author": "pan",
+    "engine": 1,
+    "group": "color",
+    "flags": [],
+    "legacy": true,
+    "sort": 250
+}

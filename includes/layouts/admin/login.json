@@ -1,0 +1,51 @@
+{
+    "nodes": [
+        {
+            "id": "box1",
+            "block": "core.box",
+            "config": {
+                "class": "login-bg"
+            },
+            "children": []
+        },
+        {
+            "id": "box2",
+            "block": "core.box",
+            "config": {
+                "class": "login-page"
+            },
+            "children": [
+                {
+                    "id": "box3",
+                    "block": "core.box",
+                    "config": {
+                        "class": "login-shell"
+                    },
+                    "children": [
+                        {
+                            "id": "banner",
+                            "block": "admin.panel",
+                            "config": {
+                                "panel": "banner"
+                            }
+                        },
+                        {
+                            "id": "form",
+                            "block": "admin.panel",
+                            "config": {
+                                "panel": "form"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "id": "footer",
+                    "block": "admin.panel",
+                    "config": {
+                        "panel": "footer"
+                    }
+                }
+            ]
+        }
+    ]
+}

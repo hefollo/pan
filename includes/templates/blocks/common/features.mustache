@@ -1,0 +1,16 @@
+<section class="pc-features">
+{{#cfg.title}}
+  <h3 class="pc-features-title">{{cfg.title}}</h3>
+{{/cfg.title}}
+  <div class="pc-features-grid pc-cols-{{cols}}">
+{{#items}}
+    <div class="pc-feature">
+      <i class="fa {{icon}} pc-feature-icon" aria-hidden="true"></i>
+      <strong class="pc-feature-title">{{title}}</strong>
+{{#text}}
+      <span class="pc-feature-text">{{text}}</span>
+{{/text}}
+    </div>
+{{/items}}
+  </div>
+</section>

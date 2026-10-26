@@ -1,0 +1,14 @@
+{
+    "id": "portal",
+    "name": "上传门户风",
+    "description": "居中的门户式顶部导航，首页多一块大号上传引导区，绿色配色，适合面向访客的公开分享站。",
+    "version": "1.0.0",
+    "author": "pan",
+    "engine": 1,
+    "group": "layout",
+    "flags": [
+        "layout"
+    ],
+    "legacy": true,
+    "sort": 30
+}

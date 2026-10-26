@@ -1,0 +1,12 @@
+{
+    "id": "abyss",
+    "name": "深海玻璃",
+    "description": "深海蓝绿渐变配青色辉光，通透安静的磨砂玻璃，适合长时间浏览的资源站。",
+    "version": "1.0.0",
+    "author": "pan",
+    "engine": 1,
+    "group": "color",
+    "flags": [],
+    "legacy": true,
+    "sort": 260
+}

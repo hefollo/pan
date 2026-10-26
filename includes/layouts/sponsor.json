@@ -1,0 +1,9 @@
+{"nodes": [
+  {"id": "container", "block": "core.box", "config": {"class": "container"}, "children": [
+    {"id": "well", "block": "core.box", "config": {"class": "well bs-component"}, "children": [
+      {"id": "intro", "block": "sponsor.intro"},
+      {"id": "pay", "block": "sponsor.pay"},
+      {"id": "list", "block": "sponsor.list"}
+    ]}
+  ]}
+]}

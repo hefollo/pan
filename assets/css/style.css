@@ -4028,6 +4028,86 @@ body.studio-layout:not(.theme-neo) .layout-filter.active{color:#fff!important}
 /* ==== 手机端适配（多套外观共用）结束 ==== */
 
 /*
+ * 通用展示卡片（includes/blocks/common/hero|media|buttons|features，DEC-20261026-001）：
+ * 自定义页面和首页都能放，28 套外观共用这一份。不写死颜色，只用外观自己的变量（--surface 面板色、--text 文字色、
+ * --line 边框色、--primary 主色、--muted 次要文字），没定义变量的外观退回继承的文字颜色。
+ */
+.pc-hero,.pc-media,.pc-features{margin:0 0 20px;border-radius:14px;color:var(--text,inherit)}
+.pc-hero{display:flex;align-items:center;gap:28px;padding:36px 32px;background:var(--surface,rgba(127,127,127,.06));border:1px solid var(--line,rgba(127,127,127,.18));box-shadow:var(--shadow,none)}
+.pc-hero.pc-tone-plain{background:transparent;border-color:transparent;box-shadow:none;padding-left:0;padding-right:0}
+.pc-hero.pc-tone-primary{background:linear-gradient(135deg,var(--primary,#2563eb),var(--primary-dark,#1d4ed8));border-color:transparent;color:#fff}
+.pc-hero.pc-tone-primary .pc-hero-desc{color:rgba(255,255,255,.88)}
+.pc-hero.pc-tone-primary .btn-primary{background:#fff!important;border-color:#fff!important;color:var(--primary,#2563eb)!important}
+.pc-hero.pc-tone-primary .btn-default{background:transparent!important;border-color:rgba(255,255,255,.7)!important;color:#fff!important}
+.pc-hero-text{flex:1;min-width:0}
+.pc-hero-title{margin:0 0 10px;font-size:30px;font-weight:700;line-height:1.3;color:inherit}
+.pc-hero-desc{margin:0 0 6px;font-size:15px;line-height:1.7;color:var(--muted,inherit);opacity:.95}
+.pc-hero.pc-center{flex-direction:column;text-align:center}
+.pc-hero.pc-center .pc-btns{justify-content:center}
+.pc-hero-image{flex:0 0 38%;max-width:38%}
+.pc-hero-image img,.pc-media-image img{display:block;width:100%;height:auto;border-radius:10px}
+.pc-btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
+.pc-btn-row{margin:0 0 20px}
+.pc-btn-row.pc-center{justify-content:center}
+.pc-btns .pc-btn{margin:0;border-radius:8px;padding:8px 18px;text-transform:none}
+.pc-media{display:flex;align-items:center;gap:28px;padding:24px;background:var(--surface,rgba(127,127,127,.06));border:1px solid var(--line,rgba(127,127,127,.18))}
+.pc-media-right{flex-direction:row-reverse}
+.pc-media-image{flex:0 0 42%;max-width:42%}
+.pc-media-text{flex:1;min-width:0}
+.pc-media-title{margin:0 0 10px;font-size:22px;font-weight:700;color:inherit}
+.pc-media-text p{margin:0 0 8px;line-height:1.7;color:var(--muted,inherit)}
+.pc-features-title{margin:0 0 14px;font-size:20px;font-weight:700;color:inherit}
+.pc-features-grid{display:grid;gap:14px;grid-template-columns:repeat(3,minmax(0,1fr))}
+.pc-features-grid.pc-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.pc-features-grid.pc-cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.pc-feature{display:flex;flex-direction:column;gap:6px;padding:18px;border-radius:12px;background:var(--surface,rgba(127,127,127,.06));border:1px solid var(--line,rgba(127,127,127,.18))}
+.pc-feature-icon{font-size:22px;color:var(--primary,currentColor)}
+.pc-feature-title{font-size:16px;color:inherit}
+.pc-feature-text{font-size:13px;line-height:1.6;color:var(--muted,inherit)}
+@media (max-width:767px){
+.pc-hero,.pc-media,.pc-media-right{flex-direction:column;align-items:stretch;padding:22px 18px;gap:16px}
+.pc-hero.pc-tone-plain{padding-left:0;padding-right:0}
+.pc-hero-title{font-size:23px}
+.pc-hero-image,.pc-media-image{flex:none;max-width:100%}
+.pc-features-grid,.pc-features-grid.pc-cols-2,.pc-features-grid.pc-cols-4{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:420px){.pc-features-grid,.pc-features-grid.pc-cols-2,.pc-features-grid.pc-cols-4{grid-template-columns:minmax(0,1fr)}}
+
+/*
+ * 「类型筛选」卡片的「排序与视图切换」（index.filterbar 的 tools 选项）：原来只有工作台家族（body.studio-layout）有样式，
+ * 其它外观在「页面布局」里打开它时用这一段。只在开了选项时生效（.has-tools），没开时页面和原来一样；工作台家族仍用自己的。
+ * 网格视图（layout-studio.js 在 body 上挂 studio-grid-on）同样给标准文件表一份通用样式，手机宽本来就是卡片，不动。
+ */
+/* 「类型筛选」标签本身：布局型外观（body.layout-theme）各有样式；配色型外观的默认首页没有这张卡片，站长自己加进来时用这一份 */
+body:not(.layout-theme) .layout-filters{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 14px}
+body:not(.layout-theme) .layout-filter{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:9px;background:transparent;color:var(--muted,inherit)!important;font-size:13px;font-weight:600;text-decoration:none}
+body:not(.layout-theme) .layout-filter em{font-style:normal;font-size:11px;font-weight:700;opacity:.75}
+body:not(.layout-theme) .layout-filter:hover{background:rgba(127,127,127,.12);color:var(--text,inherit)!important;text-decoration:none}
+body:not(.layout-theme) .layout-filter.active{background:rgba(127,127,127,.16);color:var(--primary,inherit)!important}
+body:not(.studio-layout) .studio-filterbar.has-tools{display:flex;align-items:center;flex-wrap:wrap;gap:12px}
+body:not(.studio-layout) .studio-filterbar.has-tools>.layout-filters{margin-bottom:0}
+body:not(.studio-layout) .studio-filterbar.has-tools>.layout-filters{flex:1 1 auto;min-width:0}
+body:not(.studio-layout) .studio-tools{display:flex;align-items:center;gap:10px;margin-left:auto}
+body:not(.studio-layout) .studio-sort{position:relative;display:inline-flex;align-items:center}
+body:not(.studio-layout) .studio-sort>i{position:absolute;right:11px;font-size:14px;opacity:.6;pointer-events:none}
+body:not(.studio-layout) .studio-sort-sel{height:34px;padding:0 30px 0 12px;border:1px solid var(--line,rgba(127,127,127,.3));border-radius:9px;background:var(--surface,transparent);color:inherit;font-size:13px;line-height:32px;-webkit-appearance:none;-moz-appearance:none;appearance:none;cursor:pointer}
+body:not(.studio-layout) .studio-sort-sel:focus{outline:0;border-color:var(--primary,#2563eb)}
+body:not(.studio-layout) .studio-sort-sel option{color:#1f2937;background:#fff}
+body:not(.studio-layout) .studio-viewtoggle{display:inline-flex;gap:3px;padding:3px;border:1px solid var(--line,rgba(127,127,127,.3));border-radius:9px;background:var(--surface,transparent)}
+body:not(.studio-layout) .studio-viewtoggle button{width:30px;height:26px;padding:0;border:0;border-radius:7px;background:transparent;color:inherit;opacity:.65;font-size:13px;line-height:26px}
+body:not(.studio-layout) .studio-viewtoggle button.active{background:var(--primary,#2563eb);color:#fff;opacity:1}
+@media (min-width:768px){
+body.studio-grid-on:not(.theme-studio) .table.filelist-main>thead{display:none}
+body.studio-grid-on:not(.theme-studio) .table.filelist-main{display:block;border:0}
+body.studio-grid-on:not(.theme-studio) .table.filelist-main>tbody{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px;padding:4px 0 14px}
+body.studio-grid-on:not(.theme-studio) .table.filelist-main>tbody>tr{display:flex;flex-direction:column;gap:6px;padding:16px;border:1px solid var(--line,rgba(127,127,127,.25));border-radius:14px;background:var(--surface,transparent)}
+body.studio-grid-on:not(.theme-studio) .table.filelist-main>tbody>tr>td{display:block;padding:0;border:0!important;box-shadow:none!important;background:transparent!important;font-size:12.5px;white-space:normal;word-break:break-all}
+body.studio-grid-on:not(.theme-studio) .table.filelist-main>tbody>tr>td.fl-num,body.studio-grid-on:not(.theme-studio) .table.filelist-main>tbody>tr>td.fl-ip{display:none}
+body.studio-grid-on:not(.theme-studio) .table.filelist-main>tbody>tr>td.fl-name{order:-1;font-size:14px;font-weight:600}
+body.studio-grid-on:not(.theme-studio) .table.filelist-main>tbody>tr>td.filelist-actions-cell{order:10;margin-top:4px}
+}
+
+/*
  * 首屏守卫的收尾（见 includes/header.php 的 #css-guard）：守卫在本文件到达前把 body 藏起来、
  * 给 html 铺上外观底色。这两条必须留在文件最末尾——本文件一到就放出页面，并把 html 背景清掉，
  * 让 body 的背景照常铺满整个视口（html 有背景时 body 背景不会再往视口上传）。

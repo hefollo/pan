@@ -15,11 +15,10 @@ $mysqlversion=$DB->getColumn("select VERSION()");
  * 本项目是二开分支，版本号和上游不是一套，检查结果也没有参考意义，直接去掉。
  */
 ?>
-<div class="container">
-<div class="admin-page">
+<?php theme_panel_begin('browser_notice', '浏览器提示');?>
 <div id="browser-notice"></div>
-<div class="row">
-                <div class="col-lg-3 col-md-6">
+<?php theme_panel_end();?>
+<?php theme_panel_begin('stat_files', '文件总数');?>
                     <div class="panel panel-primary stat-panel">
                         <div class="panel-heading">
                             <div class="row">
@@ -40,8 +39,8 @@ $mysqlversion=$DB->getColumn("select VERSION()");
                             </div>
                         </a>
                     </div>
-                </div>
-                <div class="col-lg-3 col-md-6">
+<?php theme_panel_end();?>
+<?php theme_panel_begin('stat_today', '今日上传');?>
                     <div class="panel panel-green stat-panel">
                         <div class="panel-heading">
                             <div class="row">
@@ -62,8 +61,8 @@ $mysqlversion=$DB->getColumn("select VERSION()");
                             </div>
                         </a>
                     </div>
-                </div>
-                <div class="col-lg-3 col-md-6">
+<?php theme_panel_end();?>
+<?php theme_panel_begin('stat_yesterday', '昨日上传');?>
                     <div class="panel panel-yellow stat-panel">
                         <div class="panel-heading">
                             <div class="row">
@@ -84,8 +83,8 @@ $mysqlversion=$DB->getColumn("select VERSION()");
                             </div>
                         </a>
                     </div>
-                </div>
-                <div class="col-lg-3 col-md-6">
+<?php theme_panel_end();?>
+<?php theme_panel_begin('stat_users', '用户总数');?>
                     <div class="panel panel-red stat-panel">
                         <div class="panel-heading">
                             <div class="row">
@@ -106,13 +105,8 @@ $mysqlversion=$DB->getColumn("select VERSION()");
                             </div>
                         </a>
                     </div>
-                </div>
-            </div>
-            <!-- /.row -->
-            <!-- 文件类型分布：原来是一行六张 col-lg-2 的小卡，数字和占用空间挤成一团，
-                 改成一整块列表，每类一行：图标 / 名称 / 占比条 / 数量 / 占用空间 / 占比 -->
-            <div class="row">
-                <div class="col-xs-12">
+<?php theme_panel_end();?>
+<?php theme_panel_begin('filetype', '文件类型分布');?>
                     <div class="panel panel-default filetype-panel">
                         <div class="panel-heading">
                             <h3 class="panel-title"><i class="fa fa-pie-chart" aria-hidden="true"></i> 文件类型分布</h3>
@@ -179,11 +173,8 @@ $mysqlversion=$DB->getColumn("select VERSION()");
                             <p class="filetype-note">「其它」是扩展名不在图片 / 视频 / 音频 / 文档 / 压缩包五类里的文件（如 apk、exe），分类口径跟「文件设置」里填的格式一致。</p>
                         </div>
                     </div>
-                </div>
-            </div>
-            <!-- /.row -->
-        <div class="row">
-            <div class="col-md-8 col-sm-12">
+<?php theme_panel_end();?>
+<?php theme_panel_begin('server', '服务器信息');?>
                 <div class="panel panel-info">
                     <div class="panel-heading">
                         <h3 class="panel-title">服务器信息</h3>
@@ -211,8 +202,8 @@ $mysqlversion=$DB->getColumn("select VERSION()");
                         </li>
                     </ul>
                 </div>
-            </div>
-            <div class="col-md-4 col-sm-12">
+<?php theme_panel_end();?>
+<?php theme_panel_begin('version', '版本信息');?>
                 <div class="panel panel-success">
                     <div class="panel-heading">
                         <h3 class="panel-title">版本信息</h3>
@@ -229,10 +220,9 @@ $mysqlversion=$DB->getColumn("select VERSION()");
                         <li class="list-group-item">原开源项目地址：<a href="https://github.com/netcccyun/pan" target="_blank" rel="noopener noreferrer">github.com/netcccyun/pan</a></li>
                     </ul>
                 </div>
-            </div>
-        </div>
-    </div>
-</div>
+<?php theme_panel_end();?>
+<?php //页面内容是布局 admin/index（includes/layouts/admin/index.json），各面板在上面用 theme_panel_begin/end 捕获，见 DEC-20261025-003
+echo theme_render_layout('admin/index', [], 'admin', $site_theme);?>
 <script>
 //文件类型分布的六组，顺序跟页面上的行一致
 var FILETYPE_GROUPS = ['image', 'video', 'audio', 'doc', 'archive', 'other'];

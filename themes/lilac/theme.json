@@ -1,0 +1,12 @@
+{
+    "id": "lilac",
+    "name": "淡紫点阵",
+    "description": "薰衣草底色配细密点阵，柔和不刺眼，适合内容站、文档站和图片分享。",
+    "version": "1.0.0",
+    "author": "pan",
+    "engine": 1,
+    "group": "color",
+    "flags": [],
+    "legacy": true,
+    "sort": 200
+}

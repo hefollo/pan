@@ -1,0 +1,115 @@
+{
+    "nodes": [
+        {
+            "id": "notice",
+            "block": "common.notice"
+        },
+        {
+            "id": "ads",
+            "block": "common.ads_banner"
+        },
+        {
+            "id": "b82",
+            "block": "core.box",
+            "config": {
+                "class": "container"
+            },
+            "children": [
+                {
+                    "id": "b81",
+                    "block": "core.box",
+                    "config": {
+                        "class": "layout-shell"
+                    },
+                    "children": [
+                        {
+                            "id": "b79",
+                            "block": "core.box",
+                            "config": {
+                                "class": "studio-main"
+                            },
+                            "children": [
+                                {
+                                    "id": "b72",
+                                    "block": "studio.hero",
+                                    "config": {
+                                        "kicker": "高效 · 安全 · 无限可能",
+                                        "title": "{site}",
+                                        "sub": "让文件分享更简单、更安全、更高效",
+                                        "slogan": "好的分享<br>让世界更近",
+                                        "badge": 0,
+                                        "feats": "fa-bolt|blue|极速上传|全球加速节点\nfa-shield|violet|安全可靠|多重数据保护\nfa-share-alt|green|随时分享|一键生成外链"
+                                    }
+                                },
+                                {
+                                    "id": "b73",
+                                    "block": "index.stats"
+                                },
+                                {
+                                    "id": "b78",
+                                    "block": "core.box",
+                                    "config": {
+                                        "class": "well bs-component"
+                                    },
+                                    "children": [
+                                        {
+                                            "id": "b74",
+                                            "block": "index.title"
+                                        },
+                                        {
+                                            "id": "b75",
+                                            "block": "common.permbar"
+                                        },
+                                        {
+                                            "id": "b76",
+                                            "block": "index.filterbar",
+                                            "config": {
+                                                "tools": 1
+                                            }
+                                        },
+                                        {
+                                            "id": "b77",
+                                            "block": "index.filelist",
+                                            "config": {
+                                                "action_col": "right"
+                                            }
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "id": "b80",
+                            "block": "core.box",
+                            "config": {
+                                "class": "studio-side",
+                                "tag": "aside"
+                            },
+                            "children": [
+                                {
+                                    "id": "b68",
+                                    "block": "studio.panel_today"
+                                },
+                                {
+                                    "id": "b69",
+                                    "block": "studio.panel_rights",
+                                    "config": {
+                                        "extra_rows": "fa-clone|cyan|同时下载数|不限制"
+                                    }
+                                },
+                                {
+                                    "id": "b70",
+                                    "block": "studio.panel_acts"
+                                },
+                                {
+                                    "id": "b71",
+                                    "block": "studio.panel_feed"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

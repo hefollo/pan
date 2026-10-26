@@ -1,0 +1,9 @@
+{"nodes": [
+  {"id": "nav", "block": "shell.navbar", "children": [
+    {"id": "today", "block": "shell.side_today"},
+    {"id": "perm", "block": "shell.side_perm"}
+  ]},
+  {"id": "ads", "block": "shell.ads"},
+  {"id": "page", "block": "shell.page"},
+  {"id": "footer", "block": "shell.footer"}
+]}

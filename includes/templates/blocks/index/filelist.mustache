@@ -1,0 +1,48 @@
+{{#is_mine}}
+        <input type="file" id="replaceFileInput" style="display:none">
+{{/is_mine}}
+{{#guest_mine}}
+{{{folder_bar_html}}}
+        <div class="uc-batchbar" id="guestBatchBar" hidden>
+            <span>已选中 <b id="guestSelCount">0</b> {{#fd_on}}项{{/fd_on}}{{^fd_on}}个文件{{/fd_on}}</span>
+{{{batch_buttons_html}}}            <button type="button" class="uc-btn uc-btn-danger" id="guestBatchDelete"><i class="fa fa-trash" aria-hidden="true"></i> 批量删除</button>
+            <button type="button" class="uc-btn" id="guestSelClear">取消选择</button>
+        </div>
+{{/guest_mine}}
+        <div class="table-responsive{{#cards}} filelist-wrap{{/cards}}">
+       <table class="table table-hover {{#guest_mine}}uc-filelist guest-filelist{{/guest_mine}}{{^guest_mine}}table-striped filelist filelist-main{{/guest_mine}}">
+            <thead>
+                <tr>
+{{#guest_mine}}
+                    <th class="uc-col-check"><input type="checkbox" id="guestCheckAll" title="全选本页"></th>
+                    <th>文件名</th>
+                    <th class="uc-col-size">大小</th>
+                    <th class="uc-col-state">状态</th>
+                    <th class="uc-col-time">上传时间</th>
+                    <th class="uc-col-act">操作</th>
+{{/guest_mine}}
+{{^guest_mine}}
+                    <th>#</th>
+                    {{^action_right}}<th>操作</th>{{/action_right}}
+                    <th>文件名</th>
+                    <th>文件大小</th>
+                    <th>文件格式</th>
+                    <th>上传时间</th>
+                    <th>上传者IP</th>
+                    {{#action_right}}<th>操作</th>{{/action_right}}
+{{/guest_mine}}
+                </tr>
+            </thead>
+            <tbody>
+{{{folder_rows_html}}}{{#guest_mine}}{{#rows}}<tr data-id="{{id}}" data-token="{{token}}"{{#blocked}} class="is-blocked"{{/blocked}}><td class="uc-col-check"><input type="checkbox" class="guest-check"{{^can_delete}} disabled title="{{delete_reason}}"{{/can_delete}}></td><td class="uc-col-name"><i class="fa {{icon}} fa-fw"></i><span class="uc-name">{{{name_html}}}</span>{{{loc_html}}}</td><td class="uc-col-size">{{size}}</td><td class="uc-col-state">{{#states}}<span class="uc-badge{{cls}}">{{{text_html}}}</span>{{/states}}</td><td class="uc-col-time">{{addtime}}</td><td class="uc-col-act"><div class="uc-acts"><a class="uc-act" href="{{fileurl}}" title="下载"><i class="fa fa-download" aria-hidden="true"></i></a><a class="uc-act" href="{{viewurl}}" title="查看"><i class="fa fa-eye" aria-hidden="true"></i></a>{{#can_edit}}<a class="uc-act" href="./edit.php?id={{id}}" title="在线编辑"><i class="fa fa-code" aria-hidden="true"></i></a>{{/can_edit}}{{#can_rename}}<button type="button" class="uc-act" data-guest="rename" title="重命名"><i class="fa fa-pencil" aria-hidden="true"></i></button>{{/can_rename}}{{#can_replace}}<button type="button" class="uc-act" data-guest="replace" title="重新上传替换"><i class="fa fa-refresh" aria-hidden="true"></i></button>{{/can_replace}}{{#can_delete}}<button type="button" class="uc-act uc-act-danger" data-guest="delete" title="删除"><i class="fa fa-trash" aria-hidden="true"></i></button>{{/can_delete}}</div></td></tr>{{/rows}}{{#empty}}<tr><td colspan="6" class="uc-empty">{{empty_text}}</td></tr>{{/empty}}{{/guest_mine}}{{^guest_mine}}{{#rows}}<tr data-group="{{group}}" data-preview="{{preview_url}}" data-preview-kind="{{preview_kind}}" data-name="{{name_raw}}" data-size="{{size}}" data-type="{{type_text}}" data-time="{{addtime}}" data-ip="{{ip}}" data-down="{{fileurl}}" data-view="{{viewurl}}" data-icon="{{icon}}" data-lock="{{#has_pwd}}1{{/has_pwd}}"><td class="fl-num"><b>{{num}}</b></td>{{^action_right}}<td class="filelist-actions-cell"><div class="file-actions"><a class="file-action file-action-down" href="{{fileurl}}" title="下载"><i class="fa fa-download" aria-hidden="true"></i> <span class="file-action-label">下载</span></a><a class="file-action file-action-view" href="{{viewurl}}" title="查看"><i class="fa fa-eye" aria-hidden="true"></i> <span class="file-action-label">查看</span></a>{{#can_edit}}<a class="file-action file-action-edit" href="./edit.php?id={{id}}" title="编辑"><i class="fa fa-pencil" aria-hidden="true"></i> <span class="file-action-label">编辑</span></a>{{/can_edit}}{{#can_replace}}<a class="file-action file-action-replace" href="javascript:void(0)" onclick="replace_upload_click({{id}})" title="覆盖"><i class="fa fa-refresh" aria-hidden="true"></i> <span class="file-action-label">覆盖</span></a>{{/can_replace}}</div></td>{{/action_right}}<td class="fl-name"><i class="fa {{icon}} fa-fw"></i>{{{name_html}}}{{#has_pwd}} <i class="fa fa-lock filelist-lock" title="该文件需要密码才能查看" aria-hidden="true"></i>{{/has_pwd}}</td><td class="fl-size">{{size}}</td><td class="fl-type"><span class="file-type-badge">{{type_text}}</span></td><td class="fl-time">{{addtime}}</td><td class="fl-ip">{{ip}}</td>{{#action_right}}<td class="filelist-actions-cell"><div class="file-actions"><a class="file-action file-action-down" href="{{fileurl}}" title="下载"><i class="fa fa-download" aria-hidden="true"></i> <span class="file-action-label">下载</span></a><a class="file-action file-action-view" href="{{viewurl}}" title="查看"><i class="fa fa-eye" aria-hidden="true"></i> <span class="file-action-label">查看</span></a>{{#can_edit}}<a class="file-action file-action-edit" href="./edit.php?id={{id}}" title="编辑"><i class="fa fa-pencil" aria-hidden="true"></i> <span class="file-action-label">编辑</span></a>{{/can_edit}}{{#can_replace}}<a class="file-action file-action-replace" href="javascript:void(0)" onclick="replace_upload_click({{id}})" title="覆盖"><i class="fa fa-refresh" aria-hidden="true"></i> <span class="file-action-label">覆盖</span></a>{{/can_replace}}</div></td>{{/action_right}}</tr>{{/rows}}{{#empty}}<tr class="fl-empty"><td colspan="7" align="center">还没上传过任何文件</td></tr>{{/empty}}{{/guest_mine}}
+            </tbody>
+        </table>
+        </div>
+        <div class="filelist-footer">
+        <div class="filelist-summary">共有 {{numrows}} 个文件&nbsp;&nbsp;当前第 {{page}} 页，共 {{pages}} 页</div>
+        <nav class="filelist-pager">
+  <ul class="pagination pagination-sm">
+{{#pager}}{{#disabled}}<li class="disabled"><a>{{{label_html}}}</a></li>{{/disabled}}{{^disabled}}<li><a href="{{{href_html}}}">{{{label_html}}}</a></li>{{/disabled}}{{/pager}}
+  </ul>
+</nav>
+</div>

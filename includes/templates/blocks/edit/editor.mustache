@@ -1,0 +1,61 @@
+<style>
+.editor-toolbar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	flex-wrap: wrap;
+	margin-bottom: 12px;
+}
+.editor-meta {
+	color: #777;
+	font-size: 13px;
+}
+#file_content {
+	min-height: 560px;
+	resize: vertical;
+	font-family: Consolas, Monaco, "Courier New", monospace;
+	font-size: 14px;
+	line-height: 1.55;
+	white-space: pre;
+	tab-size: 4;
+}
+@media (max-width: 767px) {
+	#file_content {
+		min-height: 420px;
+		font-size: 13px;
+	}
+}
+</style>
+<div class="container">
+	<div class="panel panel-primary">
+		<div class="panel-heading">
+			<h3 class="panel-title"><i class="fa fa-pencil-square-o"></i> 在线编辑：{{{file_name_html}}}</h3>
+		</div>
+		<div class="panel-body">
+			<div class="editor-toolbar">
+				<div class="editor-meta">
+					格式：{{type}}　
+					大小：<span id="file_size_text">{{size}}</span>　
+					编码：<span id="file_encoding_text">{{{encoding_html}}}</span>　
+					上限：{{max}}
+					{{#converted}}　<span class="text-warning">保存后将转为 UTF-8</span>{{/converted}}
+				</div>
+				<div>
+					<button type="button" id="save_editor" class="btn btn-raised btn-primary">
+						<i class="fa fa-save"></i> 保存
+					</button>
+					<a id="view_file_link" href="{{{view_url_html}}}" class="btn btn-raised btn-default">
+						<i class="fa fa-eye"></i> 查看文件
+					</a>
+					<a href="./?m=mine" class="btn btn-raised btn-default">
+						<i class="fa fa-folder-open"></i> 我的文件
+					</a>
+				</div>
+			</div>
+			<input type="hidden" id="file_id" value="{{id}}">
+			<input type="hidden" id="csrf_token" value="{{{csrf_html}}}">
+			<textarea id="file_content" class="form-control" spellcheck="false">{{{content_html}}}</textarea>
+		</div>
+	</div>
+</div>

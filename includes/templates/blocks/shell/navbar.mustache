@@ -1,0 +1,43 @@
+
+  <div class="navbar navbar-default">
+    <div class="container">
+      <div class="navbar-header">
+        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-responsive-collapse">
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+        </button>
+        <a class="navbar-brand" href="./">{{{brand_html}}}</a>
+      </div>
+      <div class="navbar-collapse collapse navbar-responsive-collapse">
+        <ul class="nav navbar-nav">
+{{#nav_left}}
+          <li{{#has_class}} class="{{cls}}"{{/has_class}}><a href="{{href}}"{{#blank}} target="_blank" rel="noopener"{{/blank}}><i class="fa {{icon}}" aria-hidden="true"></i> {{label}}</a></li>
+{{/nav_left}}
+        </ul>
+        <ul class="nav navbar-nav navbar-right">
+{{#logged_in}}
+          <li class="{{mine_user_cls}}"><a href="./user.php?tab=files"><i class="fa fa-folder-open" aria-hidden="true"></i> 我的文件</a></li>
+{{/logged_in}}
+{{^logged_in}}
+          <li class="{{mine_guest_cls}}"><a href="./?m=mine"><i class="fa fa-folder-open" aria-hidden="true"></i> 我的文件</a></li>
+{{/logged_in}}
+{{#userlogin}}
+{{#logged_in}}
+            <li class="dropdown">
+              <a data-target="#" class="dropdown-toggle" data-toggle="dropdown"><i class="fa fa-{{nav_icon}}{{#has_face}} has-face{{/has_face}}" aria-hidden="true" data-user-nav>{{#has_face}}<img class="nav-face" src="{{nav_face}}" alt="" onerror="var p=this.parentNode;p.className=p.className.replace(' has-face','');p.removeChild(this)">{{/has_face}}</i> {{{nickname_html}}}<b class="caret"></b></a>
+              <ul class="dropdown-menu">
+                <li><a href="./user.php"><i class="fa fa-user-circle" aria-hidden="true"></i> 个人中心</a></li>
+                <li><a href="./login.php?logout=1" onclick="return confirm('是否确定退出登录？')"><i class="fa fa-sign-out" aria-hidden="true"></i> 退出登录</a></li>
+              </ul>
+            </li>
+{{/logged_in}}
+{{^logged_in}}
+            <li class="{{login_cls}}"><a href="./login.php"><i class="fa fa-user-circle" aria-hidden="true"></i> 未登录</a></li>
+{{/logged_in}}
+{{/userlogin}}
+        </ul>
+        {{{slot_html}}}
+      </div>
+    </div>
+  </div>

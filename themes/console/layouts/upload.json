@@ -1,0 +1,61 @@
+{
+    "nodes": [
+        {
+            "id": "target",
+            "block": "upload.folder_target"
+        },
+        {
+            "id": "app",
+            "block": "upload.app",
+            "children": [
+                {
+                    "id": "row",
+                    "block": "core.box",
+                    "config": {
+                        "class": "row"
+                    },
+                    "children": [
+                        {
+                            "id": "main",
+                            "block": "core.box",
+                            "config": {
+                                "class": "col-sm-9"
+                            },
+                            "children": [
+                                {
+                                    "id": "panel",
+                                    "block": "upload.panel",
+                                    "children": []
+                                }
+                            ]
+                        },
+                        {
+                            "id": "side",
+                            "block": "core.box",
+                            "config": {
+                                "class": "col-sm-3"
+                            },
+                            "children": [
+                                {
+                                    "id": "tips",
+                                    "block": "upload.tips"
+                                },
+                                {
+                                    "id": "reward",
+                                    "block": "common.reward",
+                                    "config": {
+                                        "heading_bg": "#009688"
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "loading",
+            "block": "upload.loading"
+        }
+    ]
+}

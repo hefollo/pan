@@ -7,6 +7,7 @@ if($islogin==1){}else exit("<script language='javascript'>window.location.href='
 <style>
 .img-circle{margin-right: 7px;}
 </style>
+<?php theme_panel_begin('modal', '用户信息弹窗');?>
 <div class="modal" id="modal-store" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
 	<div class="modal-dialog">
 		<div class="modal-content animated flipInX">
@@ -133,8 +134,8 @@ if($islogin==1){}else exit("<script language='javascript'>window.location.href='
 		</div>
 	</div>
 </div>
-  <div class="container">
-    <div class="admin-page-wide">
+<?php theme_panel_end();?>
+<?php theme_panel_begin('toolbar', '搜索工具条');?>
 	    <form onsubmit="return searchSubmit()" method="GET" class="form-inline" id="searchToolbar">
 	        <div class="form-group">
           <label>搜索</label>
@@ -151,10 +152,13 @@ if($islogin==1){}else exit("<script language='javascript'>window.location.href='
 				<a href="javascript:searchClear()" class="btn btn-default"><i class="fa fa-repeat"></i> 重置</a>
 			</div>
 		</form>
+<?php theme_panel_end();?>
+<?php theme_panel_begin('table', '用户列表');?>
 		<table id="listTable">
 	  	</table>
-    </div>
-  </div>
+<?php theme_panel_end();?>
+<?php //页面内容是布局 admin/user（includes/layouts/admin/user.json），各面板在上面用 theme_panel_begin/end 捕获，见 DEC-20261025-003
+echo theme_render_layout('admin/user', [], 'admin', $site_theme);?>
 <script src="https://s4.zstatic.net/ajax/libs/bootstrap-table/1.21.4/bootstrap-table.min.js"></script>
 <script src="https://s4.zstatic.net/ajax/libs/bootstrap-table/1.21.4/extensions/page-jump-to/bootstrap-table-page-jump-to.min.js"></script>
 <script src="../assets/js/custom.js"></script>

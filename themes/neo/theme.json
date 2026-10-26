@@ -1,0 +1,15 @@
+{
+    "id": "neo",
+    "name": "潮酷涂鸦风",
+    "description": "粗黑描边加不带模糊的硬投影，米色底配橙黑撞色：黑色侧栏、橙色选中项，横幅是超大标题加手写标语，五张统计卡各一个高饱和颜色。",
+    "version": "1.0.0",
+    "author": "pan",
+    "engine": 1,
+    "group": "layout",
+    "flags": [
+        "layout",
+        "studio"
+    ],
+    "legacy": true,
+    "sort": 120
+}

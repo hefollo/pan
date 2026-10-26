@@ -35,9 +35,11 @@ body.admin-body .admin-folder-browser a:not(.btn){color:var(--admin-primary-dark
 @media(max-width:1199px){.folder-browser-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}.folder-filter-actions{justify-content:flex-start}}
 @media(max-width:640px){.admin-folder-browser{padding-top:36px}.folder-browser-location{align-items:flex-start;flex-direction:column;gap:10px;padding:12px}.folder-filter-panel{padding:14px}.folder-browser-toolbar{grid-template-columns:minmax(0,1fr);gap:14px}.folder-filter-actions>.btn{flex:1}.folder-browser-summary{align-items:flex-start;flex-direction:column}.folder-browser-pagination{justify-content:flex-start}.admin-folder-browser .table th,.admin-folder-browser .table td{padding:10px 12px}}
 </style>
-<div class="container-fluid"><div class="admin-page-wide admin-folder-browser">
+<?php theme_panel_begin('heading', '页面标题');?>
     <header class="folder-browser-heading"><h3><?php echo !$error && $listing['current'] ? folder_h($listing['current']['name']) : '用户文件夹'?></h3>
     <p class="text-muted">按目录查看用户文件与分享状态，不会修改用户内容。</p></header>
+<?php theme_panel_end();?>
+<?php theme_panel_begin('browser', '文件夹浏览');?>
 <?php if($error){ ?>
     <div class="alert alert-danger" role="alert"><?php echo folder_h($error)?></div>
 <?php }else{ ?>
@@ -104,5 +106,7 @@ body.admin-body .admin-folder-browser a:not(.btn){color:var(--admin-primary-dark
     <?php } } ?>
     <?php if(!$listing['rows'] && !$listing['files']){ ?><div class="folder-empty text-muted" role="status"><?php echo $listing['q'] !== '' || $listing['status'] !== '' ? '本层没有匹配的文件或文件夹，可清除筛选后重试。' : ($listing['uid'] ? '此目录为空。' : '暂无用户创建的顶层文件夹。')?></div><?php } ?>
 <?php } ?>
-</div></div>
+<?php theme_panel_end();?>
+<?php //页面内容是布局 admin/folders（includes/layouts/admin/folders.json），各面板在上面用 theme_panel_begin/end 捕获，见 DEC-20261025-003
+echo theme_render_layout('admin/folders', [], 'admin', $site_theme);?>
 </body></html>

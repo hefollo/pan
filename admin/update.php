@@ -59,9 +59,7 @@ $update_source_notes = [
 //站长自己填的加速源地址：填了且合规才会出现在 $update_sources 里；没填时下拉框里仍给一个「未设置」的入口
 $update_accel_custom = isset($update_sources['custom']) ? $update_sources['custom']['base'] : '';
 ?>
-<div class="container">
-<div class="admin-page">
-
+<?php theme_panel_begin('check', '更新检查');?>
 <div class="panel panel-primary">
   <div class="panel-heading update-head">
     <h3 class="panel-title"><i class="fa fa-cloud-download" aria-hidden="true"></i> 版本检查</h3>
@@ -138,7 +136,8 @@ $update_accel_custom = isset($update_sources['custom']) ? $update_sources['custo
 <?php }?>
   </div>
 </div>
-
+<?php theme_panel_end();?>
+<?php theme_panel_begin('online', '在线更新');?>
 <div class="panel panel-primary">
   <div class="panel-heading update-head">
     <h3 class="panel-title"><i class="fa fa-download" aria-hidden="true"></i> 在线更新</h3>
@@ -193,7 +192,8 @@ $update_accel_custom = isset($update_sources['custom']) ? $update_sources['custo
 <?php }?>
   </div>
 </div>
-
+<?php theme_panel_end();?>
+<?php theme_panel_begin('log', '更新日志');?>
 <div class="panel panel-primary">
   <div class="panel-heading update-head">
     <h3 class="panel-title"><i class="fa fa-history" aria-hidden="true"></i> 最近提交（<?php echo htmlspecialchars(UPDATE_REPO.' · '.UPDATE_BRANCH, ENT_QUOTES, 'UTF-8')?>）</h3>
@@ -225,9 +225,9 @@ $update_accel_custom = isset($update_sources['custom']) ? $update_sources['custo
 <?php } }?>
   </div>
 </div>
-
-</div>
-</div>
+<?php theme_panel_end();?>
+<?php //页面内容是布局 admin/update（includes/layouts/admin/update.json），各面板在上面用 theme_panel_begin/end 捕获，见 DEC-20261025-003
+echo theme_render_layout('admin/update', [], 'admin', $site_theme);?>
 <script>
 (function(){
 	var token = <?php echo json_encode($oupd_token)?>;

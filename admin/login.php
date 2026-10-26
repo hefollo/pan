@@ -73,7 +73,8 @@ if(isset($_POST['user']) && isset($_POST['pass'])){
 	@header('Location: ./');
 	exit;
 }
-$site_theme = isset($conf['site_theme']) ? $conf['site_theme'] : default_site_theme();
+//theme_active_id()：平时就是后台选的外观；后台布局编辑器预览时是正在编辑的那个主题（DEC-20261025-003）
+$site_theme = theme_active_id();
 if(!in_array($site_theme, site_theme_keys(), true)){
 	$site_theme = default_site_theme();
 }
@@ -84,10 +85,11 @@ if(!in_array($site_theme, site_theme_keys(), true)){
  * 直接用会白底白字，所以浅色卡片的文字写死成深色；只有深色 / 玻璃外观才用外观自己的文字和底色变量。
  */
 $login_dark_themes = ['night', 'neon', 'onefour', 'workspace', 'nebula', 'aurora', 'sunset', 'abyss', 'emerald'];
-$login_scheme = in_array($site_theme, $login_dark_themes, true) ? 'dark' : 'light';
+$login_scheme = theme_chain_in($site_theme, $login_dark_themes) !== false ? 'dark' : 'light';
 //主色偏浅的外观，实心按钮和左栏上要用深色字（名单和前台 style.css 里的一致）
 $login_on_brand_map = ['workspace'=>'#221a05', 'neon'=>'#06101f', 'onefour'=>'#050505', 'aurora'=>'#10204a', 'abyss'=>'#062434', 'emerald'=>'#07301f', 'sunset'=>'#3d0f2e'];
-$login_on_brand = isset($login_on_brand_map[$site_theme]) ? $login_on_brand_map[$site_theme] : '#ffffff';
+$login_brand_from = theme_chain_in($site_theme, array_keys($login_on_brand_map));
+$login_on_brand = $login_brand_from !== false ? $login_on_brand_map[$login_brand_from] : '#ffffff';
 //用白字的外观，按钮和左栏的主色上压一层暗色：sky、mint、neo 的主色偏亮，night、nebula 的 primary-dark 反而更亮，白字不压看不清
 $login_shade = $login_on_brand === '#ffffff' ? 'rgba(0,0,0,.18)' : 'rgba(0,0,0,0)';
 $login_site = htmlspecialchars((isset($conf['title']) && $conf['title'] !== '') ? $conf['title'] : '彩虹外链网盘', ENT_QUOTES, 'UTF-8');
@@ -101,8 +103,14 @@ $login_desc = trim(isset($conf['description']) ? (string)$conf['description'] : 
 <meta name="renderer" content="webkit">
 <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=0">
-<link href="../assets/css/admin.css?v=<?php echo asset_ver('assets/css/admin.css')?>" rel="stylesheet"/>
-<?php echo theme_recolor_tag($site_theme, 'admin', '../');?>
+<link href="<?php echo htmlspecialchars(theme_css_bundle_url($site_theme, 'admin', '../'), ENT_QUOTES, 'UTF-8')?>" rel="stylesheet"/>
+<?php echo theme_recolor_tag($site_theme, 'admin', '../');
+//上传主题带的后台样式表和主题设置生成的 CSS 变量（DEC-20261025-003；内置外观没有，这两段为空）
+foreach(theme_asset_list($site_theme, 'admin_styles', '../') as $st)echo '<link href="'.htmlspecialchars($st['url'], ENT_QUOTES, 'UTF-8').'" rel="stylesheet"/>'."
+";
+$login_theme_css = theme_settings_css($site_theme).theme_settings_bridge_css($site_theme, 'admin');
+if($login_theme_css !== '')echo '<style id="theme-settings">'.$login_theme_css.'</style>'."
+";?>
 <style>
 body.login-v2 {
     --c-brand: var(--admin-primary, #1677ff);
@@ -274,10 +282,8 @@ body.login-v2 {
 }
 </style>
 </head>
-<body class="admin-login-body admin-theme-<?php echo $site_theme;?> login-v2 login-<?php echo $login_scheme;?>">
-<div class="login-bg"></div>
-<div class="login-page">
-    <div class="login-shell">
+<body class="admin-login-body <?php echo theme_chain_classes($site_theme, 'admin-theme-');?> login-v2 login-<?php echo $login_scheme;?>">
+<?php theme_panel_begin('banner', '左侧横幅');?>
         <div class="login-banner">
             <div class="login-banner__decor login-banner__decor--1"></div>
             <div class="login-banner__decor login-banner__decor--2"></div>
@@ -289,7 +295,8 @@ body.login-v2 {
                 </div>
             </div>
         </div>
-
+<?php theme_panel_end();?>
+<?php theme_panel_begin('form', '登录面板');?>
         <div class="login-panel">
             <div class="login-panel__head">
                 <div class="login-panel__welcome">Welcome back</div>
@@ -332,11 +339,13 @@ body.login-v2 {
                 <button type="submit" class="login-submit">登 录 系 统</button>
             </form>
         </div>
-    </div>
-
+<?php theme_panel_end();?>
+<?php theme_panel_begin('footer', '版权');?>
     <div class="login-footer">
         <span>copyright © <?php echo date('Y') ?> <?php echo $login_site ?> · All Rights Reserved</span>
     </div>
-</div>
+<?php theme_panel_end();?>
+<?php //页面内容是布局 admin/login（includes/layouts/admin/login.json），各面板在上面用 theme_panel_begin/end 捕获，见 DEC-20261025-003
+echo theme_render_layout('admin/login', [], 'admin', $site_theme);?>
 </body>
 </html>

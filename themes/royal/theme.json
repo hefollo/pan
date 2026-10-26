@@ -1,0 +1,15 @@
+{
+    "id": "royal",
+    "name": "紫韵会员风",
+    "description": "蓝紫渐变横幅配彩色统计卡，右侧第一块是金色会员权限卡带升级入口，列表下方还有一条卖点推广横幅。",
+    "version": "1.0.0",
+    "author": "pan",
+    "engine": 1,
+    "group": "layout",
+    "flags": [
+        "layout",
+        "studio"
+    ],
+    "legacy": true,
+    "sort": 90
+}

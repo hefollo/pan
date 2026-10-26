@@ -1,0 +1,16 @@
+<section class="pc-hero pc-tone-{{tone}}{{#center}} pc-center{{/center}}{{#cfg.image}} pc-has-image{{/cfg.image}}">
+  <div class="pc-hero-text">
+{{#cfg.title}}
+    <h2 class="pc-hero-title">{{cfg.title}}</h2>
+{{/cfg.title}}
+{{#lines}}
+    <p class="pc-hero-desc">{{text}}</p>
+{{/lines}}
+{{#has_buttons}}
+    <div class="pc-btns">{{#buttons}}<a class="btn {{#primary}}btn-primary{{/primary}}{{^primary}}btn-default{{/primary}} pc-btn" href="{{href}}">{{text}}</a>{{/buttons}}</div>
+{{/has_buttons}}
+  </div>
+{{#cfg.image}}
+  <div class="pc-hero-image"><img src="{{cfg.image}}" alt="" loading="lazy"></div>
+{{/cfg.image}}
+</section>

@@ -1,0 +1,18 @@
+        <div class="buy-group">
+            <div class="buy-group-title"><span>补差价升级</span><i>到期时间不变，只补到期前这段时间的差价</i></div>
+        <div class="buy-plans">
+{{#upgrades}}
+            <div class="buy-plan">
+                <div class="buy-plan-name">升级到{{name}}</div>
+                <div class="buy-plan-price"><small>¥</small>{{price}}</div>
+                <ul class="buy-plan-list">
+{{#features}}
+                    <li><i class="fa fa-check" aria-hidden="true"></i> {{.}}</li>
+{{/features}}
+                    <li><i class="fa fa-check" aria-hidden="true"></i> 到期时间不变：{{expire}}</li>
+                </ul>
+                <button type="button" class="buy-plan-btn" data-plan="u{{id}}">补差价升级</button>
+            </div>
+{{/upgrades}}
+        </div>
+        </div>

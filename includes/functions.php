@@ -277,7 +277,7 @@ function sysmsg($msg = '未知的异常', $title = '站点提示信息', $action
 	if(function_exists('site_theme_keys') && defined('ROOT') && is_file(ROOT.'assets/css/style.css')){
 		$theme = isset($conf['site_theme']) ? $conf['site_theme'] : default_site_theme();
 		if(!in_array($theme, site_theme_keys(), true))$theme = default_site_theme();
-		$body_class = 'theme-'.$theme;
+		$body_class = function_exists('theme_chain_classes') ? theme_chain_classes($theme, 'theme-') : 'theme-'.$theme;
 		//布局型外观的配色变量同样定义在 body.theme-* 上，layout-theme 只是结构类，
 		//这里没有侧栏和导航条，跟着挂上是为了和 404.html 保持一致
 		if(in_array($theme, layout_theme_keys(), true))$body_class .= ' layout-theme';
@@ -295,94 +295,39 @@ function sysmsg($msg = '未知的异常', $title = '站点提示信息', $action
 			['text'=>'返回首页', 'href'=>$base],
 		];
 	}
-?><!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title><?php echo strip_tags($title)?></title>
-<?php echo site_icon_tags($base);?>
-<link href="<?php echo htmlspecialchars($base, ENT_QUOTES, 'UTF-8')?>assets/css/style.css" rel="stylesheet">
-<?php if($theme !== '' && function_exists('theme_recolor_tag')){
-	//后台给这套外观单独配过颜色才有输出，没配就都是空串
-	echo theme_recolor_tag($theme, 'front', $base);
-	echo theme_gradient_style($theme);
-}?>
-<style>
-html{min-height:100%}
-body{margin:0;min-height:100vh;background:var(--page-bg,#f5f7fb);color:var(--text,#1f2937);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",Arial,sans-serif}
-.errorpage-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;box-sizing:border-box}
-/* style.css 里已经有一份 .errorpage-*（给静态 404.html 用），这段内联的在它之后，
-   同名属性会盖过去；反过来，那边声明了而这边没声明的属性照样生效——text-align 就是
-   典型：那边 .errorpage-card 是 center，这里不写死就会把下面的正文和列表一起居中 */
-.errorpage-card{width:100%;max-width:560px;padding:44px 38px 40px;background:var(--surface,#fff);border:1px solid var(--line,#e5e7eb);border-radius:18px;box-shadow:var(--shadow,0 18px 45px rgba(15,23,42,.08));box-sizing:border-box;text-align:center}
-.errorpage-site{margin:0 0 20px;color:var(--muted,#6b7280);font-size:13px;font-weight:600;letter-spacing:.04em;text-align:center}
-.errorpage-icon{display:flex;align-items:center;justify-content:center;width:64px;height:64px;margin:0 auto 18px;border-radius:50%;background:var(--tint,rgba(37,99,235,.1));color:var(--primary,#2563eb)}
-.errorpage-icon svg{display:block;width:32px;height:32px}
-.errorpage-title{margin:0 0 18px;color:var(--text,#1f2937);font-size:23px;font-weight:800;line-height:1.4;text-align:center}
-/* 正文左对齐：install.lock、封号说明这类会带小标题和条目，居中排出来没法看 */
-.errorpage-body{margin:0 0 28px;color:var(--muted,#6b7280);font-size:14.5px;line-height:1.9;text-align:left;word-break:break-word}
-.errorpage-body-center{text-align:center}
-.errorpage-body>:first-child{margin-top:0}
-.errorpage-body>:last-child{margin-bottom:0}
-.errorpage-body h2,.errorpage-body h3,.errorpage-body h4{margin:22px 0 10px;color:var(--text,#1f2937);font-size:16px;font-weight:800;line-height:1.5}
-.errorpage-body p{margin:0 0 12px}
-.errorpage-body ul,.errorpage-body ol{margin:0 0 12px;padding-left:22px}
-.errorpage-body li{margin-bottom:7px}
-.errorpage-body b,.errorpage-body strong{color:var(--text,#1f2937)}
-.errorpage-body code{padding:2px 6px;border-radius:5px;background:var(--surface-soft,#f1f5f9);color:var(--text,#1f2937);font-family:Consolas,Monaco,monospace;font-size:13px}
-.errorpage-body a{color:var(--primary,#2563eb)}
-/* 需要单独拎出来给人抄的信息（申诉用的 UID 等） */
-.errorpage-note{margin:0 0 26px;padding:14px 16px;border:1px solid var(--line,#e5e7eb);border-left:3px solid var(--primary,#2563eb);border-radius:10px;background:var(--surface-soft,#f8fafc);color:var(--text,#1f2937);font-size:14px;line-height:1.9;text-align:left}
-.errorpage-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:12px}
-html body .errorpage-btn{display:inline-flex;align-items:center;justify-content:center;min-width:132px;padding:12px 22px;border:1px solid var(--line,#e5e7eb);border-radius:11px;background:var(--surface-soft,#f8fafc)!important;color:var(--text,#1f2937)!important;font-size:15px;font-weight:700;text-decoration:none;transition:border-color .18s ease,background .18s ease,transform .18s ease}
-html body .errorpage-btn:hover,html body .errorpage-btn:focus{border-color:var(--primary,#2563eb)!important;color:var(--primary,#2563eb)!important;text-decoration:none;transform:translateY(-1px)}
-/* 底色和字色一律成对加 !important：外部样式表里任何带 !important 的 a 规则
-   都可能只盖掉其中一个，把按钮变成同色、字看不见 */
-html body .errorpage-btn-primary{background:var(--primary,#2563eb)!important;border-color:var(--primary,#2563eb)!important;color:#fff!important}
-html body .errorpage-btn-primary:hover,html body .errorpage-btn-primary:focus{background:var(--primary-dark,#1d4ed8)!important;border-color:var(--primary-dark,#1d4ed8)!important;color:#fff!important}
-/* 强调色偏浅的外观，主按钮要用深色字才看得清。底色一并写死不走 --primary：
-   万一样式表没加载出来，变量会回落成默认的蓝色，配深色字就看不清了。这几行和 404.html 一致 */
-html body.theme-workspace .errorpage-btn-primary{background:#f4c95d!important;border-color:#f4c95d!important;color:#221a05!important}
-html body.theme-workspace .errorpage-btn-primary:hover{background:#d9ad3f!important;border-color:#d9ad3f!important;color:#221a05!important}
-html body.theme-neon .errorpage-btn-primary{background:#73c7ff!important;border-color:#73c7ff!important;color:#06101f!important}
-html body.theme-neon .errorpage-btn-primary:hover{background:#4fb3f5!important;border-color:#4fb3f5!important;color:#06101f!important}
-html body.theme-onefour .errorpage-btn-primary{background:#ffffff!important;border-color:#ffffff!important;color:#050505!important}
-html body.theme-onefour .errorpage-btn-primary:hover{background:#d8dae4!important;border-color:#d8dae4!important;color:#050505!important}
-html body.theme-aurora .errorpage-btn-primary{background:#67e8ff!important;border-color:#67e8ff!important;color:#10204a!important}
-html body.theme-aurora .errorpage-btn-primary:hover{background:#3fd6f2!important;border-color:#3fd6f2!important;color:#10204a!important}
-html body.theme-abyss .errorpage-btn-primary{background:#38e0d8!important;border-color:#38e0d8!important;color:#062434!important}
-html body.theme-abyss .errorpage-btn-primary:hover{background:#22c7bf!important;border-color:#22c7bf!important;color:#062434!important}
-html body.theme-emerald .errorpage-btn-primary{background:#4ade80!important;border-color:#4ade80!important;color:#07301f!important}
-html body.theme-emerald .errorpage-btn-primary:hover{background:#2ec469!important;border-color:#2ec469!important;color:#07301f!important}
-html body.theme-sunset .errorpage-btn-primary{background:#ffb057!important;border-color:#ffb057!important;color:#3d0f2e!important}
-html body.theme-sunset .errorpage-btn-primary:hover{background:#f59a3a!important;border-color:#f59a3a!important;color:#3d0f2e!important}
-/* 玻璃拟态外观的卡片本来就是半透明的，加一层模糊才看得清 */
-body.theme-aurora .errorpage-card,body.theme-sunset .errorpage-card,body.theme-abyss .errorpage-card,body.theme-emerald .errorpage-card,body.theme-sakura .errorpage-card{backdrop-filter:blur(18px)}
-@media (max-width:767px){
-.errorpage-card{padding:34px 20px 32px;border-radius:16px}
-.errorpage-title{font-size:20px}
-html body .errorpage-btn{width:100%;min-width:0}
-}
-</style>
-</head>
-<body<?php echo $body_class !== '' ? ' class="'.$body_class.'"' : ''?>>
-<div class="errorpage-wrap">
-  <div class="errorpage-card">
-<?php if($sitename !== ''){?>    <p class="errorpage-site"><?php echo htmlspecialchars($sitename, ENT_QUOTES, 'UTF-8')?></p>
-<?php }?>    <div class="errorpage-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5"/><path d="M12 16.4h.01"/></svg></div>
-    <h1 class="errorpage-title"><?php echo strip_tags($title)?></h1>
-    <div class="errorpage-body<?php echo $body_class_text?>"><?php echo $msg?></div>
-<?php if($actions){?>    <div class="errorpage-actions">
-<?php foreach($actions as $a){
-	if(!is_array($a) || !isset($a['text']))continue;
-	$href = isset($a['href']) ? $a['href'] : $base;
-?>      <a class="errorpage-btn<?php echo !empty($a['primary']) ? ' errorpage-btn-primary' : ''?>" href="<?php echo htmlspecialchars($href, ENT_QUOTES, 'UTF-8')?>"><?php echo htmlspecialchars($a['text'], ENT_QUOTES, 'UTF-8')?></a>
-<?php }?>    </div>
-<?php }?>  </div>
-</div>
-</body>
-</html><?php
+	$data = [
+		'title_html' => strip_tags($title),
+		'icon_html' => site_icon_tags($base),
+		'base' => $base,
+		//后台给这套外观单独配过颜色才有输出，没配就都是空串
+		'recolor_html' => ($theme !== '' && function_exists('theme_recolor_tag')) ? theme_recolor_tag($theme, 'front', $base).theme_gradient_style($theme) : '',
+		'body_class' => $body_class,
+		'sitename' => $sitename,
+		'body_class_text' => $body_class_text,
+		'msg_html' => $msg,
+		'actions' => [],
+	];
+	foreach($actions ? $actions : [] as $a){
+		if(!is_array($a) || !isset($a['text']))continue;
+		$data['actions'][] = ['text'=>$a['text'], 'href'=>isset($a['href']) ? $a['href'] : $base, 'primary'=>!empty($a['primary'])];
+	}
+	$data['has_actions'] = !empty($actions);
+	/*
+	 * 页面是主题可覆盖的模板 shell/sysmsg（DEC-20261025-003）。这一页是各种出错时的兜底，
+	 * 模板引擎本身出了问题（文件没传全之类）也得能显示，所以失败时退回一个最简页面。
+	 */
+	$html = '';
+	if(function_exists('theme_tpl_render')){
+		try{
+			$html = theme_tpl_render('shell/sysmsg', $data, $theme !== '' ? $theme : default_site_theme());
+		}catch(\Throwable $e){
+			$html = '';
+		}
+	}
+	if($html === ''){
+		$html = '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><title>'.strip_tags($title).'</title></head><body><h1>'.strip_tags($title).'</h1><div>'.$msg.'</div></body></html>';
+	}
+	echo $html;
 	exit;
 }
 
@@ -2288,29 +2233,52 @@ function default_site_theme(){
 }
 
 /*
- * 站点外观的全部可选值。header.php / admin/head.php 等处各自还有一份同样的列表，
- * 新增外观时记得一起改。
+ * 站点外观的全部可选值。外观现在是 themes/<id>/ 下的内置主题包（DEC-20261025-003），
+ * 列表从主题注册表读；themes/ 没传全、一个都读不到时退回下面这份写死的老名单，保证还能正常显示。
  */
 function site_theme_keys(){
+	$keys = theme_flag_keys(null);
+	return $keys ? $keys : theme_builtin_fallback(null);
+}
+
+/*
+ * 「工作台家族」：蓝白工作台风和它的几个变体（深空科技风 / 紫韵会员风 / 清爽极简风 / 蓝天白云风……）。
+ * 共用同一套结构（分组侧栏 + 顶部搜索条 + 横幅 + 统计卡 + 文件面板 + 右侧数据列），
+ * 区别只在配色、横幅表现和几块可选内容，所以 body 上统一挂 studio-layout，结构样式只写一份。
+ * 主题包里带 studio 标记（theme.json 的 flags）的就是这一家。
+ */
+function studio_family_keys(){
+	return theme_flag_keys('studio', true);
+}
+
+/*
+ * 结构型（布局型）外观，body 上要额外挂 layout-theme；主题包里带 layout 标记的就是
+ */
+function layout_theme_keys(){
+	return theme_flag_keys('layout', true);
+}
+
+/* 主题注册表读不到时的老名单（themes/ 目录缺失时兜底） */
+function theme_builtin_fallback($flag){
+	if($flag === 'studio')return ['studio', 'nebula', 'royal', 'crisp', 'azure', 'neo', 'skyline'];
+	if($flag === 'layout')return ['dashboard', 'console', 'portal', 'workspace', 'mac', 'cockpit', 'studio', 'nebula', 'royal', 'crisp', 'azure', 'neo', 'skyline'];
 	return ['cloud', 'night', 'neon', 'aurora', 'onefour', 'celadon', 'lilac', 'paper',
 		'blush', 'sky', 'mint', 'sunset', 'abyss', 'emerald', 'sakura',
 		'dashboard', 'console', 'portal', 'workspace', 'mac', 'cockpit', 'studio', 'nebula', 'royal', 'crisp', 'azure', 'neo', 'skyline'];
 }
 
 /*
- * 「工作台家族」：蓝白工作台风和它的四个变体（深空科技风 / 紫韵会员风 / 清爽极简风 / 蓝天白云风）。
- * 五套共用同一套结构（分组侧栏 + 顶部搜索条 + 横幅 + 统计卡 + 文件面板 + 右侧数据列），
- * 区别只在配色、横幅表现和几块可选内容，所以 body 上统一挂 studio-layout，结构样式只写一份。
+ * 带某个标记的主题 id（$flag 为 null 时是全部，内置的和站长上传的都算）。
+ * 标记沿继承链合并：继承了工作台风的上传主题也算工作台家族（结构样式要按 studio-layout 走）。
+ * $fallback 为 true 时注册表为空就用老名单。
  */
-function studio_family_keys(){
-	return ['studio', 'nebula', 'royal', 'crisp', 'azure', 'neo', 'skyline'];
-}
-
-/*
- * 结构型（布局型）外观，body 上要额外挂 layout-theme
- */
-function layout_theme_keys(){
-	return ['dashboard', 'console', 'portal', 'workspace', 'mac', 'cockpit', 'studio', 'nebula', 'royal', 'crisp', 'azure', 'neo', 'skyline'];
+function theme_flag_keys($flag, $fallback = false){
+	$out = [];
+	foreach(theme_registry() as $id => $m){
+		if($flag === null || in_array($flag, theme_flags($id), true))$out[] = $id;
+	}
+	if(!$out && $fallback && !theme_registry())return theme_builtin_fallback($flag);
+	return $out;
 }
 
 /*
@@ -2549,7 +2517,7 @@ function sync_404_theme($theme){
 	$html = @file_get_contents($file);
 	//确认是本程序的 404 页再改，避免误伤用户自己换上去的页面
 	if($html === false || strpos($html, 'errorpage-card') === false)return false;
-	$class = 'theme-'.$theme.(in_array($theme, layout_theme_keys(), true) ? ' layout-theme' : '');
+	$class = theme_chain_classes($theme, 'theme-').(in_array($theme, layout_theme_keys(), true) ? ' layout-theme' : '');
 	$count = 0;
 	//打上 data-theme-synced 标记：页面里的兜底脚本看到它就不再用浏览器里存的旧外观覆盖
 	$new = preg_replace('/<body class="[^"]*"[^>]*>/', '<body class="'.$class.'" data-theme-synced="1">', $html, 1, $count);
@@ -2557,7 +2525,15 @@ function sync_404_theme($theme){
 	//自定义配色同样写死进去：先清掉上一次写的那两段，再按当前配置补上（没自定义就只清不补）
 	$new = preg_replace('#\s*<link[^>]*id="theme-recolor"[^>]*>#s', '', $new);
 	$new = preg_replace('#\s*<style id="theme-grad">.*?</style>#s', '', $new);
+	$new = preg_replace('#\s*<link[^>]*data-theme-style="1"[^>]*>#s', '', $new);
+	$new = preg_replace('#\s*<style id="theme-settings">.*?</style>#s', '', $new);
 	$extra = '';
+	//主题包自己的样式表和主题设置生成的 CSS 变量（DEC-20261025-003；内置外观都没有，这两段为空）
+	if(function_exists('theme_asset_list')){
+		foreach(theme_asset_list($theme, 'styles', '/') as $st)$extra .= '<link href="'.htmlspecialchars($st['url'], ENT_QUOTES, 'UTF-8').'" rel="stylesheet" data-theme-style="1">'."\n";
+		$settings_css = theme_settings_css($theme).theme_settings_bridge_css($theme, 'front');
+		if($settings_css !== '')$extra .= '<style id="theme-settings">'.$settings_css.'</style>'."\n";
+	}
 	//整套换色走生成好的样式文件；生成不出来（目录不可写）就算了，错误页保持原配色
 	if(function_exists('theme_recolor_url')){
 		$url = theme_recolor_url($theme);
@@ -2580,6 +2556,8 @@ function sync_404_theme_strip($html){
 	$html = preg_replace('/<body class="[^"]*"[^>]*>/', '<body>', (string)$html, 1);
 	if($html !== null)$html = preg_replace('#\s*<link[^>]*id="theme-recolor"[^>]*>#s', '', $html);
 	if($html !== null)$html = preg_replace('#\s*<style id="theme-grad">.*?</style>#s', '', $html);
+	if($html !== null)$html = preg_replace('#\s*<link[^>]*data-theme-style="1"[^>]*>#s', '', $html);
+	if($html !== null)$html = preg_replace('#\s*<style id="theme-settings">.*?</style>#s', '', $html);
 	return $html === null ? false : $html;
 }
 
@@ -3871,7 +3849,7 @@ function check_file_pwd($row, $pwd){
  *
  * HttpOnly 必须开：admin_token / user_token 有效期 30 天，被 JS 读到就等于账号被永久接管，
  * 站内任何一处 XSS 都会直接升级成后台失陷。SameSite=Lax 再挡一道跨站携带。
- * setcookie 的数组写法要 PHP 7.3+，本程序最低支持 7.1，低版本走 path 拼接的兼容写法。
+ * setcookie 的数组写法要 PHP 7.3+；程序最低已提到 7.4，低版本兼容写法保留无害。
  */
 function set_auth_cookie($name, $value, $expire, $path = '/'){
 	$secure = is_https();

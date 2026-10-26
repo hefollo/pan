@@ -1,0 +1,129 @@
+{
+    "nodes": [
+        {
+            "id": "notice",
+            "block": "common.notice"
+        },
+        {
+            "id": "ads",
+            "block": "common.ads_banner"
+        },
+        {
+            "id": "b130",
+            "block": "core.box",
+            "config": {
+                "class": "container"
+            },
+            "children": [
+                {
+                    "id": "b129",
+                    "block": "core.box",
+                    "config": {
+                        "class": "layout-shell"
+                    },
+                    "children": [
+                        {
+                            "id": "b127",
+                            "block": "core.box",
+                            "config": {
+                                "class": "studio-main"
+                            },
+                            "children": [
+                                {
+                                    "id": "b119",
+                                    "block": "studio.hero",
+                                    "config": {
+                                        "title": "{site}<br><span>让文件分享更简单</span>",
+                                        "sub": "安全存储 · 高速下载 · 永久分享",
+                                        "slogan": "你的文件<br>触手可达！",
+                                        "badge": 0,
+                                        "feats": "fa-download|blue|高速下载|\nfa-lock|violet|安全加密|\nfa-refresh|green|多端同步|"
+                                    }
+                                },
+                                {
+                                    "id": "b120",
+                                    "block": "index.stats",
+                                    "config": {
+                                        "extra": "audio"
+                                    }
+                                },
+                                {
+                                    "id": "b125",
+                                    "block": "core.box",
+                                    "config": {
+                                        "class": "well bs-component"
+                                    },
+                                    "children": [
+                                        {
+                                            "id": "b121",
+                                            "block": "index.title"
+                                        },
+                                        {
+                                            "id": "b122",
+                                            "block": "common.permbar"
+                                        },
+                                        {
+                                            "id": "b123",
+                                            "block": "index.filterbar",
+                                            "config": {
+                                                "tools": 1
+                                            }
+                                        },
+                                        {
+                                            "id": "b124",
+                                            "block": "index.filelist",
+                                            "config": {
+                                                "action_col": "right"
+                                            }
+                                        }
+                                    ]
+                                },
+                                {
+                                    "id": "b126",
+                                    "block": "studio.promo",
+                                    "config": {
+                                        "title": "升级会员，解锁更多强大功能",
+                                        "sub": "更大的存储空间 · 更稳定的高速下载 · 专属高级功能",
+                                        "chips": "fa-database|大容量存储\nfa-download|高速下载通道\nfa-clock-o|文件永久保存\nfa-headphones|专属客服支持",
+                                        "slogan": "不只是存储<br>更是无限可能！",
+                                        "need_buy": 1
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "id": "b128",
+                            "block": "core.box",
+                            "config": {
+                                "class": "studio-side",
+                                "tag": "aside"
+                            },
+                            "children": [
+                                {
+                                    "id": "b114",
+                                    "block": "studio.panel_today"
+                                },
+                                {
+                                    "id": "b115",
+                                    "block": "studio.panel_rights"
+                                },
+                                {
+                                    "id": "b116",
+                                    "block": "studio.panel_acts"
+                                },
+                                {
+                                    "id": "b117",
+                                    "block": "studio.panel_feed"
+                                },
+                                {
+                                    "id": "b118",
+                                    "block": "studio.panel_store"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

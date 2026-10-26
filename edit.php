@@ -51,115 +51,22 @@ $file_encoding = htmlspecialchars($decoded['encoding'], ENT_QUOTES | ENT_SUBSTIT
 $view_url = 'file.php?hash='.$row['token'];
 
 include SYSTEM_ROOT.'header.php';
-?>
-<style>
-.editor-toolbar {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 12px;
-	flex-wrap: wrap;
-	margin-bottom: 12px;
-}
-.editor-meta {
-	color: #777;
-	font-size: 13px;
-}
-#file_content {
-	min-height: 560px;
-	resize: vertical;
-	font-family: Consolas, Monaco, "Courier New", monospace;
-	font-size: 14px;
-	line-height: 1.55;
-	white-space: pre;
-	tab-size: 4;
-}
-@media (max-width: 767px) {
-	#file_content {
-		min-height: 420px;
-		font-size: 13px;
-	}
-}
-</style>
-<div class="container">
-	<div class="panel panel-primary">
-		<div class="panel-heading">
-			<h3 class="panel-title"><i class="fa fa-pencil-square-o"></i> 在线编辑：<?php echo $file_name?></h3>
-		</div>
-		<div class="panel-body">
-			<div class="editor-toolbar">
-				<div class="editor-meta">
-					格式：<?php echo htmlspecialchars($row['type'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')?>　
-					大小：<span id="file_size_text"><?php echo size_format($row['size'])?></span>　
-					编码：<span id="file_encoding_text"><?php echo $file_encoding?></span>　
-					上限：<?php echo size_format($max_size)?>
-					<?php if($decoded['converted']){?>　<span class="text-warning">保存后将转为 UTF-8</span><?php }?>
-				</div>
-				<div>
-					<button type="button" id="save_editor" class="btn btn-raised btn-primary">
-						<i class="fa fa-save"></i> 保存
-					</button>
-					<a id="view_file_link" href="<?php echo $view_url?>" class="btn btn-raised btn-default">
-						<i class="fa fa-eye"></i> 查看文件
-					</a>
-					<a href="./?m=mine" class="btn btn-raised btn-default">
-						<i class="fa fa-folder-open"></i> 我的文件
-					</a>
-				</div>
-			</div>
-			<input type="hidden" id="file_id" value="<?php echo intval($row['id'])?>">
-			<input type="hidden" id="csrf_token" value="<?php echo $csrf_token?>">
-			<textarea id="file_content" class="form-control" spellcheck="false"><?php echo $file_content?></textarea>
-		</div>
-	</div>
-</div>
-<?php include SYSTEM_ROOT.'footer.php';?>
-<link rel="stylesheet" href="https://s4.zstatic.net/ajax/libs/layer/3.1.1/theme/default/layer.css">
-<script src="https://s4.zstatic.net/ajax/libs/layer/3.1.1/layer.js"></script>
-<script>
-function getEditorBytes(text) {
-	return new Blob([text]).size;
-}
-function saveEditor() {
-	var content = $("#file_content").val();
-	var maxSize = <?php echo intval($max_size)?>;
-	if (getEditorBytes(content) > maxSize) {
-		layer.alert("在线编辑文件大小不能超过 <?php echo size_format($max_size)?>", {icon: 2});
-		return;
-	}
-	var ii = layer.load(2);
-	$.ajax({
-		type: "POST",
-		url: "ajax.php?act=saveFileContent",
-		data: {
-			id: $("#file_id").val(),
-			csrf_token: $("#csrf_token").val(),
-			content: content
-		},
-		dataType: "json",
-		success: function(data) {
-			layer.close(ii);
-			if (data.code === 0) {
-				$("#file_size_text").text(data.size);
-				$("#view_file_link").attr("href", "file.php?hash=" + data.hash);
-				layer.msg("保存成功", {icon: 1});
-			} else {
-				layer.alert(data.msg || "保存失败", {icon: 2});
-			}
-		},
-		error: function() {
-			layer.close(ii);
-			layer.msg("服务器错误", {icon: 2});
-		}
-	});
-}
-$("#save_editor").on("click", saveEditor);
-$("#file_content").on("keydown", function(e) {
-	if ((e.ctrlKey || e.metaKey) && (e.key === "s" || e.keyCode === 83)) {
-		e.preventDefault();
-		saveEditor();
-	}
-});
-</script>
-</body>
+/*
+ * 页面内容是布局 edit（DEC-20261025-003）：系统默认在 includes/layouts/edit.json，卡片在 includes/blocks/edit/。
+ * 保存脚本由这里登记（编辑框的 id 是它要用的）。
+ */
+theme_defer('edit.scripts', theme_tpl_render('blocks/edit/scripts', ['max_bytes'=>intval($max_size), 'max'=>size_format($max_size)], $site_theme), 10);
+echo theme_render_layout('edit', [
+	'row' => $row,
+	'file_name' => $file_name,
+	'file_content' => $file_content,
+	'file_encoding' => $file_encoding,
+	'converted' => $decoded['converted'],
+	'max_size' => $max_size,
+	'view_url' => $view_url,
+	'csrf_token' => $csrf_token,
+], 'front', $site_theme);
+include SYSTEM_ROOT.'footer.php';
+echo theme_deferred_html();
+?></body>
 </html>

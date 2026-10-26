@@ -1,0 +1,9 @@
+{{#error_view}}
+    <section class="share-card share-message"><h1>暂时无法访问</h1><p>{{error}}</p><a class="share-button" href="./">返回首页</a></section>
+{{/error_view}}
+{{#unlock_view}}
+    <section class="share-card share-message"><span class="share-eyebrow">受密码保护的分享</span><h1>{{h1}}</h1><p>{{p}}</p>
+    {{#error}}<p class="share-error" role="alert">{{error}}</p>{{/error}}
+    <form method="post" action="{{action}}"><input type="hidden" name="csrf_token" value="{{csrf}}"><label for="share-password">访问密码</label><input id="share-password" type="password" name="password" required maxlength="255" autocomplete="current-password" autofocus><button class="share-button primary" type="submit">解锁查看</button></form>
+    {{#is_file}}<a data-share-nav href="{{back}}">返回文件夹</a>{{/is_file}}</section>
+{{/unlock_view}}

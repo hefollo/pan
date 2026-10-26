@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>{{{title_html}}}</title>
+  {{{icon_html}}}
+  <meta name="keywords" content="{{{keywords_html}}}">
+  <meta name="description" content="{{{description_html}}}">
+  <meta name="viewport" content="width=device-width,height=device-height,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="format-detection" content="telephone=no">
+  <meta name="google-adsense-account" content="ca-pub-6112564004010114">
+  <style id="css-guard">html{background:{{guard_bg}}}body{visibility:hidden}html.css-fail{background:none}html.css-fail body{visibility:visible}</style>
+  <noscript><style>body{visibility:visible}</style></noscript>
+  <script>setTimeout(function(){document.documentElement.className+=' css-fail';},15000);</script>
+  <link href="https://s4.zstatic.net/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <link href="https://s4.zstatic.net/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://s4.zstatic.net/ajax/libs/bootstrap-material-design/0.5.10/css/bootstrap-material-design.min.css" rel="stylesheet">
+  <link href="https://s4.zstatic.net/ajax/libs/bootstrap-material-design/0.5.10/css/ripples.min.css" rel="stylesheet">
+  {{#is_file}}<link rel="stylesheet" href="https://s4.zstatic.net/ajax/libs/aplayer/1.10.1/APlayer.min.css"><link href="assets/css/ckplayer.css" rel="stylesheet">{{/is_file}}
+  <link href="{{style_url}}" rel="stylesheet" onerror="document.documentElement.className+=' css-fail'">
+  {{{recolor_html}}}{{{gradient_html}}}
+{{#theme_styles}}
+  <link href="{{url}}" rel="stylesheet">
+{{/theme_styles}}
+{{#settings_css_html}}
+  <style id="theme-settings">{{{settings_css_html}}}</style>
+{{/settings_css_html}}
+  <!--[if lt IE 9]>
+    <script src="https://s4.zstatic.net/ajax/libs/html5shiv/3.7.3/html5shiv.min.js"></script>
+    <script src="https://s4.zstatic.net/ajax/libs/respond.js/1.4.2/respond.min.js"></script>
+  <![endif]-->
+  <script type="text/javascript" src="https://s4.zstatic.net/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+</head>
+<body class="{{body_class}}">

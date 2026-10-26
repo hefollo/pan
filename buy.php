@@ -240,166 +240,18 @@ $title = '购买权限 - ' . $conf['title'];
 $plans = plan_list_for_sale();
 //限时会员可以补差价升级到的更高等级（到期时间不变）
 $upgrades = $islogin2 ? level_upgrade_list($userrow) : [];
-$methods = pay_methods();
-$method_keys = array_keys($methods);
-$channels = isset($methods['epay']) ? epay_channels() : [];
-//通道图标：FontAwesome 4.7 里没有支付宝，用信用卡图标代替
-$channel_icons = ['alipay'=>'credit-card', 'wxpay'=>'weixin', 'qqpay'=>'qq'];
 include SYSTEM_ROOT.'header.php';
-?>
-<div class="container">
-    <div class="well bs-component buypage">
-        <h2>购买权限</h2>
-        <p class="buy-sub">选择需要的会员等级，支付成功后权限立即生效。</p>
-<?php if(isset($_GET['paid'])){?>
-        <div class="buy-notice <?php echo $_GET['paid'] == '1' ? 'is-ok' : 'is-warn'?>">
-            <i class="fa fa-<?php echo $_GET['paid'] == '1' ? 'check-circle' : 'exclamation-circle'?>" aria-hidden="true"></i>
-            <?php echo $_GET['paid'] == '1' ? '支付成功，权限已经发放到你的账号。' : '没有查到这笔支付。如果你已经付款，请稍等片刻后刷新本页，或联系站长处理。'?>
-        </div>
-<?php }?>
-<?php if(!empty($conf['buy_notice'])){?>
-        <div class="buy-notice"><i class="fa fa-info-circle" aria-hidden="true"></i> <?php echo htmlspecialchars($conf['buy_notice'], ENT_QUOTES, 'UTF-8')?></div>
-<?php }?>
-<?php if($islogin2){
-	$cur_limit = limit_number_text(get_effective_upload_count_limit(), '个/天');
-	$cur_size = size_mb_text(get_effective_upload_size_limit());
-	$cur_speed = speed_text(get_effective_download_speed_kbps());
-	$cur_bonus = user_bonus_limit($userrow);
-	$cur_edit = current_online_edit_text();
-?>
-        <div class="buy-current">
-            <span>当前等级</span>
-            <strong><?php echo htmlspecialchars(user_level_text($userrow), ENT_QUOTES, 'UTF-8')?>　每日上传 <?php echo htmlspecialchars($cur_limit)?><?php if($cur_bonus > 0 && get_effective_upload_count_limit() > 0){?>（含加量包 +<?php echo $cur_bonus?>，<?php echo empty($userrow['bonus_expire']) ? '永久' : htmlspecialchars($userrow['bonus_expire']).' 到期'?>）<?php }?>　单文件 <?php echo htmlspecialchars($cur_size)?>　文件下载 <?php echo htmlspecialchars($cur_speed)?>　分享流量 <?php echo htmlspecialchars(user_traffic_text($userrow))?>　上传流量 <?php echo htmlspecialchars(upload_traffic_text())?>　在线编辑 <?php echo htmlspecialchars($cur_edit)?></strong>
-        </div>
-<?php }?>
-<?php if(count($methods) > 1){?>
-        <div class="buy-methods">
-            <span>支付方式</span>
-<?php foreach($methods as $mk => $m){?>
-            <label class="buy-method<?php echo $mk === $method_keys[0] ? ' is-on' : ''?>">
-                <input type="radio" name="pay_type" value="<?php echo $mk?>"<?php echo $mk === $method_keys[0] ? ' checked' : ''?>/>
-                <b><?php echo htmlspecialchars($m['name'], ENT_QUOTES, 'UTF-8')?></b>
-                <i><?php echo htmlspecialchars($m['desc'], ENT_QUOTES, 'UTF-8')?></i>
-            </label>
-<?php }?>
-        </div>
-<?php }elseif($method_keys){?>
-        <div class="buy-methods buy-methods-single">
-            <span>支付方式</span>
-            <b><?php echo htmlspecialchars($methods[$method_keys[0]]['name'], ENT_QUOTES, 'UTF-8')?></b>
-            <input type="hidden" name="pay_type" value="<?php echo $method_keys[0]?>"/>
-        </div>
-<?php }?>
-<?php if($upgrades){?>
-        <div class="buy-group">
-            <div class="buy-group-title"><span>补差价升级</span><i>到期时间不变，只补到期前这段时间的差价</i></div>
-        <div class="buy-plans">
-<?php foreach($upgrades as $up){?>
-            <div class="buy-plan">
-                <div class="buy-plan-name">升级到<?php echo htmlspecialchars($up['level']['name'], ENT_QUOTES, 'UTF-8')?></div>
-                <div class="buy-plan-price"><small>¥</small><?php echo htmlspecialchars(number_format($up['price'], 2, '.', ''))?></div>
-                <ul class="buy-plan-list">
-<?php foreach(level_features($up['level']) as $feature){?>
-                    <li><i class="fa fa-check" aria-hidden="true"></i> <?php echo htmlspecialchars($feature, ENT_QUOTES, 'UTF-8')?></li>
-<?php }?>
-                    <li><i class="fa fa-check" aria-hidden="true"></i> 到期时间不变：<?php echo htmlspecialchars($up['expire'], ENT_QUOTES, 'UTF-8')?></li>
-                </ul>
-                <button type="button" class="buy-plan-btn" data-plan="u<?php echo intval($up['level']['id'])?>">补差价升级</button>
-            </div>
-<?php }?>
-        </div>
-        </div>
-<?php }?>
-<?php
-	$groups = plan_group_list($plans);
-	$only_one = count($groups) === 1 && !$upgrades;
-	foreach($groups as $group_name => $group_plans){
-?>
-        <div class="buy-group">
-<?php if(!$only_one){?>
-            <div class="buy-group-title"><span><?php echo htmlspecialchars((string)$group_name, ENT_QUOTES, 'UTF-8')?></span><i><?php echo count($group_plans)?> 个套餐</i></div>
-<?php }?>
-        <div class="buy-plans">
-<?php foreach($group_plans as $plan){
-	$kind = plan_kind($plan);
-	//登录后按这个用户现在的等级算：能不能买、实付多少（续费、折抵、补差价都在 plan_quote 里）
-	$quote = $islogin2 ? plan_quote($userrow, $plan) : null;
-	$price_show = ($quote && $quote['ok']) ? $quote['price'] : floatval($plan['price']);
-	if($kind === 'level'){
-		$features = level_features(level_get($plan['level_id']));
-	}elseif($kind === 'bonus'){
-		$features = ['每天多传 '.max(0, intval($plan['upload_limit'])).' 个，加在当前等级的数量上'];
-	}elseif($kind === 'traffic'){
-		$features = ['分享流量 +'.traffic_mb_text($plan['traffic']), '本月等级的分享流量用完后才扣'];
-	}elseif($kind === 'utraffic'){
-		$features = ['上传流量 +'.traffic_mb_text($plan['upload_traffic']), '本月等级的上传流量用完后才扣'];
-	}else{
-		$features = ['在线编辑文本、代码文件'];
-	}
-	//两种流量包都没有有效期，一律永久
-	$features[] = ($kind === 'traffic' || $kind === 'utraffic') ? '永久有效，用完为止' : plan_days_text($plan['days']);
-	if(!empty($plan['remark']))$features[] = $plan['remark'];
-?>
-            <div class="buy-plan">
-                <div class="buy-plan-name"><?php echo htmlspecialchars($plan['name'], ENT_QUOTES, 'UTF-8')?></div>
-                <div class="buy-plan-price"><small>¥</small><?php echo htmlspecialchars(number_format($price_show, 2, '.', ''))?><?php if($quote && $quote['ok'] && $quote['price'] < $quote['origin']){?><del style="margin-left:8px;color:var(--muted);font-size:13px;font-weight:400">¥<?php echo htmlspecialchars(number_format($quote['origin'], 2, '.', ''))?></del><?php }?></div>
-                <ul class="buy-plan-list">
-<?php foreach($features as $feature){?>
-                    <li><i class="fa fa-check" aria-hidden="true"></i> <?php echo htmlspecialchars($feature, ENT_QUOTES, 'UTF-8')?></li>
-<?php }?>
-                </ul>
-<?php if($quote && !$quote['ok']){?>
-                <div class="buy-plan-warn"><?php echo htmlspecialchars($quote['msg'], ENT_QUOTES, 'UTF-8')?></div>
-<?php }elseif($quote && $quote['note'] !== ''){?>
-                <div class="buy-plan-warn"><?php echo htmlspecialchars($quote['note'], ENT_QUOTES, 'UTF-8')?></div>
-<?php }?>
-<?php if($islogin2){ if($quote['ok']){?>
-                <button type="button" class="buy-plan-btn" data-plan="<?php echo intval($plan['id'])?>"><?php echo ($kind === 'level' && strpos($quote['note'], '续费') === 0) ? '续费' : '立即购买'?></button>
-<?php } }else{?>
-                <a class="buy-plan-btn" href="./login.php">登录后购买</a>
-<?php }?>
-            </div>
-<?php }?>
-        </div>
-        </div>
-<?php }?>
-        <p class="buy-tip">买的是会员等级：有效期内按该等级的权限使用，到期后回到普通用户；同一个等级再买是续费，天数接在到期时间后面。<br/>
-        想换成更高的等级，限时会员用上面的「补差价升级」，只补到期前这段时间的差价，到期时间不变；升级后想延长时间，再买新等级的套餐。<br/>
-        「文件下载」的速度跟着上传的人走：你上传的文件，任何人下载都按你当前等级的速度，和下载的人是不是会员无关。<br/>
-        「分享流量」也跟着上传的人走：你的文件每月被下载、预览取走的总量，每月 1 日重新计算；用完后再扣分享流量包，都用完了别人就暂时下载不了你的文件。<br/>
-        「上传流量」是网站每月最多收你多少上传数据（没传完、失败的也算），用完后再扣上传流量包，都用完了就要等下个月才能再传。<br/>
-        加量包和在线编辑包是附加包，各有自己的到期时间，不影响会员到期时间；分享流量包、上传流量包永久有效，用完为止，两种不能互相抵扣。</p>
-    </div>
-</div>
-
-<div class="buy-mask" id="buyMask" hidden>
-    <div class="buy-dialog">
-        <button type="button" class="buy-close" id="buyClose" aria-label="关闭">×</button>
-        <div class="buy-dialog-title" id="buyDialogTitle">支付宝扫码支付</div>
-        <div class="buy-dialog-plan" id="buyPlanName"></div>
-        <div class="buy-channels" id="buyChannels" hidden>
-<?php foreach($channels as $ck => $cname){?>
-            <button type="button" class="buy-channel buy-channel-<?php echo $ck?>" data-channel="<?php echo $ck?>">
-                <i class="fa fa-<?php echo isset($channel_icons[$ck]) ? $channel_icons[$ck] : 'credit-card'?>" aria-hidden="true"></i>
-                <span><?php echo htmlspecialchars($cname, ENT_QUOTES, 'UTF-8')?></span>
-            </button>
-<?php }?>
-        </div>
-        <div class="buy-qr" id="buyQr"></div>
-        <a class="buy-jump" id="buyJump" href="#" target="_blank" rel="noopener" hidden>打开支付页面</a>
-        <div class="buy-amount" id="buyAmount"></div>
-        <div class="buy-state" id="buyState">请使用支付宝扫描二维码完成支付</div>
-    </div>
-</div>
-<?php include SYSTEM_ROOT.'footer.php';?>
-<script src="https://s4.zstatic.net/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script>
-//内置浏览器里这个 CDN 经常拉不到，换一个源再试一次；两个都失败也不影响付款，
-//buy.js 会自动退化成「打开支付宝付款」的跳转按钮
-if(typeof QRCode === 'undefined'){
-	document.write('<script src="https:\/\/cdn.jsdelivr.net\/npm\/qrcodejs@1.0.0\/qrcode.min.js"><\/script>');
-}
-</script>
-<script src="./assets/js/buy.js?v=<?php echo asset_ver('assets/js/buy.js')?>"></script>
-</body>
+/*
+ * 页面内容是布局 buy（DEC-20261025-003）：系统默认在 includes/layouts/buy.json，卡片在 includes/blocks/buy/。
+ * 支付方式、通道由卡片自己读；套餐和升级列表这里算好交过去。
+ * 二维码库和 buy.js 是整页的脚本（套餐按钮、支付弹窗都靠它），由这里登记。
+ */
+theme_defer('buy.scripts', theme_tpl_render('blocks/buy/scripts', ['buy_ver'=>asset_ver('assets/js/buy.js')], $site_theme), 10);
+echo theme_render_layout('buy', [
+	'plans' => $plans,
+	'upgrades' => $upgrades,
+], 'front', $site_theme);
+include SYSTEM_ROOT.'footer.php';
+echo theme_deferred_html();
+?></body>
 </html>

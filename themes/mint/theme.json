@@ -1,0 +1,12 @@
+{
+    "id": "mint",
+    "name": "薄荷蜂巢",
+    "description": "薄荷绿蜂巢暗纹，清爽有生气，适合图床首页和面向年轻用户的站点。",
+    "version": "1.0.0",
+    "author": "pan",
+    "engine": 1,
+    "group": "color",
+    "flags": [],
+    "legacy": true,
+    "sort": 240
+}

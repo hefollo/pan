@@ -1,0 +1,11 @@
+<div class="panel panel-default hidden-xs">
+<div class="panel-heading"{{#bg}} style="background-color:{{bg}}"{{/bg}}>
+<h3 class="panel-title"><i class="fa fa-qrcode"></i> {{{title_html}}}</h3>
+</div>
+<div class="panel-body text-center">
+{{#cfg.qr_comment}}
+<!--<img alt="浜岀淮鐮? src="//api.qrserver.com/v1/create-qr-code/?size=180x180&margin=10&data={{{thisurl_enc_html}}}">-->
+{{/cfg.qr_comment}}
+<img alt="{{alt}}" src="{{image}}" style="width: 200px; height: 325px; max-width: 100%; object-fit: contain; border-radius: 8px;">
+</div>
+</div>

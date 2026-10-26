@@ -232,12 +232,12 @@ $pay_names = implode('、', $pay_names);
 $pay_tab = (empty($conf['alipay_open']) && !empty($conf['epay_open'])) ? 'epay' : 'alipay';
 if(isset($_GET['tab']) && $_GET['tab'] === 'epay')$pay_tab = 'epay';
 ?>
-<div class="container">
-<div class="admin-page-wide">
+<?php theme_panel_begin('msg', '操作结果');?>
 <?php if($msg){?>
 <div class="alert alert-<?php echo $msgtype?>"><?php echo htmlspecialchars($msg, ENT_QUOTES, 'UTF-8')?></div>
 <?php }?>
-
+<?php theme_panel_end();?>
+<?php theme_panel_begin('pay', '支付方式设置');?>
 <div class="panel panel-primary">
 <div class="panel-heading"><h3 class="panel-title">支付方式设置</h3></div>
 <div class="panel-body">
@@ -351,7 +351,8 @@ if(isset($_GET['tab']) && $_GET['tab'] === 'epay')$pay_tab = 'epay';
   </div>
 </div>
 </div>
-
+<?php theme_panel_end();?>
+<?php theme_panel_begin('plan_form', '添加 / 编辑套餐');?>
 <div class="panel panel-primary">
 <div class="panel-heading"><h3 class="panel-title" id="planFormTitle"><?php echo $edit ? '编辑套餐' : '添加套餐'?></h3></div>
 <div class="panel-body">
@@ -456,15 +457,19 @@ if(isset($_GET['tab']) && $_GET['tab'] === 'epay')$pay_tab = 'epay';
   </form>
 </div>
 </div>
-
+<?php theme_panel_end();?>
+<?php theme_panel_begin('edit_warn', '编辑旧套餐提示');?>
 <div class="alert alert-warning" id="planEditWarn"<?php echo $edit_warn ? '' : ' style="display:none"'?>>
   有在线编辑包，但「普通用户」这个等级本来就带在线编辑，登录就能用：在线编辑包不会出现在购买页。
   要把在线编辑做成付费功能，请到 <a href="./level.php">会员等级设置</a> 把「游客」「普通用户」的「在线编辑」去掉，只给付费等级勾上。
 </div>
+<?php theme_panel_end();?>
+<?php theme_panel_begin('legacy_warn', '旧版套餐提示');?>
 <div class="alert alert-info" id="planLegacyWarn"<?php echo $legacy_count > 0 ? '' : ' style="display:none"'?>>
   列表里有 <b id="planLegacyCount"><?php echo $legacy_count?></b> 个旧版套餐（改成会员等级之前的时长卡、大文件包、永久卡），已经停售、不会出现在购买页，已经买了的用户权益保留到原来的到期时间。确认不需要了可以直接删除，不影响订单记录。
 </div>
-
+<?php theme_panel_end();?>
+<?php theme_panel_begin('plans', '套餐列表');?>
 <div class="panel panel-primary">
 <div class="panel-heading"><h3 class="panel-title">套餐列表
   <form method="post" class="plan-op pull-right" style="margin-top:-4px" data-confirm="会添加一组推荐的会员等级和套餐（同名的自动跳过），导入后可以随意修改，确定吗？">
@@ -481,8 +486,9 @@ if(isset($_GET['tab']) && $_GET['tab'] === 'epay')$pay_tab = 'epay';
 </table>
 </div>
 </div>
-</div>
-</div>
+<?php theme_panel_end();?>
+<?php //页面内容是布局 admin/set_pay（includes/layouts/admin/set_pay.json），各面板在上面用 theme_panel_begin/end 捕获，见 DEC-20261025-003
+echo theme_render_layout('admin/set_pay', [], 'admin', $site_theme);?>
 
 <style>
 .pay-common{padding-bottom:6px;margin-bottom:14px;border-bottom:1px solid #eee}

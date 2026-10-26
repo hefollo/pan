@@ -10,11 +10,15 @@ if($islogin==1){}else exit("<script language='javascript'>window.location.href='
 ?>
 <?php
 $mod=isset($_GET['mod'])?$_GET['mod']:null;
-//外观设置是一排排的外观卡片，28 套排下来要横向空间，用宽版；其余都是设置表单，收窄看着才不散
-$set_shell = ($mod === 'appearance') ? 'admin-page-wide' : 'admin-page';
+/*
+ * 每个设置页是一份布局 admin/set-<mod>（includes/layouts/admin/set-*.json，DEC-20261025-003）：
+ * 下面整条 if 链的输出捕获成面板 main，布局决定外壳（外观设置是一排排的外观卡片，要横向空间，用宽版 admin-page-wide；
+ * 其余都是设置表单，收窄看着才不散）。不认识的 mod 用通用布局 admin/set。
+ */
+$set_layouts = ['site'=>'网站信息设置', 'appearance'=>'外观设置', 'api'=>'上传API设置', 'account'=>'管理员账号设置', 'iptype'=>'用户IP地址获取设置', 'file'=>'文件上传设置', 'user'=>'用户登录设置', 'green'=>'内容检测设置'];
+$set_page = (is_string($mod) && isset($set_layouts[$mod])) ? 'admin/set-'.$mod : 'admin/set';
+theme_panel_begin('main', isset($set_layouts[$mod]) ? $set_layouts[$mod] : '设置');
 ?>
-  <div class="container">
-    <div class="<?php echo $set_shell?>">
 <?php
 if($mod=='site'){
 ?>
@@ -412,330 +416,8 @@ sync_404_theme($site_theme);
 <div class="panel panel-primary">
 <div class="panel-heading"><h3 class="panel-title">外观设置</h3></div>
 <div class="panel-body">
-	<div class="appearance-group">
-	  <div class="appearance-group-head">
-	    <strong>布局型外观</strong>
-	    <small>会改变页面结构：导航位置、内容排版都不一样，前台和后台同时生效。</small>
-	  </div>
-	<div class="appearance-options">
-	  <label class="appearance-card <?php echo $site_theme === 'dashboard' ? 'active' : null;?>">
-	    <input type="radio" name="site_theme" value="dashboard" <?php echo $site_theme === 'dashboard' ? 'checked' : null;?>>
-	    <span class="appearance-preview appearance-preview-dashboard">
-	      <span class="appearance-nav"></span>
-	      <span class="appearance-panel">
-	        <span></span><span></span><span></span>
-	      </span>
-	    </span>
-	    <strong>控制台侧栏风</strong>
-	    <small>顶部导航变为左侧固定侧栏，内容区改为圆角卡片布局，更接近后台管理系统的观感。</small>
-	  </label>
-	  <label class="appearance-card <?php echo $site_theme === 'console' ? 'active' : null;?>">
-	    <input type="radio" name="site_theme" value="console" <?php echo $site_theme === 'console' ? 'checked' : null;?>>
-	    <span class="appearance-preview appearance-preview-console">
-	      <span class="appearance-nav"></span>
-	      <span class="appearance-panel">
-	        <span></span><span></span><span></span>
-	      </span>
-	    </span>
-	    <strong>数据控制台风</strong>
-	    <small>更紧凑的左侧侧栏，标题与搜索独立成顶栏，列表改为白色卡片，信息密度最高。</small>
-	  </label>
-	  <label class="appearance-card <?php echo $site_theme === 'portal' ? 'active' : null;?>">
-	    <input type="radio" name="site_theme" value="portal" <?php echo $site_theme === 'portal' ? 'checked' : null;?>>
-	    <span class="appearance-preview appearance-preview-portal">
-	      <span class="appearance-nav"></span>
-	      <span class="appearance-panel">
-	        <span></span><span></span><span></span>
-	      </span>
-	    </span>
-	    <strong>上传门户风</strong>
-	    <small>居中的门户式顶部导航，首页多一块大号上传引导区，绿色配色，适合面向访客的公开分享站。</small>
-	  </label>
-	  <label class="appearance-card <?php echo $site_theme === 'workspace' ? 'active' : null;?>">
-	    <input type="radio" name="site_theme" value="workspace" <?php echo $site_theme === 'workspace' ? 'checked' : null;?>>
-	    <span class="appearance-preview appearance-preview-workspace">
-	      <span class="appearance-nav"></span>
-	      <span class="appearance-panel">
-	        <span></span><span></span><span></span>
-	      </span>
-	    </span>
-	    <strong>深色工作台风</strong>
-	    <small>深色底 + 左侧图标导航条（鼠标移上去展开文字），内容为深色圆角面板，适合长时间浏览管理。</small>
-	  </label>
-	  <label class="appearance-card <?php echo $site_theme === 'mac' ? 'active' : null;?>">
-	    <input type="radio" name="site_theme" value="mac" <?php echo $site_theme === 'mac' ? 'checked' : null;?>>
-	    <span class="appearance-preview appearance-preview-mac">
-	      <span class="appearance-nav"></span>
-	      <span class="appearance-panel">
-	        <span></span><span></span><span></span>
-	      </span>
-	    </span>
-	    <strong>macOS 窗口风</strong>
-	    <small>整站套进一个 macOS 窗口：带红黄绿三颗灯的标题栏、底部状态栏，文件列表默认是访达式图标网格，可一键切回列表视图；后台和登录页同款窗口。</small>
-	  </label>
-	  <label class="appearance-card <?php echo $site_theme === 'cockpit' ? 'active' : null;?>">
-	    <input type="radio" name="site_theme" value="cockpit" <?php echo $site_theme === 'cockpit' ? 'checked' : null;?>>
-	    <span class="appearance-preview appearance-preview-cockpit">
-	      <span class="appearance-nav"></span>
-	      <span class="appearance-panel">
-	        <span></span><span></span><span></span>
-	      </span>
-	    </span>
-	    <strong>渐变仪表盘风</strong>
-	    <small>白色悬浮圆角侧栏（默认展开显示文字），文件列表页顶部是问候栏和紫色渐变额度卡，右侧多一列存储分布、最近上传和快捷入口面板。</small>
-	  </label>
-	  <label class="appearance-card <?php echo $site_theme === 'studio' ? 'active' : null;?>">
-	    <input type="radio" name="site_theme" value="studio" <?php echo $site_theme === 'studio' ? 'checked' : null;?>>
-	    <span class="appearance-preview appearance-preview-studio">
-	      <span class="appearance-nav"></span>
-	      <span class="appearance-panel">
-	        <span></span><span></span><span></span>
-	      </span>
-	    </span>
-	    <strong>蓝白工作台风</strong>
-	    <small>白色分组侧栏（工作空间 / 个人中心，底部带升级卡）+ 顶部搜索条，文件列表页是蓝白横幅、四张统计卡、带筛选和排序的文件面板，右侧一列今日上传、我的权限、快捷操作和最近动态。</small>
-	  </label>
-	  <label class="appearance-card <?php echo $site_theme === 'nebula' ? 'active' : null;?>">
-	    <input type="radio" name="site_theme" value="nebula" <?php echo $site_theme === 'nebula' ? 'checked' : null;?>>
-	    <span class="appearance-preview appearance-preview-nebula">
-	      <span class="appearance-nav"></span>
-	      <span class="appearance-panel">
-	        <span></span><span></span><span></span>
-	      </span>
-	    </span>
-	    <strong>深空科技风</strong>
-	    <small>蓝白工作台的深色版：深蓝星空底配发光描边，横幅是大标题加三个卖点，统计卡带彩色辉光，适合长时间浏览的深色站点。</small>
-	  </label>
-	  <label class="appearance-card <?php echo $site_theme === 'royal' ? 'active' : null;?>">
-	    <input type="radio" name="site_theme" value="royal" <?php echo $site_theme === 'royal' ? 'checked' : null;?>>
-	    <span class="appearance-preview appearance-preview-royal">
-	      <span class="appearance-nav"></span>
-	      <span class="appearance-panel">
-	        <span></span><span></span><span></span>
-	      </span>
-	    </span>
-	    <strong>紫韵会员风</strong>
-	    <small>蓝紫渐变横幅配彩色统计卡，右侧第一块是金色会员权限卡带升级入口，列表下方还有一条卖点推广横幅。</small>
-	  </label>
-	  <label class="appearance-card <?php echo $site_theme === 'crisp' ? 'active' : null;?>">
-	    <input type="radio" name="site_theme" value="crisp" <?php echo $site_theme === 'crisp' ? 'checked' : null;?>>
-	    <span class="appearance-preview appearance-preview-crisp">
-	      <span class="appearance-nav"></span>
-	      <span class="appearance-panel">
-	        <span></span><span></span><span></span>
-	      </span>
-	    </span>
-	    <strong>清爽极简风</strong>
-	    <small>近乎纯白的底色，横幅不做卡片、直接铺在页面上，四条勾选卖点加两个大按钮，五张统计卡，右侧最近动态是时间轴样式。</small>
-	  </label>
-	  <label class="appearance-card <?php echo $site_theme === 'azure' ? 'active' : null;?>">
-	    <input type="radio" name="site_theme" value="azure" <?php echo $site_theme === 'azure' ? 'checked' : null;?>>
-	    <span class="appearance-preview appearance-preview-azure">
-	      <span class="appearance-nav"></span>
-	      <span class="appearance-panel">
-	        <span></span><span></span><span></span>
-	      </span>
-	    </span>
-	    <strong>蓝天白云风</strong>
-	    <small>天蓝渐变横幅，右上角三枚浮标卖点，五张统计卡，列表下方是会员升级横幅，整体明亮通透。</small>
-	  </label>
-	  <label class="appearance-card <?php echo $site_theme === 'neo' ? 'active' : null;?>">
-	    <input type="radio" name="site_theme" value="neo" <?php echo $site_theme === 'neo' ? 'checked' : null;?>>
-	    <span class="appearance-preview appearance-preview-neo">
-	      <span class="appearance-nav"></span>
-	      <span class="appearance-panel">
-	        <span></span><span></span><span></span>
-	      </span>
-	    </span>
-	    <strong>潮酷涂鸦风</strong>
-	    <small>粗黑描边加不带模糊的硬投影，米色底配橙黑撞色：黑色侧栏、橙色选中项，横幅是超大标题加手写标语，五张统计卡各一个高饱和颜色。</small>
-	  </label>
-	  <label class="appearance-card <?php echo $site_theme === 'skyline' ? 'active' : null;?>">
-	    <input type="radio" name="site_theme" value="skyline" <?php echo $site_theme === 'skyline' ? 'checked' : null;?>>
-	    <span class="appearance-preview appearance-preview-skyline">
-	      <span class="appearance-nav"></span>
-	      <span class="appearance-panel">
-	        <span></span><span></span><span></span>
-	      </span>
-	    </span>
-	    <strong>云端门户风</strong>
-	    <small>家族里唯一一套顶部横向导航：天空渐变的大横幅带远山和居中大搜索框，下面是浅色统计卡和文件面板，右侧一列蓝色上传卡、存储空间、最近上传。后台保持顶栏布局。</small>
-	  </label>
-	</div>
-	</div>
-	<div class="appearance-group">
-	  <div class="appearance-group-head">
-	    <strong>配色型外观</strong>
-	    <small>只改变颜色、背景纹理和质感，页面结构保持默认的顶部导航布局。</small>
-	  </div>
-	<div class="appearance-options">
-	  <label class="appearance-card <?php echo $site_theme === 'cloud' ? 'active' : null;?>">
-	    <input type="radio" name="site_theme" value="cloud" <?php echo $site_theme === 'cloud' ? 'checked' : null;?>>
-	    <span class="appearance-preview appearance-preview-cloud">
-	      <span class="appearance-nav"></span>
-	      <span class="appearance-panel">
-	        <span></span><span></span><span></span>
-	      </span>
-	    </span>
-	    <strong>蓝白清爽</strong>
-	    <small>蓝白清爽风格，适合默认展示。</small>
-	  </label>
-	  <label class="appearance-card <?php echo $site_theme === 'night' ? 'active' : null;?>">
-	    <input type="radio" name="site_theme" value="night" <?php echo $site_theme === 'night' ? 'checked' : null;?>>
-	    <span class="appearance-preview appearance-preview-night">
-	      <span class="appearance-nav"></span>
-	      <span class="appearance-panel">
-	        <span></span><span></span><span></span>
-	      </span>
-	    </span>
-	    <strong>黑夜风格</strong>
-	    <small>深色背景、蓝色高亮，适合夜间浏览。</small>
-	  </label>
-	  <label class="appearance-card <?php echo $site_theme === 'neon' ? 'active' : null;?>">
-	    <input type="radio" name="site_theme" value="neon" <?php echo $site_theme === 'neon' ? 'checked' : null;?>>
-	    <span class="appearance-preview appearance-preview-neon">
-	      <span class="appearance-nav"></span>
-	      <span class="appearance-panel">
-	        <span></span><span></span><span></span>
-	      </span>
-	    </span>
-	    <strong>霓虹科技黑夜</strong>
-	    <small>蓝紫霓虹、科技感边框，适合深色展示。</small>
-	  </label>
-	  <label class="appearance-card <?php echo $site_theme === 'aurora' ? 'active' : null;?>">
-	    <input type="radio" name="site_theme" value="aurora" <?php echo $site_theme === 'aurora' ? 'checked' : null;?>>
-	    <span class="appearance-preview appearance-preview-aurora">
-	      <span class="appearance-nav"></span>
-	      <span class="appearance-panel">
-	        <span></span><span></span><span></span>
-	      </span>
-	    </span>
-	    <strong>蓝紫渐变玻璃</strong>
-	    <small>渐变背景、半透明玻璃卡片，适合展示型页面。</small>
-	  </label>
-	  <label class="appearance-card <?php echo $site_theme === 'onefour' ? 'active' : null;?>">
-	    <input type="radio" name="site_theme" value="onefour" <?php echo $site_theme === 'onefour' ? 'checked' : null;?>>
-	    <span class="appearance-preview appearance-preview-onefour">
-	      <span class="appearance-nav"></span>
-	      <span class="appearance-panel">
-	        <span></span><span></span><span></span>
-	      </span>
-	    </span>
-	    <strong>暗黑科技后台风</strong>
-	    <small>深色点阵背景、半透明暗色面板、圆角按钮与标签，整体偏科技感、数据管理感，适合文件列表、管理后台、资源站页面。</small>
-	  </label>
-	  <label class="appearance-card <?php echo $site_theme === 'celadon' ? 'active' : null;?>">
-	    <input type="radio" name="site_theme" value="celadon" <?php echo $site_theme === 'celadon' ? 'checked' : null;?>>
-	    <span class="appearance-preview appearance-preview-celadon">
-	      <span class="appearance-nav"></span>
-	      <span class="appearance-panel">
-	        <span></span><span></span><span></span>
-	      </span>
-	    </span>
-	    <strong>青瓷微澜</strong>
-	    <small>青瓷色同心波纹、留白通透，冷静耐看，适合作品集、图床和长时间浏览的列表页。</small>
-	  </label>
-	  <label class="appearance-card <?php echo $site_theme === 'lilac' ? 'active' : null;?>">
-	    <input type="radio" name="site_theme" value="lilac" <?php echo $site_theme === 'lilac' ? 'checked' : null;?>>
-	    <span class="appearance-preview appearance-preview-lilac">
-	      <span class="appearance-nav"></span>
-	      <span class="appearance-panel">
-	        <span></span><span></span><span></span>
-	      </span>
-	    </span>
-	    <strong>淡紫点阵</strong>
-	    <small>薰衣草底色配细密点阵，柔和不刺眼，适合内容站、文档站和图片分享。</small>
-	  </label>
-	  <label class="appearance-card <?php echo $site_theme === 'paper' ? 'active' : null;?>">
-	    <input type="radio" name="site_theme" value="paper" <?php echo $site_theme === 'paper' ? 'checked' : null;?>>
-	    <span class="appearance-preview appearance-preview-paper">
-	      <span class="appearance-nav"></span>
-	      <span class="appearance-panel">
-	        <span></span><span></span><span></span>
-	      </span>
-	    </span>
-	    <strong>米白纸张</strong>
-	    <small>极简纸张质感，横线纸纹配墨黑标题，几乎无色相干扰，适合以文件名和文字为主的列表。</small>
-	  </label>
-	  <label class="appearance-card <?php echo $site_theme === 'blush' ? 'active' : null;?>">
-	    <input type="radio" name="site_theme" value="blush" <?php echo $site_theme === 'blush' ? 'checked' : null;?>>
-	    <span class="appearance-preview appearance-preview-blush">
-	      <span class="appearance-nav"></span>
-	      <span class="appearance-panel">
-	        <span></span><span></span><span></span>
-	      </span>
-	    </span>
-	    <strong>淡粉暖调</strong>
-	    <small>浅粉底色配玫瑰色高亮，温和轻盈，适合相册、素材站和面向大众的分享页。</small>
-	  </label>
-	  <label class="appearance-card <?php echo $site_theme === 'sky' ? 'active' : null;?>">
-	    <input type="radio" name="site_theme" value="sky" <?php echo $site_theme === 'sky' ? 'checked' : null;?>>
-	    <span class="appearance-preview appearance-preview-sky">
-	      <span class="appearance-nav"></span>
-	      <span class="appearance-panel">
-	        <span></span><span></span><span></span>
-	      </span>
-	    </span>
-	    <strong>天蓝细纹</strong>
-	    <small>青蓝色调配斜向细纹，比默认的蓝白更冷更透，适合工具站和资源下载页。</small>
-	  </label>
-	  <label class="appearance-card <?php echo $site_theme === 'mint' ? 'active' : null;?>">
-	    <input type="radio" name="site_theme" value="mint" <?php echo $site_theme === 'mint' ? 'checked' : null;?>>
-	    <span class="appearance-preview appearance-preview-mint">
-	      <span class="appearance-nav"></span>
-	      <span class="appearance-panel">
-	        <span></span><span></span><span></span>
-	      </span>
-	    </span>
-	    <strong>薄荷蜂巢</strong>
-	    <small>薄荷绿蜂巢暗纹，清爽有生气，适合图床首页和面向年轻用户的站点。</small>
-	  </label>
-	  <label class="appearance-card <?php echo $site_theme === 'sunset' ? 'active' : null;?>">
-	    <input type="radio" name="site_theme" value="sunset" <?php echo $site_theme === 'sunset' ? 'checked' : null;?>>
-	    <span class="appearance-preview appearance-preview-sunset">
-	      <span class="appearance-nav"></span>
-	      <span class="appearance-panel">
-	        <span></span><span></span><span></span>
-	      </span>
-	    </span>
-	    <strong>落日熔金</strong>
-	    <small>珊瑚橙到品红的落日渐变，叠磨砂玻璃卡片与暖色辉光，浓烈张扬，适合首页和活动页。</small>
-	  </label>
-	  <label class="appearance-card <?php echo $site_theme === 'abyss' ? 'active' : null;?>">
-	    <input type="radio" name="site_theme" value="abyss" <?php echo $site_theme === 'abyss' ? 'checked' : null;?>>
-	    <span class="appearance-preview appearance-preview-abyss">
-	      <span class="appearance-nav"></span>
-	      <span class="appearance-panel">
-	        <span></span><span></span><span></span>
-	      </span>
-	    </span>
-	    <strong>深海玻璃</strong>
-	    <small>深海蓝绿渐变配青色辉光，通透安静的磨砂玻璃，适合长时间浏览的资源站。</small>
-	  </label>
-	  <label class="appearance-card <?php echo $site_theme === 'emerald' ? 'active' : null;?>">
-	    <input type="radio" name="site_theme" value="emerald" <?php echo $site_theme === 'emerald' ? 'checked' : null;?>>
-	    <span class="appearance-preview appearance-preview-emerald">
-	      <span class="appearance-nav"></span>
-	      <span class="appearance-panel">
-	        <span></span><span></span><span></span>
-	      </span>
-	    </span>
-	    <strong>翡翠流光</strong>
-	    <small>翡翠绿到松石色的流光渐变，磨砂玻璃配柔亮描边，清透有质感，适合作品集和图床。</small>
-	  </label>
-	  <label class="appearance-card <?php echo $site_theme === 'sakura' ? 'active' : null;?>">
-	    <input type="radio" name="site_theme" value="sakura" <?php echo $site_theme === 'sakura' ? 'checked' : null;?>>
-	    <span class="appearance-preview appearance-preview-sakura">
-	      <span class="appearance-nav"></span>
-	      <span class="appearance-panel">
-	        <span></span><span></span><span></span>
-	      </span>
-	    </span>
-	    <strong>樱雾玻璃</strong>
-	    <small>粉紫到天青的浅色雾面渐变，白色磨砂卡片，轻盈明亮，适合相册和展示型页面。</small>
-	  </label>
-	</div>
-	</div>
+<?php //外观卡片按主题注册表生成（themes/ 下的内置外观 + content/themes/ 下上传的），见 includes/theme_shell.php 的 theme_admin_cards_html()
+echo theme_admin_cards_html($site_theme);?>
 </div>
 <div class="panel-footer">
 <span class="glyphicon glyphicon-info-sign"></span>
@@ -743,7 +425,10 @@ sync_404_theme($site_theme);
 </div>
 </div>
 </form>
-<?php
+<?php //当前主题带可调设置时多一个「主题设置」面板（内置外观没有）
+echo theme_admin_settings_html($site_theme);
+//主题包的上传安装、导出、删除
+echo theme_admin_packages_html($site_theme);
 }elseif($mod=='api'){
 $scriptpath=str_replace('\\','/',$_SERVER['SCRIPT_NAME']);
 $sitepath = substr($scriptpath, 0, strrpos($scriptpath, '/'));
@@ -1442,9 +1127,9 @@ $.getJSON("./ajax.php?act=greenhealth", function(r){
 </script>
 <?php
 }
+theme_panel_end();
+echo theme_render_layout($set_page, [], 'admin', $site_theme);
 ?>
-    </div>
-  </div>
 <script>
 var items = $("select[default]");
 for (i = 0; i < items.length; i++) {

@@ -1,0 +1,6 @@
+{"nodes": [
+  {"id": "message", "block": "share.message"},
+  {"id": "heading", "block": "share.heading"},
+  {"id": "file", "block": "share.file"},
+  {"id": "listing", "block": "share.listing"}
+]}

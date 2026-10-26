@@ -1,0 +1,57 @@
+{
+    "nodes": [
+        {
+            "id": "box1",
+            "block": "core.box",
+            "config": {
+                "class": "container"
+            },
+            "children": [
+                {
+                    "id": "box2",
+                    "block": "core.box",
+                    "config": {
+                        "class": "admin-page-wide"
+                    },
+                    "children": [
+                        {
+                            "id": "schema",
+                            "block": "admin.panel",
+                            "config": {
+                                "panel": "schema"
+                            }
+                        },
+                        {
+                            "id": "count_tip",
+                            "block": "admin.panel",
+                            "config": {
+                                "panel": "count_tip"
+                            }
+                        },
+                        {
+                            "id": "off_tip",
+                            "block": "admin.panel",
+                            "config": {
+                                "panel": "off_tip"
+                            }
+                        },
+                        {
+                            "id": "stats",
+                            "block": "admin.panel",
+                            "config": {
+                                "panel": "stats"
+                            }
+                        },
+                        {
+                            "id": "records",
+                            "block": "admin.panel",
+                            "config": {
+                                "panel": "records"
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

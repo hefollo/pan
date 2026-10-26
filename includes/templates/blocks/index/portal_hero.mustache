@@ -1,0 +1,70 @@
+{{=<% %>=}}
+<div class="portal-hero" id="app">
+  <div class="portal-hero-inner">
+    <div class="portal-hero-copy">
+      <span class="portal-kicker">快速 · 安全 · 长期可用</span>
+      <h1>把文件放上来，<br>链接带去任何地方。</h1>
+      <p>上传图片、视频、文档或压缩包，即刻生成可分享的外链。无需安装客户端，打开浏览器就能用。</p>
+      <div class="portal-trust">
+        <span><i class="fa fa-check" aria-hidden="true"></i> 支持批量上传</span>
+        <span><i class="fa fa-check" aria-hidden="true"></i> 自动生成外链</span>
+        <span><i class="fa fa-check" aria-hidden="true"></i> 多种存储可选</span>
+      </div>
+    </div>
+    <div class="portal-drop-wrap">
+<%#forbid%>
+      <a class="portal-drop" href="./login.php">
+        <span class="portal-drop-icon"><i class="fa fa-cloud-upload" aria-hidden="true"></i></span>
+        <strong>登录后即可上传</strong>
+        <small>本站要求登录后才能上传文件</small>
+        <span class="portal-drop-btn"><i class="fa fa-sign-in" aria-hidden="true"></i> 去登录</span>
+      </a>
+<%/forbid%>
+<%^forbid%>
+      <a class="portal-drop" id="fileInput" href="./upload.php" @click.prevent="clickUpload" :class="{'is-dragover':dragging, 'is-busy':isBlock}">
+        <span class="portal-drop-icon"><i class="fa fa-cloud-upload" aria-hidden="true"></i></span>
+        <strong v-text="dragging ? '释放鼠标立即上传' : '把文件拖到这里上传'">把文件拖到这里上传</strong>
+        <small><%size_text%>，也可以 Ctrl+V 粘贴</small>
+        <span class="portal-drop-btn"><i class="fa fa-upload" aria-hidden="true"></i> 选择本地文件</span>
+      </a>
+<%/forbid%>
+      <div class="portal-upload-panel" v-cloak v-if="showtype>0 || batchQueue.length>0">
+        <div class="upload-main-progress" v-if="showtype==1">
+          <div class="progress"><div class="progress-bar" :style="{ width: totalProgress + '%' }">{{progress_tip}}</div></div>
+          <div class="portal-upload-meta"><span class="portal-upload-name">{{filename}}</span><span>{{uploadspeed}}</span></div>
+        </div>
+        <div class="upload-message" :class="'upload-message-'+alert.type" v-if="showtype==2">
+          <div class="upload-message-icon"><i class="fa" :class="alertIconClass"></i></div>
+          <div class="upload-message-body" v-html="alert.msg"></div>
+          <button type="button" class="upload-message-close" @click="showtype=0">×</button>
+        </div>
+        <div class="upload-result-actions" v-if="showtype==2 && successfulQueueItems().length>1">
+          <button type="button" class="upload-link-btn upload-link-btn-secondary" @click="copyAllViewLinks"><i class="fa fa-copy"></i> 全部查看链接</button>
+          <button type="button" class="upload-link-btn" @click="copyAllDownloadLinks"><i class="fa fa-copy"></i> 全部下载链接</button>
+        </div>
+        <div class="upload-queue" v-if="batchQueue.length>0">
+          <div class="upload-queue-item" v-for="(item, index) in batchQueue" :key="item.id">
+            <div class="upload-queue-index">{{index + 1}}</div>
+            <div class="upload-queue-main">
+              <div class="upload-queue-name" :title="item.name">{{item.name}}</div>
+              <div class="upload-queue-meta">{{item.sizeText}}<span v-if="item.msg"> · {{item.msg}}</span></div>
+              <div class="upload-queue-progress" v-if="item.status==='reading' || item.status==='uploading' || item.status==='saving'">
+                <span :style="{width: item.progress + '%'}"></span>
+              </div>
+            </div>
+            <div class="upload-queue-actions" v-if="item.status==='success' && item.downloadUrl && item.viewUrl">
+              <button type="button" class="upload-link-btn upload-link-btn-secondary" @click.stop="copyText(item.viewUrl)"><i class="fa fa-eye"></i> 查看链接</button>
+              <button type="button" class="upload-link-btn" @click.stop="copyText(item.downloadUrl)"><i class="fa fa-download"></i> 下载链接</button>
+            </div>
+            <div class="upload-queue-status">
+              <span class="label" :class="queueStatusClass(item.status)">{{queueStatusText(item.status)}}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="portal-drop-tip">要设访问密码、选存储位置，或者查看完整上传说明，去 <a href="./upload.php">上传页</a>。</p>
+    </div>
+  </div>
+  <input type="hidden" id="csrf_token" value="<%csrf%>">
+  <input type="file" id="file" name="myfile[]" @change="selectFile" multiple style="display:none">
+</div>

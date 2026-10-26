@@ -307,9 +307,7 @@ if($islogin==1){}else exit("<script language='javascript'>window.location.href='
 
 $green_off = !isset($conf['green_check']) || $conf['green_check'] == 0;
 ?>
-<div class="container">
-<div class="admin-page-wide">
-
+<?php theme_panel_begin('schema', '数据表缺失提示');?>
 <?php
 $schema_missing = green_schema_missing();
 if($schema_missing){?>
@@ -322,7 +320,8 @@ if($schema_missing){?>
   <code>UPDATE pre_config SET v='1019' WHERE k='version';</code> 然后再跑一次升级。
 </div>
 <?php }?>
-
+<?php theme_panel_end();?>
+<?php theme_panel_begin('count_tip', '记录统计提示');?>
 <?php
 /*
  * 一条记录都没有的时候，把能自动查的都查了摆出来。
@@ -351,11 +350,13 @@ if(!$schema_missing && $numrows == 0){
 <?php }?>
 </div>
 <?php }?>
-
+<?php theme_panel_end();?>
+<?php theme_panel_begin('off_tip', '检测已关闭提示');?>
 <?php if($green_off){?>
 <div class="alert alert-warning">内容检测当前是<b>关闭</b>状态，不会产生新记录。要开启请去 <a href="./set.php?mod=green">内容检测设置</a>。</div>
 <?php }?>
-
+<?php theme_panel_end();?>
+<?php theme_panel_begin('stats', '检测概况');?>
 <div class="panel panel-primary">
 <div class="panel-heading"><h3 class="panel-title">检测概况</h3></div>
 <div class="panel-body">
@@ -373,7 +374,8 @@ if(!$schema_missing && $numrows == 0){
   </div>
 </div>
 </div>
-
+<?php theme_panel_end();?>
+<?php theme_panel_begin('records', '检测记录');?>
 <div class="panel panel-primary">
 <div class="panel-heading"><h3 class="panel-title">检测记录
   <button type="button" class="btn btn-xs btn-default pull-right" onclick="cleanLog()">清理 7 天前的放行记录</button>
@@ -389,9 +391,9 @@ if(!$schema_missing && $numrows == 0){
 </div>
 <div class="panel-footer" id="greenlogPager"><?php echo render_greenlog_pager($page, $pages, $numrows);?></div>
 </div>
-
-</div>
-</div>
+<?php theme_panel_end();?>
+<?php //页面内容是布局 admin/green_log（includes/layouts/admin/green_log.json），各面板在上面用 theme_panel_begin/end 捕获，见 DEC-20261025-003
+echo theme_render_layout('admin/green_log', [], 'admin', $site_theme);?>
 
 <style>
 .greenlog-stats{margin:0 -6px}

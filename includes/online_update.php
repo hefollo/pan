@@ -95,6 +95,8 @@ function oupd_skip_reason($rel){
 	if($is_top_file && in_array($rel, ['config.php', 'README.md', 'LICENSE', 'AGENTS.md', 'CLAUDE.md', 'pan.code-workspace', '.gitignore', '.gitattributes'], true))return '不随站点发布';
 	if($is_top_file && strpos($rel, '发布介绍') === 0)return '发布宣传材料';
 	if(!$is_top_file && in_array($top, ['.git', '.github', '.agents', '.codex', '.claude', 'img', 'tests', 'tools', '发布素材', 'data', 'tmp', 'temp', 'file', 'log', 'logs', 'cache', 'runtime', 'uploads', 'upload', 'storage'], true))return '不随站点发布';
+	//站长上传的主题包（DEC-20261025-003），不在仓库里，在线更新不能动它
+	if(!$is_top_file && $top === 'content')return '站点运行时文件';
 	if(strtolower(substr($rel, -4)) === '.zip')return '压缩包';
 	if($rel === 'install/install.lock')return '安装锁';
 	foreach(['includes/vendor/', 'assets/css/custom/', 'assets/avatar/', 'assets/siteicon/', 'includes/sponsor/images/'] as $p){

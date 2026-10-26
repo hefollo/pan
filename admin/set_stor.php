@@ -352,9 +352,7 @@ function stor_field($f){
 .stor-group-title{margin:22px 0 12px;font-size:15px;font-weight:600;color:var(--admin-text)}
 .stor-group-title small{margin-left:6px;font-size:12px;font-weight:400;color:var(--admin-muted)}
 </style>
-<div class="container stor-page">
-<div class="admin-page">
-
+<?php theme_panel_begin('onedrive_msg', 'OneDrive 授权结果');?>
 <?php if(isset($_GET['onedrive'])){
 	$od = $_GET['onedrive'];
 	$od_map = [
@@ -367,7 +365,8 @@ function stor_field($f){
 	if(isset($od_map[$od])){?>
 <div class="alert alert-<?php echo $od_map[$od][0]?>"><?php echo $od_map[$od][1]?></div>
 <?php }}?>
-
+<?php theme_panel_end();?>
+<?php theme_panel_begin('type', '存储类型');?>
 <div class="panel panel-primary">
 	<div class="panel-heading"><h3 class="panel-title"><i class="fa fa-database"></i> 存储类型</h3></div>
 	<div class="panel-body">
@@ -415,7 +414,8 @@ function stor_field($f){
 		</form>
 	</div>
 </div>
-
+<?php theme_panel_end();?>
+<?php theme_panel_begin('multi', '多存储上传');?>
 <div class="panel panel-info">
 	<div class="panel-heading"><h3 class="panel-title"><i class="fa fa-random"></i> 多存储上传</h3></div>
 	<div class="panel-body">
@@ -476,7 +476,8 @@ function stor_field($f){
 		</form>
 	</div>
 </div>
-
+<?php theme_panel_end();?>
+<?php theme_panel_begin('config', '参数配置');?>
 <div class="panel panel-info">
 	<div class="panel-heading"><h3 class="panel-title"><i class="fa fa-sliders"></i> 参数配置<small class="stor-config-name"></small></h3></div>
 	<div class="panel-body stor-config-body">
@@ -542,7 +543,8 @@ function stor_field($f){
 	<?php }?>
 	</div>
 </div>
-
+<?php theme_panel_end();?>
+<?php theme_panel_begin('transfer', '限速设置');?>
 <?php
 //先按当前存储的能力把面板和行的显示状态渲染好，避免页面加载时闪一下再被 JS 收起来
 $cap_now = $stor_caps[$storage];
@@ -612,9 +614,9 @@ $cap_now = $stor_caps[$storage];
 		</form>
 	</div>
 </div>
-
-</div>
-</div>
+<?php theme_panel_end();?>
+<?php //页面内容是布局 admin/set_stor（includes/layouts/admin/set_stor.json），各面板在上面用 theme_panel_begin/end 捕获，见 DEC-20261025-003
+echo theme_render_layout('admin/set_stor', [], 'admin', $site_theme);?>
 <script>
 var storCaps = <?php echo json_encode($stor_caps, JSON_UNESCAPED_UNICODE)?>;
 var currentStor = <?php echo json_encode($storage)?>;

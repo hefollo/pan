@@ -1,0 +1,56 @@
+{
+    "nodes": [
+        {
+            "id": "notice",
+            "block": "common.notice"
+        },
+        {
+            "id": "ads",
+            "block": "common.ads_banner"
+        },
+        {
+            "id": "b16",
+            "block": "core.box",
+            "config": {
+                "class": "container"
+            },
+            "children": [
+                {
+                    "id": "b15",
+                    "block": "core.box",
+                    "config": {
+                        "class": "well bs-component"
+                    },
+                    "children": [
+                        {
+                            "id": "b10",
+                            "block": "index.title",
+                            "config": {
+                                "cta": "上传新文件"
+                            }
+                        },
+                        {
+                            "id": "b11",
+                            "block": "common.subtitle",
+                            "config": {
+                                "text": "管理、预览并分享你上传的所有内容。"
+                            }
+                        },
+                        {
+                            "id": "b12",
+                            "block": "index.stats"
+                        },
+                        {
+                            "id": "b13",
+                            "block": "index.filterbar"
+                        },
+                        {
+                            "id": "b14",
+                            "block": "index.filelist"
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

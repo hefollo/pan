@@ -1,0 +1,11 @@
+/*
+ * 示例主题「便签风」的后台样式（theme.json 的 admin_styles）。
+ * 后台 <body> 上有 admin-theme-sample-note 和 admin-theme-cloud；后台主色由主题设置 primary 自动接到 --admin-primary。
+ * 后台的表单、表格是程序的，只换皮，不要用 display:none 藏掉功能。
+ */
+body.admin-theme-sample-note.admin-body{
+	background-color: var(--theme-paper, #fffbeb);
+}
+body.admin-theme-sample-note.admin-body .panel{
+	border-radius: var(--theme-radius, 14px);
+}

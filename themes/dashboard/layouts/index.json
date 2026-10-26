@@ -1,0 +1,38 @@
+{
+    "nodes": [
+        {
+            "id": "notice",
+            "block": "common.notice"
+        },
+        {
+            "id": "ads",
+            "block": "common.ads_banner"
+        },
+        {
+            "id": "b9",
+            "block": "core.box",
+            "config": {
+                "class": "container"
+            },
+            "children": [
+                {
+                    "id": "b8",
+                    "block": "core.box",
+                    "config": {
+                        "class": "well bs-component"
+                    },
+                    "children": [
+                        {
+                            "id": "b6",
+                            "block": "index.title"
+                        },
+                        {
+                            "id": "b7",
+                            "block": "index.filelist"
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

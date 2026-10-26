@@ -1,0 +1,12 @@
+{
+    "id": "blush",
+    "name": "淡粉暖调",
+    "description": "浅粉底色配玫瑰色高亮，温和轻盈，适合相册、素材站和面向大众的分享页。",
+    "version": "1.0.0",
+    "author": "pan",
+    "engine": 1,
+    "group": "color",
+    "flags": [],
+    "legacy": true,
+    "sort": 220
+}

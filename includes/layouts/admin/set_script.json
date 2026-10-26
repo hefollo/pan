@@ -1,0 +1,29 @@
+{
+    "nodes": [
+        {
+            "id": "box1",
+            "block": "core.box",
+            "config": {
+                "class": "container script-settings-page"
+            },
+            "children": [
+                {
+                    "id": "box2",
+                    "block": "core.box",
+                    "config": {
+                        "class": "admin-page-wide script-settings-shell"
+                    },
+                    "children": [
+                        {
+                            "id": "main",
+                            "block": "admin.panel",
+                            "config": {
+                                "panel": "main"
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

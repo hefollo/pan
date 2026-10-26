@@ -1,0 +1,64 @@
+{
+    "nodes": [
+        {
+            "id": "box1",
+            "block": "core.box",
+            "config": {
+                "class": "container"
+            },
+            "children": [
+                {
+                    "id": "box2",
+                    "block": "core.box",
+                    "config": {
+                        "class": "admin-page-wide"
+                    },
+                    "children": [
+                        {
+                            "id": "msg",
+                            "block": "admin.panel",
+                            "config": {
+                                "panel": "msg"
+                            }
+                        },
+                        {
+                            "id": "pay",
+                            "block": "admin.panel",
+                            "config": {
+                                "panel": "pay"
+                            }
+                        },
+                        {
+                            "id": "plan_form",
+                            "block": "admin.panel",
+                            "config": {
+                                "panel": "plan_form"
+                            }
+                        },
+                        {
+                            "id": "edit_warn",
+                            "block": "admin.panel",
+                            "config": {
+                                "panel": "edit_warn"
+                            }
+                        },
+                        {
+                            "id": "legacy_warn",
+                            "block": "admin.panel",
+                            "config": {
+                                "panel": "legacy_warn"
+                            }
+                        },
+                        {
+                            "id": "plans",
+                            "block": "admin.panel",
+                            "config": {
+                                "panel": "plans"
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

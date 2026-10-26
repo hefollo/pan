@@ -1,0 +1,49 @@
+<div class="panel panel-default theme-packages-panel">
+<div class="panel-heading"><h3 class="panel-title">主题包</h3></div>
+<div class="panel-body">
+  <div class="alert alert-warning">主题包里的脚本会在本站域名下运行，能做的事和后台的页脚代码一样多。<b>只安装信任来源的主题。</b>主题包里不能有 PHP 和服务器配置文件，上传时会逐个检查。</div>
+  <form id="themeUploadForm" class="form-inline" enctype="multipart/form-data" onsubmit="return uploadThemePackage(this)">
+    <div class="form-group"><input type="file" name="package" accept=".zip" required></div>
+    <button type="submit" class="btn btn-primary"><i class="fa fa-upload"></i> 上传并安装</button>
+    <span class="help-block" style="display:inline-block;margin-left:10px">zip 不超过 {{max_zip}}；已经装过同一 id 的主题会覆盖升级，站长改过的布局和设置保留。</span>
+  </form>
+{{#has_uploads}}
+  <table class="table table-striped" style="margin-top:14px">
+    <thead><tr><th>主题</th><th>id</th><th>版本</th><th>作者</th><th>继承</th><th>操作</th></tr></thead>
+    <tbody>
+{{#uploads}}
+      <tr><td>{{name}}{{#active}} <span class="label label-success">使用中</span>{{/active}}</td><td><code>{{id}}</code></td><td>{{version}}</td><td>{{author}}</td><td>{{extends}}</td><td><a class="btn btn-xs btn-default" href="./theme_export.php?id={{id}}"><i class="fa fa-download"></i> 导出</a> {{^active}}<button type="button" class="btn btn-xs btn-danger" onclick="deleteThemePackage('{{id}}')"><i class="fa fa-trash"></i> 删除</button>{{/active}}</td></tr>
+{{/uploads}}
+    </tbody>
+  </table>
+{{/has_uploads}}
+  <form class="form-inline" style="margin-top:14px" action="./theme_export.php" method="get">
+    <label>把一个外观导出成 zip，当作写新主题的起点：</label>
+    <select name="id" class="form-control">{{#all}}<option value="{{id}}"{{#active}} selected{{/active}}>{{name}}</option>{{/all}}</select>
+    <button type="submit" class="btn btn-default"><i class="fa fa-download"></i> 导出</button>
+  </form>
+{{#errors}}
+  <div class="alert alert-danger" style="margin-top:14px">最近主题模板出错（已退回系统默认模板显示）：<br>{{#lines}}{{.}}<br>{{/lines}}</div>
+{{/errors}}
+</div>
+</div>
+<script>
+function uploadThemePackage(form){
+	var fd = new FormData(form), ii = layer.load(2, {shade:[0.1,'#fff']});
+	$.ajax({url:'ajax.php?act=themeUpload', type:'POST', data:fd, processData:false, contentType:false, dataType:'json'}).done(function(res){
+		layer.close(ii);
+		if(res && res.code === 0)layer.alert(res.msg, {icon:1, closeBtn:false}, function(){ window.location.reload(); });
+		else layer.alert((res && res.msg) || '安装失败', {icon:2});
+	}).fail(function(){ layer.close(ii); layer.alert('服务器错误（主题包是否超过了服务器的上传大小限制？）', {icon:2}); });
+	return false;
+}
+function deleteThemePackage(id){
+	layer.confirm('删除主题「' + id + '」？它的文件、设置和在后台改过的布局都会删掉。', {icon:3}, function(idx){
+		layer.close(idx);
+		$.post('ajax.php?act=themeDelete', {id:id}, function(res){
+			if(res && res.code === 0)window.location.reload();
+			else layer.alert((res && res.msg) || '删除失败', {icon:2});
+		}, 'json');
+	});
+}
+</script>

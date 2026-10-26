@@ -200,17 +200,19 @@ $no = '<span class="text-muted">-</span>';
 list($speed_val, $speed_unit) = level_speed_input($edit ? $edit['down_speed'] : -1);
 $edit_builtin = $edit && !level_is_custom($edit);
 ?>
-<div class="container">
-<div class="admin-page-wide">
+<?php theme_panel_begin('msg', '操作结果');?>
 <?php if($msg){?>
 <div class="alert alert-<?php echo $msgtype?>"><?php echo htmlspecialchars($msg, ENT_QUOTES, 'UTF-8')?></div>
 <?php }?>
+<?php theme_panel_end();?>
+<?php theme_panel_begin('import_tip', '导入推荐等级提示');?>
 <?php if($custom_count === 0){?>
 <div class="alert alert-warning">
   还没有可以卖的会员等级。可以点右下方的「一键导入推荐等级和套餐」直接生成六个等级和配套的套餐（之后随便改），也可以在下面自己添加。
 </div>
 <?php }?>
-
+<?php theme_panel_end();?>
+<?php theme_panel_begin('list', '会员等级列表');?>
 <div class="panel panel-primary">
 <div class="panel-heading"><h3 class="panel-title">会员等级
   <form method="post" class="pull-right" style="margin-top:-4px" onsubmit="return confirm('会添加一组推荐的会员等级和套餐（同名的自动跳过），导入后可以随意修改，确定吗？')">
@@ -288,7 +290,8 @@ $edit_builtin = $edit && !level_is_custom($edit);
   「管理员」等级只能在 <a href="./user.php">用户管理</a> 里手动给某个账号，不能出售，它只是前台账号的权限，不等于能登录后台。
 </div>
 </div>
-
+<?php theme_panel_end();?>
+<?php theme_panel_begin('form', '添加 / 编辑等级');?>
 <div class="panel panel-primary">
 <div class="panel-heading"><h3 class="panel-title" id="levelFormTitle"><?php echo $edit ? '编辑等级' : '添加等级'?></h3></div>
 <div class="panel-body">
@@ -394,8 +397,9 @@ $edit_builtin = $edit && !level_is_custom($edit);
   </form>
 </div>
 </div>
-</div>
-</div>
+<?php theme_panel_end();?>
+<?php //页面内容是布局 admin/level（includes/layouts/admin/level.json），各面板在上面用 theme_panel_begin/end 捕获，见 DEC-20261025-003
+echo theme_render_layout('admin/level', [], 'admin', $site_theme);?>
 
 <style>
 .level-form .form-group{margin-bottom:10px}

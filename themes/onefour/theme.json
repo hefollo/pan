@@ -1,0 +1,12 @@
+{
+    "id": "onefour",
+    "name": "暗黑科技后台风",
+    "description": "深色点阵背景、半透明暗色面板、圆角按钮与标签，整体偏科技感、数据管理感，适合文件列表、管理后台、资源站页面。",
+    "version": "1.0.0",
+    "author": "pan",
+    "engine": 1,
+    "group": "color",
+    "flags": [],
+    "legacy": true,
+    "sort": 180
+}

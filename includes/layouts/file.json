@@ -1,0 +1,14 @@
+{"nodes": [
+  {"id": "container", "block": "core.box", "config": {"class": "container"}, "children": [
+    {"id": "row", "block": "core.box", "config": {"class": "row"}, "children": [
+      {"id": "main", "block": "core.box", "config": {"class": "col-sm-9"}, "children": [
+        {"id": "preview", "block": "file.preview"},
+        {"id": "tabs", "block": "file.tabs"}
+      ]},
+      {"id": "side", "block": "core.box", "config": {"class": "col-sm-3"}, "children": [
+        {"id": "tips", "block": "file.tips"},
+        {"id": "reward", "block": "common.reward", "config": {"qr_comment": 1}}
+      ]}
+    ]}
+  ]}
+]}

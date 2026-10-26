@@ -1,0 +1,19 @@
+{{#multi}}
+        <div class="buy-methods">
+            <span>支付方式</span>
+{{#list}}
+            <label class="buy-method{{#first}} is-on{{/first}}">
+                <input type="radio" name="pay_type" value="{{key}}"{{#first}} checked{{/first}}/>
+                <b>{{name}}</b>
+                <i>{{desc}}</i>
+            </label>
+{{/list}}
+        </div>
+{{/multi}}
+{{#single}}
+        <div class="buy-methods buy-methods-single">
+            <span>支付方式</span>
+            <b>{{single_name}}</b>
+            <input type="hidden" name="pay_type" value="{{single}}"/>
+        </div>
+{{/single}}

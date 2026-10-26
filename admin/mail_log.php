@@ -171,9 +171,7 @@ if($is_ajax){
 include './head.php';
 if($islogin==1){}else exit("<script language='javascript'>window.location.href='./login.php';</script>");
 ?>
-<div class="container">
-<div class="admin-page-wide">
-
+<?php theme_panel_begin('stats', '发信概况');?>
 <div class="panel panel-primary">
 <div class="panel-heading"><h3 class="panel-title">发信概况</h3></div>
 <div class="panel-body">
@@ -186,7 +184,8 @@ if($islogin==1){}else exit("<script language='javascript'>window.location.href='
   </div>
 </div>
 </div>
-
+<?php theme_panel_end();?>
+<?php theme_panel_begin('records', '发信记录');?>
 <div class="panel panel-primary">
 <div class="panel-heading"><h3 class="panel-title">发信记录
   <button type="button" class="btn btn-xs btn-default pull-right" onclick="cleanLog()">清理 7 天前</button>
@@ -202,9 +201,9 @@ if($islogin==1){}else exit("<script language='javascript'>window.location.href='
 </div>
 <div class="panel-footer" id="maillogPager"><?php echo render_maillog_pager($page, $pages, $numrows);?></div>
 </div>
-
-</div>
-</div>
+<?php theme_panel_end();?>
+<?php //页面内容是布局 admin/mail_log（includes/layouts/admin/mail_log.json），各面板在上面用 theme_panel_begin/end 捕获，见 DEC-20261025-003
+echo theme_render_layout('admin/mail_log', [], 'admin', $site_theme);?>
 <style>
 .maillog-stats{margin:0 -6px}
 .maillog-stats>div{padding:0 6px 12px}

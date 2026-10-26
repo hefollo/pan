@@ -7,17 +7,13 @@
 $grad_specs = theme_gradient_specs();
 $grad_saved = isset($conf['theme_gradient']) ? json_decode($conf['theme_gradient'], true) : null;
 if(!is_array($grad_saved))$grad_saved = [];
-//下拉框里的名字跟下面的卡片标题保持一致
-$grad_names = [
-	'dashboard'=>'控制台侧栏风', 'console'=>'数据控制台风', 'portal'=>'上传门户风',
-	'workspace'=>'深色工作台风', 'mac'=>'macOS 窗口风', 'cockpit'=>'渐变仪表盘风',
-	'studio'=>'蓝白工作台风', 'nebula'=>'深空科技风', 'royal'=>'紫韵会员风',
-	'crisp'=>'清爽极简风', 'azure'=>'蓝天白云风', 'neo'=>'潮酷涂鸦风', 'skyline'=>'云端门户风',
-	'cloud'=>'蓝白清爽', 'night'=>'黑夜风格', 'neon'=>'霓虹科技黑夜', 'aurora'=>'蓝紫渐变玻璃',
-	'onefour'=>'暗黑科技后台风', 'celadon'=>'青瓷微澜', 'lilac'=>'淡紫点阵', 'paper'=>'米白纸张',
-	'blush'=>'淡粉暖调', 'sky'=>'天蓝细纹', 'mint'=>'薄荷蜂巢', 'sunset'=>'落日熔金',
-	'abyss'=>'深海玻璃', 'emerald'=>'翡翠流光', 'sakura'=>'樱雾玻璃',
-];
+//下拉框里的名字跟下面的外观卡片一致：从主题注册表取（themes/<id>/theme.json），布局型在前、配色型在后，和卡片的分组顺序一样
+$grad_names = [];
+foreach(['layout', 'color'] as $grad_group){
+	foreach(theme_registry() as $k => $m){
+		if($m['_source'] === 'builtin' && $m['group'] === $grad_group)$grad_names[$k] = $m['name'];
+	}
+}
 ?>
 <div class="theme-grad-group" id="tg-group">
   <div class="theme-grad">

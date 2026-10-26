@@ -1,0 +1,12 @@
+{
+    "id": "sakura",
+    "name": "樱雾玻璃",
+    "description": "粉紫到天青的浅色雾面渐变，白色磨砂卡片，轻盈明亮，适合相册和展示型页面。",
+    "version": "1.0.0",
+    "author": "pan",
+    "engine": 1,
+    "group": "color",
+    "flags": [],
+    "legacy": true,
+    "sort": 280
+}

@@ -4,6 +4,7 @@ $title='文件管理';
 include './head.php';
 if($islogin==1){}else exit("<script language='javascript'>window.location.href='./login.php';</script>");
 ?>
+<?php theme_panel_begin('modal', '文件信息修改弹窗');?>
 <div class="modal" id="modal-store" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
 	<div class="modal-dialog">
 		<div class="modal-content animated flipInX">
@@ -74,8 +75,8 @@ if($islogin==1){}else exit("<script language='javascript'>window.location.href='
 		</div>
 	</div>
 </div>
-  <div class="container-fluid">
-    <div class="admin-page-wide">
+<?php theme_panel_end();?>
+<?php theme_panel_begin('toolbar', '搜索工具条');?>
 	    <form onsubmit="return searchSubmit()" method="GET" class="form-inline" id="searchToolbar">
 	        <div class="form-group">
           <label>搜索</label>
@@ -102,10 +103,13 @@ if($islogin==1){}else exit("<script language='javascript'>window.location.href='
 				<ul class="dropdown-menu"><li><a href="javascript:operation(0)"><i class="fa fa-trash"></i>  删除</a></li><li><a href="javascript:operation(1)"><i class="fa fa-times-circle"></i>  封禁</a></li><li><a href="javascript:operation(2)"><i class="fa fa-check-circle"></i>  解封</a></li></ul>
 			</div>
 		</form>
+<?php theme_panel_end();?>
+<?php theme_panel_begin('table', '文件列表');?>
 		<table id="listTable">
 	  	</table>
-    </div>
-  </div>
+<?php theme_panel_end();?>
+<?php //页面内容是布局 admin/file（includes/layouts/admin/file.json），各面板在上面用 theme_panel_begin/end 捕获，见 DEC-20261025-003
+echo theme_render_layout('admin/file', [], 'admin', $site_theme);?>
 <script src="https://s4.zstatic.net/ajax/libs/bootstrap-table/1.21.4/bootstrap-table.min.js"></script>
 <script src="https://s4.zstatic.net/ajax/libs/bootstrap-table/1.21.4/extensions/page-jump-to/bootstrap-table-page-jump-to.min.js"></script>
 <script src="../assets/js/custom.js"></script>

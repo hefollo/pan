@@ -1,0 +1,15 @@
+{
+    "id": "azure",
+    "name": "蓝天白云风",
+    "description": "天蓝渐变横幅，右上角三枚浮标卖点，五张统计卡，列表下方是会员升级横幅，整体明亮通透。",
+    "version": "1.0.0",
+    "author": "pan",
+    "engine": 1,
+    "group": "layout",
+    "flags": [
+        "layout",
+        "studio"
+    ],
+    "legacy": true,
+    "sort": 110
+}

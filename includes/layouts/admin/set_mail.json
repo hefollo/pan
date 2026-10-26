@@ -1,0 +1,50 @@
+{
+    "nodes": [
+        {
+            "id": "box1",
+            "block": "core.box",
+            "config": {
+                "class": "container"
+            },
+            "children": [
+                {
+                    "id": "box2",
+                    "block": "core.box",
+                    "config": {
+                        "class": "admin-page"
+                    },
+                    "children": [
+                        {
+                            "id": "sender",
+                            "block": "admin.panel",
+                            "config": {
+                                "panel": "sender"
+                            }
+                        },
+                        {
+                            "id": "registration",
+                            "block": "admin.panel",
+                            "config": {
+                                "panel": "registration"
+                            }
+                        },
+                        {
+                            "id": "channels",
+                            "block": "admin.panel",
+                            "config": {
+                                "panel": "channels"
+                            }
+                        },
+                        {
+                            "id": "test",
+                            "block": "admin.panel",
+                            "config": {
+                                "panel": "test"
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,57 @@
+{
+    "nodes": [
+        {
+            "id": "box1",
+            "block": "core.box",
+            "config": {
+                "class": "container stor-page"
+            },
+            "children": [
+                {
+                    "id": "box2",
+                    "block": "core.box",
+                    "config": {
+                        "class": "admin-page"
+                    },
+                    "children": [
+                        {
+                            "id": "onedrive_msg",
+                            "block": "admin.panel",
+                            "config": {
+                                "panel": "onedrive_msg"
+                            }
+                        },
+                        {
+                            "id": "type",
+                            "block": "admin.panel",
+                            "config": {
+                                "panel": "type"
+                            }
+                        },
+                        {
+                            "id": "multi",
+                            "block": "admin.panel",
+                            "config": {
+                                "panel": "multi"
+                            }
+                        },
+                        {
+                            "id": "config",
+                            "block": "admin.panel",
+                            "config": {
+                                "panel": "config"
+                            }
+                        },
+                        {
+                            "id": "transfer",
+                            "block": "admin.panel",
+                            "config": {
+                                "panel": "transfer"
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

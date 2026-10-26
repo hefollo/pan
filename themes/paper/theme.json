@@ -1,0 +1,12 @@
+{
+    "id": "paper",
+    "name": "米白纸张",
+    "description": "极简纸张质感，横线纸纹配墨黑标题，几乎无色相干扰，适合以文件名和文字为主的列表。",
+    "version": "1.0.0",
+    "author": "pan",
+    "engine": 1,
+    "group": "color",
+    "flags": [],
+    "legacy": true,
+    "sort": 210
+}

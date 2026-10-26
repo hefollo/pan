@@ -1,0 +1,28 @@
+{{#groups}}
+	<div class="appearance-group">
+	  <div class="appearance-group-head">
+	    <strong>{{title}}</strong>
+	    <small>{{desc}}</small>
+	  </div>
+	<div class="appearance-options">
+{{#themes}}
+	  <label class="appearance-card {{#active}}active{{/active}}">
+	    <input type="radio" name="site_theme" value="{{id}}" {{#active}}checked{{/active}}>
+	    <span class="appearance-preview appearance-preview-{{id}}">
+{{#preview_url}}
+	      <img class="appearance-preview-img" src="{{preview_url}}" alt="">
+{{/preview_url}}
+{{^preview_url}}
+	      <span class="appearance-nav"></span>
+	      <span class="appearance-panel">
+	        <span></span><span></span><span></span>
+	      </span>
+{{/preview_url}}
+	    </span>
+	    <strong>{{name}}</strong>
+	    <small>{{description}}{{#upload}} · {{version}}{{#author}} · {{author}}{{/author}}{{/upload}}</small>
+	  </label>
+{{/themes}}
+	</div>
+	</div>
+{{/groups}}

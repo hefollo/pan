@@ -1,0 +1,29 @@
+        <div class="layout-side-card">
+          <div class="layout-side-row"><strong>我的权限</strong><span class="layout-side-tag layout-side-tag-{{state_cls}}">{{state}}</span></div>
+          <div class="layout-side-kv"><span>每日上传</span><b>{{limit_text}}</b></div>
+          <div class="layout-side-kv"><span>单文件</span><b>{{size_text}}</b></div>
+{{#traffic}}
+          <div class="layout-side-kv"><span>分享流量</span><b>{{text}}</b></div>
+{{#pack}}
+          <div class="layout-side-kv"><span>分享流量包</span><b>{{pack}}</b></div>
+{{/pack}}
+{{/traffic}}
+{{#upload}}
+          <div class="layout-side-kv"><span>上传流量</span><b>{{text}}</b></div>
+{{#pack}}
+          <div class="layout-side-kv"><span>上传流量包</span><b>{{pack}}</b></div>
+{{/pack}}
+{{/upload}}
+{{#bonus}}
+          <div class="layout-side-kv"><span>其中加量包</span><b>+{{bonus}} 个/天</b></div>
+{{/bonus}}
+{{#expire_date}}
+          <div class="layout-side-kv"><span>到期时间</span><b>{{expire_date}}</b></div>
+{{/expire_date}}
+{{#plan_name}}
+          <div class="layout-side-kv"><span>会员等级</span><b title="{{plan_name}}">{{plan_name}}</b></div>
+{{/plan_name}}
+{{#buy_text}}
+          <a class="layout-side-buy" href="./buy.php">{{buy_text}} <i class="fa fa-angle-right" aria-hidden="true"></i></a>
+{{/buy_text}}
+        </div>

@@ -1,0 +1,12 @@
+{
+    "id": "sky",
+    "name": "天蓝细纹",
+    "description": "青蓝色调配斜向细纹，比默认的蓝白更冷更透，适合工具站和资源下载页。",
+    "version": "1.0.0",
+    "author": "pan",
+    "engine": 1,
+    "group": "color",
+    "flags": [],
+    "legacy": true,
+    "sort": 230
+}

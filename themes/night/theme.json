@@ -1,0 +1,12 @@
+{
+    "id": "night",
+    "name": "黑夜风格",
+    "description": "深色背景、蓝色高亮，适合夜间浏览。",
+    "version": "1.0.0",
+    "author": "pan",
+    "engine": 1,
+    "group": "color",
+    "flags": [],
+    "legacy": true,
+    "sort": 150
+}

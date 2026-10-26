@@ -1,0 +1,168 @@
+{
+    "nodes": [
+        {
+            "id": "box1",
+            "block": "core.box",
+            "config": {
+                "class": "container"
+            },
+            "children": [
+                {
+                    "id": "box2",
+                    "block": "core.box",
+                    "config": {
+                        "class": "admin-page"
+                    },
+                    "children": [
+                        {
+                            "id": "browser_notice",
+                            "block": "admin.panel",
+                            "config": {
+                                "panel": "browser_notice"
+                            }
+                        },
+                        {
+                            "id": "box3",
+                            "block": "core.box",
+                            "config": {
+                                "class": "row"
+                            },
+                            "children": [
+                                {
+                                    "id": "box4",
+                                    "block": "core.box",
+                                    "config": {
+                                        "class": "col-lg-3 col-md-6"
+                                    },
+                                    "children": [
+                                        {
+                                            "id": "stat_files",
+                                            "block": "admin.panel",
+                                            "config": {
+                                                "panel": "stat_files"
+                                            }
+                                        }
+                                    ]
+                                },
+                                {
+                                    "id": "box5",
+                                    "block": "core.box",
+                                    "config": {
+                                        "class": "col-lg-3 col-md-6"
+                                    },
+                                    "children": [
+                                        {
+                                            "id": "stat_today",
+                                            "block": "admin.panel",
+                                            "config": {
+                                                "panel": "stat_today"
+                                            }
+                                        }
+                                    ]
+                                },
+                                {
+                                    "id": "box6",
+                                    "block": "core.box",
+                                    "config": {
+                                        "class": "col-lg-3 col-md-6"
+                                    },
+                                    "children": [
+                                        {
+                                            "id": "stat_yesterday",
+                                            "block": "admin.panel",
+                                            "config": {
+                                                "panel": "stat_yesterday"
+                                            }
+                                        }
+                                    ]
+                                },
+                                {
+                                    "id": "box7",
+                                    "block": "core.box",
+                                    "config": {
+                                        "class": "col-lg-3 col-md-6"
+                                    },
+                                    "children": [
+                                        {
+                                            "id": "stat_users",
+                                            "block": "admin.panel",
+                                            "config": {
+                                                "panel": "stat_users"
+                                            }
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "id": "box8",
+                            "block": "core.box",
+                            "config": {
+                                "class": "row"
+                            },
+                            "children": [
+                                {
+                                    "id": "box9",
+                                    "block": "core.box",
+                                    "config": {
+                                        "class": "col-xs-12"
+                                    },
+                                    "children": [
+                                        {
+                                            "id": "filetype",
+                                            "block": "admin.panel",
+                                            "config": {
+                                                "panel": "filetype"
+                                            }
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "id": "box10",
+                            "block": "core.box",
+                            "config": {
+                                "class": "row"
+                            },
+                            "children": [
+                                {
+                                    "id": "box11",
+                                    "block": "core.box",
+                                    "config": {
+                                        "class": "col-md-8 col-sm-12"
+                                    },
+                                    "children": [
+                                        {
+                                            "id": "server",
+                                            "block": "admin.panel",
+                                            "config": {
+                                                "panel": "server"
+                                            }
+                                        }
+                                    ]
+                                },
+                                {
+                                    "id": "box12",
+                                    "block": "core.box",
+                                    "config": {
+                                        "class": "col-md-4 col-sm-12"
+                                    },
+                                    "children": [
+                                        {
+                                            "id": "version",
+                                            "block": "admin.panel",
+                                            "config": {
+                                                "panel": "version"
+                                            }
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

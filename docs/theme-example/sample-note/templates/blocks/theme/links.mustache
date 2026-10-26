@@ -1,0 +1,11 @@
+{{! 链接组：lines 类型的配置项，程序已经按行拆好放在 lines.items 里，每行按 | 分成 c1、c2…… }}
+{{#lines.items.0}}
+<div class="container">
+  <nav class="note-links" aria-label="{{cfg.title}}">
+    <span class="note-links-title">{{cfg.title}}</span>
+{{#lines.items}}
+    <a class="note-link" href="{{c2}}">{{c1}}</a>
+{{/lines.items}}
+  </nav>
+</div>
+{{/lines.items.0}}

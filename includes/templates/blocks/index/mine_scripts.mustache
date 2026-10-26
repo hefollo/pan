@@ -1,0 +1,279 @@
+<link rel="stylesheet" href="https://s4.zstatic.net/ajax/libs/layer/3.1.1/theme/default/layer.css">
+<script src="https://s4.zstatic.net/ajax/libs/layer/3.1.1/layer.js"></script>
+<script src="https://s4.zstatic.net/ajax/libs/spark-md5/3.0.2/spark-md5.min.js"></script>
+{{#guest_mine}}<script src="./assets/js/filelist-live.js?v={{version}}"></script>{{/guest_mine}}<script>
+var replace_csrf_token = '{{{csrf_html}}}';
+var replace_target_id = 0;
+
+//游客文件表格沿用个人中心的勾选体验，但删除仍逐条走 ajax.php 的游客权限校验：
+//服务端会按 token 复查当前会话归属、七天期限以及冻结/待审状态。
+function guest_selected_rows(){
+  return $('.guest-filelist tbody .guest-check:checked').closest('tr');
+}
+//开了文件夹时表格里还有文件夹行，勾选框是 .fd-check，和文件的 .guest-check 分开算
+function guest_selected_folder_ids(){
+  return $('.guest-filelist tbody .fd-check:checked').map(function(){ return $(this).closest('tr').data('folder-id'); }).get();
+}
+//操作完局部刷新列表（assets/js/filelist-live.js），不整页闪；那个脚本没加载时退回整页刷新
+function guest_list_reload(){
+  if(window.PanList) window.PanList.refresh();
+  else window.location.reload();
+}
+function guest_refresh_batchbar(){
+  var n = guest_selected_rows().length + guest_selected_folder_ids().length;
+  var $available = $('.guest-filelist tbody .guest-check:not(:disabled), .guest-filelist tbody .fd-check');
+  $('#guestSelCount').text(n);
+  $('#guestBatchBar').prop('hidden', n === 0);
+  $('#guestCheckAll').prop('checked', $available.length > 0 && n === $available.length);
+}
+$('#guestCheckAll').on('change', function(){
+  $('.guest-filelist tbody .guest-check:not(:disabled), .guest-filelist tbody .fd-check').prop('checked', this.checked);
+  guest_refresh_batchbar();
+});
+$('.guest-filelist').on('change', '.guest-check, .fd-check', guest_refresh_batchbar);
+//局部刷新换掉列表后勾选都没了，批量条跟着收起
+$(document).on('pan:listrefresh', guest_refresh_batchbar);
+$('#guestSelClear').on('click', function(){
+  $('.guest-filelist tbody .guest-check, .guest-filelist tbody .fd-check').prop('checked', false);
+  $('#guestCheckAll').prop('checked', false);
+  guest_refresh_batchbar();
+});
+
+function guest_delete_files(tokens){
+  if(!tokens.length) return;
+  var loading = layer.load(2, {shade:[0.2,'#fff']});
+  var ok = 0, failed = [];
+  $.getJSON('ajax.php?act=csrf_token').done(function(tokenData){
+    if(tokenData && tokenData.csrf_token) replace_csrf_token = tokenData.csrf_token;
+    var next = function(index){
+      if(index >= tokens.length){
+        layer.close(loading);
+        if(failed.length === 0){
+          layer.msg('已删除 '+ok+' 个文件', {icon:1, time:1200});
+          guest_list_reload();
+        }else{
+          layer.alert('已删除 '+ok+' 个文件，'+failed.length+' 个删除失败：'+failed.join('；'), {icon: ok ? 0 : 2});
+          guest_list_reload();
+        }
+        return;
+      }
+      $.ajax({
+        type: 'POST',
+        url: 'ajax.php?act=deleteFile',
+        data: {hash: tokens[index], csrf_token: replace_csrf_token},
+        dataType: 'json',
+        success: function(res){
+          if(res && res.code === 0) ok++;
+          else failed.push((res && res.msg) || '服务器返回异常');
+          next(index + 1);
+        },
+        error: function(){ failed.push('网络错误'); next(index + 1); }
+      });
+    };
+    next(0);
+  }).fail(function(){
+    layer.close(loading);
+    layer.msg('无法获取安全令牌，请刷新页面重试', {icon:2});
+  });
+}
+
+$('#guestBatchDelete').on('click', function(){
+  var tokens = guest_selected_rows().map(function(){ return $(this).attr('data-token'); }).get();
+  var fids = guest_selected_folder_ids();
+  if(!tokens.length && !fids.length){ layer.msg('请先选择文件'); return; }
+  var tip = '确定删除选中的 '+tokens.length+' 个文件？删除后外链立即失效，且无法恢复。';
+  if(fids.length){
+    tip = '确定删除选中的 '+(tokens.length ? tokens.length+' 个文件和 ' : '')+fids.length+' 个文件夹？<br>文件夹里的文件<b>不会被删除</b>，会移到根目录'
+      +(tokens.length ? '；选中的文件删除后外链立即失效，且无法恢复。' : '。');
+  }
+  layer.confirm(tip, {icon:3, title:'批量删除'}, function(index){
+      layer.close(index);
+      if(!fids.length){ guest_delete_files(tokens); return; }
+      if(!window.PanFolders){ layer.msg('页面脚本没有加载完整，请刷新后重试'); return; }
+      //先删文件夹（里面的文件回根目录），再逐个删勾选的文件
+      window.PanFolders.deleteFolders(fids, function(res){
+        if(res.code !== 0){ layer.alert(res.msg || '删除文件夹失败', {icon:2}); return; }
+        if(!tokens.length){ layer.msg(res.msg, {icon:1, time:1300}); guest_list_reload(); return; }
+        guest_delete_files(tokens);
+      });
+    });
+});
+
+$('.guest-filelist').on('click', '[data-guest]', function(){
+  var $row = $(this).closest('tr');
+  if($(this).data('guest') === 'replace'){
+    replace_upload_click($row.data('id'));
+    return;
+  }
+  var name = $row.find('.uc-name').text();
+  //改名只在开了文件夹时出现，接口和文件夹共用 ajax.php，规则和个人中心的改名是同一份
+  if($(this).data('guest') === 'rename'){
+    layer.open({
+      type: 1, title: '重命名', area: Math.min(340, $(window).width() - 24) + 'px', btn: ['确定', '取消'],
+      content: '<div class="uc-dialog"><input type="text" class="uc-input uc-dialog-input" maxlength="120"></div>',
+      success: function(layero){ var $el = layero.find('.uc-dialog-input').val(name); setTimeout(function(){ $el.focus(); }, 30); },
+      yes: function(idx, layero){
+        var val = $.trim(layero.find('.uc-dialog-input').val());
+        if(!val){ layer.msg('文件名不能为空'); return; }
+        layer.close(idx);
+        $.post('ajax.php?act=fileRename', {id: $row.data('id'), name: val, csrf_token: (window.PAN_FOLDER ? PAN_FOLDER.csrf : replace_csrf_token)}, function(res){
+          if(res && res.code === 0){ layer.msg(res.msg, {icon:1, time:1200}); guest_list_reload(); }
+          else layer.alert((res && res.msg) || '重命名失败', {icon:2});
+        }, 'json').fail(function(){ layer.msg('网络错误，请稍后再试'); });
+      }
+    });
+    return;
+  }
+  layer.confirm('确定删除《'+name+'》？删除后外链立即失效，且无法恢复。',
+    {icon:3, title:'删除文件'}, function(index){
+      layer.close(index);
+      guest_delete_files([$row.attr('data-token')]);
+    });
+});
+
+function replace_upload_click(id){
+  replace_target_id = id;
+  $("#replaceFileInput").val('');
+  $("#replaceFileInput").trigger('click');
+}
+$("#replaceFileInput").on('change', function(){
+  var file = this.files && this.files[0];
+  if(!file || !replace_target_id) return;
+  var fileId = replace_target_id;
+  var ii = layer.load(2, {shade:[0.2,'#fff']});
+
+  //本页面可能已经打开一段时间，会话里的csrf_token可能已被同一浏览器其它页面刷新过，先取一次最新值再提交
+  $.getJSON('ajax.php?act=csrf_token', function(tokenData){
+    if(tokenData && tokenData.csrf_token) replace_csrf_token = tokenData.csrf_token;
+    replace_startUpload(file, fileId, ii);
+  }).fail(function(){
+    replace_startUpload(file, fileId, ii);
+  });
+});
+function replace_startUpload(file, fileId, ii){
+  replace_getFileHash(file).then(function(hash){
+    $.ajax({
+      type: 'POST',
+      url: 'ajax.php?act=pre_upload',
+      data: {
+        csrf_token: replace_csrf_token,
+        name: file.name,
+        hash: hash,
+        size: file.size,
+        show: '1',
+        ispwd: '0',
+        pwd: '',
+        replace_id: fileId
+      },
+      dataType: 'json',
+      success: function(data){
+        if(data.csrf_token) replace_csrf_token = data.csrf_token;
+        if(data.code == 1){
+          layer.close(ii);
+          layer.msg(data.msg || '替换成功，链接保持不变', {icon:1, time:1600});
+          guest_list_reload();
+        }else if(data.code == 0){
+          replace_uploadBody(data, file, ii);
+        }else{
+          layer.close(ii);
+          layer.alert(data.msg || '替换失败', {icon:2});
+        }
+      },
+      error: function(){
+        layer.close(ii);
+        layer.msg('服务器错误');
+      }
+    });
+  });
+}
+function replace_getFileHash(file){
+  return new Promise(function(resolve){
+    var fileReader = new FileReader(),
+        blobSlice = File.prototype.mozSlice || File.prototype.webkitSlice || File.prototype.slice,
+        chunkSize = 2097152,
+        chunks = Math.ceil(file.size / chunkSize),
+        currentChunk = 0,
+        spark = new SparkMD5();
+    if(chunks === 0){
+      resolve(SparkMD5.hashBinary(''));
+      return;
+    }
+    loadNext();
+    fileReader.onload = function(e){
+      spark.appendBinary(e.target.result);
+      currentChunk++;
+      if(currentChunk < chunks){
+        loadNext();
+      }else{
+        resolve(spark.end());
+      }
+    };
+    function loadNext(){
+      var start = currentChunk * chunkSize,
+          end = start + chunkSize >= file.size ? file.size : start + chunkSize;
+      fileReader.readAsBinaryString(blobSlice.call(file, start, end));
+    }
+  });
+}
+function replace_uploadBody(preResult, file, ii){
+  if(preResult.third){
+    var data = new FormData();
+    for(var key in preResult.post){ data.append(key, preResult.post[key]); }
+    data.append('file', file);
+    $.ajax({
+      type: 'POST', url: preResult.url, data: data, processData: false, contentType: false, dataType: 'html',
+      success: function(){ replace_completeUpload(preResult.hash, ii); },
+      error: function(){ layer.close(ii); layer.msg('上传失败，请稍后再试'); }
+    });
+    return;
+  }
+  var chunks = preResult.chunks, chunkSize = preResult.chunksize;
+  var blobSlice = File.prototype.mozSlice || File.prototype.webkitSlice || File.prototype.slice;
+  function uploadChunk(chunk){
+    var start = (chunk - 1) * chunkSize;
+    var end = start + chunkSize > file.size ? file.size : start + chunkSize;
+    var blob = blobSlice.call(file, start, end);
+    var data = new FormData();
+    data.append('file', blob);
+    data.append('hash', preResult.hash);
+    data.append('chunk', chunk);
+    data.append('csrf_token', replace_csrf_token);
+    $.ajax({
+      type: 'POST', url: 'ajax.php?act=upload_part', data: data, processData: false, contentType: false, dataType: 'json',
+      success: function(res){
+        if(res.csrf_token) replace_csrf_token = res.csrf_token;
+        if(res.code == -1){
+          layer.close(ii);
+          layer.alert(res.msg || '替换失败', {icon:2});
+          return;
+        }
+        if(chunk < chunks){
+          uploadChunk(chunk + 1);
+        }else if(res.code == 1){
+          layer.close(ii);
+          layer.msg(res.msg || '替换成功，链接保持不变', {icon:1, time:1600});
+          guest_list_reload();
+        }
+      },
+      error: function(){ layer.close(ii); layer.msg('上传失败，请稍后再试'); }
+    });
+  }
+  uploadChunk(1);
+}
+function replace_completeUpload(hash, ii){
+  $.ajax({
+    type: 'POST', url: 'ajax.php?act=complete_upload', data: {hash: hash, csrf_token: replace_csrf_token}, dataType: 'json',
+    success: function(res){
+      layer.close(ii);
+      if(res.code == 1){
+        layer.msg(res.msg || '替换成功，链接保持不变', {icon:1, time:1600});
+        guest_list_reload();
+      }else{
+        layer.alert(res.msg || '替换失败', {icon:2});
+      }
+    },
+    error: function(){ layer.close(ii); layer.msg('服务器错误'); }
+  });
+}
+</script>
+{{{folder_script_html}}}

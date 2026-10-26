@@ -48,10 +48,10 @@ $paid_total = $DB->getColumn("SELECT IFNULL(SUM(price),0) FROM pre_order WHERE s
 $paid_count = intval($DB->getColumn("SELECT count(*) FROM pre_order WHERE status=1"));
 $status_text = [0=>'<span class="label label-warning">待支付</span>', 1=>'<span class="label label-success">已支付</span>', 2=>'<span class="label label-default">已关闭</span>'];
 ?>
-<div class="container">
-<div class="admin-page-wide">
+<?php theme_panel_begin('msg', '操作结果');?>
 <?php if($msg){?><div class="alert alert-info"><?php echo htmlspecialchars($msg, ENT_QUOTES, 'UTF-8')?></div><?php }?>
-
+<?php theme_panel_end();?>
+<?php theme_panel_begin('orders', '订单记录');?>
 <div class="panel panel-primary">
 <div class="panel-heading"><h3 class="panel-title">订单记录</h3></div>
 <div class="panel-body">
@@ -119,7 +119,8 @@ $status_text = [0=>'<span class="label label-warning">待支付</span>', 1=>'<sp
 <?php }?>
 </div>
 </div>
-</div>
-</div>
+<?php theme_panel_end();?>
+<?php //页面内容是布局 admin/order（includes/layouts/admin/order.json），各面板在上面用 theme_panel_begin/end 捕获，见 DEC-20261025-003
+echo theme_render_layout('admin/order', [], 'admin', $site_theme);?>
 </body>
 </html>

@@ -261,7 +261,7 @@ if(!empty($errorMsg)){
                     }else{
                         $check[1]='<span class="pull-right label label-danger">不支持</span>';
                     }
-                    if(version_compare(PHP_VERSION,'7.1.0','<')){
+                    if(version_compare(PHP_VERSION,'7.4.0','<')){
                         $check[3]='<span class="pull-right label label-danger">不支持</span>';
                         $install=false;
                     }else{
@@ -270,7 +270,7 @@ if(!empty($errorMsg)){
 
                     ?>
                     <ul class="list-group">
-                        <li class="list-group-item">PHP版本>=7.1 <?php echo $check[3];?></li>
+                        <li class="list-group-item">PHP版本>=7.4 <?php echo $check[3];?></li>
                         <li class="list-group-item">PDO_MYSQL组件 <?php echo $check[0];?></li>
                         <li class="list-group-item">CURL组件 <?php echo $check[2];?></li>
                         <li class="list-group-item">主目录写入权限 <?php echo $check[1];?></li>

@@ -213,8 +213,7 @@ body.admin-theme-onefour.admin-body .script-ad-table-wrap{border-color:rgba(148,
 	.script-ad-table>thead>tr>th,.script-ad-table>tbody>tr>td{white-space:nowrap}
 }
 </style>
-<div class="container script-settings-page">
-  <div class="admin-page-wide script-settings-shell">
+<?php theme_panel_begin('main', '广告公告位设置');?>
 	<?php if($saved){?>
 	<div class="alert alert-success">&#35774;&#32622;&#20445;&#23384;&#25104;&#21151;&#65292;&#21069;&#21488;&#21047;&#26032;&#21518;&#20250;&#31435;&#21363;&#35835;&#21462;&#26032;&#30340;&#20869;&#23481;&#12290;</div>
 	<?php }?>
@@ -356,8 +355,9 @@ body.admin-theme-onefour.admin-body .script-ad-table-wrap{border-color:rgba(148,
 	    </div>
 	  </div>
 	</form>
-  </div>
-</div>
+<?php theme_panel_end();?>
+<?php //页面内容是布局 admin/set_script（includes/layouts/admin/set_script.json），各面板在上面用 theme_panel_begin/end 捕获，见 DEC-20261025-003
+echo theme_render_layout('admin/set_script', [], 'admin', $site_theme);?>
 <script>
 //尺寸滑块：拖的时候实时显示数值，拖到 0 说明这一边不锁，直接写成话别让人以为是 0 像素
 (function(){

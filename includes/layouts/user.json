@@ -1,0 +1,45 @@
+{"nodes": [
+  {"id": "container", "block": "core.box", "config": {"class": "container"}, "children": [
+    {"id": "well", "block": "core.box", "config": {"class": "well bs-component usercenter"}, "children": [
+      {"id": "head", "block": "user.head"},
+      {"id": "tabs", "block": "user.tabs"},
+      {"id": "tab-overview", "block": "user.tab", "config": {"tab": "overview"}, "children": [
+        {"id": "ov-cards", "block": "user.overview_cards"},
+        {"id": "ov-rights", "block": "user.overview_rights"},
+        {"id": "ov-types", "block": "user.overview_types"}
+      ]},
+      {"id": "tab-files", "block": "user.tab", "config": {"tab": "files"}, "children": [
+        {"id": "f-toolbar", "block": "user.files_toolbar"},
+        {"id": "f-filters", "block": "user.files_filters"},
+        {"id": "f-hint", "block": "user.files_hint"},
+        {"id": "f-list", "block": "user.files_list"}
+      ]},
+      {"id": "tab-orders", "block": "user.tab", "config": {"tab": "orders"}, "children": [
+        {"id": "orders", "block": "user.orders"}
+      ]},
+      {"id": "tab-api", "block": "user.tab", "config": {"tab": "api"}, "children": [
+        {"id": "api-about", "block": "user.api_about"},
+        {"id": "api-create", "block": "user.api_create"},
+        {"id": "api-secret", "block": "user.api_secret"},
+        {"id": "api-keys", "block": "user.api_keys"},
+        {"id": "api-docs", "block": "user.api_docs"}
+      ]},
+      {"id": "tab-account", "block": "user.tab", "config": {"tab": "account"}, "children": [
+        {"id": "acc-note", "block": "core.html", "config": {"html": "        <!-- 三栏并排：容器在侧栏型外观下能有 1600px 宽，单栏铺开的话右边会空掉一大半。\n             auto-fit + minmax 让它宽屏三栏、中屏两栏、窄屏一栏，不用手写断点 -->\n"}},
+        {"id": "acc-cols", "block": "core.box", "config": {"class": "uc-cols"}, "children": [
+          {"id": "acc-col1", "block": "core.box", "config": {"class": "uc-col"}, "children": [
+            {"id": "acc-profile", "block": "user.acc_profile"},
+            {"id": "acc-avatar", "block": "user.acc_avatar"},
+            {"id": "acc-nickname", "block": "user.acc_nickname"}
+          ]},
+          {"id": "acc-col2", "block": "core.box", "config": {"class": "uc-col"}, "children": [
+            {"id": "acc-binds", "block": "user.acc_binds"}
+          ]},
+          {"id": "acc-col3", "block": "core.box", "config": {"class": "uc-col"}, "children": [
+            {"id": "acc-password", "block": "user.acc_password"}
+          ]}
+        ]}
+      ]}
+    ]}
+  ]}
+]}

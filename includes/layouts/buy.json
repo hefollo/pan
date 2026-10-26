@@ -1,0 +1,13 @@
+{"nodes": [
+  {"id": "container", "block": "core.box", "config": {"class": "container"}, "children": [
+    {"id": "well", "block": "core.box", "config": {"class": "well bs-component buypage"}, "children": [
+      {"id": "header", "block": "buy.header"},
+      {"id": "current", "block": "buy.current"},
+      {"id": "methods", "block": "buy.methods"},
+      {"id": "upgrades", "block": "buy.upgrades"},
+      {"id": "plans", "block": "buy.plans"},
+      {"id": "tips", "block": "buy.tips"}
+    ]}
+  ]},
+  {"id": "dialog", "block": "buy.dialog"}
+]}

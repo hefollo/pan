@@ -1,0 +1,56 @@
+{
+    "id": "sample-note",
+    "name": "示例：便签风",
+    "description": "主题开发文档（docs/theme.md）里的示例主题：继承「蓝白清爽」，换了配色和圆角，首页多一张欢迎横幅和一组链接。",
+    "version": "1.0.0",
+    "author": "示例",
+    "engine": 1,
+    "group": "color",
+    "extends": "cloud",
+    "styles": ["assets/style.css"],
+    "admin_styles": ["assets/admin.css"],
+    "preview": "preview.svg",
+    "settings": [
+        {"key": "primary", "type": "color", "label": "主色", "default": "#d97706", "help": "按钮、链接、高亮的颜色，前台和后台一起变"},
+        {"key": "primary_dark", "type": "color", "label": "主色（深）", "default": "#b45309", "help": "按钮悬停、按下时的颜色"},
+        {"key": "paper", "type": "color", "label": "纸张底色", "default": "#fffbeb"},
+        {"key": "radius", "type": "number", "label": "圆角", "default": 14, "unit": "px", "min": 0, "max": 30},
+        {"key": "paper_texture", "type": "image", "label": "背景纹理图片", "default": "", "help": "填图片地址，留空不用纹理"}
+    ],
+    "blocks": [
+        {
+            "id": "welcome",
+            "name": "欢迎横幅",
+            "description": "首页顶部的大标题、一句说明和一个按钮",
+            "scope": "front",
+            "pages": ["index"],
+            "schema": [
+                {"key": "title", "type": "text", "label": "标题", "default": "把文件贴在这里"},
+                {"key": "text", "type": "textarea", "label": "说明", "default": "上传、外链、分享，一页搞定。"},
+                {"key": "show_btn", "type": "switch", "label": "显示按钮", "default": 1},
+                {"key": "btn_text", "type": "text", "label": "按钮文字", "default": "去上传"},
+                {"key": "btn_link", "type": "text", "label": "按钮链接", "default": "./upload.php"}
+            ]
+        },
+        {
+            "id": "links",
+            "name": "链接组",
+            "description": "一排小标签链接，可以放在任意前台页面",
+            "scope": "front",
+            "schema": [
+                {"key": "title", "type": "text", "label": "标题", "default": "常用入口"},
+                {"key": "items", "type": "lines", "label": "链接", "default": "上传文件|./upload.php\n个人中心|./user.php", "help": "每行一个：名称|链接"}
+            ]
+        },
+        {
+            "id": "paper",
+            "name": "便签纸",
+            "description": "带便签底色的容器，里面可以放别的卡片",
+            "scope": "both",
+            "container": true,
+            "schema": [
+                {"key": "tilt", "type": "switch", "label": "稍微歪一点", "default": 0}
+            ]
+        }
+    ]
+}

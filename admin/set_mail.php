@@ -43,9 +43,7 @@ foreach(mailer()->senders() as $sender){
 }
 $mail_names = implode('、', $mail_names);
 ?>
-<div class="container">
-<div class="admin-page">
-
+<?php theme_panel_begin('sender', '发件人设置');?>
 <div class="panel panel-primary" id="mail-sender">
 <div class="panel-heading"><h3 class="panel-title">发件人设置</h3></div>
 <div class="panel-body">
@@ -71,7 +69,8 @@ $mail_names = implode('、', $mail_names);
   </div>
 </div>
 </div>
-
+<?php theme_panel_end();?>
+<?php theme_panel_begin('registration', '邮箱注册设置');?>
 <div class="panel panel-primary" id="mail-registration">
 <div class="panel-heading"><h3 class="panel-title">邮箱注册设置</h3></div>
 <div class="panel-body">
@@ -132,7 +131,8 @@ $mail_names = implode('、', $mail_names);
   </form>
 </div>
 </div>
-
+<?php theme_panel_end();?>
+<?php theme_panel_begin('channels', '发信通道');?>
 <div class="panel panel-primary" id="mail-channels">
 <div class="panel-heading"><h3 class="panel-title">发信通道</h3></div>
 <div class="panel-body">
@@ -245,7 +245,8 @@ $mail_names = implode('、', $mail_names);
   </div>
 </div>
 </div>
-
+<?php theme_panel_end();?>
+<?php theme_panel_begin('test', '测试发信');?>
 <div class="panel panel-primary" id="mail-test">
 <div class="panel-heading"><h3 class="panel-title">测试发信</h3></div>
 <div class="panel-body">
@@ -263,9 +264,9 @@ $mail_names = implode('、', $mail_names);
   <div id="testResult" style="display:none"></div>
 </div>
 </div>
-
-</div>
-</div>
+<?php theme_panel_end();?>
+<?php //页面内容是布局 admin/set_mail（includes/layouts/admin/set_mail.json），各面板在上面用 theme_panel_begin/end 捕获，见 DEC-20261025-003
+echo theme_render_layout('admin/set_mail', [], 'admin', $site_theme);?>
 
 <style>
 /* 单位不用 Bootstrap 的 input-group：后台几套皮肤各自改了 .form-control 的高度和圆角，

@@ -1,0 +1,15 @@
+{
+    "id": "crisp",
+    "name": "清爽极简风",
+    "description": "近乎纯白的底色，横幅不做卡片、直接铺在页面上，四条勾选卖点加两个大按钮，五张统计卡，右侧最近动态是时间轴样式。",
+    "version": "1.0.0",
+    "author": "pan",
+    "engine": 1,
+    "group": "layout",
+    "flags": [
+        "layout",
+        "studio"
+    ],
+    "legacy": true,
+    "sort": 100
+}

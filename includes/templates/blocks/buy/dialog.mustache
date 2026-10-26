@@ -1,0 +1,19 @@
+<div class="buy-mask" id="buyMask" hidden>
+    <div class="buy-dialog">
+        <button type="button" class="buy-close" id="buyClose" aria-label="关闭">×</button>
+        <div class="buy-dialog-title" id="buyDialogTitle">支付宝扫码支付</div>
+        <div class="buy-dialog-plan" id="buyPlanName"></div>
+        <div class="buy-channels" id="buyChannels" hidden>
+{{#channels}}
+            <button type="button" class="buy-channel buy-channel-{{key}}" data-channel="{{key}}">
+                <i class="fa fa-{{icon}}" aria-hidden="true"></i>
+                <span>{{name}}</span>
+            </button>
+{{/channels}}
+        </div>
+        <div class="buy-qr" id="buyQr"></div>
+        <a class="buy-jump" id="buyJump" href="#" target="_blank" rel="noopener" hidden>打开支付页面</a>
+        <div class="buy-amount" id="buyAmount"></div>
+        <div class="buy-state" id="buyState">请使用支付宝扫描二维码完成支付</div>
+    </div>
+</div>

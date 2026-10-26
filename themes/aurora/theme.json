@@ -1,0 +1,12 @@
+{
+    "id": "aurora",
+    "name": "蓝紫渐变玻璃",
+    "description": "渐变背景、半透明玻璃卡片，适合展示型页面。",
+    "version": "1.0.0",
+    "author": "pan",
+    "engine": 1,
+    "group": "color",
+    "flags": [],
+    "legacy": true,
+    "sort": 170
+}

@@ -1,0 +1,37 @@
+{
+    "generated_by": "tools/build_theme_css.php",
+    "themes": [
+        "abyss",
+        "aurora",
+        "azure",
+        "blush",
+        "celadon",
+        "cloud",
+        "cockpit",
+        "console",
+        "crisp",
+        "dashboard",
+        "emerald",
+        "lilac",
+        "mac",
+        "mint",
+        "nebula",
+        "neo",
+        "neon",
+        "night",
+        "onefour",
+        "paper",
+        "portal",
+        "royal",
+        "sakura",
+        "sky",
+        "skyline",
+        "studio",
+        "sunset",
+        "workspace"
+    ],
+    "sources": {
+        "style": "8c41a41eada56f2d4e06929811927d6a",
+        "admin": "888090107ffdbfa294d2d9a27a0596b4"
+    }
+}

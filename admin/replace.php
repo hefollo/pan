@@ -6,13 +6,14 @@ include './head.php';
 if($islogin==1){}else exit("<script language='javascript'>window.location.href='./login.php';</script>");
 $uncheck = $DB->getColumn("SELECT count(*) FROM pre_replace_log WHERE `checked`=0");
 ?>
-  <div class="container-fluid">
-    <div class="admin-page-wide">
+<?php theme_panel_begin('notice', '复查提示');?>
 		<div class="alert alert-warning">
 			用户覆盖上传（用新文件替换已有文件，对外链接保持不变）和在线编辑都会记录在这里。
 			覆盖会让同一个链接的内容悄悄变掉，所以要盯着有没有人先传正常文件、事后换成违规内容。
 			<b>当前有 <?php echo intval($uncheck)?> 条未复查。</b>
 		</div>
+<?php theme_panel_end();?>
+<?php theme_panel_begin('toolbar', '搜索工具条');?>
 	    <form onsubmit="return searchSubmit()" method="GET" class="form-inline" id="searchToolbar">
 	        <div class="form-group">
 				<label>搜索</label>
@@ -42,10 +43,13 @@ $uncheck = $DB->getColumn("SELECT count(*) FROM pre_replace_log WHERE `checked`=
 				<button type="button" class="btn btn-default" onclick="checkAll()"><i class="fa fa-check-square-o"></i> 全部标记已复查</button>
 			</div>
 		</form>
+<?php theme_panel_end();?>
+<?php theme_panel_begin('table', '覆盖记录列表');?>
 		<table id="listTable">
 	  	</table>
-    </div>
-  </div>
+<?php theme_panel_end();?>
+<?php //页面内容是布局 admin/replace（includes/layouts/admin/replace.json），各面板在上面用 theme_panel_begin/end 捕获，见 DEC-20261025-003
+echo theme_render_layout('admin/replace', [], 'admin', $site_theme);?>
 <script src="https://s4.zstatic.net/ajax/libs/bootstrap-table/1.21.4/bootstrap-table.min.js"></script>
 <script src="https://s4.zstatic.net/ajax/libs/bootstrap-table/1.21.4/extensions/page-jump-to/bootstrap-table-page-jump-to.min.js"></script>
 <script src="../assets/js/custom.js"></script>

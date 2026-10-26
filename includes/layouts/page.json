@@ -1,0 +1,25 @@
+{
+    "nodes": [
+        {
+            "id": "box",
+            "block": "core.box",
+            "config": {
+                "class": "container"
+            },
+            "children": [
+                {
+                    "id": "hero",
+                    "block": "common.hero",
+                    "config": {
+                        "title": "欢迎来到这里",
+                        "text": "这是一个新页面，在后台「页面布局」里添加、拖动卡片来设计它。",
+                        "btn1_text": "去上传",
+                        "btn1_link": "./upload.php",
+                        "btn2_text": "看文件列表",
+                        "btn2_link": "./?list=1"
+                    }
+                }
+            ]
+        }
+    ]
+}

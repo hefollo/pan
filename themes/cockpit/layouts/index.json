@@ -1,0 +1,101 @@
+{
+    "nodes": [
+        {
+            "id": "notice",
+            "block": "common.notice"
+        },
+        {
+            "id": "ads",
+            "block": "common.ads_banner"
+        },
+        {
+            "id": "b52",
+            "block": "core.box",
+            "config": {
+                "class": "container"
+            },
+            "children": [
+                {
+                    "id": "b38",
+                    "block": "cockpit.head"
+                },
+                {
+                    "id": "b51",
+                    "block": "core.box",
+                    "config": {
+                        "class": "layout-shell"
+                    },
+                    "children": [
+                        {
+                            "id": "b46",
+                            "block": "core.box",
+                            "config": {
+                                "class": "cockpit-main"
+                            },
+                            "children": [
+                                {
+                                    "id": "b39",
+                                    "block": "cockpit.quota"
+                                },
+                                {
+                                    "id": "b40",
+                                    "block": "index.stats"
+                                },
+                                {
+                                    "id": "b45",
+                                    "block": "core.box",
+                                    "config": {
+                                        "class": "well bs-component"
+                                    },
+                                    "children": [
+                                        {
+                                            "id": "b41",
+                                            "block": "index.title"
+                                        },
+                                        {
+                                            "id": "b42",
+                                            "block": "common.subtitle",
+                                            "config": {
+                                                "text": "按上传时间排序，点文件名即可查看、下载或复制外链。"
+                                            }
+                                        },
+                                        {
+                                            "id": "b43",
+                                            "block": "index.filterbar"
+                                        },
+                                        {
+                                            "id": "b44",
+                                            "block": "index.filelist"
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "id": "b50",
+                            "block": "core.box",
+                            "config": {
+                                "class": "cockpit-side",
+                                "tag": "aside"
+                            },
+                            "children": [
+                                {
+                                    "id": "b47",
+                                    "block": "cockpit.panel_dist"
+                                },
+                                {
+                                    "id": "b48",
+                                    "block": "cockpit.panel_feed"
+                                },
+                                {
+                                    "id": "b49",
+                                    "block": "cockpit.panel_links"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

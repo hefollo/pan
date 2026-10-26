@@ -1,0 +1,14 @@
+{
+    "id": "workspace",
+    "name": "深色工作台风",
+    "description": "深色底 + 左侧图标导航条（鼠标移上去展开文字），内容为深色圆角面板，适合长时间浏览管理。",
+    "version": "1.0.0",
+    "author": "pan",
+    "engine": 1,
+    "group": "layout",
+    "flags": [
+        "layout"
+    ],
+    "legacy": true,
+    "sort": 40
+}

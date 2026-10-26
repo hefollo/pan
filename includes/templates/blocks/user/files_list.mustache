@@ -1,0 +1,60 @@
+{{{folder_bar_html}}}
+        <div class="uc-batchbar" id="ucBatchBar" hidden>
+            <span>已选中 <b id="ucSelCount">0</b> {{#fd_on}}项{{/fd_on}}{{^fd_on}}个文件{{/fd_on}}</span>
+{{{batch_buttons_html}}}            <button type="button" class="uc-btn uc-btn-danger" id="ucBatchDelete"><i class="fa fa-trash" aria-hidden="true"></i> 批量删除</button>
+            <button type="button" class="uc-btn" id="ucSelClear">取消选择</button>
+        </div>
+
+        <div class="table-responsive">
+        <table class="table table-hover uc-filelist">
+            <thead>
+                <tr>
+                    <th class="uc-col-check"><input type="checkbox" id="ucCheckAll" title="全选本页"></th>
+                    <th>文件名</th>
+                    <th class="uc-col-size">大小</th>
+                    <th class="uc-col-state">状态</th>
+                    <th class="uc-col-time">上传时间</th>
+                    <th class="uc-col-act">操作</th>
+                </tr>
+            </thead>
+            <tbody>
+{{{folder_rows_html}}}{{#rows}}
+                <tr data-id="{{id}}" data-name="{{{name_html}}}" data-hide="{{#hidden}}1{{/hidden}}{{^hidden}}0{{/hidden}}" data-haspwd="{{#haspwd}}1{{/haspwd}}{{^haspwd}}0{{/haspwd}}" data-view="{{viewurl}}" data-down="{{fileurl}}"{{#blocked}} class="is-blocked"{{/blocked}}>
+                    <td class="uc-col-check"><input type="checkbox" class="uc-check"{{#nodelete}} disabled title="{{nodelete}}"{{/nodelete}}></td>
+                    <td class="uc-col-name"><i class="fa {{icon}} fa-fw"></i><span class="uc-name">{{{name_html}}}</span>{{{loc_html}}}</td>
+                    <td class="uc-col-size">{{size}}</td>
+                    <td class="uc-col-state">
+{{#blocked}}<span class="uc-badge uc-badge-danger">已冻结</span>{{/blocked}}{{#pending}}<span class="uc-badge uc-badge-warn">待人工审核</span>{{/pending}}{{#hidden}}<span class="uc-badge">私密</span>{{/hidden}}{{^hidden}}<span class="uc-badge uc-badge-ok">公开</span>{{/hidden}}{{#haspwd}}<span class="uc-badge uc-badge-warn"><i class="fa fa-lock" aria-hidden="true"></i> 有密码</span>{{/haspwd}}                    </td>
+                    <td class="uc-col-time">{{addtime}}</td>
+                    <td class="uc-col-act">
+                        <div class="uc-acts">
+                            <a class="uc-act" href="{{fileurl}}" title="下载"><i class="fa fa-download" aria-hidden="true"></i></a>
+                            <a class="uc-act" href="{{viewurl}}" title="查看"><i class="fa fa-eye" aria-hidden="true"></i></a>
+                            <button type="button" class="uc-act" data-uc="copy" title="复制外链"><i class="fa fa-link" aria-hidden="true"></i></button>
+{{^blocked}}
+                            <button type="button" class="uc-act" data-uc="rename" title="重命名"><i class="fa fa-pencil" aria-hidden="true"></i></button>
+                            <button type="button" class="uc-act" data-uc="pwd" title="访问密码"><i class="fa fa-key" aria-hidden="true"></i></button>
+                            <button type="button" class="uc-act" data-uc="hide" title="{{#hidden}}设为公开{{/hidden}}{{^hidden}}设为私密{{/hidden}}"><i class="fa fa-{{#hidden}}eye-slash{{/hidden}}{{^hidden}}globe{{/hidden}}" aria-hidden="true"></i></button>
+{{#can_edit}}
+                            <a class="uc-act" href="./edit.php?id={{id}}" title="在线编辑"><i class="fa fa-code" aria-hidden="true"></i></a>
+{{/can_edit}}
+{{^nodelete}}
+                            <button type="button" class="uc-act" data-uc="replace" title="重新上传替换"><i class="fa fa-refresh" aria-hidden="true"></i></button>
+                            <button type="button" class="uc-act uc-act-danger" data-uc="del" title="删除"><i class="fa fa-trash" aria-hidden="true"></i></button>
+{{/nodelete}}
+{{/blocked}}
+                        </div>
+                    </td>
+                </tr>
+{{/rows}}
+{{#empty}}<tr><td colspan="6" class="uc-empty">{{empty_text}}</td></tr>{{/empty}}            </tbody>
+        </table>
+        </div>
+
+        <div class="filelist-footer">
+            <div class="filelist-summary">共有 {{numrows}} 个文件　当前第 {{page}} 页，共 {{pages}} 页</div>
+{{#multi}}
+            <nav class="filelist-pager"><ul class="pagination pagination-sm">
+{{#pager}}{{#disabled}}<li class="disabled"><a>{{{label_html}}}</a></li>{{/disabled}}{{^disabled}}<li><a href="{{{href_html}}}">{{{label_html}}}</a></li>{{/disabled}}{{/pager}}            </ul></nav>
+{{/multi}}
+        </div>

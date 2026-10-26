@@ -1,0 +1,14 @@
+{
+    "id": "dashboard",
+    "name": "控制台侧栏风",
+    "description": "顶部导航变为左侧固定侧栏，内容区改为圆角卡片布局，更接近后台管理系统的观感。",
+    "version": "1.0.0",
+    "author": "pan",
+    "engine": 1,
+    "group": "layout",
+    "flags": [
+        "layout"
+    ],
+    "legacy": true,
+    "sort": 10
+}

@@ -4,6 +4,7 @@ $title='违规公示管理';
 include './head.php';
 if($islogin==1){}else exit("<script language='javascript'>window.location.href='./login.php';</script>");
 ?>
+<?php theme_panel_begin('modal', '公示记录弹窗');?>
 <div class="modal" id="modal-store" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
 	<div class="modal-dialog">
 		<div class="modal-content animated flipInX">
@@ -52,9 +53,11 @@ if($islogin==1){}else exit("<script language='javascript'>window.location.href='
 		</div>
 	</div>
 </div>
-  <div class="container">
-    <div class="admin-page-wide">
+<?php theme_panel_end();?>
+<?php theme_panel_begin('notice', '说明');?>
 		<div class="alert alert-info">在文件管理里<b>封禁</b>文件会自动生成公示记录，<b>解封</b>会自动撤下公示；图片自动检测命中的记录默认<b>不公示</b>，请人工确认后再放出。公示页只展示脱敏后的文件名和IP。</div>
+<?php theme_panel_end();?>
+<?php theme_panel_begin('toolbar', '搜索工具条');?>
 	    <form onsubmit="return searchSubmit()" method="GET" class="form-inline" id="searchToolbar">
 	        <div class="form-group">
           <label>搜索</label>
@@ -79,10 +82,13 @@ if($islogin==1){}else exit("<script language='javascript'>window.location.href='
 				<button type="button" class="btn btn-success" onclick="addViolation()"><i class="fa fa-plus"></i> 手动补录</button>
 			</div>
 		</form>
+<?php theme_panel_end();?>
+<?php theme_panel_begin('table', '公示记录列表');?>
 		<table id="listTable">
 	  	</table>
-    </div>
-  </div>
+<?php theme_panel_end();?>
+<?php //页面内容是布局 admin/set_violation（includes/layouts/admin/set_violation.json），各面板在上面用 theme_panel_begin/end 捕获，见 DEC-20261025-003
+echo theme_render_layout('admin/set_violation', [], 'admin', $site_theme);?>
 <style>
 /* “查看/播放/已删除”只有几个字，固定不换行，避免窄列把“查看”拆成竖排。 */
 .js-violation-image,.js-violation-media,.violation-view-gone{font-size:12px;white-space:nowrap}

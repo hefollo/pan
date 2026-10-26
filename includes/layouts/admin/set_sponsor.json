@@ -1,0 +1,50 @@
+{
+    "nodes": [
+        {
+            "id": "modal",
+            "block": "admin.panel",
+            "config": {
+                "panel": "modal"
+            }
+        },
+        {
+            "id": "box1",
+            "block": "core.box",
+            "config": {
+                "class": "container"
+            },
+            "children": [
+                {
+                    "id": "box2",
+                    "block": "core.box",
+                    "config": {
+                        "class": "admin-page-wide"
+                    },
+                    "children": [
+                        {
+                            "id": "pay_img",
+                            "block": "admin.panel",
+                            "config": {
+                                "panel": "pay_img"
+                            }
+                        },
+                        {
+                            "id": "toolbar",
+                            "block": "admin.panel",
+                            "config": {
+                                "panel": "toolbar"
+                            }
+                        },
+                        {
+                            "id": "table",
+                            "block": "admin.panel",
+                            "config": {
+                                "panel": "table"
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

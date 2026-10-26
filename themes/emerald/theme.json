@@ -1,0 +1,12 @@
+{
+    "id": "emerald",
+    "name": "翡翠流光",
+    "description": "翡翠绿到松石色的流光渐变，磨砂玻璃配柔亮描边，清透有质感，适合作品集和图床。",
+    "version": "1.0.0",
+    "author": "pan",
+    "engine": 1,
+    "group": "color",
+    "flags": [],
+    "legacy": true,
+    "sort": 270
+}

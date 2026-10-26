@@ -1,0 +1,54 @@
+        <div class="uc-section">
+            <div class="uc-section-title"><span>登录方式</span></div>
+            <div class="uc-binds">
+{{#ids}}
+                <div class="uc-bind">
+                    <span class="uc-bind-icon uc-bind-{{type}}"><i class="fa fa-{{icon}}" aria-hidden="true"></i></span>
+                    <div class="uc-bind-main">
+                        <strong>{{name}}{{#primary}}<em class="uc-bind-tag">注册方式</em>{{/primary}}</strong>
+                        <small>{{sub}}</small>
+                    </div>
+{{#primary}}
+                    <span class="uc-dim">不可解绑</span>
+{{/primary}}
+{{^primary}}
+                    <button type="button" class="uc-btn uc-btn-sm" data-uc-unbind="{{type}}">解绑</button>
+{{/primary}}
+                </div>
+{{/ids}}
+{{#oauth}}
+                <div class="uc-bind is-empty">
+                    <span class="uc-bind-icon uc-bind-{{type}}"><i class="fa fa-{{icon}}" aria-hidden="true"></i></span>
+                    <div class="uc-bind-main">
+                        <strong>{{name}}</strong>
+                        <small>未绑定，绑定后可以直接用{{name}}登录</small>
+                    </div>
+                    <button type="button" class="uc-btn uc-btn-primary uc-btn-sm" data-uc-bind="{{type}}">绑定</button>
+                </div>
+{{/oauth}}
+{{^has_mail}}
+                <div class="uc-bind is-empty">
+                    <span class="uc-bind-icon uc-bind-mail"><i class="fa fa-envelope" aria-hidden="true"></i></span>
+                    <div class="uc-bind-main">
+                        <strong>邮箱</strong>
+                        <small>{{#mail_ready}}未绑定，绑定后可以用邮箱和密码登录{{/mail_ready}}{{^mail_ready}}站点还没有配置发信，暂时无法绑定{{/mail_ready}}</small>
+                    </div>
+{{#mail_ready}}
+                    <button type="button" class="uc-btn uc-btn-primary uc-btn-sm" id="ucBindMailBtn">绑定邮箱</button>
+{{/mail_ready}}
+                </div>
+{{/has_mail}}
+            </div>
+{{#bind_form}}
+            <div class="uc-form uc-form-col uc-bindmail-form" id="ucBindMailForm" hidden>
+                <input class="uc-input" type="email" id="ucBindEmail" placeholder="邮箱地址" autocomplete="email">
+                <div class="uc-form-row">
+                    <input class="uc-input" type="text" id="ucBindCode" maxlength="6" placeholder="6 位验证码" autocomplete="one-time-code">
+                    <button type="button" class="uc-btn" id="ucBindSendCode">获取验证码</button>
+                </div>
+                <input class="uc-input" type="password" id="ucBindPwd" autocomplete="new-password" placeholder="设置登录密码，6-32 位，需含字母和数字">
+                <button type="button" class="uc-btn uc-btn-primary" id="ucBindSubmit">确认绑定</button>
+            </div>
+{{/bind_form}}
+            <p class="uc-tip">注册时使用的那种登录方式不能解绑，账号至少要保留一个能登进来的入口。</p>
+        </div>

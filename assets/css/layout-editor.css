@@ -1,0 +1,55 @@
+/* 后台布局编辑器（admin/layout.php、assets/js/layout-editor.js）。
+ * 后台有深色外观，这里不写死白底黑字：底色、边框用半透明灰叠在外观自己的面板色上，文字跟随外观。 */
+.layout-editor .le-bar{margin-bottom:12px;display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center}
+.layout-editor .le-bar label{font-weight:normal;margin:0}
+.layout-editor .le-bar select{max-width:260px}
+.layout-editor .le-status{opacity:.7;font-size:12px}
+.layout-editor .le-status.le-dirty{color:#d97706;font-weight:bold}
+.layout-editor .le-actions{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+.layout-editor .le-palette{max-height:420px;overflow-y:auto}
+.layout-editor .le-tip{font-size:12px}
+.layout-editor .le-tree{border:1px solid rgba(127,127,127,.28);border-radius:6px;padding:6px;max-height:52vh;overflow:auto;background:rgba(127,127,127,.06)}
+.layout-editor .le-list{list-style:none;margin:0;padding:0 0 0 18px;min-height:8px}
+.layout-editor .le-tree>.le-list{padding-left:0}
+.layout-editor .le-node>.le-list{border-left:1px dashed rgba(127,127,127,.4);margin-left:8px;padding-top:2px;padding-bottom:4px;min-height:22px}
+.layout-editor .le-row{display:flex;align-items:center;gap:6px;padding:4px 6px;margin:2px 0;border:1px solid rgba(127,127,127,.28);border-radius:4px;background:rgba(127,127,127,.08)}
+.layout-editor .le-row.le-selected{border-color:#f59e0b;box-shadow:0 0 0 2px rgba(245,158,11,.25)}
+.layout-editor .le-row.le-hidden .le-name{opacity:.5;text-decoration:line-through}
+.layout-editor .le-row.le-unknown{background:rgba(245,158,11,.12)}
+.layout-editor .le-handle{cursor:move;opacity:.55}
+.layout-editor .le-ico{opacity:.7}
+.layout-editor .le-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:inherit}
+.layout-editor .le-ops a{opacity:.65;margin-left:6px}
+.layout-editor .le-ops a:hover{opacity:1}
+.layout-editor .le-empty{opacity:.6;margin:6px}
+.layout-editor .sortable-ghost>.le-row{opacity:.4;border-style:dashed}
+.layout-editor .le-config{margin-top:10px;border:1px solid rgba(127,127,127,.28);border-radius:6px;padding:10px}
+.layout-editor .le-config-head{display:flex;gap:8px;align-items:baseline;margin-bottom:6px}
+.layout-editor .le-config .le-switch{font-weight:normal}
+.layout-editor .le-code{font-family:Consolas,Menlo,monospace;font-size:12px}
+.layout-editor .le-preview-bar{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+.layout-editor .le-preview-url{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.7;font-size:12px}
+.layout-editor .le-preview{border:1px solid rgba(127,127,127,.28);border-radius:6px;overflow:hidden;background:#fff}
+.layout-editor .le-preview iframe{display:block;width:100%;height:78vh;border:0}
+.layout-editor .le-preview-empty{padding:40px 20px;opacity:.7;text-align:center}
+@media (max-width:1199px){.layout-editor .le-main{margin-top:14px}.layout-editor .le-preview iframe{height:70vh}}
+.layout-editor .le-live{display:inline-flex;align-items:center;gap:4px;margin:0 4px;font-weight:normal;cursor:pointer}
+.layout-editor .le-preview{position:relative}
+.layout-editor .le-preview iframe.le-buffer{position:absolute;left:0;top:0;visibility:hidden}
+.layout-editor .le-page-ops{display:inline-flex;gap:4px;flex-wrap:wrap}
+.layout-editor .le-menu-list{list-style:none;margin:0 0 6px;padding:0}
+.layout-editor .le-menu-item{display:flex;align-items:center;gap:6px;padding:4px 6px;margin:3px 0;border:1px solid rgba(127,127,127,.28);border-radius:4px;background:rgba(127,127,127,.08)}
+.layout-editor .le-menu-item.le-menu-hidden .le-menu-body{opacity:.45}
+.layout-editor .le-menu-kind{flex:none}
+.layout-editor .le-menu-body{display:flex;flex-wrap:wrap;gap:4px;flex:1;min-width:0}
+.layout-editor .le-menu-body .form-control{height:26px;padding:2px 6px}
+.layout-editor .le-menu-label{flex:1 1 100px;min-width:80px}
+.layout-editor .le-menu-icon{flex:0 1 110px;min-width:80px}
+.layout-editor .le-menu-href{flex:1 1 100%}
+.layout-editor .le-menu-blank{font-weight:normal;margin:0;font-size:12px}
+.layout-editor .le-page-hint{font-size:12px;opacity:.7}
+.layout-editor .le-menu-reset{display:inline-block;margin-top:6px;font-size:12px}
+.layout-editor .le-code-box .CodeMirror{height:auto;min-height:120px;border:1px solid rgba(127,127,127,.35);border-radius:4px;font-size:13px;line-height:1.5}
+.layout-editor .le-code-box .CodeMirror-scroll{min-height:120px}
+.layout-editor .le-code{font-family:Consolas,Menlo,monospace;font-size:12px}
+@media (min-width:1200px){.layout-editor.le-wide .le-side{width:60%}.layout-editor.le-wide .le-main{width:40%}}

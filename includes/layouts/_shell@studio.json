@@ -1,0 +1,9 @@
+{"nodes": [
+  {"id": "nav", "block": "shell.navbar", "children": [
+    {"id": "upsell", "block": "shell.studio_upsell"}
+  ]},
+  {"id": "topbar", "block": "shell.studio_topbar"},
+  {"id": "ads", "block": "shell.ads"},
+  {"id": "page", "block": "shell.page"},
+  {"id": "footer", "block": "shell.footer"}
+]}

@@ -1,0 +1,3 @@
+    <nav class="share-breadcrumb"><a data-share-nav href="{{back}}">返回所在文件夹</a></nav>
+    <section class="share-card"><div class="share-file-heading"><div><h2>{{{name_html}}}</h2><p>{{meta}}</p></div>{{{actions_html}}}</div>
+    {{#image}}<img class="share-preview" src="{{src}}" alt="{{{name_html}}}">{{/image}}{{#media}}<{{tag}} class="share-preview" controls preload="metadata" src="{{src}}"></{{tag}}><p class="share-note">若浏览器不支持此格式，请下载后播放。</p>{{/media}}{{#text_src}}<iframe class="share-text" sandbox title="文本预览" src="{{text_src}}"></iframe>{{/text_src}}{{#pdf}}<iframe class="share-text" title="PDF 预览" src="{{src}}"></iframe>{{/pdf}}{{#none}}<div class="share-empty">此格式暂不支持在线预览，可下载后查看。</div>{{/none}}</section>

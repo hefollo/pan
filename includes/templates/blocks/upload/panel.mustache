@@ -1,0 +1,79 @@
+{{=<% %>=}}
+        <div class="well infobox" align="center" id="fileInput" :style="{background: background}">
+        <div style="min-height:50px;">
+            <div id="progressBar" class="upload-main-progress" v-if="showtype==1">
+                <div class="progress"><div class="progress-bar" style="width: 0%" :style="{ width: totalProgress + '%' }">{{progress_tip}}</div></div><div class="row"><div class="col-xs-3" style="text-align:left;" id="percentage"><span v-if="totalProgress>0">{{totalProgress}}%</span></div><div class="col-xs-6 filename">{{filename}}</div><div class="col-xs-3" style="text-align:right;" id="uploadspeed">{{uploadspeed}}</div></div>
+            </div>
+            <div class="upload-message" :class="'upload-message-'+alert.type" v-if="showtype==2">
+                <div class="upload-message-icon">
+                    <i class="fa" :class="alertIconClass"></i>
+                </div>
+                <div class="upload-message-body" v-html="alert.msg"></div>
+                <button type="button" class="upload-message-close" @click="showtype=0">×</button>
+            </div>
+            <div class="upload-result-actions" v-if="showtype==2 && successfulQueueItems().length>1">
+                <button type="button" class="upload-link-btn upload-link-btn-secondary" @click="copyAllViewLinks"><i class="fa fa-copy"></i> 全部查看链接</button>
+                <button type="button" class="upload-link-btn" @click="copyAllDownloadLinks"><i class="fa fa-copy"></i> 全部下载链接</button>
+            </div>
+            <div class="upload-queue" v-if="batchQueue.length>0">
+                <div class="upload-queue-item" v-for="(item, index) in batchQueue" :key="item.id">
+                    <div class="upload-queue-index">{{index + 1}}</div>
+                    <div class="upload-queue-main">
+                        <div class="upload-queue-name" :title="item.name">{{item.name}}</div>
+                        <div class="upload-queue-meta">{{item.sizeText}}<span v-if="item.msg"> · {{item.msg}}</span></div>
+                        <div class="upload-queue-progress" v-if="item.status==='reading' || item.status==='uploading' || item.status==='saving'">
+                            <span :style="{width: item.progress + '%'}"></span>
+                        </div>
+                    </div>
+                    <div class="upload-queue-actions" v-if="item.status==='success' && item.downloadUrl && item.viewUrl">
+                        <button type="button" class="upload-link-btn upload-link-btn-secondary" @click.stop="copyText(item.viewUrl)"><i class="fa fa-eye"></i> 查看链接</button>
+                        <button type="button" class="upload-link-btn" @click.stop="copyText(item.downloadUrl)"><i class="fa fa-download"></i> 下载链接</button>
+                    </div>
+                    <div class="upload-queue-status">
+                        <span class="label" :class="queueStatusClass(item.status)">{{queueStatusText(item.status)}}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+         <br><br>
+         <h1 style="color:#8d8b8b;" id="uploadTitle">{{uploadTitle}}</h1>
+
+         <input type="hidden" id="csrf_token" name="csrf_token" value="<%csrf%>">
+         <input type="file" id="file" name="myfile[]" @change="selectFile" style="display:none" multiple/>
+         
+<%&slot_html%>         <div id="upload_frame">
+<%#forbid%>
+         <button id="uploadFile" class="btn btn-raised btn-primary" style="height:50px;font-size:20px;" onclick="window.location.href='./login.php'"><i class="fa fa-sign-in"></i> 请先登录<div class="ripple-container"></div></button>
+         <script>var forbid = true;</script>
+<%/forbid%>
+<%^forbid%>
+         <button id="uploadFile" class="btn btn-raised btn-primary" style="height:50px;font-size:20px;" @click="clickUpload"><i class="fa fa-upload"></i> 选择文件/批量上传<div class="ripple-container"></div></button>
+<%/forbid%>
+<%#has_storage%>
+<div class="form-group upload-storage">
+<label for="storage_select">存储位置</label>
+<div class="upload-storage-select">
+<select class="form-control" id="storage_select" v-model="input.storage">
+<%#storages%>
+<option value="<%key%>"><%name%></option>
+<%/storages%>
+</select>
+</div>
+</div>
+<%/has_storage%>
+<div class="form-group">
+<div class="checkbox">
+<label>
+<input type="checkbox" id="show" v-model="input.show"> 在首页文件列表显示
+</label>
+</div>
+</div>
+<div class="form-group upload-pwd" id="pwd_frame">
+<input type="text" class="form-control" id="pwd" placeholder="请输入密码（留空则不设置）" autocomplete="off" maxlength="32" v-model="input.pwd">
+<p class="help-block" v-if="input.pwd">密码只能为字母或数字</p>
+</div>
+         </div>
+         
+        <br><br><br><br>
+        </div>

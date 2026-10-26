@@ -1,0 +1,12 @@
+{
+    "id": "neon",
+    "name": "霓虹科技黑夜",
+    "description": "蓝紫霓虹、科技感边框，适合深色展示。",
+    "version": "1.0.0",
+    "author": "pan",
+    "engine": 1,
+    "group": "color",
+    "flags": [],
+    "legacy": true,
+    "sort": 160
+}

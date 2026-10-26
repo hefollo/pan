@@ -1,0 +1,15 @@
+{
+    "id": "nebula",
+    "name": "深空科技风",
+    "description": "蓝白工作台的深色版：深蓝星空底配发光描边，横幅是大标题加三个卖点，统计卡带彩色辉光，适合长时间浏览的深色站点。",
+    "version": "1.0.0",
+    "author": "pan",
+    "engine": 1,
+    "group": "layout",
+    "flags": [
+        "layout",
+        "studio"
+    ],
+    "legacy": true,
+    "sort": 80
+}

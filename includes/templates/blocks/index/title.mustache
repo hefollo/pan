@@ -1,0 +1,8 @@
+        <h2>{{{htext_html}}}
+        {{#search}}<span class="searchbox">
+            <form class="form-inline" action="./" method="GET">
+                {{#m_set}}<input name="m" type="hidden" value="{{m}}">{{/m_set}}
+				<input name="kw" class="form-control" type="search" placeholder="请输入搜索关键字" value="{{kw}}" required="">
+				<button class="btn btn-default btn-raised btn-sm" type="submit"><i class="fa fa-search" aria-hidden="true"></i> 搜索</button>
+			</form>
+        </span>{{/search}}{{#cfg.mac_toggle}}<span class="mac-viewtoggle" id="macViewToggle"><button type="button" class="active" data-mac-view="grid" title="网格视图" aria-label="网格视图"><i class="fa fa-th-large" aria-hidden="true"></i></button><button type="button" data-mac-view="list" title="列表视图" aria-label="列表视图"><i class="fa fa-list" aria-hidden="true"></i></button></span>{{/cfg.mac_toggle}}{{#cta}}<a class="layout-cta" href="./upload.php"><i class="fa fa-plus" aria-hidden="true"></i> <span>{{cta}}</span></a>{{/cta}}</h2>

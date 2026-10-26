@@ -1,0 +1,17 @@
+        <div class="uc-section">
+            <div class="uc-section-title"><span>创建上传 API 密钥</span></div>
+            <div class="uc-api-create">
+                <input class="uc-input" type="text" id="ucApiName" maxlength="32" placeholder="密钥名称，例如：图床客户端">
+                <input class="uc-input" type="text" id="ucApiAllowIp" maxlength="255" placeholder="允许的 IP/CIDR，留空不限制">
+                <select class="uc-input" id="ucApiExpire">
+{{#options}}
+                    <option value="{{days}}"{{#selected}} selected{{/selected}}>{{label}}</option>
+{{/options}}
+{{#custom}}
+                    <option value="{{custom}}" selected>{{custom}} 天有效（默认）</option>
+{{/custom}}
+                </select>
+                <button type="button" class="uc-btn uc-btn-primary" id="ucApiCreate"><i class="fa fa-plus" aria-hidden="true"></i> 创建密钥</button>
+            </div>
+            <p class="uc-tip">每个账号最多 {{limit}} 把。IP 白名单可用竖线、逗号或空格分隔，支持 IPv4、IPv6 和 CIDR；留空表示不限制来源。</p>
+        </div>

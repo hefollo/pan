@@ -1,0 +1,14 @@
+{
+    "id": "cockpit",
+    "name": "渐变仪表盘风",
+    "description": "白色悬浮圆角侧栏（默认展开显示文字），文件列表页顶部是问候栏和紫色渐变额度卡，右侧多一列存储分布、最近上传和快捷入口面板。",
+    "version": "1.0.0",
+    "author": "pan",
+    "engine": 1,
+    "group": "layout",
+    "flags": [
+        "layout"
+    ],
+    "legacy": true,
+    "sort": 60
+}

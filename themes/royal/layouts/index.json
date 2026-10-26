@@ -1,0 +1,119 @@
+{
+    "nodes": [
+        {
+            "id": "notice",
+            "block": "common.notice"
+        },
+        {
+            "id": "ads",
+            "block": "common.ads_banner"
+        },
+        {
+            "id": "b98",
+            "block": "core.box",
+            "config": {
+                "class": "container"
+            },
+            "children": [
+                {
+                    "id": "b97",
+                    "block": "core.box",
+                    "config": {
+                        "class": "layout-shell"
+                    },
+                    "children": [
+                        {
+                            "id": "b95",
+                            "block": "core.box",
+                            "config": {
+                                "class": "studio-main"
+                            },
+                            "children": [
+                                {
+                                    "id": "b87",
+                                    "block": "studio.hero",
+                                    "config": {
+                                        "kicker": "欢迎使用",
+                                        "title": "{site}",
+                                        "sub": "让文件分享更简单高效",
+                                        "tags": "安全存储 · 极速上传 · 随时随地访问",
+                                        "slogan": "好文件<br>值得被分享",
+                                        "badge": 0
+                                    }
+                                },
+                                {
+                                    "id": "b88",
+                                    "block": "index.stats"
+                                },
+                                {
+                                    "id": "b93",
+                                    "block": "core.box",
+                                    "config": {
+                                        "class": "well bs-component"
+                                    },
+                                    "children": [
+                                        {
+                                            "id": "b89",
+                                            "block": "index.title"
+                                        },
+                                        {
+                                            "id": "b90",
+                                            "block": "common.permbar"
+                                        },
+                                        {
+                                            "id": "b91",
+                                            "block": "index.filterbar",
+                                            "config": {
+                                                "tools": 1
+                                            }
+                                        },
+                                        {
+                                            "id": "b92",
+                                            "block": "index.filelist",
+                                            "config": {
+                                                "action_col": "right"
+                                            }
+                                        }
+                                    ]
+                                },
+                                {
+                                    "id": "b94",
+                                    "block": "studio.promo"
+                                }
+                            ]
+                        },
+                        {
+                            "id": "b96",
+                            "block": "core.box",
+                            "config": {
+                                "class": "studio-side",
+                                "tag": "aside"
+                            },
+                            "children": [
+                                {
+                                    "id": "b83",
+                                    "block": "studio.panel_rights",
+                                    "config": {
+                                        "vip_btn": 1
+                                    }
+                                },
+                                {
+                                    "id": "b84",
+                                    "block": "studio.panel_today"
+                                },
+                                {
+                                    "id": "b85",
+                                    "block": "studio.panel_acts"
+                                },
+                                {
+                                    "id": "b86",
+                                    "block": "studio.panel_feed"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

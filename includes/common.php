@@ -4,8 +4,14 @@ if(defined('IN_CRONLITE'))return;
 define('IN_CRONLITE', true);
 define('SYSTEM_ROOT', dirname(__FILE__).'/');
 define('ROOT', dirname(SYSTEM_ROOT).'/');
+//外观模板引擎（Twig 3，includes/twig/）要求 PHP 7.4 以上：低版本在这里直接说清楚，
+//不让它在加载模板时报一堆语法错误（DEC-20261025-003）
+if(PHP_VERSION_ID < 70400){
+	header('Content-Type: text/html; charset=UTF-8');
+	exit('<h2>PHP 版本过低</h2><p>本程序需要 PHP 7.4 或以上版本，当前是 '.htmlspecialchars(PHP_VERSION).'。请在主机面板里切换 PHP 版本后再访问。</p>');
+}
 define('VERSION', '1640');
-define('DB_VERSION', '1033');
+define('DB_VERSION', '1034');
 date_default_timezone_set('Asia/Shanghai');
 $date = date("Y-m-d H:i:s");
 
@@ -51,6 +57,11 @@ include_once(SYSTEM_ROOT."functions.php");
 include_once(SYSTEM_ROOT."folders.php");
 include_once(SYSTEM_ROOT."folder_shares.php");
 include_once(SYSTEM_ROOT."theme_recolor.php");
+//外观引擎：主题包 + 卡片 + 布局，模板是 Mustache（DEC-20261025-003）
+include_once(SYSTEM_ROOT."mustache/autoload.php");
+include_once(SYSTEM_ROOT."theme_engine.php");
+include_once(SYSTEM_ROOT."theme_shell.php");
+include_once(SYSTEM_ROOT."theme_package.php");
 
 $conf=getAllSetting();
 define('SYS_KEY', $conf['syskey']);

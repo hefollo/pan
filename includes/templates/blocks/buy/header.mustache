@@ -1,0 +1,11 @@
+        <h2>购买权限</h2>
+        <p class="buy-sub">选择需要的会员等级，支付成功后权限立即生效。</p>
+{{#paid_set}}
+        <div class="buy-notice {{#paid_ok}}is-ok{{/paid_ok}}{{^paid_ok}}is-warn{{/paid_ok}}">
+            <i class="fa fa-{{#paid_ok}}check-circle{{/paid_ok}}{{^paid_ok}}exclamation-circle{{/paid_ok}}" aria-hidden="true"></i>
+            {{#paid_ok}}支付成功，权限已经发放到你的账号。{{/paid_ok}}{{^paid_ok}}没有查到这笔支付。如果你已经付款，请稍等片刻后刷新本页，或联系站长处理。{{/paid_ok}}
+        </div>
+{{/paid_set}}
+{{#notice}}
+        <div class="buy-notice"><i class="fa fa-info-circle" aria-hidden="true"></i> {{notice}}</div>
+{{/notice}}

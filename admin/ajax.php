@@ -146,6 +146,93 @@ case 'onlineupdate_restore':
 	}
 	exit(json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
 break;
+case 'themeUpload':
+	//上传安装主题包（includes/theme_package.php 里逐个文件检查，不合格整包拒绝）
+	if(empty($_FILES['package']) || is_array($_FILES['package']['error']) || $_FILES['package']['error'] !== UPLOAD_ERR_OK || !is_uploaded_file($_FILES['package']['tmp_name'])){
+		exit(json_encode(['code'=>-1, 'msg'=>'没有收到主题包，或者超过了服务器的上传大小限制'], JSON_UNESCAPED_UNICODE));
+	}
+	$pkg_res = theme_package_install($_FILES['package']['tmp_name']);
+	if(!is_array($pkg_res))exit(json_encode(['code'=>-1, 'msg'=>$pkg_res], JSON_UNESCAPED_UNICODE));
+	exit(json_encode(['code'=>0, 'msg'=>'主题「'.$pkg_res['name'].'」已安装（'.$pkg_res['id'].' '.$pkg_res['version'].'），在上面的外观列表里选中它并保存就能启用'], JSON_UNESCAPED_UNICODE));
+break;
+case 'themeDelete':
+	$pkg_res = theme_package_delete(isset($_POST['id']) && is_string($_POST['id']) ? $_POST['id'] : '');
+	exit(json_encode($pkg_res === true ? ['code'=>0, 'msg'=>'已删除'] : ['code'=>-1, 'msg'=>$pkg_res], JSON_UNESCAPED_UNICODE));
+break;
+case 'themeSettings':
+	//保存主题包的可调设置（theme.json 的 settings，DEC-20261025-003）；reset=1 恢复成默认值
+	$theme_id = isset($_POST['theme']) && is_string($_POST['theme']) ? $_POST['theme'] : '';
+	$theme_in = !empty($_POST['reset']) ? [] : (isset($_POST['s']) && is_array($_POST['s']) ? $_POST['s'] : []);
+	$theme_res = theme_settings_save($theme_id, $theme_in);
+	if($theme_res !== true)exit(json_encode(['code'=>-1, 'msg'=>$theme_res], JSON_UNESCAPED_UNICODE));
+	if(isset($conf['site_theme']) && $conf['site_theme'] === $theme_id)sync_404_theme($theme_id);
+	exit(json_encode(['code'=>0, 'msg'=>'保存成功'], JSON_UNESCAPED_UNICODE));
+break;
+case 'layoutGet':
+	//后台布局编辑器（admin/layout.php，DEC-20261025-003）：某个主题某个页面的草稿 / 已发布 / 主题默认布局，和这个页面能放的卡片
+	$lay_theme = isset($_GET['theme']) && is_string($_GET['theme']) ? $_GET['theme'] : '';
+	$lay_page = isset($_GET['page']) && is_string($_GET['page']) ? $_GET['page'] : '';
+	$lay_pages = layout_editor_pages();
+	if(!theme_get($lay_theme) || !isset($lay_pages[$lay_page]))exit(json_encode(['code'=>-1, 'msg'=>'主题或页面不存在'], JSON_UNESCAPED_UNICODE));
+	$lay_state = layout_editor_state($lay_theme, $lay_page);
+	$lay_url = $lay_pages[$lay_page][2];
+	if($lay_url !== null){
+		$lay_url = str_replace('{admin}', basename(__DIR__), $lay_url);
+		if(strpos($lay_url, '{file}') !== false){
+			$lay_tok = $DB->getColumn("SELECT token FROM pre_file WHERE hide=0 AND block=0 AND (pwd IS NULL OR pwd='') ORDER BY id DESC LIMIT 1");
+			$lay_url = $lay_tok ? str_replace('{file}', $lay_tok, $lay_url) : null;
+		}
+	}
+	exit(json_encode(['code'=>0, 'db_ready'=>theme_db_ready(), 'blocks'=>layout_editor_blocks($lay_page, $lay_theme), 'draft'=>$lay_state['draft'], 'published'=>$lay_state['published'], 'default'=>$lay_state['default'], 'updated_at'=>$lay_state['updated_at'], 'preview_url'=>$lay_url], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+break;
+case 'layoutSave':
+	//do=draft 保存草稿 / publish 发布 / discard 丢弃草稿 / reset 恢复主题默认；nodes 是布局 JSON（publish 不带就发布草稿）
+	$lay_theme = isset($_POST['theme']) && is_string($_POST['theme']) ? $_POST['theme'] : '';
+	$lay_page = isset($_POST['page']) && is_string($_POST['page']) ? $_POST['page'] : '';
+	$lay_do = isset($_POST['do']) && is_string($_POST['do']) ? $_POST['do'] : '';
+	$lay_pages = layout_editor_pages();
+	if(!isset($lay_pages[$lay_page]))exit(json_encode(['code'=>-1, 'msg'=>'页面不存在'], JSON_UNESCAPED_UNICODE));
+	$lay_nodes = null;
+	if(isset($_POST['nodes']) && is_string($_POST['nodes']) && $_POST['nodes'] !== ''){
+		if(strlen($_POST['nodes']) > 1024 * 1024)exit(json_encode(['code'=>-1, 'msg'=>'布局太大'], JSON_UNESCAPED_UNICODE));
+		$lay_nodes = json_decode($_POST['nodes'], true);
+		if(is_array($lay_nodes) && isset($lay_nodes['nodes']) && is_array($lay_nodes['nodes']))$lay_nodes = $lay_nodes['nodes'];
+		if(!is_array($lay_nodes))exit(json_encode(['code'=>-1, 'msg'=>'布局不是合法的 JSON'], JSON_UNESCAPED_UNICODE));
+	}
+	if(in_array($lay_do, ['draft'], true) && $lay_nodes === null)exit(json_encode(['code'=>-1, 'msg'=>'没有收到布局'], JSON_UNESCAPED_UNICODE));
+	$lay_res = layout_editor_save($lay_theme, $lay_page, $lay_do, $lay_nodes);
+	if($lay_res !== true)exit(json_encode(['code'=>-1, 'msg'=>$lay_res], JSON_UNESCAPED_UNICODE));
+	$lay_msg = ['draft'=>'草稿已保存', 'publish'=>'已发布，访客现在看到的就是这个布局', 'discard'=>'草稿已丢弃', 'reset'=>'已恢复成主题默认布局'];
+	exit(json_encode(['code'=>0, 'msg'=>$lay_msg[$lay_do]], JSON_UNESCAPED_UNICODE));
+break;
+case 'layoutPreview':
+	//开 / 关预览：给浏览器发一个签名的 pan_preview cookie（全站路径，半小时），带着它访问的页面按草稿渲染
+	$lay_theme = isset($_POST['theme']) && is_string($_POST['theme']) ? $_POST['theme'] : '';
+	//路径用 /：预览提示条上的「退出预览」在前台用脚本清 cookie，两边路径得一样（所以也不能设 HttpOnly）
+	if(!empty($_POST['off'])){
+		setcookie('pan_preview', '', time() - 3600, '/');
+		exit(json_encode(['code'=>0], JSON_UNESCAPED_UNICODE));
+	}
+	if(!theme_get($lay_theme))exit(json_encode(['code'=>-1, 'msg'=>'主题不存在'], JSON_UNESCAPED_UNICODE));
+	setcookie('pan_preview', theme_preview_token($lay_theme), time() + 1800, '/', '', is_https(), false);
+	exit(json_encode(['code'=>0], JSON_UNESCAPED_UNICODE));
+break;
+case 'pageSave':
+	//自定义页面：create=1 新建，否则改标题；home=1/0 同时设 / 取消网站入口（DEC-20261026-001）
+	$cp_slug = isset($_POST['slug']) && is_string($_POST['slug']) ? strtolower(trim($_POST['slug'])) : '';
+	$cp_res = custom_page_save($cp_slug, isset($_POST['title']) ? $_POST['title'] : '', !empty($_POST['create']), isset($_POST['shell']) ? !empty($_POST['shell']) : null);
+	if($cp_res !== true)exit(json_encode(['code'=>-1, 'msg'=>$cp_res], JSON_UNESCAPED_UNICODE));
+	if(isset($_POST['home'])){
+		if(!empty($_POST['home']))home_page_set($cp_slug);
+		elseif(home_page_slug() === $cp_slug)home_page_set('');
+	}
+	exit(json_encode(['code'=>0, 'msg'=>!empty($_POST['create']) ? '页面已建好' : '已保存', 'pages'=>layout_editor_page_list(), 'home'=>home_page_slug()], JSON_UNESCAPED_UNICODE));
+break;
+case 'pageDelete':
+	$cp_res = custom_page_delete(isset($_POST['slug']) && is_string($_POST['slug']) ? $_POST['slug'] : '');
+	if($cp_res !== true)exit(json_encode(['code'=>-1, 'msg'=>$cp_res], JSON_UNESCAPED_UNICODE));
+	exit(json_encode(['code'=>0, 'msg'=>'页面已删除', 'pages'=>layout_editor_page_list(), 'home'=>home_page_slug()], JSON_UNESCAPED_UNICODE));
+break;
 case 'set':
 	if(isset($_POST['green_label_porn'])){
 		$_POST['green_label_porn'] = implode(',',$_POST['green_label_porn']);

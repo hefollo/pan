@@ -1,0 +1,14 @@
+{
+    "id": "mac",
+    "name": "macOS 窗口风",
+    "description": "整站套进一个 macOS 窗口：带红黄绿三颗灯的标题栏、底部状态栏，文件列表默认是访达式图标网格，可一键切回列表视图；后台和登录页同款窗口。",
+    "version": "1.0.0",
+    "author": "pan",
+    "engine": 1,
+    "group": "layout",
+    "flags": [
+        "layout"
+    ],
+    "legacy": true,
+    "sort": 50
+}

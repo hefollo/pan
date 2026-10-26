@@ -1,0 +1,134 @@
+{{=<% %>=}}
+        <div class="uc-section uc-api-docs">
+            <div class="uc-section-title"><span>上传 API 对接文档</span></div>
+
+            <div class="uc-api-doc-block">
+                <h3><em>1</em> 接口与鉴权</h3>
+                <p>向下面的地址发送 <code>POST</code> 请求，请求体必须使用 <code>multipart/form-data</code>。推荐把密钥放在标准 Bearer 请求头中；兼容方式是使用 <code>X-API-Key</code> 请求头。</p>
+                <div class="uc-api-endpoint"><code><%endpoint%></code><button type="button" class="uc-btn uc-btn-sm" data-api-copy-text="<%endpoint%>"><i class="fa fa-copy" aria-hidden="true"></i> 复制地址</button></div>
+                <div class="uc-api-auth-lines">
+                    <code>Authorization: Bearer pan_你的完整密钥</code>
+                    <span>或</span>
+                    <code>X-API-Key: pan_你的完整密钥</code>
+                </div>
+                <p class="uc-tip uc-hint"><i class="fa fa-shield" aria-hidden="true"></i> 密钥相当于上传凭证，请勿放进公开网页、公开代码仓库或 URL 参数中。CDN、反向代理必须透传上述请求头。</p>
+            </div>
+
+            <div class="uc-api-doc-block">
+                <h3><em>2</em> 请求参数</h3>
+                <div class="table-responsive">
+                    <table class="table table-hover uc-api-doc-table">
+                        <thead><tr><th>位置</th><th>名称</th><th>必填</th><th>说明</th></tr></thead>
+                        <tbody>
+                            <tr><td>请求头</td><td><code>Authorization</code></td><td>是</td><td><code>Bearer pan_完整密钥</code>；也可改用 <code>X-API-Key</code></td></tr>
+                            <tr><td>表单</td><td><code>file</code></td><td>是</td><td>需要上传的文件</td></tr>
+                            <tr><td>表单</td><td><code>show</code></td><td>否</td><td><code>1</code> 表示在首页公开显示；不传或传 <code>0</code> 表示私密</td></tr>
+                            <tr><td>表单</td><td><code>ispwd</code></td><td>否</td><td><code>1</code> 表示启用访问密码，默认 <code>0</code></td></tr>
+                            <tr><td>表单</td><td><code>pwd</code></td><td>否</td><td>访问密码，仅支持字母和数字；需同时传 <code>ispwd=1</code></td></tr>
+                            <tr><td>表单</td><td><code>format</code></td><td>否</td><td>返回格式：<code>json</code>、<code>jsonp</code> 或 <code>form</code>，推荐并默认使用 <code>json</code></td></tr>
+                            <tr><td>表单</td><td><code>callback</code></td><td>否</td><td>仅在 <code>format=jsonp</code> 时使用的回调函数名</td></tr>
+                            <tr><td>表单</td><td><code>backurl</code></td><td>否</td><td>仅在 <code>format=form</code> 上传成功后使用，必须是 HTTP(S) 地址</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="uc-api-doc-block">
+                <h3><em>3</em> 返回数据</h3>
+                <p>JSON 返回中的 <code>code</code> 为 <code>0</code> 才表示成功。调用程序应判断该字段，不要只判断 HTTP 状态码。</p>
+                <div class="table-responsive">
+                    <table class="table table-hover uc-api-doc-table">
+                        <thead><tr><th>字段</th><th>类型</th><th>说明</th></tr></thead>
+                        <tbody>
+                            <tr><td><code>code</code></td><td>整数</td><td><code>0</code> 成功；<code>-5</code> 鉴权或权限失败；<code>-4</code> 接口关闭或来源错误；其它失败通常为 <code>-1</code></td></tr>
+                            <tr><td><code>msg</code></td><td>字符串</td><td>成功提示或具体失败原因</td></tr>
+                            <tr><td><code>exists</code></td><td>整数</td><td><code>1</code> 表示服务器已有相同内容并完成秒传，<code>0</code> 表示新上传</td></tr>
+                            <tr><td><code>id</code> / <code>token</code></td><td>整数 / 字符串</td><td>文件记录 ID 和访问标识</td></tr>
+                            <tr><td><code>hash</code></td><td>字符串</td><td>文件 MD5</td></tr>
+                            <tr><td><code>name</code> / <code>size</code> / <code>type</code></td><td>混合</td><td>文件名、字节数和扩展名</td></tr>
+                            <tr><td><code>downurl</code></td><td>字符串</td><td>文件下载地址</td></tr>
+                            <tr><td><code>viewurl</code></td><td>字符串</td><td>可预览格式才会返回的预览地址</td></tr>
+                            <tr><td><code>error</code></td><td>字符串</td><td>部分失败响应附带的机器可读错误类型</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="uc-api-code">
+                    <div><b>成功响应示例</b><button type="button" data-api-copy-code><i class="fa fa-copy" aria-hidden="true"></i> 复制</button></div>
+                    <pre><code>{
+  "code": 0,
+  "msg": "文件上传成功！",
+  "exists": 0,
+  "id": 123,
+  "token": "文件访问标识",
+  "hash": "文件MD5",
+  "name": "example.jpg",
+  "size": 58937,
+  "type": "jpg",
+  "downurl": "https://站点地址/down.php/文件访问标识.jpg",
+  "viewurl": "https://站点地址/view.php/文件访问标识.jpg"
+}</code></pre>
+                </div>
+            </div>
+
+            <div class="uc-api-doc-block">
+                <h3><em>4</em> 调用示例</h3>
+                <div class="uc-api-code">
+                    <div><b>cURL</b><button type="button" data-api-copy-code><i class="fa fa-copy" aria-hidden="true"></i> 复制</button></div>
+                    <pre><code>curl -X POST \
+  -H "Authorization: Bearer pan_请替换为你的完整密钥" \
+  -F "file=@example.jpg" \
+  -F "show=0" \
+  -F "format=json" \
+  "<%endpoint%>"</code></pre>
+                </div>
+                <div class="uc-api-code">
+                    <div><b>PHP cURL</b><button type="button" data-api-copy-code><i class="fa fa-copy" aria-hidden="true"></i> 复制</button></div>
+                    <pre><code>&lt;?php
+$ch = curl_init('<%endpoint%>');
+curl_setopt_array($ch, [
+    CURLOPT_POST =&gt; true,
+    CURLOPT_RETURNTRANSFER =&gt; true,
+    CURLOPT_HTTPHEADER =&gt; [
+        'Authorization: Bearer pan_请替换为你的完整密钥',
+    ],
+    CURLOPT_POSTFIELDS =&gt; [
+        'file' =&gt; new CURLFile('/path/to/example.jpg'),
+        'show' =&gt; '0',
+        'format' =&gt; 'json',
+    ],
+]);
+$response = curl_exec($ch);
+if ($response === false) {
+    throw new RuntimeException(curl_error($ch));
+}
+$result = json_decode($response, true);
+if (!is_array($result) || $result['code'] !== 0) {
+    throw new RuntimeException($result['msg'] ?? '上传失败');
+}
+echo $result['downurl'];</code></pre>
+                </div>
+                <div class="uc-api-code">
+                    <div><b>JavaScript（Node.js 18+）</b><button type="button" data-api-copy-code><i class="fa fa-copy" aria-hidden="true"></i> 复制</button></div>
+                    <pre><code>const fs = require('node:fs');
+const form = new FormData();
+form.append(
+  'file',
+  new Blob([fs.readFileSync('./example.jpg')]),
+  'example.jpg'
+);
+form.append('show', '0');
+form.append('format', 'json');
+
+const response = await fetch('<%endpoint%>', {
+  method: 'POST',
+  headers: {
+    Authorization: 'Bearer pan_请替换为你的完整密钥'
+  },
+  body: form
+});
+const result = await response.json();
+if (result.code !== 0) throw new Error(result.msg || '上传失败');
+console.log(result.downurl);</code></pre>
+                </div>
+            </div>
+        </div>

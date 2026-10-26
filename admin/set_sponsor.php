@@ -14,6 +14,7 @@ foreach($sponsor_imgs as $k=>&$v){
 }
 unset($v);
 ?>
+<?php theme_panel_begin('modal', '赞助记录弹窗');?>
 <div class="modal" id="modal-store" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
 	<div class="modal-dialog">
 		<div class="modal-content animated flipInX">
@@ -63,8 +64,8 @@ unset($v);
 		</div>
 	</div>
 </div>
-  <div class="container">
-    <div class="admin-page-wide">
+<?php theme_panel_end();?>
+<?php theme_panel_begin('pay_img', '赞助页收款码设置');?>
 		<div class="panel panel-default">
 			<div class="panel-heading"><h3 class="panel-title">赞助页收款码设置</h3></div>
 			<div class="panel-body">
@@ -87,6 +88,8 @@ unset($v);
 				</form>
 			</div>
 		</div>
+<?php theme_panel_end();?>
+<?php theme_panel_begin('toolbar', '搜索工具条');?>
 	    <form onsubmit="return searchSubmit()" method="GET" class="form-inline" id="searchToolbar">
 	        <div class="form-group">
           <label>搜索</label>
@@ -102,10 +105,13 @@ unset($v);
 				<button type="button" class="btn btn-success" onclick="addSponsor()"><i class="fa fa-plus"></i> 新增赞助记录</button>
 			</div>
 		</form>
+<?php theme_panel_end();?>
+<?php theme_panel_begin('table', '赞助记录列表');?>
 		<table id="listTable">
 	  	</table>
-    </div>
-  </div>
+<?php theme_panel_end();?>
+<?php //页面内容是布局 admin/set_sponsor（includes/layouts/admin/set_sponsor.json），各面板在上面用 theme_panel_begin/end 捕获，见 DEC-20261025-003
+echo theme_render_layout('admin/set_sponsor', [], 'admin', $site_theme);?>
 <script src="https://s4.zstatic.net/ajax/libs/bootstrap-table/1.21.4/bootstrap-table.min.js"></script>
 <script src="https://s4.zstatic.net/ajax/libs/bootstrap-table/1.21.4/extensions/page-jump-to/bootstrap-table-page-jump-to.min.js"></script>
 <script src="../assets/js/custom.js"></script>

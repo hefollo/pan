@@ -1,0 +1,16 @@
+<section class="pc-media{{#right}} pc-media-right{{/right}}">
+{{#cfg.image}}
+  <div class="pc-media-image"><img src="{{cfg.image}}" alt="" loading="lazy"></div>
+{{/cfg.image}}
+  <div class="pc-media-text">
+{{#cfg.title}}
+    <h3 class="pc-media-title">{{cfg.title}}</h3>
+{{/cfg.title}}
+{{#lines}}
+    <p>{{text}}</p>
+{{/lines}}
+{{#has_btn}}
+    <a class="btn btn-primary pc-btn" href="{{btn_href}}">{{cfg.btn_text}}</a>
+{{/has_btn}}
+  </div>
+</section>

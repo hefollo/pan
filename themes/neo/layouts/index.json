@@ -1,0 +1,115 @@
+{
+    "nodes": [
+        {
+            "id": "notice",
+            "block": "common.notice"
+        },
+        {
+            "id": "ads",
+            "block": "common.ads_banner"
+        },
+        {
+            "id": "b145",
+            "block": "core.box",
+            "config": {
+                "class": "container"
+            },
+            "children": [
+                {
+                    "id": "b144",
+                    "block": "core.box",
+                    "config": {
+                        "class": "layout-shell"
+                    },
+                    "children": [
+                        {
+                            "id": "b142",
+                            "block": "core.box",
+                            "config": {
+                                "class": "studio-main"
+                            },
+                            "children": [
+                                {
+                                    "id": "b135",
+                                    "block": "studio.hero",
+                                    "config": {
+                                        "title": "让分享更有态度",
+                                        "sub": "高效的文件管理与分享平台，简单 · 安全 · 永久可用",
+                                        "slogan": "文件不止存储<br>更是连接世界的方式！",
+                                        "badge": 0,
+                                        "cta": 1,
+                                        "cta_text": "立即上传"
+                                    }
+                                },
+                                {
+                                    "id": "b136",
+                                    "block": "index.stats",
+                                    "config": {
+                                        "extra": "doc"
+                                    }
+                                },
+                                {
+                                    "id": "b141",
+                                    "block": "core.box",
+                                    "config": {
+                                        "class": "well bs-component"
+                                    },
+                                    "children": [
+                                        {
+                                            "id": "b137",
+                                            "block": "index.title"
+                                        },
+                                        {
+                                            "id": "b138",
+                                            "block": "common.permbar"
+                                        },
+                                        {
+                                            "id": "b139",
+                                            "block": "index.filterbar",
+                                            "config": {
+                                                "tools": 1
+                                            }
+                                        },
+                                        {
+                                            "id": "b140",
+                                            "block": "index.filelist",
+                                            "config": {
+                                                "action_col": "right"
+                                            }
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "id": "b143",
+                            "block": "core.box",
+                            "config": {
+                                "class": "studio-side",
+                                "tag": "aside"
+                            },
+                            "children": [
+                                {
+                                    "id": "b131",
+                                    "block": "studio.panel_today"
+                                },
+                                {
+                                    "id": "b132",
+                                    "block": "studio.panel_rights"
+                                },
+                                {
+                                    "id": "b133",
+                                    "block": "studio.panel_acts"
+                                },
+                                {
+                                    "id": "b134",
+                                    "block": "studio.panel_feed"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

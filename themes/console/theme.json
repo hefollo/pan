@@ -1,0 +1,14 @@
+{
+    "id": "console",
+    "name": "数据控制台风",
+    "description": "更紧凑的左侧侧栏，标题与搜索独立成顶栏，列表改为白色卡片，信息密度最高。",
+    "version": "1.0.0",
+    "author": "pan",
+    "engine": 1,
+    "group": "layout",
+    "flags": [
+        "layout"
+    ],
+    "legacy": true,
+    "sort": 20
+}

@@ -1,0 +1,53 @@
+/*
+ * 示例主题「便签风」的前台样式。
+ * 启用后 <body> 上有 theme-sample-note 和 theme-cloud（父主题）两个类，选择器都用 body.theme-sample-note 开头，
+ * 只影响这个主题，也压得过父主题的同名规则。
+ * 主题设置变成 CSS 变量：--theme-<键名>（下划线换成短横线），比如 --theme-paper、--theme-radius。
+ * primary / primary_dark 两个设置程序会自动接到全站的 --primary / --primary-dark 上，这里不用再写。
+ */
+body.theme-sample-note{
+	background-color: var(--theme-paper, #fffbeb);
+	background-image: var(--theme-paper-texture, none);
+}
+body.theme-sample-note .well,
+body.theme-sample-note .panel{
+	border-radius: var(--theme-radius, 14px);
+}
+
+/* 欢迎横幅（theme.welcome） */
+.note-welcome{
+	margin: 18px 0;
+	padding: 28px 24px;
+	border-radius: var(--theme-radius, 14px);
+	background: #fff;
+	border-left: 6px solid var(--primary, #d97706);
+	box-shadow: 0 6px 18px rgba(120, 80, 0, .08);
+}
+.note-welcome-title{ margin: 0 0 8px; font-size: 26px; font-weight: 700; }
+.note-welcome-text{ margin: 0 0 14px; color: #6b5b3e; }
+.note-welcome-site{ display: block; margin-top: 12px; font-size: 12px; color: #a08c64; }
+
+/* 链接组（theme.links） */
+.note-links{ display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 16px; }
+.note-links-title{ font-weight: 600; margin-right: 4px; }
+.note-link{
+	padding: 4px 12px;
+	border-radius: 999px;
+	background: rgba(217, 119, 6, .1);
+	color: var(--primary, #d97706);
+}
+.note-link:hover{ background: rgba(217, 119, 6, .2); text-decoration: none; }
+
+/* 便签纸（theme.paper，容器） */
+.note-paper{
+	padding: 16px;
+	border-radius: var(--theme-radius, 14px);
+	background: #fff8d6;
+	box-shadow: 0 2px 0 rgba(0, 0, 0, .05);
+}
+.note-paper-tilt{ transform: rotate(-.6deg); }
+
+@media (max-width: 767px){
+	.note-welcome{ padding: 20px 16px; }
+	.note-welcome-title{ font-size: 21px; }
+}

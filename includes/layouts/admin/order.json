@@ -1,0 +1,36 @@
+{
+    "nodes": [
+        {
+            "id": "box1",
+            "block": "core.box",
+            "config": {
+                "class": "container"
+            },
+            "children": [
+                {
+                    "id": "box2",
+                    "block": "core.box",
+                    "config": {
+                        "class": "admin-page-wide"
+                    },
+                    "children": [
+                        {
+                            "id": "msg",
+                            "block": "admin.panel",
+                            "config": {
+                                "panel": "msg"
+                            }
+                        },
+                        {
+                            "id": "orders",
+                            "block": "admin.panel",
+                            "config": {
+                                "panel": "orders"
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

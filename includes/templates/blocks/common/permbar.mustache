@@ -1,0 +1,11 @@
+<div class="perm-bar">
+{{#items}}
+    <span class="perm-item"><i class="fa {{icon}}" aria-hidden="true"></i><em>{{label}}</em><b>{{value}}</b></span>
+{{/items}}
+{{#buy_text}}
+    <a class="perm-buy" href="./buy.php">{{buy_text}} <i class="fa fa-angle-right" aria-hidden="true"></i></a>
+{{/buy_text}}
+{{#login_tip}}
+    <a class="perm-buy perm-buy-plain" href="./login.php">登录后额度独立计算 <i class="fa fa-angle-right" aria-hidden="true"></i></a>
+{{/login_tip}}
+</div>

@@ -1,0 +1,28 @@
+{{#audio}}
+<script type="text/javascript" src="https://s4.zstatic.net/ajax/libs/aplayer/1.10.1/APlayer.min.js"></script>
+<script type="text/javascript">
+var ap = new APlayer({
+  container: document.getElementById('aplayer'),
+  loop: 'none',
+  theme: '#b2dae6',
+  audio: [{
+      title: {{{name_json}}},
+      author: 'none',
+      url: '{{{viewurl_all_html}}}',
+      cover: './assets/img/music.png',
+  }]
+});
+</script>
+{{/audio}}
+{{#video}}
+<script type="text/javascript" src="assets/js/ckplayer.min.js"></script>
+{{#hls}}<script src="https://s4.zstatic.net/ajax/libs/hls.js/1.2.4/hls.min.js"></script>{{/hls}}{{#flv}}<script src="https://s4.zstatic.net/ajax/libs/flv.js/1.6.2/flv.min.js"></script>{{/flv}}<script type="text/javascript">
+  var videoObject = {
+    container: '.videoplayer',
+    plug:'{{plug}}',
+    video:'{{{viewurl_all_html}}}',
+    webFull:true,
+  };
+  var player=new ckplayer(videoObject);
+</script>
+{{/video}}

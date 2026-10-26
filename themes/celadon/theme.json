@@ -1,0 +1,12 @@
+{
+    "id": "celadon",
+    "name": "青瓷微澜",
+    "description": "青瓷色同心波纹、留白通透，冷静耐看，适合作品集、图床和长时间浏览的列表页。",
+    "version": "1.0.0",
+    "author": "pan",
+    "engine": 1,
+    "group": "color",
+    "flags": [],
+    "legacy": true,
+    "sort": 190
+}

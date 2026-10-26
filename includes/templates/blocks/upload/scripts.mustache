@@ -1,0 +1,20 @@
+<script src="https://s4.zstatic.net/ajax/libs/vue/2.6.14/vue.min.js"></script>
+<link rel="stylesheet" href="https://s4.zstatic.net/ajax/libs/layer/3.1.1/theme/default/layer.css">
+<script src="https://s4.zstatic.net/ajax/libs/layer/3.1.1/layer.js"></script>
+<script src="https://s4.zstatic.net/ajax/libs/spark-md5/3.0.2/spark-md5.min.js"></script>
+<script>
+var upload_max_filesize = '{{size}}';
+var upload_count_limit = {{limit}};
+var upload_count_used = {{used}};
+var upload_count_remaining = {{remaining}};
+var upload_folder_id = {{folder_id}};
+/*
+ * 存储下拉的默认选中项。必须在这儿给出，不能等 Vue 挂载后再去读 select 的值：
+ * v-model 会在首次渲染时按数据（空串）把 select 刷成「未选中」，那时再读就是 null 了。
+ * 没开多存储时这里是空串，服务端会落到默认存储。
+ */
+var upload_storage_default = {{{storage_json}}};
+//「在首页文件列表显示」默认勾不勾，后台「文件上传设置」里改
+var upload_show_default = {{show_default}};
+</script>
+<script src="./assets/js/uploadnew.js?v={{version}}"></script>

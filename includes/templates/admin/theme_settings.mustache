@@ -1,0 +1,50 @@
+<div class="panel panel-primary theme-settings-panel">
+<div class="panel-heading"><h3 class="panel-title">主题设置：{{name}}</h3></div>
+<div class="panel-body">
+  <form id="themeSettingsForm" class="form-horizontal" role="form" onsubmit="return saveThemeSettings(this)">
+    <input type="hidden" name="theme" value="{{id}}">
+{{#fields}}
+    <div class="form-group">
+      <label class="col-sm-2 control-label">{{label}}</label>
+      <div class="col-sm-10">
+{{#is_text}}<input type="text" class="form-control" name="s[{{key}}]" value="{{value}}">{{/is_text}}
+{{#is_number}}<input type="number" class="form-control" name="s[{{key}}]" value="{{value}}" step="any"{{#has_min}} min="{{min}}"{{/has_min}}{{#has_max}} max="{{max}}"{{/has_max}}>{{/is_number}}
+{{#is_textarea}}<textarea class="form-control" name="s[{{key}}]" rows="4">{{value}}</textarea>{{/is_textarea}}
+{{#is_switch}}<select class="form-control" name="s[{{key}}]"><option value="1"{{#on}} selected{{/on}}>开启</option><option value="0"{{^on}} selected{{/on}}>关闭</option></select>{{/is_switch}}
+{{#is_select}}<select class="form-control" name="s[{{key}}]">{{#options}}<option value="{{value}}"{{#selected}} selected{{/selected}}>{{label}}</option>{{/options}}</select>{{/is_select}}
+{{#is_color}}<input type="color" class="form-control theme-setting-color" name="s[{{key}}]" value="{{value}}">{{/is_color}}
+{{#is_image}}<input type="text" class="form-control" name="s[{{key}}]" value="{{value}}" placeholder="图片地址：站内路径或 http(s) 链接">{{/is_image}}
+{{#help}}<p class="help-block">{{help}}</p>{{/help}}
+      </div>
+    </div>
+{{/fields}}
+    <div class="form-group">
+      <div class="col-sm-offset-2 col-sm-10">
+        <button type="submit" class="btn btn-primary">保存主题设置</button>
+        <button type="button" class="btn btn-default" onclick="resetThemeSettings()">恢复默认</button>
+      </div>
+    </div>
+  </form>
+</div>
+<div class="panel-footer"><span class="glyphicon glyphicon-info-sign"></span> 这些是主题包自带的可调项（theme.json 的 settings），颜色、数字类会变成页面里的 CSS 变量 --theme-xxx。</div>
+</div>
+<script>
+function saveThemeSettings(form){
+	var ii = layer.load(2, {shade:[0.1,'#fff']});
+	$.post('ajax.php?act=themeSettings', $(form).serialize(), function(res){
+		layer.close(ii);
+		if(res && res.code === 0)layer.alert('主题设置已保存', {icon:1, closeBtn:false}, function(){ window.location.reload(); });
+		else layer.alert((res && res.msg) || '保存失败', {icon:2});
+	}, 'json').fail(function(){ layer.close(ii); layer.alert('服务器错误', {icon:2}); });
+	return false;
+}
+function resetThemeSettings(){
+	layer.confirm('把这个主题的设置恢复成主题包里的默认值？', {icon:3}, function(idx){
+		layer.close(idx);
+		$.post('ajax.php?act=themeSettings', {theme: $('#themeSettingsForm [name=theme]').val(), reset: 1}, function(res){
+			if(res && res.code === 0)window.location.reload();
+			else layer.alert((res && res.msg) || '操作失败', {icon:2});
+		}, 'json');
+	});
+}
+</script>

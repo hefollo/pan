@@ -16,7 +16,7 @@ create table `pre_config` (
 --   · 如果没有并进来 → 这里保持旧值不动，让全新安装照常跑一次升级把它补上。
 -- 改错方向（并进来了却不改版本号）只是多跑一趟空升级；
 -- 改反了（没并进来却改了版本号）会让新装的站永久缺表缺字段，且毫无报错。
-INSERT INTO `pre_config` VALUES ('version', '1033');
+INSERT INTO `pre_config` VALUES ('version', '1034');
 INSERT INTO `pre_config` VALUES ('level_upload_migrated', '1');
 INSERT INTO `pre_config` VALUES ('level_migrated', '1');
 INSERT INTO `pre_config` VALUES ('admin_user', 'admin');
@@ -438,6 +438,27 @@ CREATE TABLE `pre_traffic` (
   `bytes` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT '这个月被取走的字节数',
   PRIMARY KEY (`uid`,`month`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='分享流量用量';
+
+DROP TABLE IF EXISTS `pre_theme`;
+CREATE TABLE `pre_theme` (
+  `id` varchar(40) NOT NULL COMMENT '主题 id，即目录名',
+  `source` varchar(10) NOT NULL DEFAULT 'builtin' COMMENT 'builtin 内置 / upload 站长上传',
+  `version` varchar(20) NOT NULL DEFAULT '' COMMENT '安装时 theme.json 里的版本号',
+  `settings` mediumtext COMMENT '主题设置（JSON），按 theme.json 的 settings 解释',
+  `installed_at` datetime DEFAULT NULL,
+  `updated_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='主题与主题设置';
+
+DROP TABLE IF EXISTS `pre_layout`;
+CREATE TABLE `pre_layout` (
+  `theme` varchar(40) NOT NULL COMMENT '主题 id',
+  `page` varchar(60) NOT NULL COMMENT '页面：index、upload……，后台页面以 admin/ 开头，公共外壳是 _shell',
+  `draft` mediumtext COMMENT '草稿布局（JSON），只在后台预览里生效',
+  `published` mediumtext COMMENT '已发布布局（JSON），访客看到的',
+  `updated_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`theme`,`page`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='页面卡片布局';
 
 DROP TABLE IF EXISTS `pre_upload_traffic`;
 CREATE TABLE `pre_upload_traffic` (

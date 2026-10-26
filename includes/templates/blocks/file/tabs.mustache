@@ -1,0 +1,121 @@
+      <div class="panel panel-default">
+          <div class="panel-body" style="padding: 0px;">
+              <ul class="nav nav-tabs" style="margin-bottom: 15px;">
+                  <li class="active"><a href="#link" data-toggle="tab"><i class="fa fa-link" aria-hidden="true"></i> 文件外链</a>
+                  </li>
+                  <li><a href="#code" data-toggle="tab"><i class="fa fa-code" aria-hidden="true"></i> 代码调用</a>
+                  </li>
+                  <li><a href="#info" data-toggle="tab"><i class="fa fa-info-circle" aria-hidden="true"></i> 文件详情</a>
+                  </li>
+                  <li class="{{^is_mine}}hide{{/is_mine}}"><a href="#manager" data-toggle="tab"><i class="fa fa-cog" aria-hidden="true"></i> 管理</a>
+                  </li>
+              </ul>
+              <div id="myTabContent" class="tab-content" style="padding: 19px;">
+                  <div class="tab-pane fade active in" id="link">
+                    <div class="form-group row {{^is_media}}hide{{/is_media}}">
+                      <label for="link1" class="col-md-2 control-label">{{{linktitle_html}}}：</label>
+                      <div class="col-md-10">
+                        <div class="input-group">
+                          <input type="text" class="form-control" id="link1" readonly="readonly" value="{{{viewurl_all_html}}}">
+                          <span class="input-group-btn">
+                          <button class="btn btn-primary btn-raised copy-btn" type="button" data-clipboard-text="{{{viewurl_all_html}}}">复制<div class="ripple-container"></div></button>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="form-group row">
+                      <label for="link2" class="col-md-2 control-label">下载链接：</label>
+                      <div class="col-md-10">
+                        <div class="input-group">
+                          <input type="text" class="form-control" id="link2" readonly="readonly" value="{{{downurl_all_html}}}">
+                          <span class="input-group-btn">
+                          <button class="btn btn-primary btn-raised copy-btn" type="button" data-clipboard-text="{{{downurl_all_html}}}">复制<div class="ripple-container"></div></button>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="form-group row {{^text_viewable}}hide{{/text_viewable}}">
+                      <label for="link3" class="col-md-2 control-label">查看链接：</label>
+                      <div class="col-md-10">
+                        <div class="input-group">
+                          <input type="text" class="form-control" id="link3" readonly="readonly" value="{{{texturl_all_html}}}">
+                          <span class="input-group-btn">
+                          <button class="btn btn-primary btn-raised copy-btn" type="button" data-clipboard-text="{{{texturl_all_html}}}">复制<div class="ripple-container"></div></button>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="tab-pane fade" id="code">
+                    <div class="form-group row {{^is_player}}hide{{/is_player}}">
+                      <label for="code1" class="col-md-2 control-label">播放器代码：</label>
+                      <div class="col-md-10">
+                        <div class="input-group">
+                          <input type="text" class="form-control" id="code1" readonly="readonly" value="{{{htmlcode2_html}}}">
+                          <span class="input-group-btn">
+                          <button class="btn btn-primary btn-raised copy-btn" type="button" data-clipboard-text="{{{htmlcode2_html}}}">复制<div class="ripple-container"></div></button>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="form-group row">
+                      <label for="code2" class="col-md-2 control-label">HTML代码：</label>
+                      <div class="col-md-10">
+                        <div class="input-group">
+                          <input type="text" class="form-control" id="code2" readonly="readonly" value="{{{htmlcode_html}}}">
+                          <span class="input-group-btn">
+                          <button class="btn btn-primary btn-raised copy-btn" type="button" data-clipboard-text="{{{htmlcode_html}}}">复制<div class="ripple-container"></div></button>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="form-group row">
+                      <label for="code3" class="col-md-2 control-label">UBB代码：</label>
+                      <div class="col-md-10">
+                        <div class="input-group">
+                          <input type="text" class="form-control" id="code3" readonly="readonly" value="{{{ubbcode_html}}}">
+                          <span class="input-group-btn">
+                          <button class="btn btn-primary btn-raised copy-btn" type="button" data-clipboard-text="{{{ubbcode_html}}}">复制<div class="ripple-container"></div></button>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="tab-pane fade" id="info">
+                      <div class="row" align="center">
+                          <table class="table table-bordered fileinfo-table">
+                              <tr>
+                                  <th width="97">上传者IP：</th><td width="100">{{{ip_html}}}</td>
+                                  <th width="100">上传时间：</th><td width="168">{{{addtime_html}}}</td>
+                              </tr>
+                              <tr>
+                                  <th>下载次数：</th><td>{{{count_html}}}</td>
+                                  <th>文件大小：</th><td>{{{size_full_html}}}</td>
+                              </tr>
+                          </table>
+                      </div>
+                  </div>
+                  <div class="tab-pane fade" id="manager">
+                      <div class="row" align="center">
+                          <div class="col-md-12">
+                            <input type="hidden" id="hash" name="hash" value="{{{hash_html}}}">
+                            <input type="hidden" id="file_id" value="{{id}}">
+                            <input type="hidden" id="csrf_token" name="csrf_token" value="{{{csrf_html}}}">
+                            <input type="file" id="replaceFileInput" style="display:none">
+{{#editable}}
+                            <a href="edit.php?id={{id}}" class="btn btn-raised btn-info"><i class="fa fa-pencil-square-o" aria-hidden="true"></i> 在线编辑</a>
+{{/editable}}
+                            <button type="button" onclick="replace_upload()" class="btn btn-raised btn-warning"><i class="fa fa-refresh" aria-hidden="true"></i> 重新上传替换（链接不变）</button>
+{{^delete_locked}}
+                            <button onclick="delete_confirm()" class="btn btn-raised btn-danger"><i class="fa fa-close" aria-hidden="true"></i> 删除文件</button>
+{{/delete_locked}}
+{{#delete_locked}}
+                            <button type="button" class="btn btn-raised btn-danger" disabled title="{{delete_locked}}"><i class="fa fa-close" aria-hidden="true"></i> 无法删除</button>
+                            <p class="text-muted" style="margin-top:8px">{{delete_locked}}</p>
+{{/delete_locked}}
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      </div>

@@ -1,0 +1,12 @@
+{"nodes": [
+  {"id": "container", "block": "core.box", "config": {"class": "container"}, "children": [
+    {"id": "col", "block": "core.box", "config": {"class": "col-xs-10 col-sm-8 col-md-6 col-lg-5 center-block", "style": "float: none;"}, "children": [
+      {"id": "panel", "block": "core.box", "config": {"class": "well bs-component loginpanel"}, "children": [
+        {"id": "empty", "block": "login.empty"},
+        {"id": "title", "block": "login.title"},
+        {"id": "mail", "block": "login.mail"},
+        {"id": "oauth", "block": "login.oauth"}
+      ]}
+    ]}
+  ]}
+]}

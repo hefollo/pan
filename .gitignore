@@ -10,6 +10,8 @@
 /uploads/
 /upload/
 /storage/
+#站长在后台上传的主题包（DEC-20261025-003）
+/content/
 /data/
 /runtime/
 /cache/

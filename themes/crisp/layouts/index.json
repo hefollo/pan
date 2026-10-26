@@ -1,0 +1,115 @@
+{
+    "nodes": [
+        {
+            "id": "notice",
+            "block": "common.notice"
+        },
+        {
+            "id": "ads",
+            "block": "common.ads_banner"
+        },
+        {
+            "id": "b113",
+            "block": "core.box",
+            "config": {
+                "class": "container"
+            },
+            "children": [
+                {
+                    "id": "b112",
+                    "block": "core.box",
+                    "config": {
+                        "class": "layout-shell"
+                    },
+                    "children": [
+                        {
+                            "id": "b110",
+                            "block": "core.box",
+                            "config": {
+                                "class": "studio-main"
+                            },
+                            "children": [
+                                {
+                                    "id": "b103",
+                                    "block": "studio.hero",
+                                    "config": {
+                                        "title": "高效存储 · 自由分享",
+                                        "sub": "{site}，让文件传输更简单、更安全、更高效。",
+                                        "slogan": "分享创造价值<br>让数据触手可及！",
+                                        "badge": 0,
+                                        "checks": "高速上传下载\n多格式在线预览\n永久外链分享\n企业级安全防护",
+                                        "cta": 1
+                                    }
+                                },
+                                {
+                                    "id": "b104",
+                                    "block": "index.stats",
+                                    "config": {
+                                        "extra": "doc"
+                                    }
+                                },
+                                {
+                                    "id": "b109",
+                                    "block": "core.box",
+                                    "config": {
+                                        "class": "well bs-component"
+                                    },
+                                    "children": [
+                                        {
+                                            "id": "b105",
+                                            "block": "index.title"
+                                        },
+                                        {
+                                            "id": "b106",
+                                            "block": "common.permbar"
+                                        },
+                                        {
+                                            "id": "b107",
+                                            "block": "index.filterbar",
+                                            "config": {
+                                                "tools": 1
+                                            }
+                                        },
+                                        {
+                                            "id": "b108",
+                                            "block": "index.filelist",
+                                            "config": {
+                                                "action_col": "right"
+                                            }
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "id": "b111",
+                            "block": "core.box",
+                            "config": {
+                                "class": "studio-side",
+                                "tag": "aside"
+                            },
+                            "children": [
+                                {
+                                    "id": "b99",
+                                    "block": "studio.panel_store"
+                                },
+                                {
+                                    "id": "b100",
+                                    "block": "studio.panel_today"
+                                },
+                                {
+                                    "id": "b101",
+                                    "block": "studio.panel_rights"
+                                },
+                                {
+                                    "id": "b102",
+                                    "block": "studio.panel_feed"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

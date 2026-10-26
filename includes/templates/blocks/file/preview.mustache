@@ -1,0 +1,20 @@
+<div class="panel panel-primary">
+<div class="panel-heading">
+<h3 class="panel-title">{{{title_html}}}</h3>
+</div>
+<div class="panel-body" align="center">
+{{#is_image}}<div class="image_view"><a href="{{viewurl}}" title="点击查看原图"><img alt="loading" src="{{viewurl}}" class="image"></a></div>{{/is_image}}{{#is_audio}}<div class="view"><div id="aplayer"></div></div>{{/is_audio}}{{#is_video}}<div class="videoplayer"></div>{{/is_video}}{{#is_video_blocked}}<div class="view">
+  <div class="elseview">
+  <div class="tubiao"><i class="fa {{icon}}"></i> </div>
+</div>
+<div class="elsetext"><p>{{{name_html}}}</p><p>{{blocked_text}}</p></div>
+</div>{{/is_video_blocked}}{{#is_other}}<div class="view">
+  <div class="elseview">
+  <div class="tubiao"><i class="fa {{icon}}"></i> </div>
+</div>
+<div class="elsetext"><p>{{{name_html}}} ({{size}})</p>
+<a href="{{{downurl_html}}}" class="btn btn-raised btn-primary btn-lg"><i class="fa fa-download" aria-hidden="true"></i> 下载文件<div class="ripple-container"></div></a>{{#text_viewable}}&nbsp;<a href="{{{texturl_html}}}" class="btn btn-raised btn-info btn-lg" target="_blank"><i class="fa fa-eye" aria-hidden="true"></i> 查看内容<div class="ripple-container"></div></a>{{/text_viewable}}{{#office_url_html}}&nbsp;<a href="{{{office_url_html}}}" class="btn btn-raised btn-info btn-lg" target="_blank"><i class="fa fa-eye" aria-hidden="true"></i> 在线预览<div class="ripple-container"></div></a>{{/office_url_html}}
+</div>
+</div>{{/is_other}}
+</div>
+</div>

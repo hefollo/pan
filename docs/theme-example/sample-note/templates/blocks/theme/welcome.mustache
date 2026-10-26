@@ -1,0 +1,13 @@
+{{! 欢迎横幅：cfg 是这张卡片在后台「页面布局」里填的配置，theme.settings 是主题设置，site.title_html 是网站标题（原样输出） }}
+<div class="container">
+  <section class="note-welcome">
+    <h1 class="note-welcome-title">{{cfg.title}}</h1>
+{{#cfg.text}}
+    <p class="note-welcome-text">{{cfg.text}}</p>
+{{/cfg.text}}
+{{#cfg.show_btn}}
+    <a class="btn btn-primary note-welcome-btn" href="{{cfg.btn_link}}">{{cfg.btn_text}}</a>
+{{/cfg.show_btn}}
+    <span class="note-welcome-site">{{{site.title_html}}}</span>
+  </section>
+</div>

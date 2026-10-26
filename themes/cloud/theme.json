@@ -1,0 +1,12 @@
+{
+    "id": "cloud",
+    "name": "蓝白清爽",
+    "description": "蓝白清爽风格，适合默认展示。",
+    "version": "1.0.0",
+    "author": "pan",
+    "engine": 1,
+    "group": "color",
+    "flags": [],
+    "legacy": true,
+    "sort": 140
+}

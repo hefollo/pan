@@ -1,0 +1,28 @@
+      <div class="panel panel-primary">
+<div class="panel-heading">
+<h3 class="panel-title"><i class="fa fa-exclamation-circle"></i> 上传提示</h3>
+</div>
+<div class="list-group-item">
+**您的IP是{{clientip}}，请不要上传违规文件！
+</div>
+{{#size}}
+<div class="list-group-item">**上传无格式限制，当前服务器单个文件上传最大支持<b>{{size}}MB</b>！
+</div>
+{{/size}}
+{{^size}}
+<div class="list-group-item">**上传无格式限制，无大小限制</b>！
+</div>
+{{/size}}
+{{#limit}}
+<div class="list-group-item">**当前账号每天最多可上传 <b>{{limit}}</b> 个文件，今日剩余 <b>{{remaining}}</b> 个。
+</div>
+{{/limit}}
+{{#expire_text}}
+<div class="list-group-item">**当前账号权限：<b>{{expire_text}}</b>。
+</div>
+{{/expire_text}}
+{{#videoreview}}
+<div class="list-group-item">**当前网站已开启视频文件审核，如果上传的是视频文件，需要等待审核通过后才能下载和播放。
+</div>
+{{/videoreview}}
+</div>

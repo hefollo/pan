@@ -1,0 +1,15 @@
+{
+    "id": "studio",
+    "name": "蓝白工作台风",
+    "description": "白色分组侧栏（工作空间 / 个人中心，底部带升级卡）+ 顶部搜索条，文件列表页是蓝白横幅、四张统计卡、带筛选和排序的文件面板，右侧一列今日上传、我的权限、快捷操作和最近动态。",
+    "version": "1.0.0",
+    "author": "pan",
+    "engine": 1,
+    "group": "layout",
+    "flags": [
+        "layout",
+        "studio"
+    ],
+    "legacy": true,
+    "sort": 70
+}

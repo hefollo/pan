@@ -1,0 +1,15 @@
+{
+    "id": "skyline",
+    "name": "云端门户风",
+    "description": "家族里唯一一套顶部横向导航：天空渐变的大横幅带远山和居中大搜索框，下面是浅色统计卡和文件面板，右侧一列蓝色上传卡、存储空间、最近上传。后台保持顶栏布局。",
+    "version": "1.0.0",
+    "author": "pan",
+    "engine": 1,
+    "group": "layout",
+    "flags": [
+        "layout",
+        "studio"
+    ],
+    "legacy": true,
+    "sort": 130
+}

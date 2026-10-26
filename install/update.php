@@ -326,9 +326,16 @@ foreach([['pre_plan', 'upload_traffic'], ['pre_order', 'upload_traffic'], ['pre_
 	if(!$q || !$q->fetchColumn()){$need_1033 = true; break;}
 }
 if($need_1033)$sqls = array_merge($sqls, read_sql('update_1033.sql'));
-$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1033')";
-//上面 else 分支只按 1022 判断「已是最新」，从 1022～1032 升上来时要改回「升级完成」的提示
-if($version < 1033)$uptodate = false;
+//1034 外观体系重构（DEC-20261025-003）：新表 pre_theme、pre_layout，建表语句本身可重复执行
+$need_1034 = false;
+foreach(['pre_theme', 'pre_layout'] as $tbl_1034){
+	$q = $db->query("SHOW TABLES LIKE '".$tbl_1034."'");
+	if(!$q || !$q->fetchColumn()){$need_1034 = true; break;}
+}
+if($need_1034)$sqls = array_merge($sqls, read_sql('update_1034.sql'));
+$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1034')";
+//上面 else 分支只按 1022 判断「已是最新」，从 1022～1033 升上来时要改回「升级完成」的提示
+if($version < 1034)$uptodate = false;
 
 $success=0;$skipped=0;$error=0;$errorMsg=null;
 foreach ($sqls as $value) {

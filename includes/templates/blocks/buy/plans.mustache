@@ -1,0 +1,31 @@
+{{#groups}}
+        <div class="buy-group">
+{{^only_one}}
+            <div class="buy-group-title"><span>{{name}}</span><i>{{count}} 个套餐</i></div>
+{{/only_one}}
+        <div class="buy-plans">
+{{#plans}}
+            <div class="buy-plan">
+                <div class="buy-plan-name">{{name}}</div>
+                <div class="buy-plan-price"><small>¥</small>{{price}}{{#origin}}<del style="margin-left:8px;color:var(--muted);font-size:13px;font-weight:400">¥{{origin}}</del>{{/origin}}</div>
+                <ul class="buy-plan-list">
+{{#features}}
+                    <li><i class="fa fa-check" aria-hidden="true"></i> {{.}}</li>
+{{/features}}
+                </ul>
+{{#warn}}
+                <div class="buy-plan-warn">{{warn}}</div>
+{{/warn}}
+{{#logged_in}}
+{{#can_buy}}
+                <button type="button" class="buy-plan-btn" data-plan="{{id}}">{{btn}}</button>
+{{/can_buy}}
+{{/logged_in}}
+{{^logged_in}}
+                <a class="buy-plan-btn" href="./login.php">登录后购买</a>
+{{/logged_in}}
+            </div>
+{{/plans}}
+        </div>
+        </div>
+{{/groups}}
