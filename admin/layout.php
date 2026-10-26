@@ -52,7 +52,7 @@ $le_boot = ['themes'=>$le_themes, 'pages'=>layout_editor_page_list(), 'theme'=>$
           <button type="button" class="btn btn-sm btn-default" id="leWide" title="左边编辑区放宽（写代码时用），再点一次恢复"><i class="fa fa-arrows-h"></i> 宽屏编辑</button>
           <div class="btn-group btn-group-sm">
             <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">更多 <span class="caret"></span></button>
-            <ul class="dropdown-menu dropdown-menu-right">
+            <ul class="dropdown-menu le-more-menu">
               <li><a href="javascript:void(0)" id="leDiscard"><i class="fa fa-undo fa-fw"></i> 丢弃草稿</a></li>
               <li><a href="javascript:void(0)" id="leReset"><i class="fa fa-refresh fa-fw"></i> 恢复主题默认布局</a></li>
               <li class="divider"></li>
