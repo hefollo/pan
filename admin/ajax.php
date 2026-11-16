@@ -403,6 +403,8 @@ case 'userList':
 		if(is_array($rows))foreach($rows as $one)$upload_used[intval(substr($one['ukey'], 2))] = (int)$one['bytes'];
 	}
 	foreach($list as $row){
+		$row['space_text'] = space_text(intval($row['uid']));
+		$row['space_packs'] = space_pack_list(intval($row['uid']));
 		$row['traffic_used'] = isset($traffic_used[intval($row['uid'])]) ? size_format($traffic_used[intval($row['uid'])]) : '';
 		$row['upload_traffic_used'] = isset($upload_used[intval($row['uid'])]) ? size_format($upload_used[intval($row['uid'])]) : '';
 		//两种流量包余额都按 GB 填，保留两位小数
@@ -527,6 +529,7 @@ case 'delUser':
 		$DB->exec("DELETE FROM pre_traffic WHERE uid=:uid", [':uid'=>$uid]);
 		//上传流量用量按账号记，账号没了这几行也没用了
 		$DB->exec("DELETE FROM pre_upload_traffic WHERE ukey=:k", [':k'=>'u:'.$uid]);
+		$DB->exec('DELETE FROM pre_space_pack WHERE uid=:uid', [':uid'=>$uid]);
 		exit('{"code":0,"msg":"删除用户成功！"}');
 	}
 	else exit('{"code":-1,"msg":"删除用户失败['.$DB->error().']"}');

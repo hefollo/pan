@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/space.php';
 /*
  * 之前没有设置任何超时：一旦对方接口（快捷登录接口、IP归属地接口）不通或者很慢，
  * curl 会一直挂着占住 PHP 进程，用户多点几次就把进程池占满，整站跟着卡死。
@@ -979,14 +980,16 @@ function check_password_rule($pwd){
 function user_login_session($uid, $row){
 	global $DB;
 	$uid = intval($uid);
+	$claimed = true;
 	if(isset($_SESSION['fileids']) && count($_SESSION['fileids']) > 0){
 		$ids = array_reverse($_SESSION['fileids']);
 		if(count($ids) > 60)$ids = array_splice($ids, 0, 60);
-		$ids = implode(',', array_map('intval', $ids));
-		if($ids !== '')$DB->exec("UPDATE pre_file SET uid='{$uid}' WHERE id IN ({$ids}) AND uid=0");
+		$claimed = space_claim_guest_files($uid, $ids);
+		if(!$claimed)$_SESSION['space_claim_notice'] = '登录前上传的文件未能归入账号：'.space_error().'。原游客文件已保留，退出账号后可继续管理。';
+		else unset($_SESSION['space_claim_notice']);
 	}
 	//游客建的文件夹一起转过去，上面转过去的文件 folder_id 不变，登录后还在原来的文件夹里
-	if(function_exists('folder_transfer_guest'))folder_transfer_guest($uid);
+	if($claimed && function_exists('folder_transfer_guest'))folder_transfer_guest($uid);
 	$expiretime = time() + 2592000;
 	$token = authcode("{$uid}\t".user_session_hash($row)."\t{$expiretime}", 'ENCODE', SYS_KEY);
 	set_auth_cookie("user_token", $token, $expiretime, '/');
@@ -1349,12 +1352,12 @@ function pay_method_name($method){
  */
 function default_levels(){
 	return [
-		['name'=>'入门会员', 'sort'=>100, 'upload_limit'=>50, 'upload_size'=>200, 'down_speed'=>-1, 'traffic'=>51200, 'upload_traffic'=>10240, 'online_edit'=>0, 'folder'=>1, 'api'=>0, 'storage_all'=>0, 'no_review'=>0, 'remark'=>'轻度使用'],
-		['name'=>'基础会员', 'sort'=>200, 'upload_limit'=>100, 'upload_size'=>500, 'down_speed'=>-1, 'traffic'=>102400, 'upload_traffic'=>20480, 'online_edit'=>0, 'folder'=>1, 'api'=>0, 'storage_all'=>0, 'no_review'=>0, 'remark'=>'额度翻倍'],
-		['name'=>'标准会员', 'sort'=>300, 'upload_limit'=>300, 'upload_size'=>1024, 'down_speed'=>-1, 'traffic'=>307200, 'upload_traffic'=>51200, 'online_edit'=>1, 'folder'=>1, 'api'=>0, 'storage_all'=>0, 'no_review'=>0, 'remark'=>'日常够用，带在线编辑'],
-		['name'=>'进阶会员', 'sort'=>400, 'upload_limit'=>600, 'upload_size'=>2048, 'down_speed'=>0, 'traffic'=>819200, 'upload_traffic'=>102400, 'online_edit'=>1, 'folder'=>1, 'api'=>1, 'storage_all'=>0, 'no_review'=>0, 'remark'=>'下载不限速，可用上传 API'],
-		['name'=>'尊享会员', 'sort'=>500, 'upload_limit'=>1500, 'upload_size'=>5120, 'down_speed'=>0, 'traffic'=>2097152, 'upload_traffic'=>204800, 'online_edit'=>1, 'folder'=>1, 'api'=>1, 'storage_all'=>1, 'no_review'=>0, 'remark'=>'可用全部存储'],
-		['name'=>'旗舰会员', 'sort'=>600, 'upload_limit'=>0, 'upload_size'=>0, 'down_speed'=>0, 'traffic'=>0, 'upload_traffic'=>0, 'online_edit'=>1, 'folder'=>1, 'api'=>1, 'storage_all'=>1, 'no_review'=>0, 'remark'=>'数量、大小、流量都不限'],
+		['name'=>'入门会员', 'sort'=>100, 'upload_limit'=>50, 'upload_size'=>200, 'down_speed'=>-1, 'traffic'=>51200, 'upload_traffic'=>10240, 'space'=>-1, 'online_edit'=>0, 'folder'=>1, 'api'=>0, 'storage_all'=>0, 'no_review'=>0, 'remark'=>'轻度使用'],
+		['name'=>'基础会员', 'sort'=>200, 'upload_limit'=>100, 'upload_size'=>500, 'down_speed'=>-1, 'traffic'=>102400, 'upload_traffic'=>20480, 'space'=>-1, 'online_edit'=>0, 'folder'=>1, 'api'=>0, 'storage_all'=>0, 'no_review'=>0, 'remark'=>'额度翻倍'],
+		['name'=>'标准会员', 'sort'=>300, 'upload_limit'=>300, 'upload_size'=>1024, 'down_speed'=>-1, 'traffic'=>307200, 'upload_traffic'=>51200, 'space'=>-1, 'online_edit'=>1, 'folder'=>1, 'api'=>0, 'storage_all'=>0, 'no_review'=>0, 'remark'=>'日常够用，带在线编辑'],
+		['name'=>'进阶会员', 'sort'=>400, 'upload_limit'=>600, 'upload_size'=>2048, 'down_speed'=>0, 'traffic'=>819200, 'upload_traffic'=>102400, 'space'=>-1, 'online_edit'=>1, 'folder'=>1, 'api'=>1, 'storage_all'=>0, 'no_review'=>0, 'remark'=>'下载不限速，可用上传 API'],
+		['name'=>'尊享会员', 'sort'=>500, 'upload_limit'=>1500, 'upload_size'=>5120, 'down_speed'=>0, 'traffic'=>2097152, 'upload_traffic'=>204800, 'space'=>-1, 'online_edit'=>1, 'folder'=>1, 'api'=>1, 'storage_all'=>1, 'no_review'=>0, 'remark'=>'可用全部存储'],
+		['name'=>'旗舰会员', 'sort'=>600, 'upload_limit'=>0, 'upload_size'=>0, 'down_speed'=>0, 'traffic'=>0, 'upload_traffic'=>0, 'space'=>-1, 'online_edit'=>1, 'folder'=>1, 'api'=>1, 'storage_all'=>1, 'no_review'=>0, 'remark'=>'数量、大小、流量都不限'],
 	];
 }
 
@@ -1560,7 +1563,8 @@ function plan_is_edit_only($plan){
  *   legacy  改成会员等级之前按数值发放的旧套餐（时长卡、大文件包、永久卡），已经停售
  */
 function plan_kind($plan){
-	if(isset($plan['kind']) && in_array($plan['kind'], ['level', 'upgrade', 'bonus', 'edit', 'traffic', 'utraffic'], true))return $plan['kind'];
+	if(isset($plan['kind']) && in_array($plan['kind'], ['level', 'upgrade', 'bonus', 'edit', 'traffic', 'utraffic', 'space'], true))return $plan['kind'];
+	if(isset($plan['space']) && intval($plan['space']) > 0)return 'space';
 	if(isset($plan['level_id']) && intval($plan['level_id']) > 0)return 'level';
 	if(isset($plan['traffic']) && intval($plan['traffic']) > 0)return 'traffic';
 	if(isset($plan['upload_traffic']) && intval($plan['upload_traffic']) > 0)return 'utraffic';
@@ -1570,7 +1574,7 @@ function plan_kind($plan){
 }
 
 function plan_kind_name($kind){
-	$names = ['level'=>'会员等级', 'upgrade'=>'补差价升级', 'bonus'=>'加量包', 'edit'=>'在线编辑包', 'traffic'=>'分享流量包', 'utraffic'=>'上传流量包', 'legacy'=>'旧版套餐（已停售）'];
+	$names = ['level'=>'会员等级', 'upgrade'=>'补差价升级', 'bonus'=>'加量包', 'edit'=>'在线编辑包', 'traffic'=>'分享流量包', 'utraffic'=>'上传流量包', 'space'=>'空间包', 'legacy'=>'旧版套餐（已停售）'];
 	return isset($names[$kind]) ? $names[$kind] : $kind;
 }
 
@@ -1585,6 +1589,7 @@ function order_grant_lines($order){
 		$name = $level ? $level['name'] : '等级 #'.intval($order['level_id']).'（已删除）';
 		return $kind === 'upgrade' ? ['补差价升级到 '.$name, '到期时间不变'] : ['会员等级：'.$name, $days];
 	}
+	if($kind === 'space')return ['存储空间 +'.traffic_mb_text($order['space']), $days, '每次购买独立到期'];
 	if($kind === 'bonus')return ['加量 +'.max(0, intval($order['upload_limit'])).' 个/天', $days];
 	if($kind === 'edit')return ['在线编辑', $days];
 	if($kind === 'traffic')return ['分享流量 +'.traffic_mb_text(isset($order['traffic']) ? $order['traffic'] : 0), '永久有效'];
@@ -1662,6 +1667,7 @@ function level_features($level){
 	$list[] = '每月分享流量 '.traffic_mb_text($traffic);
 	//上传流量算在上传的人自己头上：本站每月最多收他这么多上传数据，没传完、校验失败的也算
 	$list[] = '每月上传流量 '.traffic_mb_text(level_upload_traffic_mb($level));
+	$list[] = '存储空间 '.traffic_mb_text(level_space_mb($level));
 	if(intval($level['online_edit']) === 1)$list[] = '在线编辑文本、代码文件';
 	if(intval($level['folder']) === 1 && !empty($conf['folder_open']))$list[] = '用户文件夹';
 	if(intval($level['api']) === 1 && !empty($conf['api_open']))$list[] = '上传 API';
@@ -1773,6 +1779,17 @@ function plan_quote($user, $plan){
 			$res['msg'] = '你的上传流量已经不限，不需要上传流量包';
 		}else{
 			$res['ok'] = true;
+		}
+		return $res;
+	}
+	if($kind === 'space'){
+		if(intval($plan['space']) <= 0 || intval($plan['days']) <= 0 || intval($plan['days']) > 36500){
+			$res['msg'] = '空间包容量和有效天数设置有误';
+		}elseif(level_space_mb($current) <= 0){
+			$res['msg'] = '你的存储空间已经不限，不需要空间包';
+		}else{
+			$res['ok'] = true;
+			$res['note'] = '到账后生效，每次购买独立到期，有效容量叠加；到期不删除文件';
 		}
 		return $res;
 	}
@@ -1906,6 +1923,7 @@ function grant_plan_to_user($uid, $order, $lock_user = false){
 	$now = time();
 
 	if($kind === 'legacy')return grant_legacy_plan($uid, $user, $order);
+	if($kind === 'space')return space_grant_pack($uid, $order);
 	if($kind === 'traffic'){
 		$add = max(0, intval(isset($order['traffic']) ? $order['traffic'] : 0)) * 1048576;
 		//直接在库里加：下载结束时可能正在同一行上扣流量包
@@ -2715,7 +2733,7 @@ function level_builtin($type){
 	return [
 		'id' => 0, 'type' => $type, 'sort' => $admin ? 100000 : ($type === 2 ? 10 : 0),
 		'name' => $admin ? '管理员' : ($type === 2 ? '普通用户' : '游客'),
-		'upload_limit' => $admin ? 0 : -1, 'upload_size' => $admin ? 0 : -1, 'down_speed' => $admin ? 0 : -1, 'traffic' => 0, 'upload_traffic' => 0,
+		'upload_limit' => $admin ? 0 : -1, 'upload_size' => $admin ? 0 : -1, 'down_speed' => $admin ? 0 : -1, 'traffic' => 0, 'upload_traffic' => 0, 'space' => 0,
 		'online_edit' => $admin ? 1 : 0, 'folder' => $admin ? 1 : 0, 'api' => $admin ? 1 : 0,
 		'storage_all' => $admin ? 1 : 0, 'no_review' => $admin ? 1 : 0, 'remark' => '',
 	];
@@ -4962,7 +4980,9 @@ function replace_file_record($old, $name, $hash, $size, $ext, $uid, $ip, $source
 	$old_hash = isset($old['hash']) ? $old['hash'] : '';
 	$old_storage = isset($old['storage']) ? $old['storage'] : null;
 	$storage = ($storage === null || $storage === '') ? $conf['storage'] : $storage;
-	$ok = $DB->exec("UPDATE `pre_file` SET `name`=:name,`type`=:type,`size`=:size,`hash`=:hash,`storage`=:storage,`block`=0,`lasttime`=NOW() WHERE `id`=:id LIMIT 1", [':name'=>$name, ':type'=>$ext, ':size'=>$size, ':hash'=>$hash, ':storage'=>$storage, ':id'=>$id]);
+	$ok = space_write(intval($old['uid']), $old['ipkey'], $size, $id, function() use ($DB, $name, $ext, $size, $hash, $storage, $id){
+		return $DB->exec("UPDATE `pre_file` SET `name`=:name,`type`=:type,`size`=:size,`hash`=:hash,`storage`=:storage,`block`=0,`lasttime`=NOW() WHERE `id`=:id LIMIT 1", [':name'=>$name, ':type'=>$ext, ':size'=>$size, ':hash'=>$hash, ':storage'=>$storage, ':id'=>$id]);
+	});
 	if($ok === false)return false;
 
 	//旧内容如果没有别的记录再引用，把物理文件清掉，别留垃圾。
@@ -5008,6 +5028,8 @@ function create_file_record_from_existing($existing, $name, $size, $ext, $hide, 
 	$current = $DB->getRow("SELECT * FROM pre_file WHERE id=:id AND hash=:hash LIMIT 1", [':id'=>$existing['id'], ':hash'=>$existing['hash']]);
 	if(!$current || $current['storage'] !== $existing['storage'])return false;
 	$existing = $current;
+	//秒传大小必须取已有内容，不能信浏览器声明，否则能少报空间占用。
+	$size = (int)$existing['size'];
 	if($storage === null)$storage = isset($existing['storage']) ? $existing['storage'] : null;
 	$record = create_file_record($name, $existing['hash'], $size, $ext, $hide, $pwd, $uid, $ip, false, $storage);
 	if(!$record)return false;
@@ -5096,9 +5118,12 @@ function create_file_record($name, $hash, $size, $ext, $hide, $pwd, $uid, $ip, $
 	$token = generate_file_token();
 	$storage = ($storage === null || $storage === '') ? $conf['storage'] : $storage;
 	//ipkey 是限流用的维度（IPv6 归并到 /64），和展示用的 ip 分开存
-	$sds = $DB->exec("INSERT INTO `pre_file` (`name`,`type`,`size`,`hash`,`storage`,`token`,`addtime`,`ip`,`ipkey`,`hide`,`pwd`,`uid`) values (:name,:type,:size,:hash,:storage,:token,NOW(),:ip,:ipkey,:hide,:pwd,:uid)", [':name'=>$name, ':type'=>$ext, ':size'=>$size, ':hash'=>$hash, ':storage'=>$storage, ':token'=>$token, ':ip'=>$ip, ':ipkey'=>client_ip_key($ip), ':hide'=>$hide, ':pwd'=>$pwd, ':uid'=>($uid?$uid:0)]);
+	$sds = space_write(intval($uid), client_ip_key($ip), $size, 0, function() use ($DB, $name, $ext, $size, $hash, $storage, $token, $ip, $hide, $pwd, $uid){
+		$ok = $DB->exec("INSERT INTO `pre_file` (`name`,`type`,`size`,`hash`,`storage`,`token`,`addtime`,`ip`,`ipkey`,`hide`,`pwd`,`uid`) values (:name,:type,:size,:hash,:storage,:token,NOW(),:ip,:ipkey,:hide,:pwd,:uid)", [':name'=>$name, ':type'=>$ext, ':size'=>$size, ':hash'=>$hash, ':storage'=>$storage, ':token'=>$token, ':ip'=>$ip, ':ipkey'=>client_ip_key($ip), ':hide'=>$hide, ':pwd'=>$pwd, ':uid'=>($uid?$uid:0)]);
+		return $ok ? $DB->lastInsertId() : false;
+	});
 	if(!$sds)return false;
-	$id = $DB->lastInsertId();
+	$id = $sds;
 	layout_cache_bump();
 	if(!$review)return ['id'=>$id, 'token'=>$token, 'storage'=>$storage];
 

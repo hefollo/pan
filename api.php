@@ -98,6 +98,7 @@ if(!$api_traffic_ok)showresult(['code'=>-1, 'msg'=>$api_traffic_msg, 'error'=>'u
 //ENT_QUOTES 不能省：PHP 8.1 以下默认不转义单引号，文件名会被拼进播放器的 JS 字符串
 $name=trim(htmlspecialchars($_FILES['file']['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'));
 $size=intval($_FILES['file']['size']);
+if(!space_check($size, intval($uid), client_ip_key($clientip)))showresult(['code'=>-1, 'msg'=>space_error(), 'error'=>'space']);
 $hide = isset($_POST['show']) && $_POST['show']==1 ? 0 : 1;
 $ispwd = isset($_POST['ispwd']) ? intval($_POST['ispwd']) : 0;
 $pwd = $ispwd==1 ? trim(htmlspecialchars(isset($_POST['pwd']) ? $_POST['pwd'] : '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) : null;
@@ -159,7 +160,7 @@ if($row){
 	unset($_SESSION['csrf_token']);
 	//秒传：跳过物理上传，但仍建独立记录，这次上传有自己的链接和文件名，不会挂到别人名下
 	$record = create_file_record_from_existing($row, $name, $size, $ext, $hide, $pwd, $uid, $clientip);
-	if(!$record)showresult(['code'=>-1, 'msg'=>'上传失败'.$DB->error(), 'error'=>'database']);
+	if(!$record){try{delete_file_blob_if_orphaned($hash, null, $conf['storage']);}catch(\Throwable $ignored){}showresult(['code'=>-1, 'msg'=>space_error('上传失败'.$DB->error()), 'error'=>!empty($GLOBALS['_space_error']) ? 'space' : 'database']);}
 	//下载和预览地址都按 token 解析，不能再用内容哈希拼链接
 	$downurl = $siteurl.'down.php/'.$record['token'].'.'.$ext;
 	if(!empty($pwd))$downurl .= '&'.$pwd;
@@ -175,7 +176,7 @@ $result = $stor->upload($hash, $_FILES['file']['tmp_name'], minetype($ext));
 if(!$result)showresult(['code'=>-1, 'msg'=>'文件上传失败', 'error'=>'stor']);
 //统一走 create_file_record，它负责生成访问用的 token，并顺带做图片检测和违规留档
 $record = create_file_record($name, $hash, $size, $ext, $hide, $pwd, $uid, $clientip);
-if(!$record)showresult(['code'=>-1, 'msg'=>'上传失败'.$DB->error(), 'error'=>'database']);
+if(!$record){try{delete_file_blob_if_orphaned($hash, null, $conf['storage']);}catch(\Throwable $ignored){}showresult(['code'=>-1, 'msg'=>space_error('上传失败'.$DB->error()), 'error'=>!empty($GLOBALS['_space_error']) ? 'space' : 'database']);}
 $id = $record['id'];
 $token = $record['token'];
 

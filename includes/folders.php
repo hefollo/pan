@@ -495,7 +495,7 @@ function folder_copy($file_ids, $folder_ids, $target){
 		}
 	}
 
-	$copied = 0; $skip = 0;
+	$copied = 0; $skip = 0; $space_failure = '';
 	$taken_by_folder = [];
 	//文件夹里的文件：放进对应的新文件夹，新文件夹是空的，名字不会撞
 	foreach($sub_files as $r){
@@ -503,7 +503,7 @@ function folder_copy($file_ids, $folder_ids, $target){
 		$dest = $map[intval($r['folder_id'])];
 		if(!isset($taken_by_folder[$dest])) $taken_by_folder[$dest] = [];
 		if(folder_copy_file($r, $dest, folder_copy_name($r['name'], $taken_by_folder[$dest]))) $copied++;
-		else $skip++;
+		else { $skip++; if(!empty($GLOBALS['_space_error']))$space_failure = space_error(); }
 	}
 	//单独选中的文件：放进目标文件夹，和已有文件同名时加「 - 副本」
 	if($file_ids){
@@ -512,14 +512,15 @@ function folder_copy($file_ids, $folder_ids, $target){
 			$r = $DB->getRow("SELECT * FROM pre_file WHERE id=:id LIMIT 1", [':id'=>$id]);
 			if(!folder_can_touch_file($r)){ $skip++; continue; }
 			if(folder_copy_file($r, $target, folder_copy_name($r['name'], $taken))) $copied++;
-			else $skip++;
+			else { $skip++; if(!empty($GLOBALS['_space_error']))$space_failure = space_error(); }
 		}
 	}
 	$parts = [];
 	if($map) $parts[] = count($map).' 个文件夹';
 	$parts[] = $copied.' 个文件';
 	$msg = '已复制 '.implode('、', $parts);
-	if($skip) $msg .= '，'.$skip.' 个文件无权操作、已冻结或待审核，已跳过';
+	if($skip) $msg .= '，'.$skip.' 个文件因空间不足、无权操作、已冻结或待审核而跳过';
+	if($space_failure !== '')$msg .= '。'.$space_failure;
 	return folder_result(0, $msg, ['folders'=>count($map), 'files'=>$copied, 'skip'=>$skip]);
 }
 

@@ -13,6 +13,10 @@ return [
 		['key'=>'title', 'type'=>'text', 'label'=>'标题', 'default'=>'我的权限'],
 		['key'=>'show_traffic', 'type'=>'switch', 'label'=>'显示分享流量', 'default'=>1],
 		['key'=>'show_upload', 'type'=>'switch', 'label'=>'显示上传流量', 'default'=>1],
+		['key'=>'show_space', 'type'=>'switch', 'label'=>'显示存储空间', 'default'=>1],
+		['key'=>'space_label', 'type'=>'text', 'label'=>'存储空间文字', 'default'=>'存储空间'],
+		['key'=>'packs_label', 'type'=>'text', 'label'=>'空间包文字', 'default'=>'有效空间包'],
+		['key'=>'pack_text', 'type'=>'text', 'label'=>'空间包明细', 'default'=>'+{size}，{expire} 到期', 'help'=>'{size} 容量，{expire} 到期时间'],
 		['key'=>'show_expire', 'type'=>'switch', 'label'=>'显示到期时间', 'default'=>1],
 		['key'=>'show_plan', 'type'=>'switch', 'label'=>'显示会员等级', 'default'=>1],
 		['key'=>'show_buy', 'type'=>'switch', 'label'=>'显示购买按钮', 'default'=>1],
@@ -39,6 +43,8 @@ return [
 			'state_cls' => $state_cls,
 			'limit_text' => $limit > 0 ? $limit.' 个' : '不限制',
 			'size_text' => $size > 0 ? $size.' MB' : '不限制',
+			'space_text' => space_text(),
+			'space_packs' => space_pack_view($userrow['uid'], $cfg['pack_text']),
 		];
 		//每月分享流量：自己的文件本月被取走多少（DEC-20261022-001）
 		$traffic = (!empty($cfg['show_traffic']) && function_exists('user_traffic_info')) ? user_traffic_info($userrow) : null;

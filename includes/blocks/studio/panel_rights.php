@@ -10,6 +10,10 @@ return [
 	'group' => '工作台',
 	'scope' => 'front',
 	'schema' => [
+		['key'=>'show_space', 'type'=>'switch', 'label'=>'显示存储空间', 'default'=>1],
+		['key'=>'space_label', 'type'=>'text', 'label'=>'存储空间文字', 'default'=>'存储空间'],
+		['key'=>'packs_label', 'type'=>'text', 'label'=>'空间包文字', 'default'=>'有效空间包'],
+		['key'=>'pack_text', 'type'=>'text', 'label'=>'空间包明细', 'default'=>'+{size}，{expire} 到期', 'help'=>'{size} 容量，{expire} 到期时间'],
 		['key'=>'extra_rows', 'type'=>'lines', 'label'=>'额外的行', 'default'=>''],
 		['key'=>'vip_btn', 'type'=>'switch', 'label'=>'升级按钮', 'default'=>0],
 	],
@@ -41,6 +45,12 @@ return [
 			$upload = upload_traffic_info();
 			$rows[] = ['icon'=>'fa-upload', 'color'=>'blue', 'label'=>'上传流量', 'value'=>$upload['unlimited'] ? '不限制' : (size_format($upload['used']).' / '.size_format($upload['quota']))];
 			if(!$upload['unlimited'] && $upload['pack'] > 0)$rows[] = ['icon'=>'fa-archive', 'color'=>'blue', 'label'=>'上传流量包', 'value'=>size_format($upload['pack'])];
+		}
+		if(!empty($cfg['show_space'])){
+			$rows[] = ['icon'=>'fa-hdd-o', 'color'=>'blue', 'label'=>$cfg['space_label'], 'value'=>space_text()];
+			if(!empty($islogin2))foreach(space_pack_list($userrow['uid']) as $pack){
+				$rows[] = ['icon'=>'fa-archive', 'color'=>'blue', 'label'=>$cfg['packs_label'], 'value'=>strtr($cfg['pack_text'], ['{size}'=>$pack['size'], '{expire}'=>$pack['expire']])];
+			}
 		}
 		foreach(theme_config_lines($cfg['extra_rows'], 4) as $r){
 			$rows[] = ['icon'=>$r[0], 'color'=>$r[1], 'label'=>$r[2], 'value'=>$r[3]];

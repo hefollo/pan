@@ -333,9 +333,18 @@ foreach(['pre_theme', 'pre_layout'] as $tbl_1034){
 	if(!$q || !$q->fetchColumn()){$need_1034 = true; break;}
 }
 if($need_1034)$sqls = array_merge($sqls, read_sql('update_1034.sql'));
-$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1034')";
+//1035：空间列与逐单空间包表，缺失结构时重跑；各语句独立，重复列由升级器跳过。
+$need_1035 = false;
+foreach(['pre_level', 'pre_plan', 'pre_order'] as $table_1035){
+	$q = $db->query("SHOW COLUMNS FROM `".$table_1035."` LIKE 'space'");
+	if(!$q || !$q->fetchColumn())$need_1035 = true;
+}
+$q = $db->query("SHOW TABLES LIKE 'pre_space_pack'");
+if(!$q || !$q->fetchColumn())$need_1035 = true;
+if($need_1035)$sqls = array_merge($sqls, read_sql('update_1035.sql'));
+$sqls[] = "REPLACE INTO `pre_config` VALUES ('version', '1035')";
 //上面 else 分支只按 1022 判断「已是最新」，从 1022～1033 升上来时要改回「升级完成」的提示
-if($version < 1034)$uptodate = false;
+if($version < 1035)$uptodate = false;
 
 $success=0;$skipped=0;$error=0;$errorMsg=null;
 foreach ($sqls as $value) {

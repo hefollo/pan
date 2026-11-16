@@ -29,6 +29,8 @@ function render_plan_rows($plans){
 		$content = '开通在线编辑';
 	}elseif($kind === 'traffic'){
 		$content = '分享流量 +'.htmlspecialchars(traffic_mb_text($p['traffic']));
+	}elseif($kind === 'space'){
+		$content = '存储空间 +'.htmlspecialchars(traffic_mb_text($p['space']));
 	}elseif($kind === 'utraffic'){
 		$content = '上传流量 +'.htmlspecialchars(traffic_mb_text($p['upload_traffic']));
 	}else{
@@ -58,6 +60,7 @@ function render_plan_rows($plans){
            data-bonus="<?php echo $kind === 'bonus' ? max(0, intval($p['upload_limit'])) : 0?>"
            data-traffic="<?php echo $kind === 'traffic' ? round(intval($p['traffic']) / 1024, 4) : 0?>"
            data-upload-traffic="<?php echo $kind === 'utraffic' ? round(intval($p['upload_traffic']) / 1024, 4) : 0?>"
+           data-space="<?php echo $kind === 'space' ? round(intval($p['space']) / 1024, 4) : 0?>"
            data-sort="<?php echo intval($p['sort'])?>"
            data-enable="<?php echo intval($p['enable'])?>"
            data-remark="<?php echo htmlspecialchars((string)$p['remark'], ENT_QUOTES, 'UTF-8')?>">编辑</a>
@@ -90,8 +93,8 @@ if($islogin != 1){
 		$name = trim($_POST['name']);
 		$price = round(floatval($_POST['price']), 2);
 		$days = intval($_POST['days']);
-		//套餐只有五种：卖会员等级、加量包、在线编辑包、分享流量包、上传流量包
-		$kind = (isset($_POST['kind']) && in_array($_POST['kind'], ['level', 'bonus', 'edit', 'traffic', 'utraffic'], true)) ? $_POST['kind'] : 'level';
+		//套餐：会员等级、加量包、在线编辑包、两种流量包、限时空间包
+		$kind = (isset($_POST['kind']) && in_array($_POST['kind'], ['level', 'bonus', 'edit', 'traffic', 'utraffic', 'space'], true)) ? $_POST['kind'] : 'level';
 		$level_id = isset($_POST['level_id']) ? intval($_POST['level_id']) : 0;
 		$bonus = isset($_POST['bonus']) ? intval($_POST['bonus']) : 0;
 		//两种流量包都按 GB 填（可以带小数），库里存 MB；流量包永久有效，天数一律记 0
@@ -99,6 +102,8 @@ if($islogin != 1){
 		$traffic = is_finite($traffic_gb) && $traffic_gb > 0 ? max(1, min(2147483647, intval(round($traffic_gb * 1024)))) : 0;
 		$utraffic_gb = isset($_POST['upload_traffic']) ? floatval($_POST['upload_traffic']) : 0;
 		$utraffic = is_finite($utraffic_gb) && $utraffic_gb > 0 ? max(1, min(2147483647, intval(round($utraffic_gb * 1024)))) : 0;
+		$space_gb = isset($_POST['space']) ? floatval($_POST['space']) : 0;
+		$space = is_finite($space_gb) && $space_gb > 0 && $space_gb <= 2097151.999 ? max(1, intval(round($space_gb * 1024))) : 0;
 		if($kind === 'traffic' || $kind === 'utraffic')$days = 0;
 		$sort = intval($_POST['sort']);
 		$enable = intval($_POST['enable']) === 1 ? 1 : 0;
@@ -118,6 +123,8 @@ if($islogin != 1){
 			$msg = '加量包每天增加的数量必须大于 0'; $msgtype = 'danger';
 		}elseif($kind === 'traffic' && $traffic <= 0){
 			$msg = '分享流量包增加的流量必须大于 0'; $msgtype = 'danger';
+		}elseif($kind === 'space' && ($space <= 0 || $days <= 0 || $days > 36500)){
+			$msg = '空间包容量必须大于 0，有效期须为 1～36500 天'; $msgtype = 'danger';
 		}elseif($kind === 'utraffic' && $utraffic <= 0){
 			$msg = '上传流量包增加的流量必须大于 0'; $msgtype = 'danger';
 		}else{
@@ -135,6 +142,7 @@ if($islogin != 1){
 				'online_edit' => $kind === 'edit' ? '1' : '0',
 				'traffic' => $kind === 'traffic' ? strval($traffic) : '0',
 				'upload_traffic' => $kind === 'utraffic' ? strval($utraffic) : '0',
+				'space' => $kind === 'space' ? strval($space) : '0',
 				'sort' => strval($sort),
 				'enable' => strval($enable),
 				'remark' => $remark,
@@ -391,6 +399,7 @@ if(isset($_GET['tab']) && $_GET['tab'] === 'epay')$pay_tab = 'epay';
 		  <option value="edit" <?php echo $edit_kind === 'edit' ? 'selected' : ''?>>在线编辑包（单独开通在线编辑）</option>
 		  <option value="traffic" <?php echo $edit_kind === 'traffic' ? 'selected' : ''?>>分享流量包（增加分享流量，永久有效）</option>
 		  <option value="utraffic" <?php echo $edit_kind === 'utraffic' ? 'selected' : ''?>>上传流量包（增加上传流量，永久有效）</option>
+		  <option value="space" <?php echo $edit_kind === 'space' ? 'selected' : ''?>>空间包（增加存储空间，按天到期）</option>
 		</select>
 		<span class="hint">等级有什么权限在「会员等级设置」里定，这里只管卖哪个等级、卖多久、卖多少钱</span>
 	  </div>
@@ -423,10 +432,15 @@ if(isset($_GET['tab']) && $_GET['tab'] === 'epay')$pay_tab = 'epay';
 		<input type="number" name="upload_traffic" value="<?php echo ($edit && $edit_kind === 'utraffic') ? round(intval($edit['upload_traffic']) / 1024, 4) : 10?>" class="form-control" min="0.001" step="any"/>
 		<span class="hint">加到用户的上传流量包余额上，永久有效、重复购买累加；本月等级的上传流量用完后才扣。下面的有效期对它不起作用</span>
 	  </div>
+	  <div class="col-sm-4 form-group plan-kind-field" data-kind="space"<?php echo $edit_kind === 'space' ? '' : ' style="display:none"'?>>
+		<label>增加的存储空间（GB）</label>
+		<input type="number" name="space" value="<?php echo ($edit && $edit_kind === 'space') ? round(intval($edit['space']) / 1024, 4) : 10?>" class="form-control" min="0.001" step="any"/>
+		<span class="hint">每次到账起独立计时，有效容量叠加，不延长旧包期限。到期保留文件，超额后限制新增占用。</span>
+	  </div>
 	  <div class="col-sm-4 form-group">
 		<label>有效期（天）</label>
 		<input type="number" name="days" value="<?php echo $edit ? intval($edit['days']) : 30?>" class="form-control" min="0" step="1"/>
-		<span class="hint">0 为永久；续费时天数加在现有到期时间之后</span>
+		<span class="hint">空间包必须大于 0，每次独立计时；会员等其他套餐 0 为永久，同级续费延长原有效期</span>
 	  </div>
 	</div>
 	<div class="row">
@@ -535,6 +549,9 @@ echo theme_render_layout('admin/set_pay', [], 'admin', $site_theme);?>
 	//按套餐类型显示对应的那一栏（等级下拉 / 加量数量 / 在线编辑说明 / 流量）
 	function showKind(kind){
 		$('.plan-kind-field').each(function(){ this.style.display = this.getAttribute('data-kind') === kind ? '' : 'none'; });
+		field('days').min = kind === 'space' ? 1 : 0;
+		field('days').max = kind === 'space' ? 36500 : '';
+		if(kind === 'space' && parseInt(field('days').value, 10) <= 0)field('days').value = 30;
 	}
 
 	function fill(d){
@@ -547,6 +564,7 @@ echo theme_render_layout('admin/set_pay', [], 'admin', $site_theme);?>
 		field('bonus').value = parseInt(d.bonus, 10) > 0 ? d.bonus : 50;
 		field('traffic').value = parseFloat(d.traffic) > 0 ? d.traffic : 10;
 		field('upload_traffic').value = parseFloat(d.uploadTraffic) > 0 ? d.uploadTraffic : 10;
+		field('space').value = parseFloat(d.space) > 0 ? d.space : 10;
 		showKind(d.kind);
 		field('sort').value = d.sort;
 		field('enable').value = d.enable;
@@ -570,6 +588,7 @@ echo theme_render_layout('admin/set_pay', [], 'admin', $site_theme);?>
 			bonus: a.getAttribute('data-bonus'),
 			traffic: a.getAttribute('data-traffic'),
 			uploadTraffic: a.getAttribute('data-upload-traffic'),
+			space: a.getAttribute('data-space'),
 			sort: a.getAttribute('data-sort'),
 			enable: a.getAttribute('data-enable'),
 			remark: a.getAttribute('data-remark')
@@ -585,7 +604,7 @@ echo theme_render_layout('admin/set_pay', [], 'admin', $site_theme);?>
 	}
 
 	function toAdd(scroll){
-		fill({id:0, name:'', category:'', price:'', days:30, kind:'level', levelId:'', bonus:50, traffic:10, uploadTraffic:10, sort:0, enable:1, remark:''});
+		fill({id:0, name:'', category:'', price:'', days:30, kind:'level', levelId:'', bonus:50, traffic:10, uploadTraffic:10, space:10, sort:0, enable:1, remark:''});
 		title.innerHTML = '添加套餐';
 		submit.innerHTML = '添加套餐';
 		cancel.style.display = 'none';

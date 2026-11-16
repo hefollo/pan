@@ -14,6 +14,12 @@
           <div class="layout-side-kv"><span>上传流量包</span><b>{{pack}}</b></div>
 {{/pack}}
 {{/upload}}
+{{#cfg.show_space}}
+          <div class="layout-side-kv"><span>{{cfg.space_label}}</span><b>{{space_text}}</b></div>
+{{#space_packs}}
+          <div class="layout-side-kv"><span>{{cfg.packs_label}}</span><b>{{{text_html}}}</b></div>
+{{/space_packs}}
+{{/cfg.show_space}}
 {{#bonus}}
           <div class="layout-side-kv"><span>其中加量包</span><b>+{{bonus}} 个/天</b></div>
 {{/bonus}}

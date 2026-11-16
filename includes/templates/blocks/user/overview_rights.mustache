@@ -1,5 +1,6 @@
         <div class="uc-section">
             <div class="uc-section-title"><span>{{cfg.title}}</span></div>
+            {{#space_claim_notice}}<p role="alert">{{space_claim_notice}}</p>{{/space_claim_notice}}
             <dl class="uc-kv">
                 <div><dt>会员等级</dt><dd>{{level_name}}</dd></div>
                 <div><dt>每日上传</dt><dd>{{{limit_text_html}}}{{#bonus}}（含加量包 +{{bonus}}，{{bonus_expire_text}}）{{/bonus}}</dd></div>
@@ -10,6 +11,12 @@
 {{#cfg.show_upload}}
                 <div><dt>上传流量</dt><dd>{{upload_text}}</dd></div>
 {{/cfg.show_upload}}
+{{#cfg.show_space}}
+                <div><dt>{{cfg.space_label}}</dt><dd>{{space_text}}</dd></div>
+{{#space_packs}}
+                <div><dt>{{cfg.packs_label}}</dt><dd>{{{text_html}}}</dd></div>
+{{/space_packs}}
+{{/cfg.show_space}}
 {{#cfg.show_expire}}
                 <div><dt>有效期</dt><dd>{{expire_text}}</dd></div>
 {{/cfg.show_expire}}

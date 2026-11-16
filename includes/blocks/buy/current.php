@@ -14,6 +14,10 @@ return [
 		['key'=>'show_speed', 'type'=>'switch', 'label'=>'显示下载速度', 'default'=>1],
 		['key'=>'show_traffic', 'type'=>'switch', 'label'=>'显示分享流量', 'default'=>1],
 		['key'=>'show_upload', 'type'=>'switch', 'label'=>'显示上传流量', 'default'=>1],
+		['key'=>'show_space', 'type'=>'switch', 'label'=>'显示存储空间', 'default'=>1],
+		['key'=>'space_label', 'type'=>'text', 'label'=>'存储空间文字', 'default'=>'存储空间'],
+		['key'=>'packs_label', 'type'=>'text', 'label'=>'空间包文字', 'default'=>'有效空间包'],
+		['key'=>'pack_text', 'type'=>'text', 'label'=>'空间包明细', 'default'=>'+{size}，{expire} 到期', 'help'=>'{size} 容量，{expire} 到期时间'],
 		['key'=>'show_edit', 'type'=>'switch', 'label'=>'显示在线编辑', 'default'=>1],
 	],
 	'data' => function($cfg, &$ctx){
@@ -29,6 +33,8 @@ return [
 			'speed_text' => speed_text(get_effective_download_speed_kbps()),
 			'traffic_text' => user_traffic_text($userrow),
 			'upload_text' => upload_traffic_text(),
+			'space_text' => space_text(),
+			'space_packs' => space_pack_view($userrow['uid'], $cfg['pack_text']),
 			'edit_text' => current_online_edit_text(),
 		];
 	},

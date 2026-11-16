@@ -111,6 +111,7 @@ if($act === 'create' || $act === 'query'){
 			&& plan_has_online_edit($exist) === plan_has_online_edit($plan)
 			&& intval(isset($exist['traffic']) ? $exist['traffic'] : 0) === intval(isset($plan['traffic']) ? $plan['traffic'] : 0)
 			&& intval(isset($exist['upload_traffic']) ? $exist['upload_traffic'] : 0) === intval(isset($plan['upload_traffic']) ? $plan['upload_traffic'] : 0)
+			&& intval(isset($exist['space']) ? $exist['space'] : 0) === intval(isset($plan['space']) ? $plan['space'] : 0)
 			&& intval($exist['days']) === intval($plan['days'])
 			&& (isset($exist['limit_mode']) ? $exist['limit_mode'] : 'set') === $limit_mode){
 			$trade_no = $exist['trade_no'];
@@ -145,6 +146,7 @@ if($act === 'create' || $act === 'query'){
 				'online_edit' => plan_has_online_edit($plan) ? '1' : '0',
 				'traffic' => strval(max(0, intval(isset($plan['traffic']) ? $plan['traffic'] : 0))),
 				'upload_traffic' => strval(max(0, intval(isset($plan['upload_traffic']) ? $plan['upload_traffic'] : 0))),
+				'space' => strval(max(0, intval(isset($plan['space']) ? $plan['space'] : 0))),
 				'days' => strval(intval($plan['days'])),
 				'status' => '0',
 				'ip' => $clientip,

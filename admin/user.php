@@ -276,6 +276,8 @@ $(document).ready(function(){
 					if(row.traffic_used) lines.push('本月分享：'+row.traffic_used);
 					if(parseFloat(row.upload_traffic_pack_gb || 0) > 0) lines.push('上传流量包：'+row.upload_traffic_pack_gb+' GB');
 					if(row.upload_traffic_used) lines.push('本月上传：'+row.upload_traffic_used);
+					if(row.space_text) lines.push('存储空间：'+$('<span>').text(row.space_text).html());
+					(row.space_packs || []).forEach(function(p){ lines.push('空间包 +'+$('<span>').text(p.size+'，'+p.expire+' 到期').html()); });
 					return lines.length ? lines.join('<br/>') : '<span class="text-muted">-</span>';
 				}
 			},

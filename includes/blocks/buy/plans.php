@@ -11,6 +11,8 @@ return [
 	'pages' => ['buy'],
 	'description' => '套餐在后台「套餐设置」里增删改；这里改按钮文字',
 	'schema' => [
+		['key'=>'space_text', 'type'=>'text', 'label'=>'空间包容量文字', 'default'=>'存储空间 +{size}'],
+		['key'=>'space_note', 'type'=>'text', 'label'=>'空间包说明', 'default'=>'到账起独立计时，有效容量叠加；到期保留文件，超额后限制新增占用'],
 		['key'=>'buy_text', 'type'=>'text', 'label'=>'购买按钮', 'default'=>'立即购买'],
 		['key'=>'renew_text', 'type'=>'text', 'label'=>'续费按钮', 'default'=>'续费'],
 		['key'=>'login_text', 'type'=>'text', 'label'=>'没登录时的按钮', 'default'=>'登录后购买'],
@@ -32,6 +34,8 @@ return [
 					$features = ['每天多传 '.max(0, intval($plan['upload_limit'])).' 个，加在当前等级的数量上'];
 				}elseif($kind === 'traffic'){
 					$features = ['分享流量 +'.traffic_mb_text($plan['traffic']), '本月等级的分享流量用完后才扣'];
+				}elseif($kind === 'space'){
+					$features = [strtr($cfg['space_text'], ['{size}'=>traffic_mb_text($plan['space'])]), $cfg['space_note']];
 				}elseif($kind === 'utraffic'){
 					$features = ['上传流量 +'.traffic_mb_text($plan['upload_traffic']), '本月等级的上传流量用完后才扣'];
 				}else{
