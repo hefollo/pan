@@ -16,7 +16,7 @@ create table `pre_config` (
 --   · 如果没有并进来 → 这里保持旧值不动，让全新安装照常跑一次升级把它补上。
 -- 改错方向（并进来了却不改版本号）只是多跑一趟空升级；
 -- 改反了（没并进来却改了版本号）会让新装的站永久缺表缺字段，且毫无报错。
-INSERT INTO `pre_config` VALUES ('version', '1035');
+INSERT INTO `pre_config` VALUES ('version', '1036');
 INSERT INTO `pre_config` VALUES ('level_upload_migrated', '1');
 INSERT INTO `pre_config` VALUES ('level_migrated', '1');
 INSERT INTO `pre_config` VALUES ('admin_user', 'admin');
@@ -228,6 +228,7 @@ CREATE TABLE `pre_user` (
   `upload_limit` int(11) NOT NULL DEFAULT '-1',
   `bonus_limit` int(11) NOT NULL DEFAULT '0' COMMENT '加量包累计的每日额度',
   `down_speed` int(11) NOT NULL DEFAULT '-1' COMMENT '下载限速KB/s：-1跟随身份档位 0不限速 N每秒N KB',
+  `space` int(11) NOT NULL DEFAULT '-1' COMMENT '个人存储空间MB：-1按等级，0不限，正数覆盖等级容量',
   `expiretime` datetime DEFAULT NULL,
   `online_edit` tinyint(1) NOT NULL DEFAULT '0' COMMENT '在线编辑：0未开通 1已开通',
   `edit_expire` datetime DEFAULT NULL COMMENT '在线编辑到期时间，已开通且为空表示永久',

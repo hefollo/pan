@@ -471,6 +471,13 @@ case 'saveUserInfo':
 	if($down_speed < -1)$down_speed = -1;
 	$sql = "UPDATE pre_user SET level_id=:level_id, upload_size=:upload_size, upload_limit=:upload_limit, down_speed=:down_speed, expiretime=:expiretime";
 	$params = [':level_id'=>$level_id, ':upload_size'=>$upload_size, ':upload_limit'=>$upload_limit, ':down_speed'=>$down_speed, ':expiretime'=>$expiretime, ':uid'=>$uid];
+	//旧页面没有新字段时保留原值；非法输入不能意外放开空间限制。
+	if(array_key_exists('space', $_POST)){
+		$space = space_override_parse($_POST['space']);
+		if($space === false)exit('{"code":-1,"msg":"存储空间请填 -1（按等级）、0（不限）或有效的正数GB"}');
+		$sql .= ", space=:space";
+		$params[':space'] = $space;
+	}
 	//附加包两项各有自己的到期时间（空 = 永久）。表单没带的不动，免得旧页面缓存提交把它清掉
 	if(isset($_POST['bonus_limit'])){
 		$bonus_limit = max(0, intval($_POST['bonus_limit']));

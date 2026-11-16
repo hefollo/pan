@@ -34,6 +34,8 @@ return [
 			'traffic_text' => user_traffic_text($userrow),
 			'upload_text' => upload_traffic_text(),
 			'space_text' => space_text(),
+			'space_meter' => space_meter_data(space_info()),
+			'space_meter_css_html' => !empty($cfg['show_space']) ? space_meter_style() : '',
 			'space_packs' => space_pack_view($userrow['uid'], $cfg['pack_text']),
 			'edit_text' => current_online_edit_text(),
 		];

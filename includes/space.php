@@ -8,6 +8,26 @@ function level_space_mb($level){
 	return max(0, intval(isset($normal['space']) ? $normal['space'] : 0));
 }
 
+//与后台其它“单独调整”一致：有效期内覆盖等级，更换等级时由发放入口重置。
+function user_space_mb($user){
+	$level = $user ? user_level($user) : level_builtin(1);
+	if(level_is_admin($level))return 0;
+	$active = $user && (empty($user['expiretime']) || strtotime($user['expiretime']) > time());
+	if($active && isset($user['space']) && intval($user['space']) >= 0)return intval($user['space']);
+	return level_space_mb($level);
+}
+
+//后台按GB输入，数据库按MB存；拒绝错误值，不能把错误输入默默变成“不限”。
+function space_override_parse($value){
+	if(!is_scalar($value))return false;
+	$value = trim((string)$value);
+	if($value === '' || $value === '-1')return -1;
+	if(!is_numeric($value))return false;
+	$gb = (float)$value;
+	if(!is_finite($gb) || $gb < 0 || $gb > 2147483647 / 1024)return false;
+	return $gb == 0 ? 0 : max(1, (int)round($gb * 1024));
+}
+
 function space_current_uid(){
 	global $islogin2, $uid;
 	return !empty($islogin2) ? intval($uid) : 0;
@@ -24,7 +44,7 @@ function space_info($uid = null, $ipkey = null){
 	if($ipkey === null)$ipkey = client_ip_key();
 	$user = $uid > 0 ? $DB->getRow('SELECT * FROM pre_user WHERE uid=:uid LIMIT 1', [':uid'=>$uid]) : null;
 	if($uid > 0 && !$user)return false;
-	$base = level_space_mb($uid > 0 ? user_level($user) : level_builtin(1)) * 1048576;
+	$base = user_space_mb($user) * 1048576;
 	$where = $uid > 0 ? 'uid=:uid' : 'uid=0 AND ipkey=:ipkey';
 	$args = $uid > 0 ? [':uid'=>$uid] : [':ipkey'=>$ipkey];
 	//复制、私密、冻结、待审文件都算占用；实际删除记录后才释放。
@@ -41,11 +61,46 @@ function space_info($uid = null, $ipkey = null){
 }
 
 function space_text($uid = null){
-	$info = space_info($uid);
+	return space_info_text(space_info($uid));
+}
+
+function space_info_text($info){
 	if(!$info)return '暂时无法读取';
 	$text = size_format($info['used']).' / '.($info['unlimited'] ? '不限' : size_format($info['quota']));
 	if(!$info['unlimited'] && $info['used'] > $info['quota'])$text .= '（已超额）';
 	return $text;
+}
+
+//供卡片共用的数据：实际比例可以超过100%，条宽始终在0～100之间。
+function space_meter_data($info){
+	if(!$info)return ['text'=>space_info_text($info), 'state'=>'unavailable', 'available'=>false];
+	$finite = !$info['unlimited'];
+	$percent = $finite && $info['quota'] > 0 ? round($info['used'] / $info['quota'] * 100, 1) : 0;
+	$width = min(100, max(0, $percent));
+	$state = !$finite ? 'unlimited' : ($info['used'] > $info['quota'] ? 'danger' : ($percent >= 90 ? 'warning' : 'normal'));
+	return ['text'=>space_info_text($info), 'available'=>true, 'finite'=>$finite, 'state'=>$state,
+		'percent'=>number_format($percent, 1, '.', ''), 'width'=>number_format($width, 1, '.', '')];
+}
+
+function space_meter_style(){
+	return layout_inline_css_once('space-meter', '
+.pan-space-meter{display:block;width:100%;min-width:0;text-align:left;font-size:12px;line-height:1.6;font-weight:500}
+.pan-space-meter .pan-space-meta{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:3px 10px;margin:0 0 7px;color:inherit}
+.pan-space-meter .pan-space-value{min-width:0;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.pan-space-meter .pan-space-percent{color:var(--muted,#64748b);white-space:nowrap;font-variant-numeric:tabular-nums}
+.pan-space-meter .pan-space-track{display:block;height:8px;width:100%;overflow:hidden;border-radius:999px;background:rgba(127,127,127,.16)}
+.pan-space-meter .pan-space-fill{display:block;height:100%;border-radius:inherit;background:var(--primary,#2563eb)}
+.pan-space-meter.is-warning .pan-space-fill{background:#d97706}
+.pan-space-meter.is-danger .pan-space-fill{background:var(--danger,#dc2626)}
+.pan-space-meter.is-danger .pan-space-percent{color:var(--danger,#dc2626)}
+.pan-space-meter.is-unlimited .pan-space-track{background:repeating-linear-gradient(135deg,rgba(127,127,127,.07),rgba(127,127,127,.07) 5px,rgba(127,127,127,.16) 5px,rgba(127,127,127,.16) 10px)}
+.pan-space-block{width:100%;min-width:0;flex-basis:100%;margin:8px 0}
+.pan-space-block>.pan-space-label{display:block;margin-bottom:6px;color:var(--muted,#64748b);font-size:12px}
+.uc-kv .pan-space-detail{display:block!important;width:100%;margin:0!important}
+.uc-kv .pan-space-detail dt{margin-bottom:7px}
+.uc-kv .pan-space-detail dd{width:100%;margin:0}
+.studio-panel-rights>.pan-space-block{width:auto;margin:14px 16px}
+');
 }
 
 function space_pack_list($uid){

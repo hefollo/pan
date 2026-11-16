@@ -15,7 +15,7 @@
 {{/pack}}
 {{/upload}}
 {{#cfg.show_space}}
-          <div class="layout-side-kv"><span>{{cfg.space_label}}</span><b>{{space_text}}</b></div>
+          <div class="pan-space-block"><span class="pan-space-label">{{cfg.space_label}}</span>{{>components/space_meter}}</div>
 {{#space_packs}}
           <div class="layout-side-kv"><span>{{cfg.packs_label}}</span><b>{{{text_html}}}</b></div>
 {{/space_packs}}

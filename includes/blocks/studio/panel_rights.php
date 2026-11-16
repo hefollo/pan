@@ -47,7 +47,6 @@ return [
 			if(!$upload['unlimited'] && $upload['pack'] > 0)$rows[] = ['icon'=>'fa-archive', 'color'=>'blue', 'label'=>'上传流量包', 'value'=>size_format($upload['pack'])];
 		}
 		if(!empty($cfg['show_space'])){
-			$rows[] = ['icon'=>'fa-hdd-o', 'color'=>'blue', 'label'=>$cfg['space_label'], 'value'=>space_text()];
 			if(!empty($islogin2))foreach(space_pack_list($userrow['uid']) as $pack){
 				$rows[] = ['icon'=>'fa-archive', 'color'=>'blue', 'label'=>$cfg['packs_label'], 'value'=>strtr($cfg['pack_text'], ['{size}'=>$pack['size'], '{expire}'=>$pack['expire']])];
 			}
@@ -59,6 +58,8 @@ return [
 			'badge_cls' => $badge_cls,
 			'badge' => $badge,
 			'rows' => $rows,
+			'space_meter' => space_meter_data(space_info()),
+			'space_meter_css_html' => !empty($cfg['show_space']) ? space_meter_style() : '',
 			'vip' => $cfg['vip_btn'] && function_exists('is_buy_open') && is_buy_open(),
 		];
 	},

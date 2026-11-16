@@ -44,6 +44,8 @@ return [
 			'limit_text' => $limit > 0 ? $limit.' 个' : '不限制',
 			'size_text' => $size > 0 ? $size.' MB' : '不限制',
 			'space_text' => space_text(),
+			'space_meter' => space_meter_data(space_info()),
+			'space_meter_css_html' => !empty($cfg['show_space']) ? space_meter_style() : '',
 			'space_packs' => space_pack_view($userrow['uid'], $cfg['pack_text']),
 		];
 		//每月分享流量：自己的文件本月被取走多少（DEC-20261022-001）

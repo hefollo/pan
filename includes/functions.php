@@ -1785,7 +1785,7 @@ function plan_quote($user, $plan){
 	if($kind === 'space'){
 		if(intval($plan['space']) <= 0 || intval($plan['days']) <= 0 || intval($plan['days']) > 36500){
 			$res['msg'] = '空间包容量和有效天数设置有误';
-		}elseif(level_space_mb($current) <= 0){
+		}elseif(user_space_mb($user) <= 0){
 			$res['msg'] = '你的存储空间已经不限，不需要空间包';
 		}else{
 			$res['ok'] = true;
@@ -1977,6 +1977,7 @@ function grant_plan_to_user($uid, $order, $lock_user = false){
 		$data['upload_limit'] = '-1';
 		$data['upload_size'] = '-1';
 		$data['down_speed'] = '-1';
+		$data['space'] = '-1';
 	}
 	return $DB->update('user', $data, ['uid'=>$uid]) !== false;
 }

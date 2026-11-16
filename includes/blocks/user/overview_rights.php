@@ -33,6 +33,8 @@ return [
 			'traffic_text' => user_traffic_text($userrow),
 			'upload_text' => upload_traffic_text(),
 			'space_text' => space_text(),
+			'space_meter' => space_meter_data(space_info()),
+			'space_meter_css_html' => !empty($cfg['show_space']) ? space_meter_style() : '',
 			'space_claim_notice' => isset($_SESSION['space_claim_notice']) ? $_SESSION['space_claim_notice'] : '',
 			'space_packs' => space_pack_view($userrow['uid'], $cfg['pack_text']),
 			'expire_text' => empty($expire) ? '永久有效' : $expire.(is_user_permission_active() ? ' 到期' : ' 已过期'),

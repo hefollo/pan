@@ -48,7 +48,7 @@ if($islogin==1){}else exit("<script language='javascript'>window.location.href='
 					</div>
 					<details class="user-adjust" id="adjustBox">
 						<summary>单独调整（只给这一个用户改额度，一般不用动）</summary>
-						<p class="help-block">留空或填 -1 表示按会员等级走；填了的在到期时间之内优先于等级。用户购买或升级等级时这三项会被清掉。</p>
+						<p class="help-block">留空或填 -1 表示按会员等级走；填了的在到期时间之内优先于等级。用户更换会员等级时这些调整会被清掉，同等级续费保留。</p>
 						<div class="form-group">
 							<label class="col-sm-2 control-label no-padding-right">上传大小</label>
 							<div class="col-sm-10">
@@ -71,6 +71,16 @@ if($islogin==1){}else exit("<script language='javascript'>window.location.href='
 									<input type="number" class="form-control" id="down_speed" name="down_speed" min="-1" step="1" placeholder="他上传的文件被下载的速度：-1 按等级，0 不限速；1024 KB/s = 1 MB/s">
 									<span class="input-group-addon">KB/s</span>
 								</div>
+							</div>
+						</div>
+						<div class="form-group">
+							<label class="col-sm-2 control-label no-padding-right" for="space">存储空间</label>
+							<div class="col-sm-10">
+								<div class="input-group">
+									<input type="number" class="form-control" id="space" name="space" min="-1" max="2097151.9990234375" step="any" placeholder="-1 按等级，0 不限，正数为个人容量">
+									<span class="input-group-addon">GB</span>
+								</div>
+								<p class="help-block">替代这个用户的等级基础容量，有效空间包另行叠加。沿用上方到期时间；到期后恢复按等级。调低容量不会删除文件，超额后限制新增占用。</p>
 							</div>
 						</div>
 					</details>
@@ -268,6 +278,7 @@ $(document).ready(function(){
 					if(parseLimitValue(row.upload_size) >= 0) lines.push('大小：'+formatLimitValue(row.upload_size, 'MB'));
 					if(parseLimitValue(row.upload_limit) >= 0) lines.push('数量：'+formatLimitValue(row.upload_limit, '个/天'));
 					if(parseLimitValue(row.down_speed) >= 0) lines.push('下载：'+formatSpeedValue(row.down_speed));
+					if(parseLimitValue(row.space) >= 0) lines.push('个人空间：'+formatLimitValue(row.space, 'MB'));
 					if(lines.length && parseInt(row.level_id, 10) <= 0) lines.push('调整到期：'+formatExpireTime(row.expiretime));
 					var bonus = parseInt(row.bonus_limit || 0, 10);
 					if(bonus > 0) lines.push('加量 +'+bonus+'：'+formatExpireTime(row.bonus_expire));
@@ -369,6 +380,8 @@ function setLevel(uid){
 	$("#form-store #upload_size").val(parseLimitValue(row.upload_size));
 	$("#form-store #upload_limit").val(parseLimitValue(row.upload_limit));
 	$("#form-store #down_speed").val(parseLimitValue(row.down_speed));
+	var spaceMb = parseLimitValue(row.space);
+	$("#form-store #space").val(spaceMb < 0 ? -1 : spaceMb / 1024);
 	$("#form-store #expire_days").val('');
 	$("#form-store #expiretime").val(toDatetimeLocal(row.expiretime));
 	$("#form-store #bonus_limit").val(row.bonus_limit ? row.bonus_limit : 0);
@@ -380,7 +393,7 @@ function setLevel(uid){
 	$("#form-store #upload_traffic_pack").val(String(row.upload_traffic_pack_gb || 0));
 	$("#form-store #upload_traffic_pack_orig").val(String(row.upload_traffic_pack_gb || 0));
 	//调过数值、买过附加包的，对应的折叠块直接展开，省得点开才发现有东西
-	var adjusted = parseLimitValue(row.upload_size) >= 0 || parseLimitValue(row.upload_limit) >= 0 || parseLimitValue(row.down_speed) >= 0;
+	var adjusted = parseLimitValue(row.upload_size) >= 0 || parseLimitValue(row.upload_limit) >= 0 || parseLimitValue(row.down_speed) >= 0 || spaceMb >= 0;
 	document.getElementById('adjustBox').open = adjusted;
 	document.getElementById('addonBox').open = parseInt(row.bonus_limit || 0, 10) > 0 || parseInt(row.online_edit, 10) === 1 || parseFloat(row.traffic_pack_gb || 0) > 0 || parseFloat(row.upload_traffic_pack_gb || 0) > 0;
 }

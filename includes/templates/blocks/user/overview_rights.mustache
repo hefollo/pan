@@ -12,7 +12,7 @@
                 <div><dt>上传流量</dt><dd>{{upload_text}}</dd></div>
 {{/cfg.show_upload}}
 {{#cfg.show_space}}
-                <div><dt>{{cfg.space_label}}</dt><dd>{{space_text}}</dd></div>
+                <div class="pan-space-detail"><dt>{{cfg.space_label}}</dt><dd>{{>components/space_meter}}</dd></div>
 {{#space_packs}}
                 <div><dt>{{cfg.packs_label}}</dt><dd>{{{text_html}}}</dd></div>
 {{/space_packs}}

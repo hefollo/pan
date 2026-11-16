@@ -1,0 +1,14 @@
+{{{space_meter_css_html}}}
+{{#space_meter}}
+<div class="pan-space-meter is-{{state}}">
+  <div class="pan-space-meta"><span class="pan-space-value">{{text}}</span>{{#finite}}<span class="pan-space-percent">{{percent}}%</span>{{/finite}}</div>
+{{#available}}
+{{#finite}}
+  <div class="pan-space-track" role="progressbar" aria-label="{{cfg.space_label}}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{width}}" aria-valuetext="{{text}}"><span class="pan-space-fill" style="width:{{width}}%"></span></div>
+{{/finite}}
+{{^finite}}
+  <div class="pan-space-track" aria-hidden="true"></div>
+{{/finite}}
+{{/available}}
+</div>
+{{/space_meter}}
